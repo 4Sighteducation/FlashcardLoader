@@ -734,7 +734,38 @@
          // Handle cases where user might be logged out or session expired
          // Maybe display a message or attempt re-login if applicable
       }
+    } // <<< END OF initializeFlashcardApp FUNCTION DEFINITION
+
+    // --- PASTE THE INITIALIZATION BLOCK HERE ---
+    // Ensure Knack context and jQuery might be ready, or handle checks inside initializeFlashcardApp
+    console.log("Flashcards1h.js: Reached execution point after initializeFlashcardApp definition."); // Updated Log
+    console.log("Flashcards1h.js: Type of initializeFlashcardApp:", typeof initializeFlashcardApp); // Check type here
+
+    if (typeof $ !== 'undefined' && typeof Knack !== 'undefined') {
+        console.log("Flashcards1h.js: Knack and $ ready. Type of initializeFlashcardApp:", typeof initializeFlashcardApp);
+        if (typeof initializeFlashcardApp === 'function') {
+            initializeFlashcardApp(); // CALL IT HERE
+        } else {
+             console.error("Flashcards1h.js: initializeFlashcardApp is NOT a function here!");
+        }
+    } else {
+         // Fallback: Wait a very short moment
+         console.error("Flashcards1h.js: Knack or $ not immediately ready, delaying init slightly.");
+         setTimeout(() => {
+             console.log("Flashcards1h.js: Delayed check. Type of initializeFlashcardApp:", typeof initializeFlashcardApp);
+             if (typeof $ !== 'undefined' && typeof Knack !== 'undefined') {
+                 console.log("Flashcards1h.js: Delayed initialization starting.");
+                 if (typeof initializeFlashcardApp === 'function') {
+                     initializeFlashcardApp(); // CALL IT HERE (Delayed)
+                 } else {
+                      console.error("Flashcards1h.js: initializeFlashcardApp is NOT a function after delay!");
+                 }
+             } else {
+                  console.error("Flashcards1h.js: Knack or $ still not ready after delay. Initialization failed.");
+             }
+         }, 100);
     }
+    // --- END OF PASTED BLOCK ---
   
      // Continue initialization after potentially fetching complete user data
      function continueInitialization(config, userToken, appId) {
@@ -2046,36 +2077,4 @@
      // message routing structure (handleMessageRouter -> specific handlers -> saveQueue).
   
    // --- Self-Executing Function Closure ---
-  }()); 
-
-  // ADD THIS DIRECT CALL:
-  // Ensure Knack context and jQuery might be ready, or handle checks inside initializeFlashcardApp
-  console.log("Flashcards1f.js: Reached end of script. Checking init conditions."); // USE console.log
-  console.log("Flashcards1f.js: Type of initializeFlashcardApp:", typeof initializeFlashcardApp); // USE console.log
-
-  if (typeof $ !== 'undefined' && typeof Knack !== 'undefined') {
-      console.log("Flashcards1f.js: Knack and $ ready. Type of initializeFlashcardApp:", typeof initializeFlashcardApp); // USE console.log
-      // initializeFlashcardApp(); // Original call - now check type first
-      if (typeof initializeFlashcardApp === 'function') {
-          initializeFlashcardApp();
-      } else {
-           console.error("Flashcards1f.js: initializeFlashcardApp is NOT a function here!"); // USE console.error
-      }
-  } else {
-       // Fallback: Wait a very short moment for Knack/$ to potentially appear after script load
-       console.error("Flashcards1f.js: Knack or $ not immediately ready, delaying init slightly."); // USE console.error
-       setTimeout(() => {
-           console.log("Flashcards1f.js: Delayed check. Type of initializeFlashcardApp:", typeof initializeFlashcardApp); // USE console.log
-           if (typeof $ !== 'undefined' && typeof Knack !== 'undefined') {
-               console.log("Flashcards1f.js: Delayed initialization starting."); // USE console.log
-               // initializeFlashcardApp(); // Original call - now check type first
-               if (typeof initializeFlashcardApp === 'function') {
-                   initializeFlashcardApp();
-               } else {
-                    console.error("Flashcards1f.js: initializeFlashcardApp is NOT a function after delay!"); // USE console.error
-               }
-           } else {
-                console.error("Flashcards1f.js: Knack or $ still not ready after delay. Initialization failed."); // USE console.error
-           }
-       }, 100); // Short delay (100ms)
-  }
+ }()); 
