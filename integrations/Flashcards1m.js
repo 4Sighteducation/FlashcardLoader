@@ -1,12 +1,6 @@
 // knack-integration.js - Safe for public GitHub repository
 // Version: 5x (Introduces SaveQueue and corrected message handling)
 (function () {
-    // Look for configuration in global scope
-    if (!window.VESPA_CONFIG) {
-      console.error("Flashcard app: Missing VESPA_CONFIG. Please define configuration in Knack.");
-      return;
-    }
-  
     // --- Configuration and Constants ---
     const knackAppId = window.VESPA_CONFIG?.knackAppId; // Use optional chaining in case config isn't set *yet*
     const knackApiKey = window.VESPA_CONFIG?.knackApiKey; // Use optional chaining
@@ -694,7 +688,7 @@
     // Initialize the React app
     // Expose this function globally for the loader script (v3.16+)
     window.initializeFlashcardApp = function() {
-      console.log("Initializing Flashcard React app (Version 5x with SaveQueue)");
+      console.log("Initializing Flashcard React app (Version 5x with SaveQueue - Loader Compatible)"); // Updated log
       // REMOVE config lookup
       // const config = FLASHCARD_APP_CONFIG['scene_1206']?.['view_3005']; // Use optional chaining
       // if (!config) {
@@ -751,7 +745,7 @@
     console.log("Flashcards1h.js: Type of initializeFlashcardApp:", typeof initializeFlashcardApp); // Check type here
 
     if (typeof $ !== 'undefined' && typeof Knack !== 'undefined') {
-        console.log("Flashcards1h.js: Knack and $ ready. Type of initializeFlashcardApp:", typeof initializeFlashcardApp);
+        console.log("Flashcards1h.js: Knack and $ ready. Type of initializeFlashcardApp:", typeof "initializeFlashcardApp");
         if (typeof initializeFlashcardApp === 'function') {
             initializeFlashcardApp(); // CALL IT HERE
         } else {
