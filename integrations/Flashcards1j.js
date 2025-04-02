@@ -736,7 +736,9 @@
             console.warn("Flashcard app: Could not get complete user data, continuing with basic info");
           }
           // Proceed with initialization using the (potentially enhanced) global user object
-          continueInitialization(config, userToken, appId);
+          // Remove the undefined 'config' variable from this call
+          // continueInitialization(config, userToken, appId); // Original call
+          continueInitialization(userToken, appId); // CORRECTED call
         });
   
       } else {
@@ -778,7 +780,9 @@
     // --- END OF PASTED BLOCK ---
   
      // Continue initialization after potentially fetching complete user data
-     function continueInitialization(config, userToken, appId) { // config param is no longer used here
+     // Remove 'config' parameter from function definition as well
+     // function continueInitialization(config, userToken, appId) { // config param is no longer used here
+     function continueInitialization(userToken, appId) { // CORRECTED definition
          const currentUser = window.currentKnackUser; // Use the globally stored (potentially enhanced) user object
   
          // Extract and store connection field IDs safely
