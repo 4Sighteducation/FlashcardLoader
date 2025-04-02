@@ -15,7 +15,7 @@
         const APP_DEFINITIONS = {
             'flashcards': {
                 mapping: { 'scene_1206': 'view_3005' }, // Your Flashcards IDs
-                scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/Flashcards1a.js', // Corrected Flashcards Script
+                scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/Flashcards1b.js', // Corrected Flashcards Script
                 configBuilder: function(sharedConfig, sceneId, viewId) { /* ... */ }
             },
             'studyplanner': {
