@@ -35,7 +35,7 @@
         'flashcards': {
             // *** Replace with YOUR Flashcards Scene/View IDs ***
             mapping: { 'scene_1206': 'view_3005' },
-            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/KnackIntegration3@main/KnackJavascript6a.js', // Assumes 6a is the corrected version
+            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/Flashcards1a.js', // Assumes 6a is the corrected version
             configBuilder: function(sharedConfig, sceneId, viewId) {
                 const appUrl = 'https://vespa-flashcards-e7f31e9ff3c9.herokuapp.com/';
                 return {
