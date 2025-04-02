@@ -1,4 +1,4 @@
-  // === Knack Multi-App Loader Script ===
+ // === Knack Multi-App Loader Script ===
     // Version: 2.2-ALL (External Loader - Event Driven Only)
 
     (function() {
@@ -73,32 +73,79 @@
                 console.log("[Knack External Loader] Attaching Knack event listeners...");
                 $(document).on('knack-view-render.any', function(event, view) {
                      console.log("[Knack External Loader] Event: knack-view-render.any detected for view:", view ? view.key : 'N/A');
-                     initializeActiveApp(view);
+                     // Introduce a minimal delay to allow Knack context to stabilize
+                     setTimeout(() => {
+                         // Need to ensure view and view.key are still valid after the timeout
+                         if (view && view.key) {
+                            initializeActiveApp(view.key, 'view');
+                         } else {
+                            console.warn("[Knack External Loader] View context lost after timeout in view-render event.");
+                         }
+                     }, 0); // 0ms delay pushes execution to the next event loop tick
                 });
                 $(document).on('knack-scene-render.any', function(event, scene) {
-                     if (!scene || !scene.key) return;
+                     if (!scene || !scene.key) {
+                         console.warn("[Knack External Loader] Scene event fired without scene object or key.");
+                         return;
+                     }
                      console.log("[Knack External Loader] Event: knack-scene-render.any detected for scene:", scene.key);
-                     const primaryViewElement = scene.$el ? scene.$el.find('.kn-view').first() : $();
-                     const viewKey = primaryViewElement.length ? primaryViewElement.attr('id') : scene.key;
-                     appLoadedForView = {}; // Reset flags on scene change
-                     initializeActiveApp({ key: viewKey });
+                     // Introduce a minimal delay
+                     setTimeout(() => {
+                        // Ensure scene and scene.key are still valid
+                         if (scene && scene.key) {
+                            // Reset flags on scene change before trying to initialize
+                            appLoadedForView = {};
+                            initializeActiveApp(scene.key, 'scene');
+                         } else {
+                            console.warn("[Knack External Loader] Scene context lost after timeout in scene-render event.");
+                         }
+                     }, 0); // 0ms delay
                 });
                 window.KNACK_MULTI_APP_LISTENERS_ATTACHED = true;
-                 // Trigger an initial check *after* listeners are attached, in case view already rendered
+                 // Trigger an initial check *after* listeners are attached
                  console.log("[Knack External Loader] Attempting initial check after attaching listeners...");
-                 if (typeof Knack !== 'undefined' && Knack.view_hash) {
-                      initializeActiveApp({ key: Knack.view_hash });
-                 }
+                 // Introduce a minimal delay for the initial check too
+                 setTimeout(checkInitialLoad, 50); // Use the updated checkInitialLoad
             } else {
                  console.log("[Knack External Loader] Knack event listeners already attached.");
             }
         }
+
+        // --- Updated Initial Check Logic ---
+        function checkInitialLoad() {
+            console.log('[Knack External Loader] Running checkInitialLoad...');
+            if (window.Knack && Knack.scenes && Knack.scenes.current) {
+                 const currentSceneKey = Knack.scenes.current.key;
+                 console.log(`[Knack External Loader] Initial check found current scene: ${currentSceneKey}`);
+                 // Try initializing based on the current scene first
+                 initializeActiveApp(currentSceneKey, 'scene'); // This will check if it's a target scene
+
+                 // Additionally, check visible views within the current scene
+                 if (Knack.views && Knack.views.models) {
+                     Knack.views.models.forEach(view => {
+                         // Check if the view element exists in the DOM as a basic visibility check
+                         if (view && view.key && $(`#${view.key}`).length > 0) {
+                             console.log(`[Knack External Loader] Initial check found potential view in current scene: ${view.key}`);
+                             initializeActiveApp(view.key, 'view'); // This will check if it's a target view
+                         }
+                     });
+                 }
+
+            } else {
+                console.log('[Knack External Loader] Initial check: Knack context or current scene not ready yet.');
+            }
+        }
+
         // Start the process of attaching listeners
         attachKnackListeners();
 
 
         // --- Utilities ---
-        function debugLog(title, data) { /* ... */ }
+        function debugLog(title, data) {
+            if (KNACK_SHARED_CONFIG.debugMode) {
+                console.log(`%c[Knack Debug: ${title}]`, 'color: #e0771a; font-weight: bold;', data);
+            }
+        }
 
         // --- REMOVED Manual Trigger Function ---
         // --- REMOVED setTimeout Initial Check ---
