@@ -8,8 +8,8 @@
     }
   
     // --- Configuration and Constants ---
-    const knackAppId = window.VESPA_CONFIG.knackAppId;
-    const knackApiKey = window.VESPA_CONFIG.knackApiKey;
+    const knackAppId = window.VESPA_CONFIG?.knackAppId; // Use optional chaining in case config isn't set *yet*
+    const knackApiKey = window.VESPA_CONFIG?.knackApiKey; // Use optional chaining
     const KNACK_API_URL = 'https://api.knack.com/v1';
     // REMOVE FLASHCARD_APP_CONFIG definition
     // const FLASHCARD_APP_CONFIG = window.VESPA_CONFIG.appConfig || {
@@ -689,14 +689,11 @@
     const saveQueue = new SaveQueue();
   
     // --- Knack Integration Initialization ---
-    // REMOVE THIS LISTENER:
-    // $(document).on('knack-scene-render.scene_1206', function(event, scene) {
-    //   console.log("Flashcard app: Scene rendered:", scene.key);
-    //   initializeFlashcardApp();
-    // });
-  
+    // REMOVED Old Scene Render Listener
+
     // Initialize the React app
-    function initializeFlashcardApp() {
+    // Expose this function globally for the loader script (v3.16+)
+    window.initializeFlashcardApp = function() {
       console.log("Initializing Flashcard React app (Version 5x with SaveQueue)");
       // REMOVE config lookup
       // const config = FLASHCARD_APP_CONFIG['scene_1206']?.['view_3005']; // Use optional chaining
