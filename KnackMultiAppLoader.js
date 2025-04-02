@@ -203,4 +203,16 @@
          }
      }, 100); // Increased delay slightly
 
+    // +++ ADDED Trigger Function +++
+    // Expose a function to manually trigger the check if needed
+    window.triggerKnackAppInitialization = function() {
+        console.log("[Knack External Loader] Manual initialization trigger called.");
+        if (typeof Knack !== 'undefined' && Knack.view_hash) {
+            initializeActiveApp({ key: Knack.view_hash });
+        } else {
+            console.warn("[Knack External Loader] Knack context not ready for manual trigger.");
+        }
+    };
+    // +++ END Trigger Function +++
+
 })();
