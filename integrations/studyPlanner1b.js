@@ -1,19 +1,13 @@
 // StudyPlanner 2.0 - Knack Integration Script - v1.0
 // This script must be added to Knack builder to enable communication between Knack and the embedded React app
 (function() {
-    // Configuration (to be set in Knack)
-    if (!window.STUDYPLANNER_CONFIG) {
-      console.error("StudyPlanner: Missing STUDYPLANNER_CONFIG. Please define configuration in Knack/loader script.");
-      return;
-    }
-  
+    // REMOVED: Initial config check - Loader will provide config before calling init.
+    // if (!window.STUDYPLANNER_CONFIG) { ... }
+
     // --- Constants and Configuration ---
     // Use constants provided by the loader via window.STUDYPLANNER_CONFIG
-    const knackAppId = window.STUDYPLANNER_CONFIG.knackAppId;
-    const knackApiKey = window.STUDYPLANNER_CONFIG.knackApiKey;
+    // These will be accessed inside initializeStudyPlannerApp when it's called.
     const KNACK_API_URL = 'https://api.knack.com/v1';
-    // REMOVED: Internal config lookup - Rely on loader's config
-    // const STUDYPLANNER_APP_CONFIG = window.STUDYPLANNER_CONFIG.appConfig || { ... };
     const STUDYPLANNER_OBJECT = 'object_110'; // Study Plan object
     const FIELD_MAPPING = {
       userId: 'field_3040', // User ID
@@ -23,9 +17,8 @@
       lastSaved: 'field_3043', // Last saved timestamp (to be added if not exists)
       teacherConnection: 'field_3044' // Teacher connection field (to be added if not exists)
     };
-  
+
     // --- Helper Functions ---
-    
     // Safe URI component decoding function
     function safeDecodeURIComponent(str) {
       if (!str) return str;
@@ -43,7 +36,7 @@
         }
       }
     }
-  
+
     // Safely encode URI component
     function safeEncodeURIComponent(str) {
       try {
@@ -53,7 +46,7 @@
         return String(str);
       }
     }
-  
+
     // Safe JSON parsing function
     function safeParseJSON(jsonString, defaultVal = null) {
       if (!jsonString) return defaultVal;
@@ -77,17 +70,17 @@
         }
       }
     }
-  
+
     // Check if a string is a valid Knack record ID
     function isValidKnackId(id) {
       if (!id) return false;
       return typeof id === 'string' && /^[0-9a-f]{24}$/i.test(id);
     }
-  
+
     // Extract a valid record ID from various formats
     function extractValidRecordId(value) {
       if (!value) return null;
-  
+
       // If it's already an object
       if (typeof value === 'object') {
         let idToCheck = null;
@@ -100,20 +93,20 @@
         } else if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'string') {
           idToCheck = value[0];
         }
-  
+
         if (idToCheck) {
           return isValidKnackId(idToCheck) ? idToCheck : null;
         }
       }
-  
+
       // If it's a string
       if (typeof value === 'string') {
         return isValidKnackId(value) ? value : null;
       }
-  
+
       return null;
     }
-  
+
     // Safely remove HTML from strings
     function sanitizeField(value) {
       if (value === null || value === undefined) return "";
@@ -129,7 +122,7 @@
         .replace(/&nbsp;/g, " ");
       return sanitized.trim();
     }
-  
+
     // Debug logging helper
     function debugLog(title, data) {
       console.log(`%c[StudyPlanner] ${title}`, 'color: #5d00ff; font-weight: bold; font-size: 12px;');
@@ -140,7 +133,7 @@
       }
       return data;
     }
-  
+
     // Generic retry function for API calls
     function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
       return new Promise((resolve, reject) => {
@@ -150,7 +143,7 @@
             .catch((error) => {
               const attemptsMade = retryCount + 1;
               console.warn(`API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
-  
+
               if (retryCount < maxRetries - 1) {
                 const retryDelay = delay * Math.pow(2, retryCount);
                 console.log(`Retrying API call in ${retryDelay}ms...`);
@@ -164,7 +157,7 @@
         attempt(0);
       });
     }
-  
+
     // Function to refresh authentication
     function refreshAuthentication() {
       return new Promise((resolve, reject) => {
@@ -183,7 +176,7 @@
         }
       });
     }
-  
+
     // Handle token refresh request from React app
     function handleTokenRefresh(iframeWindow) {
       console.log("Handling token refresh request from React app");
@@ -202,7 +195,7 @@
         if (iframeWindow) iframeWindow.postMessage({ type: "AUTH_REFRESH_RESULT", success: false, error: error.message || "Unknown error refreshing token" }, "*");
       }
     }
-  
+
     // --- Save Queue Class ---
     class SaveQueue {
       constructor() {
@@ -212,7 +205,7 @@
         this.maxRetries = 3;
         this.retryDelay = 1000;
       }
-  
+
       // Adds an operation to the queue
       addToQueue(operation) {
         return new Promise((resolve, reject) => {
@@ -220,7 +213,7 @@
             console.error("[SaveQueue] Invalid operation added:", operation);
             return reject(new Error("Invalid save operation: missing type or recordId"));
           }
-  
+
           const queuedOperation = {
             ...operation,
             resolve,
@@ -232,17 +225,17 @@
           this.processQueue();
         });
       }
-  
+
       // Processes the next operation in the queue if not already saving
       async processQueue() {
         if (this.isSaving || this.queue.length === 0) {
           return;
         }
-  
+
         this.isSaving = true;
         const operation = this.queue[0];
         console.log(`[SaveQueue] Processing operation: ${operation.type} for record ${operation.recordId}`);
-  
+
         try {
           const updateData = await this.prepareSaveData(operation);
           debugLog("[SaveQueue] Prepared update data", updateData);
@@ -254,17 +247,17 @@
           this.handleSaveError(operation, error);
         }
       }
-  
+
       // Prepares the data to save
       async prepareSaveData(operation) {
         const { type, data, recordId, preserveFields } = operation;
         console.log(`[SaveQueue] Preparing save data for type: ${type}, record: ${recordId}, preserveFields: ${preserveFields}`);
-  
+
         // Start with the mandatory lastSaved field
         const updateData = {
           [FIELD_MAPPING.lastSaved]: new Date().toISOString()
         };
-  
+
         try {
           // Fetch existing data ONLY if preserving fields
           let existingData = null;
@@ -279,7 +272,7 @@
               existingData = null;
             }
           }
-  
+
           // Add data based on operation type
           switch (type) {
             case 'studyPlan':
@@ -292,7 +285,7 @@
               console.error(`[SaveQueue] Unknown save operation type: ${type}`);
               throw new Error(`Unknown save operation type: ${type}`);
           }
-  
+
           // If preserving fields and we successfully fetched existing data, merge
           if (preserveFields && existingData) {
             console.log(`[SaveQueue] Merging prepared data with existing data for record ${recordId}`);
@@ -301,14 +294,14 @@
           } else if (preserveFields && !existingData) {
             console.warn(`[SaveQueue] Cannot preserve fields for record ${recordId} because existing data could not be fetched.`);
           }
-  
+
           return updateData;
         } catch (error) {
           console.error(`[SaveQueue] Error in prepareSaveData for type ${type}:`, error);
           throw error;
         }
       }
-  
+
       // Fetches current record data from Knack
       async getExistingData(recordId) {
         console.log(`[SaveQueue] Fetching existing data for record ${recordId}`);
@@ -335,7 +328,7 @@
         };
         return retryApiCall(apiCall);
       }
-  
+
       // Merges updateData with existingData, preserving specific fields
       preserveExistingFields(updateData, existingData) {
         console.log(`[SaveQueue] Preserving fields for record. Fields in updateData: ${Object.keys(updateData).join(', ')}`);
@@ -344,7 +337,7 @@
           FIELD_MAPPING.planData,
           FIELD_MAPPING.teacherConnection
         ];
-  
+
         allAppFieldIds.forEach(fieldId => {
           if (updateData[fieldId] === undefined && existingData[fieldId] !== undefined && existingData[fieldId] !== null) {
             console.log(`[SaveQueue] Preserving existing data for field ID: ${fieldId}`);
@@ -352,7 +345,7 @@
           }
         });
       }
-  
+
       // Performs the actual Knack API PUT request
       async performSave(updateData, recordId) {
         console.log(`[SaveQueue] Performing API save for record ${recordId}`);
@@ -363,7 +356,7 @@
           console.warn(`[SaveQueue] Save payload for record ${recordId} only contains lastSaved timestamp. Skipping API call.`);
           return { message: "Save skipped, only timestamp update." };
         }
-  
+
         const apiCall = () => {
           return new Promise((resolve, reject) => {
             $.ajax({
@@ -387,7 +380,7 @@
         };
         return retryApiCall(apiCall);
       }
-  
+
       // Handles successful save completion
       handleSaveSuccess(operation) {
         const completedOperation = this.queue.shift();
@@ -402,7 +395,7 @@
         this.isSaving = false;
         this.processQueue();
       }
-  
+
       // Handles save errors, implements retry logic
       handleSaveError(operation, error) {
         if (this.queue[0] !== operation) {
@@ -412,11 +405,11 @@
           }
           return;
         }
-  
+
         const attempts = (this.retryAttempts.get(operation) || 0) + 1;
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[SaveQueue] Save error for ${operation.type} (record ${operation.recordId}, Attempt ${attempts}/${this.maxRetries}):`, errorMessage, error);
-  
+
         if (attempts < this.maxRetries) {
           this.retryAttempts.set(operation, attempts);
           const delay = this.retryDelay * Math.pow(2, attempts - 1);
@@ -438,9 +431,18 @@
           this.processQueue();
         }
       }
-  
+
       // Helper to get standard Knack API headers
       getKnackHeaders() {
+        // Now reading knackAppId and knackApiKey from STUDYPLANNER_CONFIG
+        const config = window.STUDYPLANNER_CONFIG;
+        if (!config || !config.knackAppId || !config.knackApiKey) {
+           console.error("[SaveQueue] Missing Knack App ID or API Key in STUDYPLANNER_CONFIG.");
+           throw new Error("Knack configuration missing in window.STUDYPLANNER_CONFIG");
+        }
+        const knackAppId = config.knackAppId;
+        const knackApiKey = config.knackApiKey;
+
         if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
           console.error("[SaveQueue] Knack object or getUserToken function not available.");
           throw new Error("Knack authentication context not available.");
@@ -456,7 +458,7 @@
           'Content-Type': 'application/json'
         };
       }
-  
+
       // Helper to ensure data is serializable (prevents circular references)
       ensureSerializable(data) {
         try {
@@ -483,34 +485,25 @@
         }
       }
     }
-  
+
     // Create singleton instance
     const saveQueue = new SaveQueue();
-  
+
     // --- Knack Integration Initialization ---
     // Keep track of initialization state to prevent duplicate initializations
-    // REMOVED: let isInitialized = false; // No longer needed with direct init
     let appReadyReceived = false; // Keep this for iframe communication
-  
-    // REMOVED: Knack Scene Render Listener - Initialization is now triggered by the loader script
-    // $(document).on('knack-scene-render.scene_1208', function(event, scene) {
-    //   console.log("StudyPlanner: Scene rendered:", scene.key);
-    //   if (!isInitialized) {
-    //     isInitialized = true;
-    //     initializeStudyPlanner();
-    //   } else {
-    //     console.log("StudyPlanner: Already initialized, skipping duplicate initialization");
-    //   }
-    // });
-  
-    // Initialize the React app - This function is now called directly at the end
-    function initializeStudyPlanner() {
-      console.log("StudyPlanner: Initializing StudyPlanner React app...");
-  
+
+    // REMOVED: Knack Scene Render Listener
+
+    // Main initialization function, now exposed globally.
+    // This will be called by the loader script AFTER config is ready.
+    window.initializeStudyPlannerApp = function() {
+      console.log("StudyPlanner: Initializing StudyPlannerApp function called...");
+
       // Get config directly from the global object set by the loader
       const config = window.STUDYPLANNER_CONFIG;
       if (!config || !config.appUrl || !config.elementSelector) {
-        console.error("StudyPlanner Error: Missing or incomplete STUDYPLANNER_CONFIG from loader.", config);
+        console.error("StudyPlanner Error: Missing or incomplete STUDYPLANNER_CONFIG when initializeStudyPlannerApp called.", config);
         // Ensure config is an object to avoid errors if it was initially null/undefined
         const safeConfig = config || {};
         // Try a fallback selector if elementSelector is missing
@@ -526,19 +519,19 @@
       // Use the potentially updated config object
       const currentConfig = window.STUDYPLANNER_CONFIG;
       debugLog("StudyPlanner: Using configuration from loader", currentConfig);
-  
-      // Check if user is authenticated
-      if (typeof Knack === 'undefined' || !Knack.getUserToken || !Knack.getUserAttributes || typeof Knack.application_id === 'undefined') {
-        console.error("StudyPlanner Error: Required Knack context (getUserToken, getUserAttributes, application_id) not available.");
+
+      // Check if Knack context is ready (redundant if loader ensures it, but safe)
+      if (typeof Knack === 'undefined' || typeof $ === 'undefined' || !Knack.getUserToken || !Knack.getUserAttributes || typeof Knack.application_id === 'undefined') {
+        console.error("StudyPlanner Error: Required Knack context or jQuery ($) not available when initializeStudyPlannerApp called.");
         return;
       }
-  
+
       if (Knack.getUserToken()) {
         console.log("StudyPlanner: User is authenticated");
         const userToken = Knack.getUserToken();
         const appId = Knack.application_id;
         const user = Knack.getUserAttributes();
-  
+
         console.log("StudyPlanner: Basic user info:", user);
         // Ensure user object exists before assigning to window
         if (!user || typeof user !== 'object') {
@@ -546,7 +539,7 @@
             return;
         }
         window.currentKnackUser = user;
-  
+
         // Get complete user data (async)
         getCompleteUserData(user.id, function(completeUserData) {
           if (completeUserData) {
@@ -568,36 +561,36 @@
         console.error("StudyPlanner: User is not authenticated (Knack.getUserToken() returned null/false).");
       }
     }
-  
+
     // Continue initialization after potentially fetching complete user data
     // Takes the resolved 'config' object as a parameter now
     function continueInitialization(config, userToken, appId) {
       const currentUser = window.currentKnackUser;
-  
+
        if (!currentUser) {
          console.error("StudyPlanner Error: Cannot continue initialization, currentKnackUser is not defined.");
          return;
        }
-  
+
       // Extract and store connection field IDs safely
       currentUser.emailId = extractValidRecordId(currentUser.id);
       currentUser.schoolId = extractValidRecordId(currentUser.school || currentUser.field_122);
       currentUser.teacherId = extractValidRecordId(currentUser.tutor);
       currentUser.roleId = extractValidRecordId(currentUser.role);
-  
+
       debugLog("FINAL CONNECTION FIELD IDs", {
         emailId: currentUser.emailId,
         schoolId: currentUser.schoolId,
         teacherId: currentUser.teacherId,
         roleId: currentUser.roleId
       });
-  
+
       // Find or create container for the app using config.elementSelector
       let container = document.querySelector(config.elementSelector);
       // Fallback selectors (use view ID from config if available, else hardcoded)
       const viewId = config.viewKey || 'view_3008'; // Prefer viewKey from loader if present
       const sceneId = config.sceneKey || 'scene_1208'; // Prefer sceneKey from loader if present
-  
+
       if (!container) container = document.querySelector('.kn-rich-text');
       if (!container) {
         const viewElement = document.getElementById(viewId) || document.querySelector('.' + viewId);
@@ -621,9 +614,9 @@
           return;
         }
       }
-  
+
       container.innerHTML = '';
-  
+
       // Loading indicator
       const loadingDiv = document.createElement('div');
       loadingDiv.id = 'studyplanner-loading-indicator';
@@ -631,7 +624,7 @@
       loadingDiv.style.padding = '20px';
       loadingDiv.style.textAlign = 'center';
       container.appendChild(loadingDiv);
-  
+
       // Create iframe using config.appUrl
       const iframe = document.createElement('iframe');
       iframe.id = 'studyplanner-app-iframe';
@@ -641,42 +634,42 @@
       iframe.style.display = 'none'; // Keep hidden until APP_READY
       iframe.src = config.appUrl;
       container.appendChild(iframe);
-  
+
       // Setup listener ONCE
       // Ensure previous listeners are removed if re-initializing (though direct init should prevent this)
       // window.removeEventListener('message', messageHandler); // Uncomment if re-initialization becomes possible
-  
+
       const messageHandler = function(event) {
         // Basic security check: Ensure the message is from the expected iframe source
          if (event.source !== iframe.contentWindow || event.origin !== new URL(config.appUrl).origin) {
            // console.warn("[Knack Script] Ignoring message from unexpected source or origin:", event.origin);
            return;
          }
-  
+
         if (!event.data || !event.data.type) {
           console.warn("[Knack Script] Ignoring message with invalid format:", event.data);
           return;
         }
-  
+
         const { type, data } = event.data;
         const iframeWindow = iframe.contentWindow;
-  
+
         if (type !== 'PING') { // Reduce console noise for frequent pings
           console.log(`[Knack Script] Received message type: ${type}`);
         }
-  
+
         if (type === 'APP_READY') {
           // Prevent handling duplicate APP_READY messages
           if (appReadyReceived) {
             console.log("StudyPlanner: Ignoring duplicate APP_READY message");
             return;
           }
-  
+
           appReadyReceived = true;
           console.log("StudyPlanner: React app reported APP_READY.");
-  
+
           const userForApp = window.currentKnackUser; // Use potentially updated user object
-  
+
           if (!userForApp || !userForApp.id) {
             console.error("Cannot send initial info: Current Knack user data not ready or missing ID at APP_READY.");
             // Optionally, tell the iframe there was an error
@@ -685,9 +678,9 @@
              }
             return;
           }
-  
+
           loadingDiv.innerHTML = '<p>Loading User Data...</p>';
-  
+
           loadStudyPlannerUserData(userForApp.id, function(userData) {
             // Check if iframe is still valid before posting message
             if (iframe.contentWindow && iframeWindow && iframe.contentWindow === iframeWindow) {
@@ -709,7 +702,7 @@
               };
               debugLog("--> Sending KNACK_USER_INFO to React App", initialData.data);
               iframeWindow.postMessage(initialData, new URL(config.appUrl).origin); // Use specific origin
-  
+
               // Show iframe after sending initial data
               loadingDiv.style.display = 'none';
               iframe.style.display = 'block';
@@ -723,11 +716,11 @@
            handleMessageRouter(type, data, iframeWindow, new URL(config.appUrl).origin);
         }
       };
-  
+
       window.addEventListener('message', messageHandler);
       console.log("StudyPlanner initialization sequence complete. Waiting for APP_READY from iframe.");
     }
-  
+
     // Central Message Router - Added origin parameter
     function handleMessageRouter(type, data, iframeWindow, origin) {
       if (!type) {
@@ -742,9 +735,9 @@
            console.error("[Knack Script] Origin is missing in handleMessageRouter. Cannot send response securely.");
            return;
        }
-  
+
       console.log(`[Knack Script] Routing message type: ${type}`);
-  
+
       switch (type) {
         case 'SAVE_DATA':
           handleSaveDataRequest(data, iframeWindow, origin);
@@ -774,7 +767,7 @@
           console.warn(`[Knack Script] Unhandled message type: ${type}`);
       }
     }
-  
+
     // Handle 'SAVE_DATA' request from React app - Added origin
     async function handleSaveDataRequest(data, iframeWindow, origin) {
       console.log("[Knack Script] Handling SAVE_DATA request");
@@ -784,7 +777,7 @@
         return;
       }
       debugLog("[Knack Script] Data received for SAVE_DATA:", data);
-  
+
       try {
         await saveQueue.addToQueue({
           type: 'studyPlan',
@@ -792,7 +785,7 @@
           recordId: data.recordId,
           preserveFields: data.preserveFields || false // Default to false if not provided
         });
-  
+
         console.log(`[Knack Script] SAVE_DATA for record ${data.recordId} added to queue.`);
         // Post success message optimistically after queuing
         if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: true, queued: true, timestamp: new Date().toISOString() }, origin);
@@ -802,25 +795,25 @@
         if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: false, error: errorMessage || 'Unknown save error' }, origin);
       }
     }
-  
+
     // Handle request for updated data from React app - Added origin
     async function handleDataUpdateRequest(messageData, iframeWindow, origin) {
       console.log("[Knack Script] Handling REQUEST_UPDATED_DATA request", messageData);
       const userId = window.currentKnackUser?.id;
-  
+
       // Extract recordId - Improved logic
       let recordId = null;
       if (typeof messageData === 'object' && messageData !== null) {
         recordId = messageData.recordId || messageData.data?.recordId;
       }
       console.log("[Knack Script] Extracted recordId for data update request:", recordId);
-  
+
       if (!userId) {
         console.error("[Knack Script] Cannot refresh data - user ID not found.");
         if (iframeWindow) iframeWindow.postMessage({ type: 'DATA_REFRESH_ERROR', error: 'User ID not found' }, origin);
         return;
       }
-  
+
       // Always load data based on userId, then check if recordId matches if provided
       loadStudyPlannerUserData(userId, function(userData) {
         if (userData && iframeWindow) {
@@ -828,7 +821,7 @@
           if (recordId && userData.recordId !== recordId) {
              console.warn(`[Knack Script] Loaded data record ID (${userData.recordId}) does not match requested record ID (${recordId}). Sending loaded data anyway as it's the user's current record.`);
           }
-  
+
           console.log("[Knack Script] Sending refreshed data to React app (on request)");
           iframeWindow.postMessage({
             type: 'KNACK_DATA', // Consistent type
@@ -837,14 +830,14 @@
             lastSaved: userData.lastSaved, // Send last saved time too
             timestamp: new Date().toISOString() // Timestamp of this message
           }, origin);
-  
+
         } else if (iframeWindow) {
           console.error("[Knack Script] Error loading updated data (on request) or iframe invalid.");
           iframeWindow.postMessage({ type: 'DATA_REFRESH_ERROR', error: 'Failed to load data' }, origin);
         }
       });
     }
-  
+
     // Handle record ID request - Added origin
     async function handleRecordIdRequest(data, iframeWindow, origin) {
       console.log("[Knack Script] Handling REQUEST_RECORD_ID request");
@@ -854,7 +847,7 @@
         if (iframeWindow) iframeWindow.postMessage({ type: 'RECORD_ID_ERROR', error: 'User ID not found' }, origin);
         return;
       }
-  
+
       // Use the existing load function which finds or creates the record
       loadStudyPlannerUserData(userId, function(userData) {
         if (userData && userData.recordId && iframeWindow) {
@@ -874,7 +867,7 @@
         }
       });
     }
-  
+
     // Get complete user data from Knack
     function getCompleteUserData(userId, callback) {
       if (!userId) {
@@ -898,7 +891,7 @@
           }
         });
       });
-  
+
       retryApiCall(apiCall, 2, 500) // Fewer retries for user data fetch
         .then(response => {
           console.log("[Knack Script] Complete user data received.");
@@ -910,14 +903,14 @@
           callback(null);
         });
     }
-  
+
     // Load user's study planner data (find or create)
     function loadStudyPlannerUserData(userId, callback) {
-       if (!userId) {
-         console.error("[Knack Script] Cannot load study planner data: userId is missing.");
-         callback(null);
-         return;
-       }
+      if (!userId) {
+        console.error("[Knack Script] Cannot load study planner data: userId is missing.");
+        callback(null);
+        return;
+      }
       console.log(`[Knack Script] Loading study planner data for user ID: ${userId}`);
       const findRecordApiCall = () => new Promise((resolve, reject) => {
         $.ajax({
@@ -941,14 +934,14 @@
           }
         });
       });
-  
+
       retryApiCall(findRecordApiCall)
         .then((response) => {
           debugLog("[Knack Script] Study Planner data search response:", response);
           if (response && response.records && response.records.length > 0) {
             const record = response.records[0];
             console.log(`[Knack Script] Found existing study planner record: ${record.id}`);
-  
+
             // Assemble userData from record fields safely
             let userData = { recordId: record.id };
             try {
@@ -966,12 +959,12 @@
                  }
                 return decodedValue; // Return as is otherwise
               };
-  
+
               userData.studyPlan = parseField(FIELD_MAPPING.planData) || {}; // Default to empty object
               userData.lastSaved = record[FIELD_MAPPING.lastSaved]; // Keep raw timestamp
               // Assuming teacherConnection might be an array of IDs or similar structure
               //userData.teacherConnection = parseField(FIELD_MAPPING.teacherConnection) || []; // Default to empty array
-  
+
               debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
               callback(userData);
             } catch (e) {
@@ -1003,18 +996,18 @@
           callback(null);
         });
     }
-  
+
     // Create a new study planner user record
     function createStudyPlannerUserRecord(userId, callback) {
       console.log("[Knack Script] Creating new study planner user record for:", userId);
       const user = window.currentKnackUser; // Use the potentially enhanced user object
-  
+
       if (!user || !user.email) { // Check for essential fields like email
         console.error("[Knack Script] Cannot create record: window.currentKnackUser is missing or lacks email.");
         callback(false, null);
         return;
       }
-  
+
       // Basic data structure for a new record
       const data = {
         [FIELD_MAPPING.userId]: userId,
@@ -1023,16 +1016,16 @@
         [FIELD_MAPPING.lastSaved]: new Date().toISOString(), // Set initial save time
         [FIELD_MAPPING.planData]: JSON.stringify({}) // Empty object for new plan
       };
-  
+
       // Add teacher connection if it exists and is valid
       if (user.teacherId) { // Use the resolved teacherId
         data[FIELD_MAPPING.teacherConnection] = [user.teacherId]; // Assuming connection field expects an array
       } else {
          console.log("[Knack Script] No teacher connection found on user object for new record.");
       }
-  
+
       debugLog("[Knack Script] CREATING NEW RECORD PAYLOAD", data);
-  
+
       const apiCall = () => new Promise((resolve, reject) => {
         $.ajax({
           url: `${KNACK_API_URL}/objects/${STUDYPLANNER_OBJECT}/records`,
@@ -1049,7 +1042,7 @@
           }
         });
       });
-  
+
       retryApiCall(apiCall)
         .then(response => {
           console.log("[Knack Script] Successfully created user record:", response);
@@ -1066,25 +1059,5 @@
           callback(false, null);
         });
     }
-  
-})(); // End of IIFE
 
-// --- Direct Initialization Call ---
-// Ensure Knack, jQuery ($), and the config are ready before initializing.
-// The loader script should guarantee this, but this adds robustness.
-(function() { // Wrap in IIFE to avoid polluting global scope further
-    if (typeof Knack !== 'undefined' && typeof $ !== 'undefined' && typeof window.STUDYPLANNER_CONFIG !== 'undefined') {
-        console.log("StudyPlanner: Knack, $, and STUDYPLANNER_CONFIG ready. Initializing Study Planner script...");
-        // Check if initializeStudyPlanner is defined before calling
-        if (typeof initializeStudyPlanner === 'function') {
-             initializeStudyPlanner();
-        } else {
-             console.error("StudyPlanner: Cannot initialize - initializeStudyPlanner function not found in the expected scope.");
-        }
-    } else {
-        console.error("StudyPlanner: Cannot initialize - Knack, $, or STUDYPLANNER_CONFIG not ready when script executed.");
-        // Optional: Add a small delay/retry mechanism here if needed,
-        // but it's better if the loader script handles the timing reliably.
-        // Example: setTimeout(checkAndInit, 200); // Where checkAndInit performs this check again
-    }
-})();
+})(); // End of IIFE
