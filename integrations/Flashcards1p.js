@@ -2,23 +2,8 @@
 // Version: 5x (Introduces SaveQueue and corrected message handling)
 (function () {
     // --- Configuration and Constants ---
-    const knackAppId = window.VESPA_CONFIG?.knackAppId; // Use optional chaining in case config isn't set *yet*
-    const knackApiKey = window.VESPA_CONFIG?.knackApiKey; // Use optional chaining
+    // Moved config-dependent constants into initializeFlashcardApp
     const KNACK_API_URL = 'https://api.knack.com/v1';
-    // REMOVE FLASHCARD_APP_CONFIG definition
-    // const FLASHCARD_APP_CONFIG = window.VESPA_CONFIG.appConfig || {
-    //   'scene_1206': {
-    //     'view_3005': {
-    //       appType: 'flashcard-app',
-    //       elementSelector: '.kn-rich-text',
-    //       appUrl: window.VESPA_CONFIG.appUrl || 'https://vespa-flashcards-e7f31e9ff3c9.herokuapp.com/'
-    //     }
-    //   }
-    // };
-    // USE appUrl directly from window.VESPA_CONFIG later
-    const FLASHCARD_APP_URL = window.VESPA_CONFIG.appUrl || 'https://default-fallback-url-if-needed.com'; // Get App URL directly
-    const APP_CONTAINER_SELECTOR = '.kn-rich-text'; // Define a default selector, or pass via config if needed
-
     const FLASHCARD_OBJECT = 'object_102'; // Your flashcard object
     const FIELD_MAPPING = {
       userId: 'field_2954',
@@ -685,20 +670,40 @@
     // --- Knack Integration Initialization ---
     // REMOVED Old Scene Render Listener
 
+    // Declare variables needed within initializeFlashcardApp in a higher scope
+    let knackAppId;
+    let knackApiKey;
+    let FLASHCARD_APP_URL;
+    let APP_CONTAINER_SELECTOR;
+
     // Initialize the React app
     // Expose this function globally for the loader script (v3.16+)
     window.initializeFlashcardApp = function() {
       console.log("Initializing Flashcard React app (Version 5x with SaveQueue - Loader Compatible)"); // Updated log
-      // REMOVE config lookup
-      // const config = FLASHCARD_APP_CONFIG['scene_1206']?.['view_3005']; // Use optional chaining
-      // if (!config) {
-      //     console.error("Flashcard app: Configuration for scene_1206/view_3005 not found.");
-      //     return;
-      // }
 
-      // Check if necessary config exists directly on window.VESPA_CONFIG
-      if (!window.VESPA_CONFIG || !FLASHCARD_APP_URL) { // Check the direct URL variable
-          console.error("Flashcard app: Missing required VESPA_CONFIG or appUrl.");
+      // --- Initialize Config-Dependent Constants HERE ---
+      if (!window.VESPA_CONFIG) {
+          console.error("Flashcard app: Critical Error - window.VESPA_CONFIG is not defined!");
+          // Optionally, display an error message to the user in the placeholder
+          const container = document.querySelector('.kn-rich-text') || document.getElementById('view_3005') || document.getElementById('kn-scene_1206');
+          if (container) container.innerHTML = '<p style="color: red;">Error: Flashcard App Configuration Missing.</p>';
+          return; // Stop initialization
+      }
+      knackAppId = window.VESPA_CONFIG.knackAppId;
+      knackApiKey = window.VESPA_CONFIG.knackApiKey;
+      FLASHCARD_APP_URL = window.VESPA_CONFIG.appUrl || 'https://default-fallback-url-if-needed.com'; // Get App URL directly
+      APP_CONTAINER_SELECTOR = window.VESPA_CONFIG.elementSelector || '.kn-rich-text'; // Get selector from config, fallback
+      // Log the derived constants
+      console.log(`Flashcard app: Using knackAppId: ${knackAppId ? 'Set' : 'Not Set'}`);
+      console.log(`Flashcard app: Using knackApiKey: ${knackApiKey ? 'Set' : 'Not Set'}`);
+      console.log(`Flashcard app: Using FLASHCARD_APP_URL: ${FLASHCARD_APP_URL}`);
+      console.log(`Flashcard app: Using APP_CONTAINER_SELECTOR: ${APP_CONTAINER_SELECTOR}`);
+      // ----------------------------------------------------
+
+      // Check if necessary config exists directly on window.VESPA_CONFIG (redundant check, but safe)
+      // The check above for window.VESPA_CONFIG is the primary one.
+      if (!knackAppId || !knackApiKey || !FLASHCARD_APP_URL) {
+          console.error("Flashcard app: Missing required configuration values (appId, apiKey, or appUrl) after checking VESPA_CONFIG.");
           return;
       }
 
