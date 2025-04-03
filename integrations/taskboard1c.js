@@ -430,7 +430,7 @@
   }
 
   // Continue initialization after potentially fetching complete user data
-  // This function now sets up the iframe and message listener
+  // This function now starts the DOM setup attempt
   function continueInitialization(userToken, appId /* Removed config param */) {
     const currentUser = window.currentKnackUser;
     if (!currentUser) {
@@ -438,12 +438,11 @@
         return;
     }
 
-    // Extract and store connection field IDs safely
+    // Extract and store connection field IDs safely (moved calculation here)
     currentUser.emailId = extractValidRecordId(currentUser.id);
     currentUser.schoolId = extractValidRecordId(currentUser.school || currentUser.field_122); // Check common school field names
     currentUser.teacherId = extractValidRecordId(currentUser.tutor); // Assuming tutor field ID is consistent
     currentUser.roleId = extractValidRecordId(currentUser.role);
-    // Add other specific connection IDs if needed
     currentUser.account = extractValidRecordId(currentUser.account); // Extract Account ID
     currentUser.vespaCustomer = extractValidRecordId(currentUser.vespaCustomer); // Extract Vespa Customer ID
 
@@ -455,6 +454,17 @@
       account: currentUser.account,
       vespaCustomer: currentUser.vespaCustomer
     });
+
+    // Start attempting to find the container and set up the DOM
+    attemptTaskboardDomSetup(userToken, appId, 0); // Start with 0 retries
+  }
+
+  // New function to find container and setup iframe, with retries
+  function attemptTaskboardDomSetup(userToken, appId, retryCount) {
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_MS = 200;
+
+    console.log(`[TaskBoard] Attempting DOM setup (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
 
     // Find or create container for the app using the globally set elementSelector
     let container = document.querySelector(elementSelector);
@@ -478,15 +488,31 @@
         container.id = 'taskboard-app-container-generated';
         sceneElement.appendChild(container);
       } else {
-        console.error(`[TaskBoard] Cannot find any suitable container for the app using selector: ${elementSelector} or fallbacks.`);
-        return;
+        // Container not found even with scene fallback
+        if (retryCount < MAX_RETRIES) {
+            console.warn(`[TaskBoard] Container not found (selector: ${elementSelector}, retrying in ${RETRY_DELAY_MS}ms...`);
+            setTimeout(() => attemptTaskboardDomSetup(userToken, appId, retryCount + 1), RETRY_DELAY_MS);
+            return; // Stop this attempt, wait for retry
+        } else {
+            console.error(`[TaskBoard] Cannot find any suitable container after ${MAX_RETRIES + 1} attempts. Aborting.`);
+            return; // Stop initialization
+        }
       }
     }
+    // Final check if container was found after all fallbacks
     if (!container) {
-        console.error(`[TaskBoard] Final check: Still cannot find container. Aborting.`);
-        return;
+       if (retryCount < MAX_RETRIES) {
+            console.warn(`[TaskBoard] Container not found (selector: ${elementSelector}, retrying in ${RETRY_DELAY_MS}ms...`);
+            setTimeout(() => attemptTaskboardDomSetup(userToken, appId, retryCount + 1), RETRY_DELAY_MS);
+            return; // Stop this attempt, wait for retry
+        } else {
+            console.error(`[TaskBoard] Final check: Still cannot find container after ${MAX_RETRIES + 1} attempts. Aborting.`);
+            return; // Stop initialization
+        }
     }
 
+    // --- Container found, proceed with iframe setup --- 
+    console.log("[TaskBoard] Container found. Proceeding with iframe setup.");
     container.innerHTML = ''; // Clear existing content
 
     // Loading indicator
@@ -635,3 +661,4 @@
   }
 
 })(); // End IIFE
+
