@@ -591,11 +591,32 @@
 
     // New function to find container and setup iframe, with retries
     function attemptStudyPlannerDomSetup(config, userToken, appId, retryCount) {
-        const MAX_RETRIES = 5;
-        const RETRY_DELAY_MS = 200;
+        const MAX_RETRIES = 8; // Increased from 5
+        const RETRY_DELAY_MS = 400; // Increased from 200
         let appReadyReceived = false; // Flag specific to this attempt
 
         console.log(`StudyPlanner: Attempting DOM setup (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
+        
+        // Check if Knack has fully rendered the correct view
+        function checkForKnackStability() {
+          // Check if Knack has fully rendered by looking for view_3008 in multiple ways
+          const viewExists = 
+            document.getElementById('view_3008') || 
+            document.querySelector('.view_3008') ||
+            document.querySelector('[data-view="view_3008"]') ||
+            document.querySelector('[data-knack-view="view_3008"]');
+          
+          return !!viewExists;
+        }
+
+        // Only proceed if Knack appears stable
+        if (!checkForKnackStability()) {
+          if (retryCount < MAX_RETRIES) {
+            console.log(`StudyPlanner: Knack view not stable yet, retrying in ${RETRY_DELAY_MS}ms...`);
+            setTimeout(() => attemptStudyPlannerDomSetup(config, userToken, appId, retryCount + 1), RETRY_DELAY_MS);
+            return;
+          }
+        }
 
         // Find or create container for the app using config.elementSelector
         let container = document.querySelector(config.elementSelector);
@@ -1093,3 +1114,4 @@
     }
 
 })(); // End of IIFE
+
