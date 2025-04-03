@@ -563,7 +563,7 @@
     }
 
     // Continue initialization after potentially fetching complete user data
-    // Takes the resolved 'config' object as a parameter now
+    // This function now starts the DOM setup attempt
     function continueInitialization(config, userToken, appId) {
       const currentUser = window.currentKnackUser;
 
@@ -585,140 +585,172 @@
         roleId: currentUser.roleId
       });
 
-      // Find or create container for the app using config.elementSelector
-      let container = document.querySelector(config.elementSelector);
-      // Fallback selectors (use view ID from config if available, else hardcoded)
-      const viewId = config.viewKey || 'view_3008'; // Prefer viewKey from loader if present
-      const sceneId = config.sceneKey || 'scene_1208'; // Prefer sceneKey from loader if present
+      // Start attempting to find the container and set up the DOM
+      attemptStudyPlannerDomSetup(config, userToken, appId, 0); // Start with 0 retries
+    }
 
-      if (!container) container = document.querySelector('.kn-rich-text');
-      if (!container) {
-        const viewElement = document.getElementById(viewId) || document.querySelector('.' + viewId);
-        if (viewElement) {
-          console.log(`Creating container inside ${viewId}`);
-          container = document.createElement('div');
-          container.id = 'studyplanner-app-container-generated';
-          viewElement.appendChild(container);
-        }
-      }
-      // Final fallback to scene
-      if (!container) {
-        const sceneElement = document.getElementById('kn-' + sceneId); // Knack scene IDs often prefixed with kn-
-        if (sceneElement) {
-          console.log(`Creating container inside ${sceneId}`);
-          container = document.createElement('div');
-          container.id = 'studyplanner-app-container-generated';
-          sceneElement.appendChild(container);
-        } else {
-          console.error("StudyPlanner: Cannot find any suitable container for the app using selector:", config.elementSelector, "or fallbacks.");
-          return;
-        }
-      }
+    // New function to find container and setup iframe, with retries
+    function attemptStudyPlannerDomSetup(config, userToken, appId, retryCount) {
+        const MAX_RETRIES = 5;
+        const RETRY_DELAY_MS = 200;
+        let appReadyReceived = false; // Flag specific to this attempt
 
-      container.innerHTML = '';
+        console.log(`StudyPlanner: Attempting DOM setup (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
 
-      // Loading indicator
-      const loadingDiv = document.createElement('div');
-      loadingDiv.id = 'studyplanner-loading-indicator';
-      loadingDiv.innerHTML = '<p>Loading Study Planner...</p>';
-      loadingDiv.style.padding = '20px';
-      loadingDiv.style.textAlign = 'center';
-      container.appendChild(loadingDiv);
+        // Find or create container for the app using config.elementSelector
+        let container = document.querySelector(config.elementSelector);
+        // Fallback selectors (use view ID from config if available, else hardcoded)
+        const viewId = config.viewKey || 'view_3008'; // Prefer viewKey from loader if present
+        const sceneId = config.sceneKey || 'scene_1208'; // Prefer sceneKey from loader if present
 
-      // Create iframe using config.appUrl
-      const iframe = document.createElement('iframe');
-      iframe.id = 'studyplanner-app-iframe';
-      iframe.style.width = '100%';
-      iframe.style.minHeight = '800px'; // Consider making this configurable
-      iframe.style.border = 'none';
-      iframe.style.display = 'none'; // Keep hidden until APP_READY
-      iframe.src = config.appUrl;
-      container.appendChild(iframe);
-
-      // Setup listener ONCE
-      // Ensure previous listeners are removed if re-initializing (though direct init should prevent this)
-      // window.removeEventListener('message', messageHandler); // Uncomment if re-initialization becomes possible
-
-      const messageHandler = function(event) {
-        // Basic security check: Ensure the message is from the expected iframe source
-         if (event.source !== iframe.contentWindow || event.origin !== new URL(config.appUrl).origin) {
-           // console.warn("[Knack Script] Ignoring message from unexpected source or origin:", event.origin);
-           return;
-         }
-
-        if (!event.data || !event.data.type) {
-          console.warn("[Knack Script] Ignoring message with invalid format:", event.data);
-          return;
-        }
-
-        const { type, data } = event.data;
-        const iframeWindow = iframe.contentWindow;
-
-        if (type !== 'PING') { // Reduce console noise for frequent pings
-          console.log(`[Knack Script] Received message type: ${type}`);
-        }
-
-        if (type === 'APP_READY') {
-          // Prevent handling duplicate APP_READY messages
-          if (appReadyReceived) {
-            console.log("StudyPlanner: Ignoring duplicate APP_READY message");
-            return;
+        if (!container) {
+          const viewElement = document.getElementById(viewId) || document.querySelector('.' + viewId);
+          if (viewElement) {
+            console.log(`Creating container inside ${viewId}`);
+            container = document.createElement('div');
+            container.id = 'studyplanner-app-container-generated';
+            viewElement.appendChild(container);
           }
-
-          appReadyReceived = true;
-          console.log("StudyPlanner: React app reported APP_READY.");
-
-          const userForApp = window.currentKnackUser; // Use potentially updated user object
-
-          if (!userForApp || !userForApp.id) {
-            console.error("Cannot send initial info: Current Knack user data not ready or missing ID at APP_READY.");
-            // Optionally, tell the iframe there was an error
-             if (iframeWindow) {
-                 iframeWindow.postMessage({ type: 'KNACK_INIT_ERROR', error: 'Knack user data not available' }, new URL(config.appUrl).origin);
-             }
-            return;
-          }
-
-          loadingDiv.innerHTML = '<p>Loading User Data...</p>';
-
-          loadStudyPlannerUserData(userForApp.id, function(userData) {
-            // Check if iframe is still valid before posting message
-            if (iframe.contentWindow && iframeWindow && iframe.contentWindow === iframeWindow) {
-              const initialData = {
-                type: 'KNACK_USER_INFO',
-                data: {
-                  id: userForApp.id,
-                  email: userForApp.email,
-                  name: userForApp.name || '',
-                  token: userToken, // Use the token captured earlier
-                  appId: appId,     // Use the appId captured earlier
-                  userData: userData || {}, // Send loaded study plan data or empty obj
-                  // Send resolved IDs
-                  emailId: userForApp.emailId,
-                  schoolId: userForApp.schoolId,
-                  teacherId: userForApp.teacherId,
-                  roleId: userForApp.roleId
-                }
-              };
-              debugLog("--> Sending KNACK_USER_INFO to React App", initialData.data);
-              iframeWindow.postMessage(initialData, new URL(config.appUrl).origin); // Use specific origin
-
-              // Show iframe after sending initial data
-              loadingDiv.style.display = 'none';
-              iframe.style.display = 'block';
-              console.log("StudyPlanner initialized and visible.");
+        }
+        // Final fallback to scene
+        if (!container) {
+          const sceneElement = document.getElementById('kn-' + sceneId); // Knack scene IDs often prefixed with kn-
+          if (sceneElement) {
+            console.log(`Creating container inside ${sceneId}`);
+            container = document.createElement('div');
+            container.id = 'studyplanner-app-container-generated';
+            sceneElement.appendChild(container);
+          } else {
+            // Container not found even with scene fallback
+            if (retryCount < MAX_RETRIES) {
+                console.warn(`StudyPlanner: Container not found (selector: ${config.elementSelector}), retrying in ${RETRY_DELAY_MS}ms...`);
+                setTimeout(() => attemptStudyPlannerDomSetup(config, userToken, appId, retryCount + 1), RETRY_DELAY_MS);
+                return; // Stop this attempt, wait for retry
             } else {
-              console.warn("[Knack Script] Iframe window no longer valid when sending initial data.");
+                console.error(`StudyPlanner: Cannot find any suitable container after ${MAX_RETRIES + 1} attempts using selector: ${config.elementSelector} or fallbacks. Aborting.`);
+                return; // Stop initialization
             }
-          });
-        } else {
-           // Route other messages using the specific origin for security
-           handleMessageRouter(type, data, iframeWindow, new URL(config.appUrl).origin);
+          }
         }
-      };
 
-      window.addEventListener('message', messageHandler);
-      console.log("StudyPlanner initialization sequence complete. Waiting for APP_READY from iframe.");
+        // Final check if container was found after all fallbacks
+        if (!container) {
+           if (retryCount < MAX_RETRIES) {
+                console.warn(`StudyPlanner: Container not found (selector: ${config.elementSelector}), retrying in ${RETRY_DELAY_MS}ms...`);
+                setTimeout(() => attemptStudyPlannerDomSetup(config, userToken, appId, retryCount + 1), RETRY_DELAY_MS);
+                return; // Stop this attempt, wait for retry
+            } else {
+                console.error(`StudyPlanner: Final check: Still cannot find container after ${MAX_RETRIES + 1} attempts. Aborting.`);
+                return; // Stop initialization
+            }
+        }
+
+        // --- Container found, proceed with iframe setup --- 
+        console.log("StudyPlanner: Container found. Proceeding with iframe setup.");
+        container.innerHTML = '';
+
+        // Loading indicator
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'studyplanner-loading-indicator';
+        loadingDiv.innerHTML = '<p>Loading Study Planner...</p>';
+        loadingDiv.style.padding = '20px';
+        loadingDiv.style.textAlign = 'center';
+        container.appendChild(loadingDiv);
+
+        // Create iframe using config.appUrl
+        const iframe = document.createElement('iframe');
+        iframe.id = 'studyplanner-app-iframe';
+        iframe.style.width = '100%';
+        iframe.style.minHeight = '800px'; // Consider making this configurable
+        iframe.style.border = 'none';
+        iframe.style.display = 'none'; // Keep hidden until APP_READY
+        iframe.src = config.appUrl;
+        container.appendChild(iframe);
+
+        // Setup listener ONCE
+        // Ensure previous listeners are removed if re-initializing (though direct init should prevent this)
+        // window.removeEventListener('message', messageHandler); // Uncomment if re-initialization becomes possible
+
+        const messageHandler = function(event) {
+          // Basic security check: Ensure the message is from the expected iframe source
+           if (event.source !== iframe.contentWindow || event.origin !== new URL(config.appUrl).origin) {
+             // console.warn("[Knack Script] Ignoring message from unexpected source or origin:", event.origin);
+             return;
+           }
+
+          if (!event.data || !event.data.type) {
+            console.warn("[Knack Script] Ignoring message with invalid format:", event.data);
+            return;
+          }
+
+          const { type, data } = event.data;
+          const iframeWindow = iframe.contentWindow;
+
+          if (type !== 'PING') { // Reduce console noise for frequent pings
+            console.log(`[Knack Script] Received message type: ${type}`);
+          }
+
+          if (type === 'APP_READY') {
+            // Prevent handling duplicate APP_READY messages
+            if (appReadyReceived) {
+              console.log("StudyPlanner: Ignoring duplicate APP_READY message");
+              return;
+            }
+
+            appReadyReceived = true;
+            console.log("StudyPlanner: React app reported APP_READY.");
+
+            const userForApp = window.currentKnackUser; // Use potentially updated user object
+
+            if (!userForApp || !userForApp.id) {
+              console.error("Cannot send initial info: Current Knack user data not ready or missing ID at APP_READY.");
+              // Optionally, tell the iframe there was an error
+               if (iframeWindow) {
+                   iframeWindow.postMessage({ type: 'KNACK_INIT_ERROR', error: 'Knack user data not available' }, new URL(config.appUrl).origin);
+               }
+              return;
+            }
+
+            loadingDiv.innerHTML = '<p>Loading User Data...</p>';
+
+            loadStudyPlannerUserData(userForApp.id, function(userData) {
+              // Check if iframe is still valid before posting message
+              if (iframe.contentWindow && iframeWindow && iframe.contentWindow === iframeWindow) {
+                const initialData = {
+                  type: 'KNACK_USER_INFO',
+                  data: {
+                    id: userForApp.id,
+                    email: userForApp.email,
+                    name: userForApp.name || '',
+                    token: userToken, // Use the token captured earlier
+                    appId: appId,     // Use the appId captured earlier
+                    userData: userData || {}, // Send loaded study plan data or empty obj
+                    // Send resolved IDs
+                    emailId: userForApp.emailId,
+                    schoolId: userForApp.schoolId,
+                    teacherId: userForApp.teacherId,
+                    roleId: userForApp.roleId
+                  }
+                };
+                debugLog("--> Sending KNACK_USER_INFO to React App", initialData.data);
+                iframeWindow.postMessage(initialData, new URL(config.appUrl).origin); // Use specific origin
+
+                // Show iframe after sending initial data
+                loadingDiv.style.display = 'none';
+                iframe.style.display = 'block';
+                console.log("StudyPlanner initialized and visible.");
+              } else {
+                console.warn("[Knack Script] Iframe window no longer valid when sending initial data.");
+              }
+            });
+          } else {
+             // Route other messages using the specific origin for security
+             handleMessageRouter(type, data, iframeWindow, new URL(config.appUrl).origin);
+          }
+        };
+
+        window.addEventListener('message', messageHandler);
+        console.log("StudyPlanner initialization sequence complete. Waiting for APP_READY from iframe.");
     }
 
     // Central Message Router - Added origin parameter
