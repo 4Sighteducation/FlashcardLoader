@@ -591,11 +591,51 @@
        return;
      }
 
+    // Log the full user object to help debug connection fields
+    console.log("COMPLETE USER OBJECT FOR CONNECTION DEBUGGING:", JSON.stringify(currentUser, null, 2));
+    
     // Extract and store connection field IDs safely
     currentUser.emailId = extractValidRecordId(currentUser.id);
-    currentUser.schoolId = extractValidRecordId(currentUser.school || currentUser.field_122);
-    currentUser.teacherId = extractValidRecordId(currentUser.tutor);
+    
+    // For VESPA Customer ID (field_122/school) - For object_2 connections
+    if (currentUser.field_122_raw && Array.isArray(currentUser.field_122_raw) && currentUser.field_122_raw.length > 0) {
+      currentUser.schoolId = extractValidRecordId(currentUser.field_122_raw[0].id);
+      console.log("Found VESPA Customer ID from field_122_raw:", currentUser.schoolId);
+    } else if (currentUser.school_raw && Array.isArray(currentUser.school_raw) && currentUser.school_raw.length > 0) {
+      currentUser.schoolId = extractValidRecordId(currentUser.school_raw[0].id);
+      console.log("Found VESPA Customer ID from school_raw:", currentUser.schoolId);
+    } else {
+      currentUser.schoolId = extractValidRecordId(currentUser.school || currentUser.field_122);
+      console.log("Using fallback for VESPA Customer ID:", currentUser.schoolId);
+    }
+    
+    // For tutor connection(s) - object_6 connections via field_1682
+    if (currentUser.field_1682_raw && Array.isArray(currentUser.field_1682_raw) && currentUser.field_1682_raw.length > 0) {
+      currentUser.teacherId = extractValidRecordId(currentUser.field_1682_raw[0].id);
+      console.log("Found Tutor ID from field_1682_raw:", currentUser.teacherId);
+    } else if (currentUser.tutor_raw && Array.isArray(currentUser.tutor_raw) && currentUser.tutor_raw.length > 0) {
+      currentUser.teacherId = extractValidRecordId(currentUser.tutor_raw[0].id);
+      console.log("Found Tutor ID from tutor_raw:", currentUser.teacherId);
+    } else {
+      currentUser.teacherId = extractValidRecordId(currentUser.tutor);
+      console.log("Using fallback for Tutor ID:", currentUser.teacherId);
+    }
+    
     currentUser.roleId = extractValidRecordId(currentUser.role);
+    
+    // Staff admin connection (field_190) - object_6 connection
+    if (currentUser.field_190_raw && Array.isArray(currentUser.field_190_raw) && currentUser.field_190_raw.length > 0) {
+      currentUser.staffAdminId = extractValidRecordId(currentUser.field_190_raw[0].id);
+      console.log("Found Staff Admin ID from field_190_raw:", currentUser.staffAdminId);
+    } else if (currentUser.staffAdmin_raw && Array.isArray(currentUser.staffAdmin_raw) && currentUser.staffAdmin_raw.length > 0) {
+      currentUser.staffAdminId = extractValidRecordId(currentUser.staffAdmin_raw[0].id);
+      console.log("Found Staff Admin ID from staffAdmin_raw:", currentUser.staffAdminId);
+    }
+    
+    // For object_2 - we need a valid ID for the VESPA Customer field (field_2473)
+    // Use the school ID if it exists
+    currentUser.vespaCustomerId = currentUser.schoolId;
+    console.log("Set VESPA Customer ID for field_2473:", currentUser.vespaCustomerId);
 
     debugLog("FINAL CONNECTION FIELD IDs", {
       emailId: currentUser.emailId,
@@ -1183,27 +1223,33 @@
         [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
       
-      // Add connection fields if available
-      if (user.vespaCustomerId || user.id) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = [user.vespaCustomerId || user.id];
+      // Only add connections if we have valid IDs for the specific objects
+      // The error shows that user.id isn't valid for VESPA Customer object_2
+      if (user.vespaCustomerId) {
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = [user.vespaCustomerId];
       }
       
-      if (user.staffAdminId || user.id) {
-        data[TUTOR_SHARING_FIELDS.staffAdmin] = [user.staffAdminId || user.id];
+      // Only add if we have a valid staff admin ID
+      if (user.staffAdminId) {
+        data[TUTOR_SHARING_FIELDS.staffAdmin] = [user.staffAdminId];
       }
       
+      // Only add if we have a valid tutor ID
       if (user.tutorId) {
         data[TUTOR_SHARING_FIELDS.tutor] = [user.tutorId];
       }
       
       // Add user account connection
-      if (user.emailId || user.id) {
-        data[TUTOR_SHARING_FIELDS.userConnection] = [user.emailId || user.id];
+      if (user.emailId) {
+        data[TUTOR_SHARING_FIELDS.userConnection] = [user.emailId];
       }
       
       debugLog("[Knack Script] Tutor share record data", data);
       
       // Create the record in Knack
+      // Enhanced logging of what we're sending
+      console.log(`[Knack Script] Submitting session record with field_2473 (VESPA Customer): ${data[TUTOR_SHARING_FIELDS.vespaCustomer] || 'Not provided'}`);
+      
       const apiCall = () => new Promise((resolve, reject) => {
         $.ajax({
           url: `${KNACK_API_URL}/objects/${TUTOR_SHARING_OBJECT}/records`,
@@ -1213,7 +1259,20 @@
           contentType: 'application/json',
           success: resolve,
           error: (jqXHR, textStatus, errorThrown) => {
-            const error = new Error(`Failed to create shared session record: ${jqXHR.status} ${errorThrown}`);
+            // Get more detailed error information
+            let errorDetail = "Unknown error";
+            try {
+              if (jqXHR.responseText) {
+                const errorObj = JSON.parse(jqXHR.responseText);
+                if (errorObj && errorObj.errors) {
+                  errorDetail = JSON.stringify(errorObj.errors);
+                }
+              }
+            } catch (parseError) {
+              errorDetail = jqXHR.responseText || errorThrown;
+            }
+            
+            const error = new Error(`Failed to create shared session record: ${jqXHR.status} - ${errorDetail}`);
             error.status = jqXHR.status;
             error.responseText = jqXHR.responseText;
             reject(error);
@@ -1436,3 +1495,4 @@
   }
 
 })(); // End of IIFE
+
