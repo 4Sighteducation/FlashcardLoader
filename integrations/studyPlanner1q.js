@@ -1148,7 +1148,20 @@
   // Sanitize field for Knack use - ensure no HTML tags 
   function sanitizeField(value) {
     if (value === null || value === undefined) return "";
+    
+    // Convert to string
     const strValue = String(value);
+    
+    // Check if this is an HTML email link and extract just the email
+    if (strValue.includes('href="mailto:')) {
+      const emailMatch = strValue.match(/mailto:([^"]+)/i);
+      if (emailMatch && emailMatch[1]) {
+        console.log(`[Knack Script] Extracted email from HTML link: ${emailMatch[1]}`);
+        return emailMatch[1];
+      }
+    }
+    
+    // Otherwise, remove all HTML tags
     let sanitized = strValue.replace(/<[^>]*?>/g, "");
     sanitized = sanitized.replace(/[*_~`#]/g, "");
     sanitized = sanitized
@@ -1511,21 +1524,41 @@
       // Get the user's profile data directly from their roles/profile info
       let studentRole = null;
       
-      // Try to get a direct student role record from object_6 using user ID as a filter
-      // Instead of looking up by email, which might not be working properly, let's use a direct approach
+      // Try to get a direct student role record from object_6
+      // This is tricky as we need to make sure we get the correct student role for this user
       console.log(`[Knack Script] Fetching student role data for user ID: ${userId} with email: ${user.email}`);
       
-      // Create a filter to find student roles by user email
-      const studentRoleFilters = encodeURIComponent(JSON.stringify({
+      // Get profile keys (roles) from the user
+      const userProfileKeys = user.profile_keys || user.field_73 || [];
+      console.log(`[Knack Script] User profile keys:`, userProfileKeys);
+      
+      // Try to identify the student role ID directly from the user's account
+      const studentRoleId = Array.isArray(user.roles) && user.roles.find(role => role === 'object_6');
+      console.log(`[Knack Script] Student role ID from roles:`, studentRoleId);
+      
+      // Create a more specific filter to find student roles by email AND any unique identifiers we can find
+      const searchFilters = {
         match: 'and',
         rules: [
           {
-            field: 'field_70', // Email field in object_6
+            field: 'field_91', // Email field in object_6
             operator: 'is',
             value: user.email 
           }
         ]
-      }));
+      };
+      
+      // Add user ID if we can determine it from the profile
+      if (studentRoleId) {
+        searchFilters.rules.push({
+          field: 'id',
+          operator: 'is',
+          value: studentRoleId
+        });
+      }
+      
+      const studentRoleFilters = encodeURIComponent(JSON.stringify(searchFilters));
+      console.log(`[Knack Script] Using student role filter:`, JSON.stringify(searchFilters, null, 2));
       
       try {
         const response = await retryApiCall(() => new Promise((resolve, reject) => {
@@ -1545,9 +1578,37 @@
         }));
         
         if (response && response.records && response.records.length > 0) {
-          studentRole = response.records[0];
-          console.log("[Knack Script] Successfully found student role record by email:", user.email);
-          debugLog("[Knack Script] Student role data", studentRole);
+          console.log(`[Knack Script] Found ${response.records.length} student role records`);
+          
+          // Check each record to find which one matches our user's email
+          let bestMatch = null;
+          
+          for (const record of response.records) {
+            // Get email from various places
+            const recordFields = record.field_91 || {};
+            const recordEmailRaw = recordFields.email || record.field_91_raw?.email || '';
+            const recordEmail = sanitizeField(recordEmailRaw);
+            
+            console.log(`[Knack Script] Checking record email: "${recordEmail}" against user email: "${user.email}"`);
+            
+            // If record matches current user's email, use it
+            if (recordEmail && recordEmail.toLowerCase() === user.email.toLowerCase()) {
+              console.log(`[Knack Script] Found exact match for user email: ${recordEmail}`);
+              bestMatch = record;
+              break;
+            }
+          }
+          
+          // Use the best match if found, otherwise use the first record
+          if (bestMatch) {
+            studentRole = bestMatch;
+            console.log("[Knack Script] Using exact matching student role record");
+          } else {
+            studentRole = response.records[0];
+            console.warn("[Knack Script] No exact match found. Using first record but connection fields may be incorrect");
+          }
+          
+          debugLog("[Knack Script] Student role data that will be used", studentRole);
         } else {
           console.log("[Knack Script] No student role record found for email:", user.email);
         }
@@ -1870,51 +1931,143 @@
   function extractFieldValue(record, fieldKey) {
     if (!record || !fieldKey) return null;
     
+    // Log what we're extracting for debugging
+    console.log(`[Knack Script] Extracting value for field: ${fieldKey}`);
+    
     // Get the raw field value
     const rawValue = record[fieldKey];
     if (rawValue === undefined || rawValue === null || rawValue === '') return null;
     
+    // Log the raw value type for debugging
+    console.log(`[Knack Script] Raw value for field ${fieldKey}:`, 
+                typeof rawValue, 
+                Array.isArray(rawValue) ? 'array' : '', 
+                rawValue && typeof rawValue === 'object' ? 'keys: ' + Object.keys(rawValue).join(',') : '');
+    
+    // Try to get HTML content that might contain email addresses
+    const htmlContent = typeof rawValue === 'string' && rawValue.includes('<a href="mailto:');
+    if (htmlContent) {
+      console.log(`[Knack Script] Field ${fieldKey} contains HTML with email links`);
+      return sanitizeField(rawValue); // Our updated sanitizeField will extract emails from HTML
+    }
+    
     // Check if this is a connection field (which typically has _raw suffix with more data)
     const rawFieldKey = `${fieldKey}_raw`;
     if (record[rawFieldKey]) {
+      console.log(`[Knack Script] Found ${rawFieldKey} field, checking it first`);
+      
       // Handle array of connections
       if (Array.isArray(record[rawFieldKey]) && record[rawFieldKey].length > 0) {
-        // Extract email identifiers from connections
+        console.log(`[Knack Script] ${rawFieldKey} is an array with ${record[rawFieldKey].length} items`);
+        
+        // Extract email identifiers from connections - prioritize email properties
+        for (const item of record[rawFieldKey]) {
+          // Look for email format properties first
+          if (item.email) {
+            const email = sanitizeField(item.email);
+            console.log(`[Knack Script] Found email in raw field array: ${email}`);
+            return email;
+          }
+          
+          if (item.identifier && typeof item.identifier === 'string' && item.identifier.includes('@')) {
+            const email = sanitizeField(item.identifier);
+            console.log(`[Knack Script] Found email-like identifier in raw field array: ${email}`);
+            return email;
+          }
+        }
+        
+        // If no emails found, fall back to first identifier
         if (record[rawFieldKey][0].identifier) {
-          return sanitizeField(record[rawFieldKey][0].identifier);
-        } else if (record[rawFieldKey][0].email) {
-          return sanitizeField(record[rawFieldKey][0].email);
+          const identifier = sanitizeField(record[rawFieldKey][0].identifier);
+          console.log(`[Knack Script] No email found, using identifier from raw field array: ${identifier}`);
+          return identifier;
         }
       }
-      // Single connection
-      else if (record[rawFieldKey].identifier) {
-        return sanitizeField(record[rawFieldKey].identifier);
-      } else if (record[rawFieldKey].email) {
-        return sanitizeField(record[rawFieldKey].email);
+      // Single connection object
+      else if (typeof record[rawFieldKey] === 'object' && record[rawFieldKey] !== null) {
+        console.log(`[Knack Script] ${rawFieldKey} is a single object`);
+        
+        // Prioritize email properties
+        if (record[rawFieldKey].email) {
+          const email = sanitizeField(record[rawFieldKey].email);
+          console.log(`[Knack Script] Found email in raw field object: ${email}`);
+          return email;
+        }
+        
+        if (record[rawFieldKey].identifier) {
+          const identifier = sanitizeField(record[rawFieldKey].identifier);
+          console.log(`[Knack Script] Found identifier in raw field object: ${identifier}`);
+          return identifier;
+        }
       }
     }
     
-    // Try direct value
+    // Try direct value if raw field didn't provide a value
     if (typeof rawValue === 'string') {
-      return sanitizeField(rawValue);
-    } else if (Array.isArray(rawValue) && rawValue.length > 0) {
+      const value = sanitizeField(rawValue);
+      console.log(`[Knack Script] Field is a direct string: ${value}`);
+      return value;
+    } 
+    // Handle arrays
+    else if (Array.isArray(rawValue)) {
+      console.log(`[Knack Script] Field is an array with ${rawValue.length} items`);
+      if (rawValue.length === 0) return null;
+      
+      // Check for email-like values first
+      for (const item of rawValue) {
+        if (typeof item === 'string' && item.includes('@')) {
+          const email = sanitizeField(item);
+          console.log(`[Knack Script] Found email-like string in array: ${email}`);
+          return email;
+        }
+        
+        if (typeof item === 'object' && item !== null) {
+          if (item.email) {
+            const email = sanitizeField(item.email);
+            console.log(`[Knack Script] Found email in array object: ${email}`);
+            return email;
+          }
+          if (item.identifier && typeof item.identifier === 'string' && item.identifier.includes('@')) {
+            const email = sanitizeField(item.identifier);
+            console.log(`[Knack Script] Found email-like identifier in array object: ${email}`);
+            return email;
+          }
+        }
+      }
+      
+      // If no emails found, fall back to first item
       if (typeof rawValue[0] === 'string') {
-        return sanitizeField(rawValue[0]);
+        const value = sanitizeField(rawValue[0]);
+        console.log(`[Knack Script] Using first string from array: ${value}`);
+        return value;
       } else if (typeof rawValue[0] === 'object' && rawValue[0] !== null) {
         if (rawValue[0].identifier) {
-          return sanitizeField(rawValue[0].identifier);
-        } else if (rawValue[0].email) {
-          return sanitizeField(rawValue[0].email);
+          const identifier = sanitizeField(rawValue[0].identifier);
+          console.log(`[Knack Script] Using identifier from first array object: ${identifier}`);
+          return identifier;
         }
       }
-    } else if (typeof rawValue === 'object' && rawValue !== null) {
+    } 
+    // Handle direct object
+    else if (typeof rawValue === 'object' && rawValue !== null) {
+      console.log(`[Knack Script] Field is a direct object`);
+      
+      // Check for object with email property
+      if (rawValue.email) {
+        const email = sanitizeField(rawValue.email);
+        console.log(`[Knack Script] Found email property in object: ${email}`);
+        return email;
+      }
+      
+      // Fall back to identifier
       if (rawValue.identifier) {
-        return sanitizeField(rawValue.identifier);
-      } else if (rawValue.email) {
-        return sanitizeField(rawValue.email);
+        const identifier = sanitizeField(rawValue.identifier);
+        console.log(`[Knack Script] Found identifier property in object: ${identifier}`);
+        return identifier;
       }
     }
     
+    console.log(`[Knack Script] No suitable value found for field: ${fieldKey}`);
     return null;
   }
 
