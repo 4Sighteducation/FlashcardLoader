@@ -1506,18 +1506,53 @@
     }
 
     try {
-      console.log("[Knack Script] Looking up additional user role data for connections");
+      console.log("[Knack Script] Looking up Student role data directly from user's profile");
       
-      // Look up the user's Student role record in object_6 using their email
-      const studentRoleResult = await lookupRecordByEmail('object_6', 'field_70', user.email);
+      // Get the user's profile data directly from their roles/profile info
+      let studentRole = null;
       
-      // Get Student role data if found
-      const studentRole = studentRoleResult.success && studentRoleResult.record ? studentRoleResult.record : null;
-      if (studentRole) {
-        console.log("[Knack Script] Found Student role record for user");
-        debugLog("[Knack Script] Student role data", studentRole);
-      } else {
-        console.log("[Knack Script] No Student role record found for user");
+      // Try to get a direct student role record from object_6 using user ID as a filter
+      // Instead of looking up by email, which might not be working properly, let's use a direct approach
+      console.log(`[Knack Script] Fetching student role data for user ID: ${userId} with email: ${user.email}`);
+      
+      // Create a filter to find student roles by user email
+      const studentRoleFilters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          {
+            field: 'field_70', // Email field in object_6
+            operator: 'is',
+            value: user.email 
+          }
+        ]
+      }));
+      
+      try {
+        const response = await retryApiCall(() => new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_6/records?filters=${studentRoleFilters}`,
+            type: 'GET',
+            headers: saveQueue.getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: (jqXHR, textStatus, errorThrown) => {
+              const error = new Error(`Failed to lookup student role: ${jqXHR.status} ${errorThrown}`);
+              error.status = jqXHR.status;
+              error.responseText = jqXHR.responseText;
+              reject(error);
+            }
+          });
+        }));
+        
+        if (response && response.records && response.records.length > 0) {
+          studentRole = response.records[0];
+          console.log("[Knack Script] Successfully found student role record by email:", user.email);
+          debugLog("[Knack Script] Student role data", studentRole);
+        } else {
+          console.log("[Knack Script] No student role record found for email:", user.email);
+        }
+      } catch (error) {
+        console.error("[Knack Script] Error looking up student role:", error);
       }
       
       // Basic data structure for a new record
@@ -1546,22 +1581,91 @@
         }
       }
       
-      // Add Tutor connection (field_3058) from student role if available
-      if (studentRole && studentRole.field_1682_raw) {
-        const tutorValue = extractFieldValue(studentRole, 'field_1682');
+      // Enhanced debugging for student role field extraction
+      if (studentRole) {
+        console.log("[Knack Script] Analyzing student role data fields:");
+        console.log(`- field_1682 (Tutor) exists: ${studentRole.hasOwnProperty('field_1682')}`);
+        console.log(`- field_1682_raw exists: ${studentRole.hasOwnProperty('field_1682_raw')}`);
+        console.log(`- field_190 (Staff Admin) exists: ${studentRole.hasOwnProperty('field_190')}`);
+        console.log(`- field_190_raw exists: ${studentRole.hasOwnProperty('field_190_raw')}`);
+
+        // Dump raw connection field values to help debug
+        if (studentRole.field_1682) console.log("Raw tutor field value:", JSON.stringify(studentRole.field_1682));
+        if (studentRole.field_1682_raw) console.log("Raw tutor_raw field value:", JSON.stringify(studentRole.field_1682_raw));
+        if (studentRole.field_190) console.log("Raw staff admin field value:", JSON.stringify(studentRole.field_190));
+        if (studentRole.field_190_raw) console.log("Raw staff admin_raw field value:", JSON.stringify(studentRole.field_190_raw));
+        
+        // Extract tutor value with more extensive debugging
+        let tutorValue = null;
+        
+        if (studentRole.field_1682_raw) {
+          console.log("[Knack Script] Extracting tutor from field_1682_raw...");
+          tutorValue = extractFieldValue(studentRole, 'field_1682');
+        } else if (studentRole.field_1682) {
+          console.log("[Knack Script] Extracting tutor directly from field_1682...");
+          // Try direct extraction based on data type
+          if (Array.isArray(studentRole.field_1682)) {
+            if (studentRole.field_1682.length > 0) {
+              console.log("[Knack Script] field_1682 is an array:", studentRole.field_1682);
+              const firstItem = studentRole.field_1682[0];
+              if (typeof firstItem === 'object') {
+                tutorValue = firstItem.identifier || firstItem.email || firstItem.id;
+              } else {
+                tutorValue = firstItem;
+              }
+            }
+          } else if (typeof studentRole.field_1682 === 'object') {
+            console.log("[Knack Script] field_1682 is an object:", studentRole.field_1682);
+            tutorValue = studentRole.field_1682.identifier || studentRole.field_1682.email || studentRole.field_1682.id;
+          } else {
+            tutorValue = studentRole.field_1682;
+          }
+        }
+        
         if (tutorValue) {
+          tutorValue = sanitizeField(tutorValue);
           data[FIELD_MAPPING.tutorConnection] = tutorValue;
           console.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to: ${tutorValue}`);
+        } else {
+          console.log("[Knack Script] Could not extract tutor value from student role");
         }
-      }
-      
-      // Add Staff Admin connection from student role if available
-      if (studentRole && studentRole.field_190_raw) {
-        const staffAdminValue = extractFieldValue(studentRole, 'field_190');
+        
+        // Extract staff admin value with more extensive debugging
+        let staffAdminValue = null;
+        
+        if (studentRole.field_190_raw) {
+          console.log("[Knack Script] Extracting staff admin from field_190_raw...");
+          staffAdminValue = extractFieldValue(studentRole, 'field_190');
+        } else if (studentRole.field_190) {
+          console.log("[Knack Script] Extracting staff admin directly from field_190...");
+          // Try direct extraction based on data type
+          if (Array.isArray(studentRole.field_190)) {
+            if (studentRole.field_190.length > 0) {
+              console.log("[Knack Script] field_190 is an array:", studentRole.field_190);
+              const firstItem = studentRole.field_190[0];
+              if (typeof firstItem === 'object') {
+                staffAdminValue = firstItem.identifier || firstItem.email || firstItem.id;
+              } else {
+                staffAdminValue = firstItem;
+              }
+            }
+          } else if (typeof studentRole.field_190 === 'object') {
+            console.log("[Knack Script] field_190 is an object:", studentRole.field_190);
+            staffAdminValue = studentRole.field_190.identifier || studentRole.field_190.email || studentRole.field_190.id;
+          } else {
+            staffAdminValue = studentRole.field_190;
+          }
+        }
+        
         if (staffAdminValue) {
+          staffAdminValue = sanitizeField(staffAdminValue);
           data[FIELD_MAPPING.staffAdminConnection] = staffAdminValue;
           console.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to: ${staffAdminValue}`);
+        } else {
+          console.log("[Knack Script] Could not extract staff admin value from student role");
         }
+      } else {
+        console.log("[Knack Script] No student role data found, cannot extract tutor or staff admin connections");
       }
       
       // Enhanced debugging for connection fields
@@ -1815,4 +1919,5 @@
   }
 
 })(); // End of IIFE
+
 
