@@ -1223,28 +1223,40 @@
         [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
       
-      // Only add connections if we have valid IDs for the specific objects
-      // The error shows that user.id isn't valid for VESPA Customer object_2
-      if (user.vespaCustomerId) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = [user.vespaCustomerId];
+      // For field_2473 (VESPA Customer) - Use the field_122 value directly not the ID
+      // This field expects text, not a connected record ID
+      if (user.field_122) {
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = sanitizeField(user.field_122);
+      } else if (user.school) {
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = sanitizeField(user.school);
       }
       
-      // Only add if we have a valid staff admin ID
-      if (user.staffAdminId) {
-        data[TUTOR_SHARING_FIELDS.staffAdmin] = [user.staffAdminId];
+      // For field_2474 (Staff Admin) - We need the email for lookup in object_6
+      if (user.staffAdmin || user.field_190) {
+        // Use staff admin email directly, not the ID
+        data[TUTOR_SHARING_FIELDS.staffAdmin] = sanitizeField(user.staffAdmin || user.field_190);
       }
       
-      // Only add if we have a valid tutor ID
-      if (user.tutorId) {
-        data[TUTOR_SHARING_FIELDS.tutor] = [user.tutorId];
+      // For field_2476 (Tutors) - We need the email for lookup in object_6
+      if (user.tutor || user.field_1682) {
+        // Use tutor email directly, not the ID
+        data[TUTOR_SHARING_FIELDS.tutor] = sanitizeField(user.tutor || user.field_1682);
       }
       
-      // Add user account connection
-      if (user.emailId) {
-        data[TUTOR_SHARING_FIELDS.userConnection] = [user.emailId];
+      // For field_2475 (Account connection) - Use email directly for lookup
+      if (user.email) {
+        // For connected fields based on email, use the email directly not the ID
+        data[TUTOR_SHARING_FIELDS.userConnection] = user.email;
       }
       
-      debugLog("[Knack Script] Tutor share record data", data);
+    // Enhanced debugging for connection fields
+    console.log("[Knack Script] Connection fields for Knack integration:");
+    console.log(`- field_2473 (VESPA Customer): "${data[TUTOR_SHARING_FIELDS.vespaCustomer]}"`);
+    console.log(`- field_2474 (Staff Admin): "${data[TUTOR_SHARING_FIELDS.staffAdmin]}"`);
+    console.log(`- field_2475 (User Connection): "${data[TUTOR_SHARING_FIELDS.userConnection]}"`);
+    console.log(`- field_2476 (Tutor): "${data[TUTOR_SHARING_FIELDS.tutor]}"`);
+    
+    debugLog("[Knack Script] Complete record data", data);
       
       // Create the record in Knack
       // Enhanced logging of what we're sending
