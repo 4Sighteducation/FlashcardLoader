@@ -17,8 +17,11 @@
     userEmail: 'field_3041', // User Email
     userName: 'field_3039', // User Name
     planData: 'field_3042', // JSON Data field
-    lastSaved: 'field_3043', // Last saved timestamp (to be added if not exists)
-    teacherConnection: 'field_3044' // Teacher connection field (to be added if not exists)
+    lastSaved: 'field_3045', // Last saved timestamp (moved to field_3045)
+    teacherConnection: 'field_3044', // User Account connection field 
+    vespaCustomer: 'field_3043', // VESPA Customer (school)
+    tutorConnection: 'field_3058', // Tutor connections
+    staffAdminConnection: 'field_3059' // Staff Admin connection
   };
   
   // Field mappings for the tutor sharing object (object_90 - Study Sessions)
@@ -867,6 +870,9 @@
       case 'TUTOR_SHARE_SESSIONS':
         handleTutorShareRequest(data, iframeWindow, origin);
         break;
+      case 'LOOKUP_CONNECTION_FIELDS':
+        handleLookupConnectionFields(data, iframeWindow, origin);
+        break;
       case 'AUTH_CONFIRMED':
         console.log("[Knack Script] React App confirmed auth.");
         const loadingIndicator = document.getElementById('studyplanner-loading-indicator');
@@ -1489,7 +1495,7 @@
   }
 
   // Create a new study planner user record
-  function createStudyPlannerUserRecord(userId, callback) {
+  async function createStudyPlannerUserRecord(userId, callback) {
     console.log("[Knack Script] Creating new study planner user record for:", userId);
     const user = window.currentKnackUser; // Use the potentially enhanced user object
 
@@ -1499,56 +1505,105 @@
       return;
     }
 
-    // Basic data structure for a new record
-    const data = {
-      [FIELD_MAPPING.userId]: userId,
-      [FIELD_MAPPING.userEmail]: sanitizeField(user.email), // Sanitize just in case
-      [FIELD_MAPPING.userName]: sanitizeField(user.name || ""), // Sanitize just in case
-      [FIELD_MAPPING.lastSaved]: new Date().toISOString(), // Set initial save time
-      [FIELD_MAPPING.planData]: JSON.stringify({}) // Empty object for new plan
-    };
-
-    // Add teacher connection if it exists and is valid
-    if (user.teacherId) { // Use the resolved teacherId
-      data[FIELD_MAPPING.teacherConnection] = [user.teacherId]; // Assuming connection field expects an array
-    } else {
-       console.log("[Knack Script] No teacher connection found on user object for new record.");
-    }
-
-    debugLog("[Knack Script] CREATING NEW RECORD PAYLOAD", data);
-
-    const apiCall = () => new Promise((resolve, reject) => {
-      $.ajax({
-        url: `${KNACK_API_URL}/objects/${STUDYPLANNER_OBJECT}/records`,
-        type: 'POST',
-        headers: saveQueue.getKnackHeaders(),
-        data: JSON.stringify(data), // Ensure data is stringified
-        contentType: 'application/json', // Explicitly set Content-Type
-        success: resolve,
-        error: (jqXHR, textStatus, errorThrown) => {
-           const error = new Error(`Failed to create record for user ${userId}: ${jqXHR.status} ${errorThrown}`);
-           error.status = jqXHR.status;
-           error.responseText = jqXHR.responseText;
-           reject(error);
+    try {
+      console.log("[Knack Script] Looking up additional user role data for connections");
+      
+      // Look up the user's Student role record in object_6 using their email
+      const studentRoleResult = await lookupRecordByEmail('object_6', 'field_70', user.email);
+      
+      // Get Student role data if found
+      const studentRole = studentRoleResult.success && studentRoleResult.record ? studentRoleResult.record : null;
+      if (studentRole) {
+        console.log("[Knack Script] Found Student role record for user");
+        debugLog("[Knack Script] Student role data", studentRole);
+      } else {
+        console.log("[Knack Script] No Student role record found for user");
+      }
+      
+      // Basic data structure for a new record
+      const data = {
+        [FIELD_MAPPING.userId]: userId,
+        [FIELD_MAPPING.userEmail]: sanitizeField(user.email), // Sanitize just in case
+        [FIELD_MAPPING.userName]: sanitizeField(user.name || ""), // Sanitize just in case
+        [FIELD_MAPPING.lastSaved]: new Date().toISOString(), // Set initial save time
+        [FIELD_MAPPING.planData]: JSON.stringify({}) // Empty object for new plan
+      };
+      
+      // Add User Account connection (field_3044) - uses the user's email
+      data[FIELD_MAPPING.teacherConnection] = sanitizeField(user.email);
+      console.log(`[Knack Script] Setting User Account connection (field_3044) to: ${user.email}`);
+      
+      // Add VESPA Customer connection (field_3043) from user account
+      if (user.schoolId) {
+        data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
+        console.log(`[Knack Script] Setting VESPA Customer (${FIELD_MAPPING.vespaCustomer}) to: ${user.schoolId}`);
+      } else if (studentRole && studentRole.field_122_raw) {
+        // Try to get school from student role if available
+        const schoolId = extractValidRecordId(studentRole.field_122_raw);
+        if (schoolId) {
+          data[FIELD_MAPPING.vespaCustomer] = schoolId;
+          console.log(`[Knack Script] Setting VESPA Customer from student role to: ${schoolId}`);
         }
+      }
+      
+      // Add Tutor connection (field_3058) from student role if available
+      if (studentRole && studentRole.field_1682_raw) {
+        const tutorValue = extractFieldValue(studentRole, 'field_1682');
+        if (tutorValue) {
+          data[FIELD_MAPPING.tutorConnection] = tutorValue;
+          console.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to: ${tutorValue}`);
+        }
+      }
+      
+      // Add Staff Admin connection from student role if available
+      if (studentRole && studentRole.field_190_raw) {
+        const staffAdminValue = extractFieldValue(studentRole, 'field_190');
+        if (staffAdminValue) {
+          data[FIELD_MAPPING.staffAdminConnection] = staffAdminValue;
+          console.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to: ${staffAdminValue}`);
+        }
+      }
+      
+      // Enhanced debugging for connection fields
+      console.log("[Knack Script] Connection fields for new StudyPlanner record:");
+      console.log(`- ${FIELD_MAPPING.teacherConnection} (User Account): "${data[FIELD_MAPPING.teacherConnection] || "Not set"}"`);
+      console.log(`- ${FIELD_MAPPING.vespaCustomer} (VESPA Customer): "${data[FIELD_MAPPING.vespaCustomer] || "Not set"}"`);
+      console.log(`- ${FIELD_MAPPING.tutorConnection} (Tutor): "${data[FIELD_MAPPING.tutorConnection] || "Not set"}"`);
+      console.log(`- ${FIELD_MAPPING.staffAdminConnection} (Staff Admin): "${data[FIELD_MAPPING.staffAdminConnection] || "Not set"}"`);
+      
+      debugLog("[Knack Script] COMPLETE NEW RECORD PAYLOAD", data);
+      
+      const apiCall = () => new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/${STUDYPLANNER_OBJECT}/records`,
+          type: 'POST',
+          headers: saveQueue.getKnackHeaders(),
+          data: JSON.stringify(data), // Ensure data is stringified
+          contentType: 'application/json', // Explicitly set Content-Type
+          success: resolve,
+          error: (jqXHR, textStatus, errorThrown) => {
+             const error = new Error(`Failed to create record for user ${userId}: ${jqXHR.status} ${errorThrown}`);
+             error.status = jqXHR.status;
+             error.responseText = jqXHR.responseText;
+             reject(error);
+          }
+        });
       });
-    });
 
-    retryApiCall(apiCall)
-      .then(response => {
-        console.log("[Knack Script] Successfully created user record:", response);
-         // Ensure response has an ID before calling back
-         if (response && response.id) {
-             callback(true, response.id);
-         } else {
-             console.error("[Knack Script] Record creation API call succeeded but response missing ID.", response);
-             callback(false, null);
-         }
-      })
-      .catch(error => {
-        console.error("[Knack Script] Error creating user record after retries:", error.status, error.responseText || error.message);
-        callback(false, null);
-      });
+      const response = await retryApiCall(apiCall);
+      console.log("[Knack Script] Successfully created user record:", response);
+      
+      // Ensure response has an ID before calling back
+      if (response && response.id) {
+          callback(true, response.id);
+      } else {
+          console.error("[Knack Script] Record creation API call succeeded but response missing ID.", response);
+          callback(false, null);
+      }
+    } catch (error) {
+      console.error("[Knack Script] Error creating user record:", error.status, error.responseText || error.message);
+      callback(false, null);
+    }
   }
 
   // Handle lookup connection fields request from React app
