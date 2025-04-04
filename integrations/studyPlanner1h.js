@@ -21,19 +21,20 @@
     teacherConnection: 'field_3044' // Teacher connection field (to be added if not exists)
   };
   
-  // Field mappings for the tutor sharing object
+  // Field mappings for the tutor sharing object (object_90 - Study Sessions)
   const TUTOR_SHARING_FIELDS = {
-    studyType: 'field_2480',    // Short text - Study type
-    studentName: 'field_3056',  // Student Name (short text)
-    vespaCustomer: 'field_2473', // Connected field (VESPA Customer)
-    staffAdmin: 'field_2474',   // Connected field, "staff admin"
-    studentEmail: 'field_2475', // Email - user connected account
-    tutor: 'field_2476',        // Connected account - tutor associated with student
-    sessionStart: 'field_2477', // Session Start - date/time (dd/mm/yyyy HH:MM)
-    sessionFinish: 'field_2479', // Session finish date/time
-    deleteFlag: 'field_3055',   // Delete flag (boolean) - default to No
-    sessionId: 'field_3057',    // Session ID (short text) - must be unique
-    sessionDetails: 'field_2478' // Session details rich text field
+    sessionName: 'field_2480',    // Session Name (short text set to - Planned from App-{date})
+    studentName: 'field_3056',    // Student Name (short text)
+    vespaCustomer: 'field_2473',  // VESPA Customer (Connected field - user account field_122)
+    staffAdmin: 'field_2474',     // Staff Admin (Connected Field - student object_6/field_190)
+    userConnection: 'field_2475', // Account (Connect Field - user email/account record)
+    tutor: 'field_2476',          // Tutors (Multiple connected field - student object_6/field_1682)
+    sessionStart: 'field_2477',   // Session Start (Date Time, dd/mm/yyyy HH:MM)
+    sessionFinish: 'field_2478',  // Session Finish (Date Time, dd/mm/yyyy HH:MM) 
+    sessionDetails: 'field_2479', // Session Details (Rich Text Field) 
+    studentEmail: 'field_2469',   // Student Email (email field - backup) 
+    deleteFlag: 'field_3055',     // Delete flag (boolean, default to No)
+    sessionId: 'field_3057',      // Session ID (unique, short text)
   };
 
   // --- Helper Functions ---
@@ -1166,16 +1167,20 @@
         startTime = '09:00'; // fallback to default time
       }
       
+      // Current date in dd/mm/yyyy format
+      const today = new Date();
+      const formattedToday = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      
       // Prepare data for object_90
       const data = {
-        [TUTOR_SHARING_FIELDS.studyType]: "Planned Study",
+        [TUTOR_SHARING_FIELDS.sessionName]: `Planned from App-${formattedToday}`,
         [TUTOR_SHARING_FIELDS.studentName]: user.name || "Student",
-        [TUTOR_SHARING_FIELDS.studentEmail]: user.email || "",
         [TUTOR_SHARING_FIELDS.sessionStart]: startDate,
         [TUTOR_SHARING_FIELDS.sessionFinish]: endDate,
+        [TUTOR_SHARING_FIELDS.sessionDetails]: session.details || "",
+        [TUTOR_SHARING_FIELDS.studentEmail]: user.email || "",
         [TUTOR_SHARING_FIELDS.deleteFlag]: "No",
-        [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId,
-        [TUTOR_SHARING_FIELDS.sessionDetails]: session.details || ""
+        [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
       
       // Add connection fields if available
@@ -1189,6 +1194,11 @@
       
       if (user.tutorId) {
         data[TUTOR_SHARING_FIELDS.tutor] = [user.tutorId];
+      }
+      
+      // Add user account connection
+      if (user.emailId || user.id) {
+        data[TUTOR_SHARING_FIELDS.userConnection] = [user.emailId || user.id];
       }
       
       debugLog("[Knack Script] Tutor share record data", data);
