@@ -1139,6 +1139,22 @@
     }
   }
   
+  // Sanitize field for Knack use - ensure no HTML tags 
+  function sanitizeField(value) {
+    if (value === null || value === undefined) return "";
+    const strValue = String(value);
+    let sanitized = strValue.replace(/<[^>]*?>/g, "");
+    sanitized = sanitized.replace(/[*_~`#]/g, "");
+    sanitized = sanitized
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&nbsp;/g, " ");
+    return sanitized.trim();
+  }
+
   // Create a new record in object_90 for a shared session
   async function createTutorSharedSession(session, user) {
     try {
@@ -1211,66 +1227,47 @@
       const today = new Date();
       const formattedToday = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
-      // Prepare data for object_90
+      // Extract connection field values from user data
+      // For field_2475 (Student), use the email address (not ID)
+      const userEmail = sanitizeField(user.email);
+      
+      // Get VESPA Customer value (field_2473) - from field_122
+      const vespaCustomer = sanitizeField(user.field_122 || user.school || "");
+      
+      // Get Staff Admin (field_2474) - from field_190
+      const staffAdmin = sanitizeField(user.field_190 || user.staffAdmin || "");
+      
+      // Get Tutor (field_2476) - from field_1682
+      const tutor = sanitizeField(user.field_1682 || user.tutor || "");
+      
+      // Prepare data for object_90 with proper connection field formats
       const data = {
         [TUTOR_SHARING_FIELDS.sessionName]: `Planned from App-${formattedToday}`,
-        [TUTOR_SHARING_FIELDS.studentName]: user.name || "Student",
+        [TUTOR_SHARING_FIELDS.studentName]: sanitizeField(user.name || "Student"),
         [TUTOR_SHARING_FIELDS.sessionStart]: startDate,
         [TUTOR_SHARING_FIELDS.sessionFinish]: endDate,
         [TUTOR_SHARING_FIELDS.sessionDetails]: session.details || "",
-        [TUTOR_SHARING_FIELDS.studentEmail]: user.email || "",
+        [TUTOR_SHARING_FIELDS.studentEmail]: userEmail,
         [TUTOR_SHARING_FIELDS.deleteFlag]: "No",
-        [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
+        [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId,
+        // Use proper connection field formats
+        [TUTOR_SHARING_FIELDS.vespaCustomer]: vespaCustomer, // VESPA Customer
+        [TUTOR_SHARING_FIELDS.staffAdmin]: staffAdmin,       // Staff Admin
+        [TUTOR_SHARING_FIELDS.userConnection]: userEmail,    // Student (email for connection)
+        [TUTOR_SHARING_FIELDS.tutor]: tutor                  // Tutor
       };
       
-      // Only add connection fields if we have valid IDs
-      // For field_2473 (VESPA Customer connection) - Skip unless we have a valid ID
-      if (user.schoolId && isValidKnackId(user.schoolId)) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = user.schoolId;
-        console.log(`Using valid VESPA Customer ID for field_2473: ${user.schoolId}`);
-      } else {
-        console.log(`No valid VESPA Customer ID available, skipping field_2473`);
-      }
+      // Enhanced debugging for connection fields
+      console.log("[Knack Script] Connection fields for Knack integration:");
+      console.log(`- field_2473 (VESPA Customer): "${vespaCustomer}"`);
+      console.log(`- field_2474 (Staff Admin): "${staffAdmin}"`);
+      console.log(`- field_2475 (User Connection): "${userEmail}"`);
+      console.log(`- field_2476 (Tutor): "${tutor}"`);
       
-      // For field_2474 (Staff Admin) - Skip unless we have a valid ID
-      if (user.staffAdminId && isValidKnackId(user.staffAdminId)) {
-        data[TUTOR_SHARING_FIELDS.staffAdmin] = user.staffAdminId;
-        console.log(`Using valid Staff Admin ID for field_2474: ${user.staffAdminId}`);
-      } else {
-        console.log(`No valid Staff Admin ID available, skipping field_2474`);
-      }
+      debugLog("[Knack Script] Complete record data", data);
       
-      // For field_2476 (Tutors) - Skip unless we have a valid ID
-      if (user.teacherId && isValidKnackId(user.teacherId)) {
-        data[TUTOR_SHARING_FIELDS.tutor] = user.teacherId;
-        console.log(`Using valid Tutor ID for field_2476: ${user.teacherId}`);
-      } else {
-        console.log(`No valid Tutor ID available, skipping field_2476`);
-      }
-      
-      // For field_2475 (Account connection) - Use recordId which we know is valid
-      if (user.emailId && isValidKnackId(user.emailId)) {
-        data[TUTOR_SHARING_FIELDS.userConnection] = user.emailId; 
-        console.log(`Using valid User ID for field_2475: ${user.emailId}`);
-      } else if (user.id && isValidKnackId(user.id)) {
-        data[TUTOR_SHARING_FIELDS.userConnection] = user.id;
-        console.log(`Using user.id for field_2475: ${user.id}`);
-      } else {
-        console.log(`No valid User ID available, skipping field_2475`);
-      }
-      
-    // Enhanced debugging for connection fields
-    console.log("[Knack Script] Connection fields for Knack integration:");
-    console.log(`- field_2473 (VESPA Customer): "${data[TUTOR_SHARING_FIELDS.vespaCustomer]}"`);
-    console.log(`- field_2474 (Staff Admin): "${data[TUTOR_SHARING_FIELDS.staffAdmin]}"`);
-    console.log(`- field_2475 (User Connection): "${data[TUTOR_SHARING_FIELDS.userConnection]}"`);
-    console.log(`- field_2476 (Tutor): "${data[TUTOR_SHARING_FIELDS.tutor]}"`);
-    
-    debugLog("[Knack Script] Complete record data", data);
-      
-      // Create the record in Knack
-      // Enhanced logging of what we're sending
-      console.log(`[Knack Script] Submitting session record with field_2473 (VESPA Customer): ${data[TUTOR_SHARING_FIELDS.vespaCustomer] || 'Not provided'}`);
+      // Create the record in Knack with proper connection formats
+      console.log(`[Knack Script] Submitting session record with field_2475 (Student): ${userEmail}`);
       
       const apiCall = () => new Promise((resolve, reject) => {
         $.ajax({
@@ -1517,5 +1514,3 @@
   }
 
 })(); // End of IIFE
-
-
