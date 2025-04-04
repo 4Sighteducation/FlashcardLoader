@@ -1227,35 +1227,73 @@
       const today = new Date();
       const formattedToday = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
-      // Extract connection field values from user data
-      // For field_2475 (Student), use the email address (not ID)
-      const userEmail = sanitizeField(user.email);
+      // Process connection fields from the received data
+      // These fields will be set in the message data from tutorShareAPI.js
       
-      // Get VESPA Customer value (field_2473) - from field_122
-      const vespaCustomer = sanitizeField(user.field_122 || user.school || "");
+      // For field_2475 (Student), already using the email address from the message
+      const userEmail = sanitizeField(session.studentEmail || user.email || "");
       
-      // Get Staff Admin (field_2474) - from field_190
-      const staffAdmin = sanitizeField(user.field_190 || user.staffAdmin || "");
+      // Process string values for connection fields (not objects)
+      let vespaCustomer = "";
+      if (session.field_2473) {
+        vespaCustomer = sanitizeField(session.field_2473);
+      } else if (typeof user.field_122 === 'string') {
+        vespaCustomer = sanitizeField(user.field_122);
+      } else if (user.school) {
+        vespaCustomer = sanitizeField(user.school);
+      }
       
-      // Get Tutor (field_2476) - from field_1682
-      const tutor = sanitizeField(user.field_1682 || user.tutor || "");
+      // Get Staff Admin (field_2474)
+      let staffAdmin = "";
+      if (session.field_2474) {
+        staffAdmin = sanitizeField(session.field_2474);
+      } else if (user.field_190) {
+        staffAdmin = sanitizeField(user.field_190);
+      } else if (user.staffAdmin) {
+        staffAdmin = sanitizeField(user.staffAdmin);
+      }
+      
+      // Get Tutor (field_2476) - MOST IMPORTANT
+      let tutor = "";
+      if (session.field_2476) {
+        tutor = sanitizeField(session.field_2476);
+        console.log(`[Knack Script] Using tutor email from message data: ${tutor}`);
+      } else if (typeof user.field_1682 === 'string') {
+        tutor = sanitizeField(user.field_1682);
+        console.log(`[Knack Script] Using tutor email from user.field_1682: ${tutor}`);
+      } else if (user.tutor) {
+        tutor = sanitizeField(user.tutor);
+        console.log(`[Knack Script] Using tutor email from user.tutor: ${tutor}`);
+      }
       
       // Prepare data for object_90 with proper connection field formats
       const data = {
         [TUTOR_SHARING_FIELDS.sessionName]: `Planned from App-${formattedToday}`,
-        [TUTOR_SHARING_FIELDS.studentName]: sanitizeField(user.name || "Student"),
+        [TUTOR_SHARING_FIELDS.studentName]: sanitizeField(session.studentName || user.name || "Student"),
         [TUTOR_SHARING_FIELDS.sessionStart]: startDate,
         [TUTOR_SHARING_FIELDS.sessionFinish]: endDate,
         [TUTOR_SHARING_FIELDS.sessionDetails]: session.details || "",
         [TUTOR_SHARING_FIELDS.studentEmail]: userEmail,
         [TUTOR_SHARING_FIELDS.deleteFlag]: "No",
-        [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId,
-        // Use proper connection field formats
-        [TUTOR_SHARING_FIELDS.vespaCustomer]: vespaCustomer, // VESPA Customer
-        [TUTOR_SHARING_FIELDS.staffAdmin]: staffAdmin,       // Staff Admin
-        [TUTOR_SHARING_FIELDS.userConnection]: userEmail,    // Student (email for connection)
-        [TUTOR_SHARING_FIELDS.tutor]: tutor                  // Tutor
+        [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
+      
+      // Only add connection fields if they have values
+      if (vespaCustomer) {
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = vespaCustomer;
+      }
+      
+      if (staffAdmin) {
+        data[TUTOR_SHARING_FIELDS.staffAdmin] = staffAdmin;
+      }
+      
+      if (userEmail) {
+        data[TUTOR_SHARING_FIELDS.userConnection] = userEmail;
+      }
+      
+      if (tutor) {
+        data[TUTOR_SHARING_FIELDS.tutor] = tutor;
+      }
       
       // Enhanced debugging for connection fields
       console.log("[Knack Script] Connection fields for Knack integration:");
@@ -1267,7 +1305,7 @@
       debugLog("[Knack Script] Complete record data", data);
       
       // Create the record in Knack with proper connection formats
-      console.log(`[Knack Script] Submitting session record with field_2475 (Student): ${userEmail}`);
+      console.log(`[Knack Script] Submitting session record with field_2475 (Student): ${userEmail} and field_2476 (Tutor): ${tutor}`);
       
       const apiCall = () => new Promise((resolve, reject) => {
         $.ajax({
@@ -1514,3 +1552,4 @@
   }
 
 })(); // End of IIFE
+
