@@ -1223,30 +1223,35 @@
         [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
       
-      // For field_2473 (VESPA Customer) - Use the field_122 value directly not the ID
-      // This field expects text, not a connected record ID
+      // For field_2473 (VESPA Customer) - Single connection
       if (user.field_122) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = sanitizeField(user.field_122);
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = { identifier: sanitizeField(user.field_122) };
       } else if (user.school) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = sanitizeField(user.school);
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = { identifier: sanitizeField(user.school) };
       }
       
-      // For field_2474 (Staff Admin) - We need the email for lookup in object_6
+      // For field_2474 (Staff Admin) - Multiple connection
       if (user.staffAdmin || user.field_190) {
-        // Use staff admin email directly, not the ID
-        data[TUTOR_SHARING_FIELDS.staffAdmin] = sanitizeField(user.staffAdmin || user.field_190);
+        // Use array format for multiple connections
+        data[TUTOR_SHARING_FIELDS.staffAdmin] = [{ 
+          identifier: sanitizeField(user.staffAdmin || user.field_190) 
+        }];
       }
       
-      // For field_2476 (Tutors) - We need the email for lookup in object_6
+      // For field_2476 (Tutors) - Multiple connection
       if (user.tutor || user.field_1682) {
-        // Use tutor email directly, not the ID
-        data[TUTOR_SHARING_FIELDS.tutor] = sanitizeField(user.tutor || user.field_1682);
+        // Use array format for multiple connections
+        data[TUTOR_SHARING_FIELDS.tutor] = [{ 
+          identifier: sanitizeField(user.tutor || user.field_1682) 
+        }];
       }
       
-      // For field_2475 (Account connection) - Use email directly for lookup
+      // For field_2475 (Account connection) - Single connection
       if (user.email) {
-        // For connected fields based on email, use the email directly not the ID
-        data[TUTOR_SHARING_FIELDS.userConnection] = user.email;
+        // For single connections, use object format
+        data[TUTOR_SHARING_FIELDS.userConnection] = { 
+          identifier: user.email 
+        };
       }
       
     // Enhanced debugging for connection fields
