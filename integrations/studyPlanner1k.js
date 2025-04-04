@@ -1223,35 +1223,40 @@
         [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
       
-      // For field_2473 (VESPA Customer) - Single connection
-      if (user.field_122) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = { identifier: sanitizeField(user.field_122) };
-      } else if (user.school) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = { identifier: sanitizeField(user.school) };
+      // Only add connection fields if we have valid IDs
+      // For field_2473 (VESPA Customer connection) - Skip unless we have a valid ID
+      if (user.schoolId && isValidKnackId(user.schoolId)) {
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = user.schoolId;
+        console.log(`Using valid VESPA Customer ID for field_2473: ${user.schoolId}`);
+      } else {
+        console.log(`No valid VESPA Customer ID available, skipping field_2473`);
       }
       
-      // For field_2474 (Staff Admin) - Multiple connection
-      if (user.staffAdmin || user.field_190) {
-        // Use array format for multiple connections
-        data[TUTOR_SHARING_FIELDS.staffAdmin] = [{ 
-          identifier: sanitizeField(user.staffAdmin || user.field_190) 
-        }];
+      // For field_2474 (Staff Admin) - Skip unless we have a valid ID
+      if (user.staffAdminId && isValidKnackId(user.staffAdminId)) {
+        data[TUTOR_SHARING_FIELDS.staffAdmin] = user.staffAdminId;
+        console.log(`Using valid Staff Admin ID for field_2474: ${user.staffAdminId}`);
+      } else {
+        console.log(`No valid Staff Admin ID available, skipping field_2474`);
       }
       
-      // For field_2476 (Tutors) - Multiple connection
-      if (user.tutor || user.field_1682) {
-        // Use array format for multiple connections
-        data[TUTOR_SHARING_FIELDS.tutor] = [{ 
-          identifier: sanitizeField(user.tutor || user.field_1682) 
-        }];
+      // For field_2476 (Tutors) - Skip unless we have a valid ID
+      if (user.teacherId && isValidKnackId(user.teacherId)) {
+        data[TUTOR_SHARING_FIELDS.tutor] = user.teacherId;
+        console.log(`Using valid Tutor ID for field_2476: ${user.teacherId}`);
+      } else {
+        console.log(`No valid Tutor ID available, skipping field_2476`);
       }
       
-      // For field_2475 (Account connection) - Single connection
-      if (user.email) {
-        // For single connections, use object format
-        data[TUTOR_SHARING_FIELDS.userConnection] = { 
-          identifier: user.email 
-        };
+      // For field_2475 (Account connection) - Use recordId which we know is valid
+      if (user.emailId && isValidKnackId(user.emailId)) {
+        data[TUTOR_SHARING_FIELDS.userConnection] = user.emailId; 
+        console.log(`Using valid User ID for field_2475: ${user.emailId}`);
+      } else if (user.id && isValidKnackId(user.id)) {
+        data[TUTOR_SHARING_FIELDS.userConnection] = user.id;
+        console.log(`Using user.id for field_2475: ${user.id}`);
+      } else {
+        console.log(`No valid User ID available, skipping field_2475`);
       }
       
     // Enhanced debugging for connection fields
@@ -1512,4 +1517,5 @@
   }
 
 })(); // End of IIFE
+
 
