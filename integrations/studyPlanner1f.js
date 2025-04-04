@@ -945,8 +945,12 @@
   // Handle tutor sharing request from React app
   async function handleTutorShareRequest(data, iframeWindow, origin) {
     console.log("[Knack Script] Handling TUTOR_SHARE_SESSIONS request");
+    debugLog("[Knack Script] Tutor share request data:", data);
     
-    if (!data || !data.recordId) {
+    // The actual data is inside the data property
+    const messageData = data?.data || {};
+    
+    if (!messageData.recordId) {
       console.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing recordId.");
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'TUTOR_SHARE_RESULT', 
@@ -956,7 +960,7 @@
       return;
     }
     
-    if (!data.sessions || !Array.isArray(data.sessions) || data.sessions.length === 0) {
+    if (!messageData.sessions || !Array.isArray(messageData.sessions) || messageData.sessions.length === 0) {
       console.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing sessions data.");
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'TUTOR_SHARE_RESULT', 
@@ -988,7 +992,7 @@
     };
     
     // Process each session
-    for (const session of data.sessions) {
+    for (const session of messageData.sessions) {
       try {
         // Check if this session already exists in object_90
         const existingRecord = await findTutorSharedSession(session.sessionId);
@@ -1419,4 +1423,5 @@
   }
 
 })(); // End of IIFE
+
 
