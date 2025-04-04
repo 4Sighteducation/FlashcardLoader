@@ -1551,5 +1551,213 @@
       });
   }
 
+  // Handle lookup connection fields request from React app
+  async function handleLookupConnectionFields(data, iframeWindow, origin) {
+    console.log("[Knack Script] Handling LOOKUP_CONNECTION_FIELDS request");
+    debugLog("[Knack Script] Connection fields lookup request data:", data);
+    
+    if (!data || !data.userEmail) {
+      console.error("[Knack Script] LOOKUP_CONNECTION_FIELDS request missing userEmail.");
+      if (iframeWindow) {
+        iframeWindow.postMessage({
+          type: 'CONNECTION_FIELDS_RESULT',
+          success: false,
+          error: "Missing userEmail",
+          data: {}
+        }, origin);
+      }
+      return;
+    }
+    
+    const userEmail = data.userEmail;
+    const lookups = data.lookups || [];
+    
+    // Store the lookup results
+    const results = {};
+    
+    try {
+      // Lookup in object_3 (Accounts) for field_122 (VESPA Customer)
+      const vespaCustomerLookup = lookups.find(l => l.extractField === 'field_122');
+      if (vespaCustomerLookup) {
+        try {
+          const vespaCustomerResult = await lookupRecordByEmail('object_3', 'field_70', userEmail);
+          if (vespaCustomerResult.success && vespaCustomerResult.record) {
+            const vespaCustomerValue = extractFieldValue(vespaCustomerResult.record, 'field_122');
+            if (vespaCustomerValue) {
+              results[vespaCustomerLookup.targetField] = vespaCustomerValue;
+              console.log(`[Knack Script] Found VESPA Customer: ${vespaCustomerValue}`);
+            }
+          }
+        } catch (error) {
+          console.error('[Knack Script] Error looking up VESPA Customer:', error);
+        }
+      }
+      
+      // Lookup in object_6 (Students) for field_1682 (Tutor emails) and field_190 (Staff Admin)
+      const studentLookup = lookups.find(l => l.object === 'object_6');
+      if (studentLookup) {
+        try {
+          const studentResult = await lookupRecordByEmail('object_6', 'field_70', userEmail);
+          if (studentResult.success && studentResult.record) {
+            // Extract tutor email
+            const tutorLookup = lookups.find(l => l.extractField === 'field_1682');
+            if (tutorLookup) {
+              const tutorValue = extractFieldValue(studentResult.record, 'field_1682');
+              if (tutorValue) {
+                results[tutorLookup.targetField] = tutorValue;
+                console.log(`[Knack Script] Found Tutor: ${tutorValue}`);
+              }
+            }
+            
+            // Extract staff admin email
+            const staffAdminLookup = lookups.find(l => l.extractField === 'field_190');
+            if (staffAdminLookup) {
+              const staffAdminValue = extractFieldValue(studentResult.record, 'field_190');
+              if (staffAdminValue) {
+                results[staffAdminLookup.targetField] = staffAdminValue;
+                console.log(`[Knack Script] Found Staff Admin: ${staffAdminValue}`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[Knack Script] Error looking up Student record:', error);
+        }
+      }
+      
+      // Send the results back to the React app
+      if (iframeWindow) {
+        iframeWindow.postMessage({
+          type: 'CONNECTION_FIELDS_RESULT',
+          success: true,
+          data: results,
+          timestamp: new Date().toISOString()
+        }, origin);
+      }
+    } catch (error) {
+      console.error('[Knack Script] Error processing connection fields lookup:', error);
+      if (iframeWindow) {
+        iframeWindow.postMessage({
+          type: 'CONNECTION_FIELDS_RESULT',
+          success: false,
+          error: error.message || 'Unknown error',
+          data: results,
+          timestamp: new Date().toISOString()
+        }, origin);
+      }
+    }
+  }
+  
+  // Helper function to lookup a record by email
+  async function lookupRecordByEmail(objectKey, emailField, email) {
+    if (!email) {
+      return { success: false, error: 'Email is required' };
+    }
+    
+    console.log(`[Knack Script] Looking up ${objectKey} record by email: ${email}`);
+    
+    // Create filter to find by email
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [
+        {
+          field: emailField,
+          operator: 'is',
+          value: email
+        }
+      ]
+    }));
+    
+    const apiCall = () => new Promise((resolve, reject) => {
+      $.ajax({
+        url: `${KNACK_API_URL}/objects/${objectKey}/records?filters=${filters}`,
+        type: 'GET',
+        headers: saveQueue.getKnackHeaders(),
+        data: { format: 'raw' },
+        success: resolve,
+        error: (jqXHR, textStatus, errorThrown) => {
+          const error = new Error(`Failed to lookup record by email: ${jqXHR.status} ${errorThrown}`);
+          error.status = jqXHR.status;
+          error.responseText = jqXHR.responseText;
+          reject(error);
+        }
+      });
+    });
+    
+    try {
+      const response = await retryApiCall(apiCall);
+      
+      // Check if we found any records
+      if (response && response.records && response.records.length > 0) {
+        return {
+          success: true,
+          record: response.records[0]
+        };
+      } else {
+        return {
+          success: true,
+          record: null
+        };
+      }
+    } catch (error) {
+      console.error(`[Knack Script] Error looking up record by email ${email}:`, error);
+      return {
+        success: false,
+        error: error.message || 'Unknown error looking up record'
+      };
+    }
+  }
+  
+  // Helper function to extract a field value from a record
+  function extractFieldValue(record, fieldKey) {
+    if (!record || !fieldKey) return null;
+    
+    // Get the raw field value
+    const rawValue = record[fieldKey];
+    if (rawValue === undefined || rawValue === null || rawValue === '') return null;
+    
+    // Check if this is a connection field (which typically has _raw suffix with more data)
+    const rawFieldKey = `${fieldKey}_raw`;
+    if (record[rawFieldKey]) {
+      // Handle array of connections
+      if (Array.isArray(record[rawFieldKey]) && record[rawFieldKey].length > 0) {
+        // Extract email identifiers from connections
+        if (record[rawFieldKey][0].identifier) {
+          return sanitizeField(record[rawFieldKey][0].identifier);
+        } else if (record[rawFieldKey][0].email) {
+          return sanitizeField(record[rawFieldKey][0].email);
+        }
+      }
+      // Single connection
+      else if (record[rawFieldKey].identifier) {
+        return sanitizeField(record[rawFieldKey].identifier);
+      } else if (record[rawFieldKey].email) {
+        return sanitizeField(record[rawFieldKey].email);
+      }
+    }
+    
+    // Try direct value
+    if (typeof rawValue === 'string') {
+      return sanitizeField(rawValue);
+    } else if (Array.isArray(rawValue) && rawValue.length > 0) {
+      if (typeof rawValue[0] === 'string') {
+        return sanitizeField(rawValue[0]);
+      } else if (typeof rawValue[0] === 'object' && rawValue[0] !== null) {
+        if (rawValue[0].identifier) {
+          return sanitizeField(rawValue[0].identifier);
+        } else if (rawValue[0].email) {
+          return sanitizeField(rawValue[0].email);
+        }
+      }
+    } else if (typeof rawValue === 'object' && rawValue !== null) {
+      if (rawValue.identifier) {
+        return sanitizeField(rawValue.identifier);
+      } else if (rawValue.email) {
+        return sanitizeField(rawValue.email);
+      }
+    }
+    
+    return null;
+  }
+
 })(); // End of IIFE
 
