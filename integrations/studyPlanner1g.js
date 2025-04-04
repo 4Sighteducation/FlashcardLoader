@@ -947,10 +947,13 @@
     console.log("[Knack Script] Handling TUTOR_SHARE_SESSIONS request");
     debugLog("[Knack Script] Tutor share request data:", data);
     
-    // The actual data is inside the data property
-    const messageData = data?.data || {};
+    // Handle both possible data structures to be more robust
+    // The data we need might be directly in the data object or nested inside data.data
+    const messageData = data?.data || data || {};
+    const recordId = messageData.recordId || data?.recordId;
+    const sessions = messageData.sessions || data?.sessions;
     
-    if (!messageData.recordId) {
+    if (!recordId) {
       console.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing recordId.");
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'TUTOR_SHARE_RESULT', 
@@ -960,7 +963,7 @@
       return;
     }
     
-    if (!messageData.sessions || !Array.isArray(messageData.sessions) || messageData.sessions.length === 0) {
+    if (!sessions || !Array.isArray(sessions) || sessions.length === 0) {
       console.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing sessions data.");
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'TUTOR_SHARE_RESULT', 
@@ -1423,5 +1426,3 @@
   }
 
 })(); // End of IIFE
-
-
