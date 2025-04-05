@@ -1278,85 +1278,72 @@
       const today = new Date();
       const formattedToday = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
-      // Process connection fields from the received data
-      // These fields will be set in the message data from tutorShareAPI.js
+      // Process connection fields - MOST CRITICAL PART - MUST USE RECORD IDs NOT EMAILS
       
-      // For field_2475 (Student), already using the email address from the message
-      const userEmail = sanitizeField(session.studentEmail || user.email || "");
+      // For User Connection field_2475 (Account) - use the user's account ID
+      const userId = user.id; // Use the actual account record ID
       
-      // Process string values for connection fields (not objects)
-      let vespaCustomer = "";
-      if (session.field_2473) {
-        vespaCustomer = sanitizeField(session.field_2473);
-      } else if (typeof user.field_122 === 'string') {
-        vespaCustomer = sanitizeField(user.field_122);
-      } else if (user.school) {
-        vespaCustomer = sanitizeField(user.school);
+      // For VESPA Customer field_2473 - use the school record ID
+      let vespaCustomerId = user.schoolId || user.vespaCustomerId;
+      if (session.field_2473 && isValidKnackId(session.field_2473)) {
+        vespaCustomerId = session.field_2473;
       }
       
-      // Get Staff Admin (field_2474)
-      let staffAdmin = "";
-      if (session.field_2474) {
-        staffAdmin = sanitizeField(session.field_2474);
-      } else if (user.field_190) {
-        staffAdmin = sanitizeField(user.field_190);
-      } else if (user.staffAdmin) {
-        staffAdmin = sanitizeField(user.staffAdmin);
+      // For Staff Admin field_2474 - use the staff admin record ID
+      let staffAdminId = user.staffAdminId;
+      if (session.field_2474 && isValidKnackId(session.field_2474)) {
+        staffAdminId = session.field_2474; 
       }
       
-      // Get Tutor (field_2476) - MOST IMPORTANT
-      let tutor = "";
-      if (session.field_2476) {
-        tutor = sanitizeField(session.field_2476);
-        console.log(`[Knack Script] Using tutor email from message data: ${tutor}`);
-      } else if (typeof user.field_1682 === 'string') {
-        tutor = sanitizeField(user.field_1682);
-        console.log(`[Knack Script] Using tutor email from user.field_1682: ${tutor}`);
-      } else if (user.tutor) {
-        tutor = sanitizeField(user.tutor);
-        console.log(`[Knack Script] Using tutor email from user.tutor: ${tutor}`);
+      // For Tutor field_2476 - use the tutor record ID - MOST IMPORTANT
+      let tutorId = user.teacherId;
+      if (session.field_2476 && isValidKnackId(session.field_2476)) {
+        tutorId = session.field_2476;
+        console.log(`[Knack Script] Using tutor ID from message data: ${tutorId}`);
+      } else if (user.teacherId) {
+        console.log(`[Knack Script] Using tutor ID from user object: ${tutorId}`);
       }
       
-      // Prepare data for object_90 with proper connection field formats
+      // Prepare data for object_90 with proper connection field formats - using RECORD IDs for connected fields
       const data = {
         [TUTOR_SHARING_FIELDS.sessionName]: `Planned from App-${formattedToday}`,
         [TUTOR_SHARING_FIELDS.studentName]: sanitizeField(session.studentName || user.name || "Student"),
         [TUTOR_SHARING_FIELDS.sessionStart]: startDate,
         [TUTOR_SHARING_FIELDS.sessionFinish]: endDate,
         [TUTOR_SHARING_FIELDS.sessionDetails]: session.details || "",
-        [TUTOR_SHARING_FIELDS.studentEmail]: userEmail,
+        [TUTOR_SHARING_FIELDS.studentEmail]: sanitizeField(session.studentEmail || user.email || ""), // Plain email as backup
         [TUTOR_SHARING_FIELDS.deleteFlag]: "No",
         [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
       
-      // Only add connection fields if they have values
-      if (vespaCustomer) {
-        data[TUTOR_SHARING_FIELDS.vespaCustomer] = vespaCustomer;
+      // Only add connection fields if they have valid IDs - these must be record IDs
+      if (vespaCustomerId) {
+        data[TUTOR_SHARING_FIELDS.vespaCustomer] = vespaCustomerId;
       }
       
-      if (staffAdmin) {
-        data[TUTOR_SHARING_FIELDS.staffAdmin] = staffAdmin;
+      if (staffAdminId) {
+        data[TUTOR_SHARING_FIELDS.staffAdmin] = staffAdminId;
       }
       
-      if (userEmail) {
-        data[TUTOR_SHARING_FIELDS.userConnection] = userEmail;
+      if (userId) {
+        data[TUTOR_SHARING_FIELDS.userConnection] = userId;
       }
       
-      if (tutor) {
-        data[TUTOR_SHARING_FIELDS.tutor] = tutor;
+      if (tutorId) {
+        data[TUTOR_SHARING_FIELDS.tutor] = tutorId;
       }
       
       // Enhanced debugging for connection fields
       console.log("[Knack Script] Connection fields for Knack integration:");
-      console.log(`- field_2473 (VESPA Customer): "${vespaCustomer}"`);
-      console.log(`- field_2474 (Staff Admin): "${staffAdmin}"`);
-      console.log(`- field_2475 (User Connection): "${userEmail}"`);
-      console.log(`- field_2476 (Tutor): "${tutor}"`);
+      console.log(`- field_2473 (VESPA Customer): "${vespaCustomerId || 'Not set'}"`);
+      console.log(`- field_2474 (Staff Admin): "${staffAdminId || 'Not set'}"`);
+      console.log(`- field_2475 (User Connection): "${userId || 'Not set'}"`);
+      console.log(`- field_2476 (Tutor): "${tutorId || 'Not set'}"`);
       
       debugLog("[Knack Script] Complete record data", data);
       
       // Create the record in Knack with proper connection formats
-      console.log(`[Knack Script] Submitting session record with field_2475 (Student): ${userEmail} and field_2476 (Tutor): ${tutor}`);
+      console.log(`[Knack Script] Submitting session record with field_2475 (User Connection): ${userId} and field_2476 (Tutor): ${tutorId}`);
       
       const apiCall = () => new Promise((resolve, reject) => {
         $.ajax({
@@ -1662,23 +1649,22 @@
         [FIELD_MAPPING.planData]: JSON.stringify({}) // Empty object for new plan
       };
       
-      // Add User Account connection (field_3044) - uses the user's email
-      // Format correctly for Knack connected field
-      const userEmailSanitized = sanitizeField(user.email);
-      data[FIELD_MAPPING.teacherConnection] = userEmailSanitized;
-      console.log(`[Knack Script] Setting User Account connection (field_3044) to: "${userEmailSanitized}"`);
+      // Add User Account connection (field_3044) - use the actual user Account ID
+      // Format correctly for Knack connected field - must use the ID
+      data[FIELD_MAPPING.teacherConnection] = userId; // Direct account ID, not email
+      console.log(`[Knack Script] Setting User Account connection (field_3044) to Account ID: "${userId}"`);
       
       // Add VESPA Customer connection (field_3043) from user account
-      // Format correctly for Knack connected field
+      // Use actual ID for connected field - all connected fields need record IDs
       if (user.schoolId) {
         data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
-        console.log(`[Knack Script] Setting VESPA Customer (${FIELD_MAPPING.vespaCustomer}) to: "${user.schoolId}"`);
+        console.log(`[Knack Script] Setting VESPA Customer (${FIELD_MAPPING.vespaCustomer}) to ID: "${user.schoolId}"`);
       } else if (studentRole && studentRole.field_122_raw) {
-        // Try to get school from student role if available
+        // Try to get school ID from student role if available
         const schoolId = extractValidRecordId(studentRole.field_122_raw);
         if (schoolId) {
           data[FIELD_MAPPING.vespaCustomer] = schoolId;
-          console.log(`[Knack Script] Setting VESPA Customer from student role to: "${schoolId}"`);
+          console.log(`[Knack Script] Setting VESPA Customer from student role to ID: "${schoolId}"`);
         }
       }
       
@@ -1696,76 +1682,78 @@
         if (studentRole.field_190) console.log("Raw staff admin field value:", JSON.stringify(studentRole.field_190));
         if (studentRole.field_190_raw) console.log("Raw staff admin_raw field value:", JSON.stringify(studentRole.field_190_raw));
         
-        // Extract tutor value with more extensive debugging
-        let tutorValue = null;
+        // Extract tutor record ID (not email) - we need the actual record ID for connections
+        let tutorId = null;
         
-        if (studentRole.field_1682_raw) {
-          console.log("[Knack Script] Extracting tutor from field_1682_raw...");
-          tutorValue = extractFieldValue(studentRole, 'field_1682');
-        } else if (studentRole.field_1682) {
-          console.log("[Knack Script] Extracting tutor directly from field_1682...");
-          // Try direct extraction based on data type
+        // First try to get the raw ID from field_1682_raw which should have the actual IDs
+        if (studentRole.field_1682_raw && Array.isArray(studentRole.field_1682_raw) && studentRole.field_1682_raw.length > 0) {
+          console.log("[Knack Script] Extracting tutor ID from field_1682_raw...");
+          // Get the first tutor ID
+          tutorId = extractValidRecordId(studentRole.field_1682_raw[0]);
+          console.log(`[Knack Script] Extracted tutor ID from raw field: ${tutorId}`);
+        } 
+        // Fallback to other extraction methods
+        else if (studentRole.field_1682) {
+          console.log("[Knack Script] Attempting to extract tutor ID from field_1682...");
+          // Extract any valid Knack ID if possible
           if (Array.isArray(studentRole.field_1682)) {
-            if (studentRole.field_1682.length > 0) {
-              console.log("[Knack Script] field_1682 is an array:", studentRole.field_1682);
-              const firstItem = studentRole.field_1682[0];
-              if (typeof firstItem === 'object') {
-                tutorValue = firstItem.identifier || firstItem.email || firstItem.id;
-              } else {
-                tutorValue = firstItem;
+            for (const item of studentRole.field_1682) {
+              const possibleId = extractValidRecordId(item);
+              if (possibleId) {
+                tutorId = possibleId;
+                console.log(`[Knack Script] Found tutor ID in array: ${tutorId}`);
+                break;
               }
             }
           } else if (typeof studentRole.field_1682 === 'object') {
-            console.log("[Knack Script] field_1682 is an object:", studentRole.field_1682);
-            tutorValue = studentRole.field_1682.identifier || studentRole.field_1682.email || studentRole.field_1682.id;
-          } else {
-            tutorValue = studentRole.field_1682;
+            tutorId = extractValidRecordId(studentRole.field_1682);
+            console.log(`[Knack Script] Extracted tutor ID from object: ${tutorId}`);
           }
         }
         
-        if (tutorValue) {
-          tutorValue = sanitizeField(tutorValue);
-          // Format correctly for Knack connected field
-          data[FIELD_MAPPING.tutorConnection] = tutorValue;
-          console.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to: "${tutorValue}"`);
+        if (tutorId) {
+          // Use the ID directly - don't sanitize IDs
+          data[FIELD_MAPPING.tutorConnection] = tutorId;
+          console.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to ID: "${tutorId}"`);
         } else {
-          console.log("[Knack Script] Could not extract tutor value from student role");
+          console.log("[Knack Script] Could not extract valid tutor ID from student role");
         }
         
-        // Extract staff admin value with more extensive debugging
-        let staffAdminValue = null;
+        // Extract staff admin record ID (not email) - using the same approach as for tutors
+        let staffAdminId = null;
         
-        if (studentRole.field_190_raw) {
-          console.log("[Knack Script] Extracting staff admin from field_190_raw...");
-          staffAdminValue = extractFieldValue(studentRole, 'field_190');
-        } else if (studentRole.field_190) {
-          console.log("[Knack Script] Extracting staff admin directly from field_190...");
-          // Try direct extraction based on data type
+        // First try to get the raw ID from field_190_raw which should have the actual IDs
+        if (studentRole.field_190_raw && Array.isArray(studentRole.field_190_raw) && studentRole.field_190_raw.length > 0) {
+          console.log("[Knack Script] Extracting staff admin ID from field_190_raw...");
+          // Get the first staff admin ID
+          staffAdminId = extractValidRecordId(studentRole.field_190_raw[0]);
+          console.log(`[Knack Script] Extracted staff admin ID from raw field: ${staffAdminId}`);
+        } 
+        // Fallback to other extraction methods
+        else if (studentRole.field_190) {
+          console.log("[Knack Script] Attempting to extract staff admin ID from field_190...");
+          // Extract any valid Knack ID if possible
           if (Array.isArray(studentRole.field_190)) {
-            if (studentRole.field_190.length > 0) {
-              console.log("[Knack Script] field_190 is an array:", studentRole.field_190);
-              const firstItem = studentRole.field_190[0];
-              if (typeof firstItem === 'object') {
-                staffAdminValue = firstItem.identifier || firstItem.email || firstItem.id;
-              } else {
-                staffAdminValue = firstItem;
+            for (const item of studentRole.field_190) {
+              const possibleId = extractValidRecordId(item);
+              if (possibleId) {
+                staffAdminId = possibleId;
+                console.log(`[Knack Script] Found staff admin ID in array: ${staffAdminId}`);
+                break;
               }
             }
           } else if (typeof studentRole.field_190 === 'object') {
-            console.log("[Knack Script] field_190 is an object:", studentRole.field_190);
-            staffAdminValue = staffAdminValue = studentRole.field_190.identifier || studentRole.field_190.email || studentRole.field_190.id;
-          } else {
-            staffAdminValue = studentRole.field_190;
+            staffAdminId = extractValidRecordId(studentRole.field_190);
+            console.log(`[Knack Script] Extracted staff admin ID from object: ${staffAdminId}`);
           }
         }
         
-        if (staffAdminValue) {
-          staffAdminValue = sanitizeField(staffAdminValue);
-          // Format correctly for Knack connected field
-          data[FIELD_MAPPING.staffAdminConnection] = staffAdminValue;
-          console.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to: "${staffAdminValue}"`);
+        if (staffAdminId) {
+          // Use the ID directly - don't sanitize IDs
+          data[FIELD_MAPPING.staffAdminConnection] = staffAdminId;
+          console.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to ID: "${staffAdminId}"`);
         } else {
-          console.log("[Knack Script] Could not extract staff admin value from student role");
+          console.log("[Knack Script] Could not extract valid staff admin ID from student role");
         }
       } else {
         console.log("[Knack Script] No student role data found, cannot extract tutor or staff admin connections");
@@ -2114,5 +2102,6 @@
   }
 
 })(); // End of IIFE
+
 
 
