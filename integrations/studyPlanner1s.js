@@ -1145,23 +1145,52 @@
     }
   }
   
-  // Sanitize field for Knack use - ensure no HTML tags 
+  // Sanitize field for Knack use - ensure no HTML tags and properly extract emails 
   function sanitizeField(value) {
     if (value === null || value === undefined) return "";
     
     // Convert to string
     const strValue = String(value);
     
-    // Check if this is an HTML email link and extract just the email
+    // Look for multiple patterns of embedded emails
+    
+    // HTML email link pattern: <a href="mailto:example@domain.com">
     if (strValue.includes('href="mailto:')) {
       const emailMatch = strValue.match(/mailto:([^"]+)/i);
       if (emailMatch && emailMatch[1]) {
-        console.log(`[Knack Script] Extracted email from HTML link: ${emailMatch[1]}`);
+        console.log(`[Knack Script] Extracted email from mailto link: ${emailMatch[1]}`);
         return emailMatch[1];
       }
     }
     
-    // Otherwise, remove all HTML tags
+    // Different email link pattern sometimes used by Knack: <a href="email@domain.com">
+    if (strValue.includes('<a href="') && strValue.includes('@')) {
+      const emailMatch = strValue.match(/<a href="([^"]+@[^"]+)"/i);
+      if (emailMatch && emailMatch[1]) {
+        console.log(`[Knack Script] Extracted email from direct href link: ${emailMatch[1]}`);
+        return emailMatch[1];
+      }
+    }
+    
+    // Email in display text pattern: >email@domain.com<
+    if (strValue.includes('>') && strValue.includes('@') && strValue.includes('<')) {
+      const emailMatch = strValue.match(/>([^<>]+@[^<>]+)</i);
+      if (emailMatch && emailMatch[1]) {
+        console.log(`[Knack Script] Extracted email from display text: ${emailMatch[1]}`);
+        return emailMatch[1];
+      }
+    }
+    
+    // Plain email pattern: look for anything with @ that looks like an email
+    if (strValue.includes('@')) {
+      const emailMatch = strValue.match(/\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/);
+      if (emailMatch && emailMatch[1]) {
+        console.log(`[Knack Script] Extracted plain email: ${emailMatch[1]}`);
+        return emailMatch[1];
+      }
+    }
+    
+    // If no email patterns matched, remove all HTML tags
     let sanitized = strValue.replace(/<[^>]*?>/g, "");
     sanitized = sanitized.replace(/[*_~`#]/g, "");
     sanitized = sanitized
@@ -1532,30 +1561,35 @@
       const userProfileKeys = user.profile_keys || user.field_73 || [];
       console.log(`[Knack Script] User profile keys:`, userProfileKeys);
       
-      // Try to identify the student role ID directly from the user's account
-      const studentRoleId = Array.isArray(user.roles) && user.roles.find(role => role === 'object_6');
-      console.log(`[Knack Script] Student role ID from roles:`, studentRoleId);
-      
-      // Create a more specific filter to find student roles by email AND any unique identifiers we can find
-      const searchFilters = {
-        match: 'and',
-        rules: [
-          {
-            field: 'field_91', // Email field in object_6
-            operator: 'is',
-            value: user.email 
-          }
-        ]
-      };
-      
-      // Add user ID if we can determine it from the profile
-      if (studentRoleId) {
-        searchFilters.rules.push({
-          field: 'id',
-          operator: 'is',
-          value: studentRoleId
-        });
+  // Try to identify the student role ID directly from the user's account
+  const studentRoleId = Array.isArray(user.roles) && user.roles.find(role => role === 'object_6');
+  console.log(`[Knack Script] Student role ID from roles:`, studentRoleId);
+  
+  // Create a more specific filter to find student roles by email using multiple possible fields
+  // The issue is that the email might be in different fields depending on how the system is set up
+  const searchFilters = {
+    match: 'or',  // Use OR to match any email field
+    rules: [
+      // Try field_91 (primary email field in object_6)
+      {
+        field: 'field_91', 
+        operator: 'is',
+        value: user.email 
+      },
+      // Try field_70 (sometimes used for email)
+      {
+        field: 'field_70',
+        operator: 'is',
+        value: user.email
+      },
+      // Try a search in case email is embedded in another field
+      {
+        field: 'field_91',
+        operator: 'contains',
+        value: user.email
       }
+    ]
+  };
       
       const studentRoleFilters = encodeURIComponent(JSON.stringify(searchFilters));
       console.log(`[Knack Script] Using student role filter:`, JSON.stringify(searchFilters, null, 2));
@@ -2072,5 +2106,4 @@
   }
 
 })(); // End of IIFE
-
 
