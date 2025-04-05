@@ -1287,12 +1287,18 @@
       let vespaCustomerId = user.schoolId || user.vespaCustomerId;
       if (session.field_2473 && isValidKnackId(session.field_2473)) {
         vespaCustomerId = session.field_2473;
+        console.log(`[Knack Script] Using VESPA Customer ID from message data: ${vespaCustomerId}`);
+      } else if (vespaCustomerId) {
+        console.log(`[Knack Script] Using VESPA Customer ID from user object: ${vespaCustomerId}`);
       }
       
       // For Staff Admin field_2474 - use the staff admin record ID
       let staffAdminId = user.staffAdminId;
       if (session.field_2474 && isValidKnackId(session.field_2474)) {
-        staffAdminId = session.field_2474; 
+        staffAdminId = session.field_2474;
+        console.log(`[Knack Script] Using Staff Admin ID from message data: ${staffAdminId}`);
+      } else if (staffAdminId) {
+        console.log(`[Knack Script] Using Staff Admin ID from user object: ${staffAdminId}`);
       }
       
       // For Tutor field_2476 - use the tutor record ID - MOST IMPORTANT
@@ -1300,7 +1306,7 @@
       if (session.field_2476 && isValidKnackId(session.field_2476)) {
         tutorId = session.field_2476;
         console.log(`[Knack Script] Using tutor ID from message data: ${tutorId}`);
-      } else if (user.teacherId) {
+      } else if (tutorId) {
         console.log(`[Knack Script] Using tutor ID from user object: ${tutorId}`);
       }
       
@@ -1822,7 +1828,7 @@
     const userEmail = data.userEmail;
     const lookups = data.lookups || [];
     
-    // Store the lookup results
+    // Store the lookup results - now including record IDs
     const results = {};
     
     try {
@@ -1832,10 +1838,27 @@
         try {
           const vespaCustomerResult = await lookupRecordByEmail('object_3', 'field_70', userEmail);
           if (vespaCustomerResult.success && vespaCustomerResult.record) {
+            // Get both display value and record ID
             const vespaCustomerValue = extractFieldValue(vespaCustomerResult.record, 'field_122');
+            
+            // Get record ID directly from raw field if available
+            let vespaCustomerId = null;
+            if (vespaCustomerResult.record.field_122_raw && 
+                Array.isArray(vespaCustomerResult.record.field_122_raw) && 
+                vespaCustomerResult.record.field_122_raw.length > 0) {
+              vespaCustomerId = extractValidRecordId(vespaCustomerResult.record.field_122_raw[0]);
+            }
+            
+            // Add text value
             if (vespaCustomerValue) {
               results[vespaCustomerLookup.targetField] = vespaCustomerValue;
               console.log(`[Knack Script] Found VESPA Customer: ${vespaCustomerValue}`);
+            }
+            
+            // Add ID - important for Knack connection fields
+            if (vespaCustomerId) {
+              results[vespaCustomerLookup.targetField + "_id"] = vespaCustomerId;
+              console.log(`[Knack Script] Found VESPA Customer ID: ${vespaCustomerId}`);
             }
           }
         } catch (error) {
@@ -1849,29 +1872,74 @@
         try {
           const studentResult = await lookupRecordByEmail('object_6', 'field_70', userEmail);
           if (studentResult.success && studentResult.record) {
-            // Extract tutor email
+            // Extract tutor email and ID
             const tutorLookup = lookups.find(l => l.extractField === 'field_1682');
             if (tutorLookup) {
               const tutorValue = extractFieldValue(studentResult.record, 'field_1682');
+              
+              // Get tutor ID directly from raw field
+              let tutorId = null;
+              if (studentResult.record.field_1682_raw && 
+                  Array.isArray(studentResult.record.field_1682_raw) && 
+                  studentResult.record.field_1682_raw.length > 0) {
+                tutorId = extractValidRecordId(studentResult.record.field_1682_raw[0]);
+              }
+              
+              // Add text value
               if (tutorValue) {
                 results[tutorLookup.targetField] = tutorValue;
                 console.log(`[Knack Script] Found Tutor: ${tutorValue}`);
               }
+              
+              // Add ID - important for Knack connection fields
+              if (tutorId) {
+                results[tutorLookup.targetField + "_id"] = tutorId;
+                console.log(`[Knack Script] Found Tutor ID: ${tutorId}`);
+              }
             }
             
-            // Extract staff admin email
+            // Extract staff admin email and ID
             const staffAdminLookup = lookups.find(l => l.extractField === 'field_190');
             if (staffAdminLookup) {
               const staffAdminValue = extractFieldValue(studentResult.record, 'field_190');
+              
+              // Get staff admin ID directly from raw field
+              let staffAdminId = null;
+              if (studentResult.record.field_190_raw && 
+                  Array.isArray(studentResult.record.field_190_raw) && 
+                  studentResult.record.field_190_raw.length > 0) {
+                staffAdminId = extractValidRecordId(studentResult.record.field_190_raw[0]);
+              }
+              
+              // Add text value
               if (staffAdminValue) {
                 results[staffAdminLookup.targetField] = staffAdminValue;
                 console.log(`[Knack Script] Found Staff Admin: ${staffAdminValue}`);
               }
+              
+              // Add ID - important for Knack connection fields
+              if (staffAdminId) {
+                results[staffAdminLookup.targetField + "_id"] = staffAdminId;
+                console.log(`[Knack Script] Found Staff Admin ID: ${staffAdminId}`);
+              }
+            }
+            
+            // Add user account ID
+            if (studentResult.record.id) {
+              // Use the student record ID directly
+              results["user_account_id"] = studentResult.record.id;
+              console.log(`[Knack Script] Found User Account ID: ${studentResult.record.id}`);
             }
           }
         } catch (error) {
           console.error('[Knack Script] Error looking up Student record:', error);
         }
+      }
+      
+      // Log all the results for debugging
+      console.log("[Knack Script] Complete connection fields lookup results:");
+      for (const [key, value] of Object.entries(results)) {
+        console.log(`- ${key}: ${value}`);
       }
       
       // Send the results back to the React app
@@ -2102,6 +2170,5 @@
   }
 
 })(); // End of IIFE
-
 
 
