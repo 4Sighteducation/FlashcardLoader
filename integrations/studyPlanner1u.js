@@ -1663,22 +1663,22 @@
       };
       
       // Add User Account connection (field_3044) - uses the user's email
-      // Format as array for Knack connected field
+      // Format correctly for Knack connected field
       const userEmailSanitized = sanitizeField(user.email);
-      data[FIELD_MAPPING.teacherConnection] = [userEmailSanitized];
-      console.log(`[Knack Script] Setting User Account connection (field_3044) to: [${userEmailSanitized}]`);
+      data[FIELD_MAPPING.teacherConnection] = userEmailSanitized;
+      console.log(`[Knack Script] Setting User Account connection (field_3044) to: "${userEmailSanitized}"`);
       
       // Add VESPA Customer connection (field_3043) from user account
-      // Format as array for Knack connected field
+      // Format correctly for Knack connected field
       if (user.schoolId) {
-        data[FIELD_MAPPING.vespaCustomer] = [user.schoolId];
-        console.log(`[Knack Script] Setting VESPA Customer (${FIELD_MAPPING.vespaCustomer}) to: [${user.schoolId}]`);
+        data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
+        console.log(`[Knack Script] Setting VESPA Customer (${FIELD_MAPPING.vespaCustomer}) to: "${user.schoolId}"`);
       } else if (studentRole && studentRole.field_122_raw) {
         // Try to get school from student role if available
         const schoolId = extractValidRecordId(studentRole.field_122_raw);
         if (schoolId) {
-          data[FIELD_MAPPING.vespaCustomer] = [schoolId];
-          console.log(`[Knack Script] Setting VESPA Customer from student role to: [${schoolId}]`);
+          data[FIELD_MAPPING.vespaCustomer] = schoolId;
+          console.log(`[Knack Script] Setting VESPA Customer from student role to: "${schoolId}"`);
         }
       }
       
@@ -1725,9 +1725,9 @@
         
         if (tutorValue) {
           tutorValue = sanitizeField(tutorValue);
-          // Format as array for Knack connected field
-          data[FIELD_MAPPING.tutorConnection] = [tutorValue];
-          console.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to: [${tutorValue}]`);
+          // Format correctly for Knack connected field
+          data[FIELD_MAPPING.tutorConnection] = tutorValue;
+          console.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to: "${tutorValue}"`);
         } else {
           console.log("[Knack Script] Could not extract tutor value from student role");
         }
@@ -1761,9 +1761,9 @@
         
         if (staffAdminValue) {
           staffAdminValue = sanitizeField(staffAdminValue);
-          // Format as array for Knack connected field
-          data[FIELD_MAPPING.staffAdminConnection] = [staffAdminValue];
-          console.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to: [${staffAdminValue}]`);
+          // Format correctly for Knack connected field
+          data[FIELD_MAPPING.staffAdminConnection] = staffAdminValue;
+          console.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to: "${staffAdminValue}"`);
         } else {
           console.log("[Knack Script] Could not extract staff admin value from student role");
         }
