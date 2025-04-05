@@ -2116,6 +2116,44 @@ if (studentId) {
     }
   }
   
+  // Get the user's StudyPlan record to use for connection fields
+  async function getUserStudyPlanRecord(userId) {
+    console.log(`[Knack Script] Fetching StudyPlan record for user ${userId}`);
+    
+    // Look up the user's record in STUDYPLANNER_OBJECT (object_110) by userId field
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: FIELD_MAPPING.userId, operator: 'is', value: userId }]
+    }));
+    
+    const apiCall = () => new Promise((resolve, reject) => {
+      $.ajax({
+        url: `${KNACK_API_URL}/objects/${STUDYPLANNER_OBJECT}/records?filters=${filters}`,
+        type: 'GET',
+        headers: saveQueue.getKnackHeaders(),
+        data: { format: 'raw' },
+        success: function(response) {
+          if (response && response.records && response.records.length > 0) {
+            resolve(response.records[0]);
+          } else {
+            resolve(null);
+          }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          const error = new Error(`Failed to fetch StudyPlan record: ${jqXHR.status} ${errorThrown}`);
+          reject(error);
+        }
+      });
+    });
+    
+    try {
+      return await retryApiCall(apiCall);
+    } catch (error) {
+      console.error(`[Knack Script] Error fetching StudyPlan record:`, error);
+      return null;
+    }
+  }
+  
   // Helper function to lookup a record by email
   async function lookupRecordByEmail(objectKey, emailField, email) {
     if (!email) {
@@ -2321,4 +2359,5 @@ if (studentId) {
   }
 
 })(); // End of IIFE
+
 
