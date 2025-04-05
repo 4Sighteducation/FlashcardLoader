@@ -2029,6 +2029,20 @@ if (studentId) {
                 }
               }
               
+              // If we don't have valid IDs yet but have an email, look up the tutor record by email
+              if (tutorIds.length === 0 && tutorValue && tutorValue.includes('@')) {
+                try {
+                  console.log(`[Knack Script] Looking up tutor record for email: ${tutorValue}`);
+                  const tutorRecord = await lookupRecordByEmail('object_6', 'field_91', tutorValue);
+                  if (tutorRecord.success && tutorRecord.record && tutorRecord.record.id) {
+                    tutorIds = [tutorRecord.record.id];
+                    console.log(`[Knack Script] Found tutor record ID from email lookup: ${tutorRecord.record.id}`);
+                  }
+                } catch (err) {
+                  console.error(`[Knack Script] Error looking up tutor record by email:`, err);
+                }
+              }
+              
               // Add text value
               if (tutorValue) {
                 results[tutorLookup.targetField] = tutorValue;
@@ -2059,6 +2073,20 @@ if (studentId) {
                   
                 if (staffAdminIds.length > 0) {
                   console.log(`[Knack Script] Found ${staffAdminIds.length} Staff Admin IDs: ${staffAdminIds.join(', ')}`);
+                }
+              }
+              
+              // If we don't have valid IDs yet but have an email, look up the staff admin record by email
+              if (staffAdminIds.length === 0 && staffAdminValue && staffAdminValue.includes('@')) {
+                try {
+                  console.log(`[Knack Script] Looking up staff admin record for email: ${staffAdminValue}`);
+                  const staffAdminRecord = await lookupRecordByEmail('object_6', 'field_91', staffAdminValue);
+                  if (staffAdminRecord.success && staffAdminRecord.record && staffAdminRecord.record.id) {
+                    staffAdminIds = [staffAdminRecord.record.id];
+                    console.log(`[Knack Script] Found staff admin record ID from email lookup: ${staffAdminRecord.record.id}`);
+                  }
+                } catch (err) {
+                  console.error(`[Knack Script] Error looking up staff admin record by email:`, err);
                 }
               }
               
@@ -2162,13 +2190,29 @@ if (studentId) {
     
     console.log(`[Knack Script] Looking up ${objectKey} record by email: ${email}`);
     
-    // Create filter to find by email
+    // Create filter to find by email - use both exact match and contains for better results
     const filters = encodeURIComponent(JSON.stringify({
-      match: 'and',
+      match: 'or',
       rules: [
         {
           field: emailField,
           operator: 'is',
+          value: email
+        },
+        {
+          field: emailField,
+          operator: 'contains',
+          value: email
+        },
+        // Also try field_70 which is sometimes used for email
+        {
+          field: 'field_70',
+          operator: 'is',
+          value: email
+        },
+        {
+          field: 'field_70',
+          operator: 'contains',
           value: email
         }
       ]
@@ -2359,5 +2403,3 @@ if (studentId) {
   }
 
 })(); // End of IIFE
-
-
