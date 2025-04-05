@@ -2179,9 +2179,11 @@
           url: `${KNACK_API_URL}/objects/${STUDYPLANNER_OBJECT}/records?filters=${filters}`,
           type: 'GET',
           headers: saveQueue.getKnackHeaders(),
-          data: { format: 'raw' },
+          data: { format: 'raw' }, // Request raw format to get connection IDs
           success: function(response) {
             if (response && response.records && response.records.length > 0) {
+              // *** ADDED LOGGING HERE ***
+              debugLog('[Knack Script] Raw StudyPlan Record Fetched in getUserStudyPlanRecord', response.records[0]);
               resolve(response.records[0]);
             } else {
               resolve(null);
