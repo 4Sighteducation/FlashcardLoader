@@ -1215,6 +1215,11 @@
     try {
       console.log(`[Knack Script] Creating tutor shared session record for: ${session.sessionId}`);
       
+      // IMPORTANT IMPROVEMENT: First fetch the user's StudyPlan record to get exact connection fields
+      // This ensures we're using the same connections that worked when creating object_110
+      const studyPlanRecord = await getUserStudyPlanRecord(user.id);
+      console.log(`[Knack Script] Retrieved user's StudyPlan record for connection fields: ${studyPlanRecord ? "Success" : "Failed"}`);
+      
       // Format session data for Knack object_90
       let startDate = null;
       let startTime = null;
@@ -2316,3 +2321,4 @@ if (studentId) {
   }
 
 })(); // End of IIFE
+
