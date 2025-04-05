@@ -1003,6 +1003,10 @@
     const recordId = messageData.recordId || data?.recordId;
     const sessions = messageData.sessions || data?.sessions;
     
+    // Extract the student name from the message data - this will be used when creating sessions
+    const studentName = messageData.studentName || "";
+    console.log(`[Knack Script] Extracted student name from message data: ${studentName}`);
+    
     if (!recordId) {
       console.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing recordId.");
       if (iframeWindow) iframeWindow.postMessage({ 
@@ -1339,6 +1343,12 @@
         [TUTOR_SHARING_FIELDS.deleteFlag]: "No",
         [TUTOR_SHARING_FIELDS.sessionId]: session.sessionId
       };
+      
+      // Make sure we use the user.name directly for the studentName field if available
+      if (user.name) {
+        data[TUTOR_SHARING_FIELDS.studentName] = sanitizeField(user.name);
+        console.log(`[Knack Script] Setting Student Name field (${TUTOR_SHARING_FIELDS.studentName}) to: "${user.name}"`);
+      }
       
       // Only add connection fields if they have valid IDs - these must be record IDs
       if (vespaCustomerId) {
