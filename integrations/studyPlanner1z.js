@@ -1323,13 +1323,64 @@
         console.log(`[Knack Script] Using Staff Admin ID from user object: ${staffAdminId}`);
       }
       
-      // For Tutor field_2476 - use the tutor record ID - MOST IMPORTANT
-      let tutorId = user.teacherId;
-      if (session.field_2476 && isValidKnackId(session.field_2476)) {
-        tutorId = session.field_2476;
-        console.log(`[Knack Script] Using tutor ID from message data: ${tutorId}`);
-      } else if (tutorId) {
-        console.log(`[Knack Script] Using tutor ID from user object: ${tutorId}`);
+      // For Tutor field_2476 - support multiple tutor IDs (it's a multi-connection field)
+      let tutorIds = [];
+      
+      // First check if we have tutor IDs from the message data (might be an array)
+      if (session.field_2476) {
+        if (Array.isArray(session.field_2476)) {
+          // Filter array for valid Knack IDs
+          tutorIds = session.field_2476.filter(id => isValidKnackId(id));
+          console.log(`[Knack Script] Using array of tutor IDs from message data: ${tutorIds.join(', ')}`);
+        } else if (isValidKnackId(session.field_2476)) {
+          // Single ID as string
+          tutorIds = [session.field_2476];
+          console.log(`[Knack Script] Using single tutor ID from message data: ${session.field_2476}`);
+        }
+      } 
+      // Next try field_2476_id (which might come from lookupConnectionFields)
+      else if (session.field_2476_id) {
+        if (Array.isArray(session.field_2476_id)) {
+          tutorIds = session.field_2476_id.filter(id => isValidKnackId(id));
+          console.log(`[Knack Script] Using array of tutor IDs from field_2476_id: ${tutorIds.join(', ')}`);
+        } else if (isValidKnackId(session.field_2476_id)) {
+          tutorIds = [session.field_2476_id];
+          console.log(`[Knack Script] Using single tutor ID from field_2476_id: ${session.field_2476_id}`);
+        }
+      }
+      // Fall back to user's teacherId as last resort 
+      else if (user.teacherId) {
+        tutorIds = [user.teacherId];
+        console.log(`[Knack Script] Using tutor ID from user object: ${user.teacherId}`);
+      }
+      
+      // For Staff Admin field_2474 - follow the same pattern for multiple connections
+      let staffAdminIds = [];
+      
+      // Check for staff admin IDs from message data
+      if (session.field_2474) {
+        if (Array.isArray(session.field_2474)) {
+          staffAdminIds = session.field_2474.filter(id => isValidKnackId(id));
+          console.log(`[Knack Script] Using array of staff admin IDs from message data: ${staffAdminIds.join(', ')}`);
+        } else if (isValidKnackId(session.field_2474)) {
+          staffAdminIds = [session.field_2474];
+          console.log(`[Knack Script] Using single staff admin ID from message data: ${session.field_2474}`);
+        }
+      } 
+      // Try field_2474_id from lookupConnectionFields
+      else if (session.field_2474_id) {
+        if (Array.isArray(session.field_2474_id)) {
+          staffAdminIds = session.field_2474_id.filter(id => isValidKnackId(id));
+          console.log(`[Knack Script] Using array of staff admin IDs from field_2474_id: ${staffAdminIds.join(', ')}`);
+        } else if (isValidKnackId(session.field_2474_id)) {
+          staffAdminIds = [session.field_2474_id];
+          console.log(`[Knack Script] Using single staff admin ID from field_2474_id: ${session.field_2474_id}`);
+        }
+      }
+      // Fall back to user's staffAdminId
+      else if (user.staffAdminId) {
+        staffAdminIds = [user.staffAdminId]; 
+        console.log(`[Knack Script] Using staff admin ID from user object: ${user.staffAdminId}`);
       }
       
       // Prepare data for object_90 with proper connection field formats - using RECORD IDs for connected fields
@@ -1355,8 +1406,11 @@
         data[TUTOR_SHARING_FIELDS.vespaCustomer] = vespaCustomerId;
       }
       
-      if (staffAdminId) {
-        data[TUTOR_SHARING_FIELDS.staffAdmin] = staffAdminId;
+      // Add Staff Admin connection field (can be multiple)
+      if (staffAdminIds && staffAdminIds.length > 0) {
+        data[TUTOR_SHARING_FIELDS.staffAdmin] = staffAdminIds.length === 1 ? 
+          staffAdminIds[0] : staffAdminIds;
+        console.log(`[Knack Script] Setting Staff Admin connection to ${staffAdminIds.length} ID(s)`);
       }
       
 // Find the student record ID if we still don't have it
@@ -1396,21 +1450,28 @@ if (studentId) {
   // Do not set the field if we don't have a valid ID - it would cause errors
 }
       
-      if (tutorId) {
-        data[TUTOR_SHARING_FIELDS.tutor] = tutorId;
+      // Add Tutor connection field(s) - handle as a multi-connection field
+      if (tutorIds && tutorIds.length > 0) {
+        // If only one ID, use string format, otherwise use array format
+        // Knack expects different formats based on whether it's a single or multiple selection
+        data[TUTOR_SHARING_FIELDS.tutor] = tutorIds.length === 1 ? 
+          tutorIds[0] : tutorIds;
+        console.log(`[Knack Script] Setting Tutor connection to ${tutorIds.length} ID(s)`);
       }
       
       // Enhanced debugging for connection fields
       console.log("[Knack Script] Connection fields for Knack integration:");
       console.log(`- field_2473 (VESPA Customer): "${vespaCustomerId || 'Not set'}"`);
-      console.log(`- field_2474 (Staff Admin): "${staffAdminId || 'Not set'}"`);
+      console.log(`- field_2474 (Staff Admin): ${staffAdminIds.length > 0 ? 
+          `${staffAdminIds.length} ID(s): ${staffAdminIds.join(', ')}` : 'Not set'}`);
       console.log(`- field_2475 (User Connection): "${studentId || 'Not set'}"`);
-      console.log(`- field_2476 (Tutor): "${tutorId || 'Not set'}"`);
+      console.log(`- field_2476 (Tutor): ${tutorIds.length > 0 ? 
+          `${tutorIds.length} ID(s): ${tutorIds.join(', ')}` : 'Not set'}`);
       
       debugLog("[Knack Script] Complete record data", data);
       
       // Create the record in Knack with proper connection formats
-      console.log(`[Knack Script] Submitting session record with field_2475 (User Connection): ${studentId} and field_2476 (Tutor): ${tutorId}`);
+      console.log(`[Knack Script] Submitting session record with field_2475 (User Connection): ${studentId} and field_2476 (Tutor): ${tutorIds.length > 0 ? tutorIds.join(', ') : 'None'}`);
       
       const apiCall = () => new Promise((resolve, reject) => {
         $.ajax({
@@ -1933,17 +1994,34 @@ if (studentId) {
         try {
           const studentResult = await lookupRecordByEmail('object_6', 'field_70', userEmail);
           if (studentResult.success && studentResult.record) {
-            // Extract tutor email and ID
+            // Get student name value to ensure it's properly included
+            if (studentResult.record.field_69) {
+              const studentName = studentResult.record.field_69.full || 
+                               `${studentResult.record.field_69.first || ''} ${studentResult.record.field_69.last || ''}`.trim();
+              if (studentName) {
+                results["studentName"] = sanitizeField(studentName);
+                console.log(`[Knack Script] Found Student Name: ${studentName}`);
+              }
+            }
+            
+            // Extract tutor email and IDs - handle multiple connections
             const tutorLookup = lookups.find(l => l.extractField === 'field_1682');
             if (tutorLookup) {
               const tutorValue = extractFieldValue(studentResult.record, 'field_1682');
               
-              // Get tutor ID directly from raw field
-              let tutorId = null;
+              // Get tutor IDs directly from raw field - handle as array for multiple connections
+              let tutorIds = [];
               if (studentResult.record.field_1682_raw && 
-                  Array.isArray(studentResult.record.field_1682_raw) && 
-                  studentResult.record.field_1682_raw.length > 0) {
-                tutorId = extractValidRecordId(studentResult.record.field_1682_raw[0]);
+                  Array.isArray(studentResult.record.field_1682_raw)) {
+                  
+                // Extract all valid IDs from the array
+                tutorIds = studentResult.record.field_1682_raw
+                  .map(item => extractValidRecordId(item))
+                  .filter(id => id); // Filter out null/undefined values
+                
+                if (tutorIds.length > 0) {
+                  console.log(`[Knack Script] Found ${tutorIds.length} Tutor IDs: ${tutorIds.join(', ')}`);
+                }
               }
               
               // Add text value
@@ -1952,24 +2030,31 @@ if (studentId) {
                 console.log(`[Knack Script] Found Tutor: ${tutorValue}`);
               }
               
-              // Add ID - important for Knack connection fields
-              if (tutorId) {
-                results[tutorLookup.targetField + "_id"] = tutorId;
-                console.log(`[Knack Script] Found Tutor ID: ${tutorId}`);
+              // Add ID array - important for Knack connection fields
+              if (tutorIds.length > 0) {
+                results[tutorLookup.targetField + "_id"] = tutorIds;
+                console.log(`[Knack Script] Found Tutor IDs: ${JSON.stringify(tutorIds)}`);
               }
             }
             
-            // Extract staff admin email and ID
+            // Extract staff admin email and IDs - handle multiple connections
             const staffAdminLookup = lookups.find(l => l.extractField === 'field_190');
             if (staffAdminLookup) {
               const staffAdminValue = extractFieldValue(studentResult.record, 'field_190');
               
-              // Get staff admin ID directly from raw field
-              let staffAdminId = null;
+              // Get staff admin IDs directly from raw field - handle as array for multiple connections
+              let staffAdminIds = [];
               if (studentResult.record.field_190_raw && 
-                  Array.isArray(studentResult.record.field_190_raw) && 
-                  studentResult.record.field_190_raw.length > 0) {
-                staffAdminId = extractValidRecordId(studentResult.record.field_190_raw[0]);
+                  Array.isArray(studentResult.record.field_190_raw)) {
+                  
+                // Extract all valid IDs from the array
+                staffAdminIds = studentResult.record.field_190_raw
+                  .map(item => extractValidRecordId(item))
+                  .filter(id => id); // Filter out null/undefined values
+                  
+                if (staffAdminIds.length > 0) {
+                  console.log(`[Knack Script] Found ${staffAdminIds.length} Staff Admin IDs: ${staffAdminIds.join(', ')}`);
+                }
               }
               
               // Add text value
@@ -1978,18 +2063,18 @@ if (studentId) {
                 console.log(`[Knack Script] Found Staff Admin: ${staffAdminValue}`);
               }
               
-              // Add ID - important for Knack connection fields
-              if (staffAdminId) {
-                results[staffAdminLookup.targetField + "_id"] = staffAdminId;
-                console.log(`[Knack Script] Found Staff Admin ID: ${staffAdminId}`);
+              // Add ID array - important for Knack connection fields
+              if (staffAdminIds.length > 0) {
+                results[staffAdminLookup.targetField + "_id"] = staffAdminIds;
+                console.log(`[Knack Script] Found Staff Admin IDs: ${JSON.stringify(staffAdminIds)}`);
               }
             }
             
-            // Add user account ID
+            // Add student record ID as user account ID (critical for object_6 connection)
             if (studentResult.record.id) {
               // Use the student record ID directly
               results["user_account_id"] = studentResult.record.id;
-              console.log(`[Knack Script] Found User Account ID: ${studentResult.record.id}`);
+              console.log(`[Knack Script] Found Student Record ID (for User Connection): ${studentResult.record.id}`);
             }
           }
         } catch (error) {
