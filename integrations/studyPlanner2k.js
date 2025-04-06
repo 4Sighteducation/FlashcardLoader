@@ -1351,7 +1351,12 @@
         // Extract field values from StudyPlan record if available
         if (studyPlanRecord) {
           console.log("[Knack Script] Extracting connection fields from StudyPlan record");
-          
+           // *** NEW DEBUG LOGS ***
+           console.log(`[Knack Script Debug] Checking studyPlanRecord.field_3058_raw:`, studyPlanRecord.hasOwnProperty('field_3058_raw'), typeof studyPlanRecord.field_3058_raw, Array.isArray(studyPlanRecord.field_3058_raw));
+           if(studyPlanRecord.field_3058_raw) console.log(`[Knack Script Debug] studyPlanRecord.field_3058_raw content:`, JSON.stringify(studyPlanRecord.field_3058_raw));
+           console.log(`[Knack Script Debug] Checking studyPlanRecord.field_3059_raw:`, studyPlanRecord.hasOwnProperty('field_3059_raw'), typeof studyPlanRecord.field_3059_raw, Array.isArray(studyPlanRecord.field_3059_raw));
+            if(studyPlanRecord.field_3059_raw) console.log(`[Knack Script Debug] studyPlanRecord.field_3059_raw content:`, JSON.stringify(studyPlanRecord.field_3059_raw));
+           // *** END NEW DEBUG LOGS ***
           // Extract VESPA Customer ID (field_3043 -> field_2473)
           if (studyPlanRecord.field_3043_raw && Array.isArray(studyPlanRecord.field_3043_raw) && studyPlanRecord.field_3043_raw.length > 0) {
             vespaCustomerId = extractValidRecordId(studyPlanRecord.field_3043_raw[0]);
@@ -2417,3 +2422,4 @@
     }
   
   })(); // End of IIFE
+
