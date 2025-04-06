@@ -1369,7 +1369,14 @@
           // Extract Tutor ID(s) (field_3058 -> field_2476) - Handles multiple
           if (studyPlanRecord.field_3058_raw && Array.isArray(studyPlanRecord.field_3058_raw) && studyPlanRecord.field_3058_raw.length > 0) {
             const tutorIds = studyPlanRecord.field_3058_raw
-              .map(item => extractValidRecordId(item))
+              .map(item => {
+                    // *** ADDED DETAILED LOGGING ***
+                    console.log('[Knack Script] Mapping Tutor item:', JSON.stringify(item));
+                    const extractedId = extractValidRecordId(item);
+                    console.log(`[Knack Script] Extracted ID for item: ${extractedId}`);
+                    return extractedId;
+                    // *** END ADDED LOGGING ***
+                 })
               .filter(id => id); // Remove null/undefined values
             if (tutorIds.length > 0) {
               tutorId = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
