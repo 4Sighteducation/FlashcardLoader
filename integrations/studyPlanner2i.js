@@ -1268,6 +1268,9 @@
         // This provides the connection field IDs that are already working in object_110
         const studyPlanRecord = await getUserStudyPlanRecord(user.id);
         console.log(`[Knack Script] Retrieved user's StudyPlan record for connection fields: ${studyPlanRecord ? "Success" : "Failed"}`);
+        // *** ADDED LOGGING HERE ***
+        debugLog('[Knack Script] StudyPlanRecord as received in createTutorSharedSession', studyPlanRecord);
+        // *** END ADDED LOGGING ***
         
         // Format session data for Knack object_90
         let startDate = null;
@@ -1838,33 +1841,18 @@
           let tutorId = null; // Can be single ID or array
           if (studentRole.field_1682_raw && Array.isArray(studentRole.field_1682_raw) && studentRole.field_1682_raw.length > 0) {
              console.log("[Knack Script] Extracting tutor IDs from field_1682_raw...");
-             // Extract all valid tutor IDs
+             // *** MODIFIED LOGIC TO CORRECTLY MAP ALL IDs ***
              const tutorIds = studentRole.field_1682_raw
-               .map(item => extractValidRecordId(item))
+               .map(item => extractValidRecordId(item)) // Directly map using the function
                .filter(id => id); // Remove null/undefined values
              if (tutorIds.length > 0) {
                // Use single ID directly for one connection, or array for multiple
                tutorId = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
-               console.log(`[Knack Script] Extracted ${tutorIds.length} tutor ID(s): ${JSON.stringify(tutorIds)}`);
+               console.log(`[Knack Script] Extracted ${tutorIds.length} tutor ID(s) from _raw: ${JSON.stringify(tutorIds)}`); // Use tutorIds here for logging
              }
-          } 
-          // Fallback to other extraction methods (less reliable for multiple connections)
-          else if (studentRole.field_1682) {
-            console.log("[Knack Script] Attempting to extract tutor ID from field_1682 (fallback)...");
-            if (Array.isArray(studentRole.field_1682)) {
-              for (const item of studentRole.field_1682) {
-                const possibleId = extractValidRecordId(item);
-                if (possibleId) {
-                  tutorId = possibleId;
-                  console.log(`[Knack Script] Found tutor ID in array (fallback): ${tutorId}`);
-                  break; // Only take the first one in this fallback
-                }
-              }
-            } else if (typeof studentRole.field_1682 === 'object') {
-              tutorId = extractValidRecordId(studentRole.field_1682);
-              console.log(`[Knack Script] Extracted tutor ID from object (fallback): ${tutorId}`);
-            }
           }
+          // REMOVED Unreliable Fallback Logic for Tutors
+          // else if (studentRole.field_1682) { ... }
           
           if (tutorId) {
             // Use the ID or array of IDs directly
@@ -1879,33 +1867,18 @@
           let staffAdminId = null; // Can be single ID or array
           if (studentRole.field_190_raw && Array.isArray(studentRole.field_190_raw) && studentRole.field_190_raw.length > 0) {
             console.log("[Knack Script] Extracting staff admin IDs from field_190_raw...");
-             // Extract all valid staff admin IDs
+             // *** MODIFIED LOGIC TO CORRECTLY MAP ALL IDs ***
              const staffAdminIds = studentRole.field_190_raw
-               .map(item => extractValidRecordId(item))
+               .map(item => extractValidRecordId(item)) // Directly map using the function
                .filter(id => id); // Remove null/undefined values
              if (staffAdminIds.length > 0) {
                // Use single ID directly for one connection, or array for multiple
                staffAdminId = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
-               console.log(`[Knack Script] Extracted ${staffAdminIds.length} staff admin ID(s): ${JSON.stringify(staffAdminIds)}`);
+               console.log(`[Knack Script] Extracted ${staffAdminIds.length} staff admin ID(s) from _raw: ${JSON.stringify(staffAdminIds)}`); // Use staffAdminIds here for logging
              }
-          } 
-          // Fallback to other extraction methods (less reliable for multiple connections)
-          else if (studentRole.field_190) {
-            console.log("[Knack Script] Attempting to extract staff admin ID from field_190 (fallback)...");
-            if (Array.isArray(studentRole.field_190)) {
-              for (const item of studentRole.field_190) {
-                const possibleId = extractValidRecordId(item);
-                if (possibleId) {
-                  staffAdminId = possibleId;
-                  console.log(`[Knack Script] Found staff admin ID in array (fallback): ${staffAdminId}`);
-                  break; // Only take the first one in this fallback
-                }
-              }
-            } else if (typeof studentRole.field_190 === 'object') {
-              staffAdminId = extractValidRecordId(studentRole.field_190);
-              console.log(`[Knack Script] Extracted staff admin ID from object (fallback): ${staffAdminId}`);
-            }
           }
+          // REMOVED Unreliable Fallback Logic for Staff Admins
+          // else if (studentRole.field_190) { ... }
           
           if (staffAdminId) {
             // Use the ID or array of IDs directly
