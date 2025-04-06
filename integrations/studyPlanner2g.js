@@ -1,4 +1,4 @@
-// StudyPlanner 2.0 - Knack Integration Script - v1.0
+ // StudyPlanner 2.0 - Knack Integration Script - v1.0
 // This script must be added to Knack builder to enable communication between Knack and the embedded React app
 (function() {
     // REMOVED: Initial config check - Loader will provide config before calling init.
