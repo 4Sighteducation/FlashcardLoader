@@ -952,6 +952,14 @@
     debugLog("[Knack Script] Data received for SAVE_DATA:", data);
 
     try {
+      // Check if this is a session synchronization
+      if (data.session) {
+        console.log("[Knack Script] Detected session data in SAVE_DATA request", data.session);
+        
+        // We'll still save the entire studyPlan, but we can log that we detected a session
+        console.log("[Knack Script] Processing session synchronization for session:", data.session.id);
+      }
+      
       await saveQueue.addToQueue({
         type: 'studyPlan',
         data: data.studyPlan,
@@ -961,7 +969,14 @@
 
       console.log(`[Knack Script] SAVE_DATA for record ${data.recordId} added to queue.`);
       // Post success message optimistically after queuing
-      if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: true, queued: true, timestamp: new Date().toISOString() }, origin);
+      if (iframeWindow) iframeWindow.postMessage({ 
+        type: 'SAVE_RESULT', 
+        success: true, 
+        queued: true, 
+        timestamp: new Date().toISOString(),
+        // If this was a session sync, include the session ID in the response
+        sessionId: data.session?.id
+      }, origin);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[Knack Script] SAVE_DATA failed for record ${data.recordId} during queueing:`, errorMessage);
