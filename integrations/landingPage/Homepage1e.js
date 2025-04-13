@@ -43,19 +43,19 @@
         name: "VESPA Questionnaire",
         url: "https://vespaacademy.knack.com/vespa-academy#add-q/",
         icon: "https://www.vespa.academy/Icons/vespaq.png",
-        description: "Complete the VESPA Questionnaire to measure your mindset in Vision, Effort, Systems, Practice and Attitude."
+        description: "Discover your learning superpowers! Quick quiz to unlock your V-E-S-P-A potential."
       },
       {
         name: "VESPA Coaching Report",
         url: "https://vespaacademy.knack.com/vespa-academy#vespa-results/",
         icon: "https://www.vespa.academy/Icons/coachingreport.png",
-        description: "View and reflect on your VESPA Scores and personalized coaching feedback."
+        description: "See your VESPA stats and get personalized tips to level up your learning game!"
       },
       {
         name: "VESPA Activities",
         url: "https://vespaacademy.knack.com/vespa-academy#my-vespa/",
         icon: "https://www.vespa.academy/Icons/myvespa.png",
-        description: "Access your personalized programme of ideas and activities based on your VESPA scores."
+        description: "Custom activities tailored to your VESPA profile. Fun challenges to boost your skills!"
       }
     ],
     productivity: [
@@ -63,19 +63,19 @@
         name: "Study Planner",
         url: "https://vespaacademy.knack.com/vespa-academy#studyplanner/",
         icon: "https://www.vespa.academy/Icons/studyplanner.png",
-        description: "Plan and organize your study sessions with this interactive calendar tool."
+        description: "Map out your study time like a pro! Simple calendar to keep you on track."
       },
       {
         name: "Flashcards",
         url: "https://vespaacademy.knack.com/vespa-academy#flashcards/",
         icon: "https://www.vespa.academy/Icons/flashcards.png",
-        description: "Create and study with digital flashcards using our spaced repetition system."
+        description: "Flashcards that adapt to you! Learn faster with cards that know when you need a review."
       },
       {
         name: "Taskboard",
         url: "https://vespaacademy.knack.com/vespa-academy#vespa-taskboard/",
         icon: "https://www.vespa.academy/Icons/taskboard.png",
-        description: "Manage your tasks and assignments with this visual organization tool."
+        description: "Your digital to-do list! Drag, drop, and dominate your assignments with ease."
       }
     ]
   };
@@ -252,16 +252,67 @@
       user.emailId = extractValidRecordId(user.id);
     }
     
-    // For VESPA Customer ID (field_122/school)
-    if (user.field_122_raw && Array.isArray(user.field_122_raw) && user.field_122_raw.length > 0) {
-      user.schoolId = extractValidRecordId(user.field_122_raw[0].id);
-      debugLog("Found VESPA Customer ID from field_122_raw", user.schoolId);
-    } else if (user.school_raw && Array.isArray(user.school_raw) && user.school_raw.length > 0) {
-      user.schoolId = extractValidRecordId(user.school_raw[0].id);
-      debugLog("Found VESPA Customer ID from school_raw", user.schoolId);
+    // For VESPA Customer ID (field_122/school) - Enhanced extraction
+    // First try raw fields which contain the most complete data
+    if (user.field_122_raw) {
+      // It could be an array of objects or a single object
+      if (Array.isArray(user.field_122_raw) && user.field_122_raw.length > 0) {
+        // Extract from first item
+        if (user.field_122_raw[0].id) {
+          user.schoolId = extractValidRecordId(user.field_122_raw[0].id);
+          debugLog("Found VESPA Customer ID from field_122_raw array", user.schoolId);
+        } else {
+          user.schoolId = extractValidRecordId(user.field_122_raw[0]);
+          debugLog("Found VESPA Customer ID from field_122_raw array item", user.schoolId);
+        }
+      } else if (typeof user.field_122_raw === 'object') {
+        // Direct object with ID
+        if (user.field_122_raw.id) {
+          user.schoolId = extractValidRecordId(user.field_122_raw.id);
+          debugLog("Found VESPA Customer ID from field_122_raw.id", user.schoolId);
+        } else {
+          user.schoolId = extractValidRecordId(user.field_122_raw);
+          debugLog("Found VESPA Customer ID from field_122_raw object", user.schoolId);
+        }
+      } else {
+        // Direct value
+        user.schoolId = extractValidRecordId(user.field_122_raw);
+        debugLog("Found VESPA Customer ID from field_122_raw direct value", user.schoolId);
+      }
+    } else if (user.school_raw) {
+      // It could be an array of objects or a single object
+      if (Array.isArray(user.school_raw) && user.school_raw.length > 0) {
+        // Extract from first item
+        if (user.school_raw[0].id) {
+          user.schoolId = extractValidRecordId(user.school_raw[0].id);
+          debugLog("Found VESPA Customer ID from school_raw array", user.schoolId);
+        } else {
+          user.schoolId = extractValidRecordId(user.school_raw[0]);
+          debugLog("Found VESPA Customer ID from school_raw array item", user.schoolId);
+        }
+      } else if (typeof user.school_raw === 'object') {
+        // Direct object with ID
+        if (user.school_raw.id) {
+          user.schoolId = extractValidRecordId(user.school_raw.id);
+          debugLog("Found VESPA Customer ID from school_raw.id", user.schoolId);
+        } else {
+          user.schoolId = extractValidRecordId(user.school_raw);
+          debugLog("Found VESPA Customer ID from school_raw object", user.schoolId);
+        }
+      } else {
+        // Direct value
+        user.schoolId = extractValidRecordId(user.school_raw);
+        debugLog("Found VESPA Customer ID from school_raw direct value", user.schoolId);
+      }
     } else if (user.field_122 || user.school) {
       user.schoolId = extractValidRecordId(user.school || user.field_122);
-      debugLog("Using fallback for VESPA Customer ID", user.schoolId);
+      debugLog("Using fallback for VESPA Customer ID from field_122/school", user.schoolId);
+    }
+    
+    // Set vespaCustomerId as a convenience alias - based on StudyPlanner approach
+    user.vespaCustomerId = user.schoolId;
+    if (user.vespaCustomerId) {
+      debugLog("Set alias vespaCustomerId to use schoolId value", user.vespaCustomerId);
     }
     
     // For tutor connection(s) - handle as array
@@ -425,7 +476,7 @@
       // Enhanced connection field extraction for VESPA Customer
       let vespaCustomerId = null;
       
-      // Try from user object first
+      // Try from user object first - prioritize pre-processed values
       if (user.schoolId) {
         vespaCustomerId = user.schoolId;
         debugLog('Found VESPA Customer ID from user.schoolId', vespaCustomerId);
@@ -434,22 +485,75 @@
         debugLog('Found VESPA Customer ID from user.vespaCustomerId', vespaCustomerId);
       }
       
-      // Try student record if still not found
+      // Try student record with enhanced extraction if still not found
       if (!vespaCustomerId && studentRecord) {
-        // Try field_122_raw (array version)
-        if (studentRecord.field_122_raw && Array.isArray(studentRecord.field_122_raw) && studentRecord.field_122_raw.length > 0) {
-          vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw[0]);
-          debugLog('Found VESPA Customer ID from field_122_raw array', vespaCustomerId);
-        } 
-        // Try field_122_raw (direct object version)
-        else if (studentRecord.field_122_raw && typeof studentRecord.field_122_raw === 'object') {
-          vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw);
-          debugLog('Found VESPA Customer ID from field_122_raw object', vespaCustomerId);
+        debugLog('Trying to extract VESPA Customer ID from student record', studentRecord);
+        
+        // Process all possible versions of field_122_raw
+        if (studentRecord.field_122_raw) {
+          // It could be an array of objects, a single object, or a direct ID
+          if (Array.isArray(studentRecord.field_122_raw)) {
+            // Try each item in the array
+            for (const item of studentRecord.field_122_raw) {
+              const id = extractValidRecordId(item);
+              if (id) {
+                vespaCustomerId = id;
+                debugLog('Found VESPA Customer ID from field_122_raw array item', vespaCustomerId);
+                break;
+              }
+            }
+          } else if (typeof studentRecord.field_122_raw === 'object') {
+            // Try to extract from object
+            if (studentRecord.field_122_raw.id) {
+              vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw.id);
+              debugLog('Found VESPA Customer ID from field_122_raw.id object property', vespaCustomerId);
+            } else {
+              vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw);
+              debugLog('Found VESPA Customer ID from field_122_raw object', vespaCustomerId);
+            }
+          } else {
+            // Try direct value
+            vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw);
+            debugLog('Found VESPA Customer ID from field_122_raw direct value', vespaCustomerId);
+          }
         }
-        // Try field_122 as fallback
-        else if (studentRecord.field_122) {
-          vespaCustomerId = extractValidRecordId(studentRecord.field_122);
-          debugLog('Found VESPA Customer ID from field_122 fallback', vespaCustomerId);
+        
+        // Try school_raw if field_122_raw didn't work
+        if (!vespaCustomerId && studentRecord.school_raw) {
+          // Similar logic for school_raw as field_122_raw
+          if (Array.isArray(studentRecord.school_raw)) {
+            for (const item of studentRecord.school_raw) {
+              const id = extractValidRecordId(item);
+              if (id) {
+                vespaCustomerId = id;
+                debugLog('Found VESPA Customer ID from school_raw array item', vespaCustomerId);
+                break;
+              }
+            }
+          } else if (typeof studentRecord.school_raw === 'object') {
+            if (studentRecord.school_raw.id) {
+              vespaCustomerId = extractValidRecordId(studentRecord.school_raw.id);
+              debugLog('Found VESPA Customer ID from school_raw.id object property', vespaCustomerId);
+            } else {
+              vespaCustomerId = extractValidRecordId(studentRecord.school_raw);
+              debugLog('Found VESPA Customer ID from school_raw object', vespaCustomerId);
+            }
+          } else {
+            vespaCustomerId = extractValidRecordId(studentRecord.school_raw);
+            debugLog('Found VESPA Customer ID from school_raw direct value', vespaCustomerId);
+          }
+        }
+        
+        // Try standard field values as last resort
+        if (!vespaCustomerId) {
+          // Try standard field values
+          if (studentRecord.field_122) {
+            vespaCustomerId = extractValidRecordId(studentRecord.field_122);
+            debugLog('Found VESPA Customer ID from field_122 standard field', vespaCustomerId);
+          } else if (studentRecord.school) {
+            vespaCustomerId = extractValidRecordId(studentRecord.school);
+            debugLog('Found VESPA Customer ID from school standard field', vespaCustomerId);
+          }
         }
       }
       
@@ -756,60 +860,86 @@
     // Add the CSS
     const styleElement = document.createElement('style');
     styleElement.textContent = `
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #1a1f2e;
+        color: #e8ecf3;
+        overflow-x: hidden;
+      }
+      
       #vespa-homepage {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-        color: #333;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        min-height: 100vh;
+        padding: 2vh 3vw;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
       }
       
       .vespa-section {
-        background-color: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        margin-bottom: 30px;
+        background-color: #232938;
+        border-radius: 12px;
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+        padding: 24px;
+        margin-bottom: 2vh;
+        transition: transform 0.3s, box-shadow 0.3s;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      
+      .vespa-section:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
       }
       
       .vespa-section-title {
-        color: #23356f;
-        font-size: 24px;
+        color: #00e5db;
+        font-size: 26px;
         font-weight: 600;
         margin-bottom: 20px;
         padding-bottom: 10px;
         border-bottom: 2px solid #00e5db;
+        letter-spacing: 0.5px;
       }
       
       /* Profile Section */
       .profile-info {
         display: flex;
         flex-wrap: wrap;
-        gap: 20px;
+        gap: 24px;
       }
       
       .profile-details {
         flex: 1;
         min-width: 250px;
+        background-color: rgba(35, 53, 111, 0.3);
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 229, 219, 0.2);
       }
       
       .profile-name {
         font-size: 28px;
-        color: #23356f;
+        color: #ffffff;
         margin-bottom: 15px;
+        letter-spacing: 0.5px;
       }
       
       .profile-item {
-        margin-bottom: 10px;
+        margin-bottom: 16px;
       }
       
       .profile-label {
         font-weight: 600;
-        color: #23356f;
+        color: #00e5db;
+        margin-bottom: 4px;
+        display: block;
       }
       
       .profile-value {
-        color: #333;
+        color: #e8ecf3;
+        font-size: 16px;
       }
       
       .subjects-container {
@@ -819,33 +949,45 @@
       
       .subjects-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 18px;
       }
       
       .subject-card {
-        background-color: #f8f8f8;
-        border-radius: 8px;
-        padding: 12px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 16px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(0, 229, 219, 0.15);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      
+      .subject-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+        border-color: rgba(0, 229, 219, 0.3);
       }
       
       .subject-name {
         font-weight: 600;
-        color: #23356f;
+        color: #ffffff;
         margin-bottom: 8px;
+        font-size: 16px;
       }
       
       .subject-meta {
         font-size: 0.85em;
-        color: #666;
-        margin-bottom: 5px;
+        color: #b0b7c4;
+        margin-bottom: 8px;
       }
       
       .grades-container {
         display: flex;
         justify-content: space-between;
-        margin-top: 10px;
+        margin-top: 12px;
+        background-color: rgba(0, 0, 0, 0.15);
+        padding: 10px;
+        border-radius: 6px;
       }
       
       .grade-item {
@@ -854,16 +996,17 @@
       
       .grade-label {
         font-size: 0.75em;
-        color: #666;
+        color: #b0b7c4;
+        margin-bottom: 4px;
       }
       
       .grade-value {
-        font-size: 1.2em;
+        font-size: 1.3em;
         font-weight: 600;
       }
       
       .grade-meg {
-        color: #23356f;
+        color: #ffd166;
       }
       
       .grade-current {
@@ -872,29 +1015,33 @@
       
       /* App Hubs */
       .app-hub {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
         justify-content: center;
       }
       
       .app-card {
-        background-color: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        width: 250px;
+        background: linear-gradient(145deg, #2a3142, #232938);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
         overflow: hidden;
-        transition: transform 0.3s, box-shadow 0.3s;
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(255, 255, 255, 0.05);
       }
       
       .app-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.35);
+        border-color: rgba(0, 229, 219, 0.3);
       }
       
       .app-card-header {
-        background-color: #23356f;
-        padding: 15px;
+        background: linear-gradient(45deg, #23356f, #2a4494);
+        padding: 20px;
         text-align: center;
       }
       
@@ -902,50 +1049,114 @@
         width: 80px;
         height: 80px;
         object-fit: contain;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+        transition: transform 0.3s;
+      }
+      
+      .app-card:hover .app-icon {
+        transform: scale(1.1);
       }
       
       .app-name {
         color: white;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 600;
+        letter-spacing: 0.5px;
       }
       
       .app-description {
-        padding: 15px;
-        color: #333;
-        font-size: 14px;
-        height: 100px;
+        padding: 20px;
+        color: #d1d7e2;
+        font-size: 15px;
+        flex-grow: 1;
         display: flex;
         align-items: center;
         text-align: center;
+        line-height: 1.5;
       }
       
       .app-button {
         display: block;
-        background-color: #00e5db;
-        color: #23356f;
+        background: linear-gradient(90deg, #00e5db, #00c2b8);
+        color: #1a1f2e;
         text-align: center;
-        padding: 10px;
+        padding: 12px;
         text-decoration: none;
         font-weight: 600;
-        transition: background-color 0.3s;
+        transition: all 0.3s;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-size: 14px;
       }
       
       .app-button:hover {
-        background-color: #00c2b8;
+        background: linear-gradient(90deg, #00f7ec, #00d4c9);
+        letter-spacing: 1px;
       }
       
-      /* Responsive adjustments */
-      @media (max-width: 768px) {
-        .subjects-grid {
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      /* Responsive adjustments for full screen */
+      @media screen and (min-width: 1024px) {
+        #vespa-homepage {
+          height: 100vh;
+          overflow: hidden;
         }
         
-        .app-card {
-          width: 100%;
-          max-width: 300px;
+        .app-hub {
+          grid-template-columns: repeat(3, 1fr);
         }
+      }
+      
+      @media (max-width: 768px) {
+        .subjects-grid {
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+        
+        .app-hub {
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+        
+        #vespa-homepage {
+          height: auto;
+          overflow: auto;
+        }
+      }
+      
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: #1a1f2e;
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background: #00e5db;
+        border-radius: 4px;
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background: #00c2b8;
+      }
+      
+      /* Animation for cards */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .vespa-section, .app-card, .subject-card {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      
+      .no-subjects {
+        color: #b0b7c4;
+        text-align: center;
+        padding: 20px;
+        grid-column: 1 / -1;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
       }
     `;
     
@@ -998,33 +1209,33 @@
         `;
       });
     } else {
-      subjectsHTML = '<div class="no-subjects">No subjects available</div>';
+      subjectsHTML = '<div class="no-subjects">No subjects added yet</div>';
     }
     
     return `
       <section class="vespa-section profile-section">
-        <h2 class="vespa-section-title">Student Profile</h2>
+        <h2 class="vespa-section-title">Your Dashboard</h2>
         <div class="profile-info">
           <div class="profile-details">
             <div class="profile-name">${name}</div>
             
             <div class="profile-item">
-              <span class="profile-label">School:</span>
+              <span class="profile-label">School</span>
               <span class="profile-value">${school || 'N/A'}</span>
             </div>
             
             <div class="profile-item">
-              <span class="profile-label">Year Group:</span>
+              <span class="profile-label">Year Group</span>
               <span class="profile-value">${yearGroup || 'N/A'}</span>
             </div>
             
             <div class="profile-item">
-              <span class="profile-label">Tutor Group:</span>
+              <span class="profile-label">Tutor Group</span>
               <span class="profile-value">${tutorGroup || 'N/A'}</span>
             </div>
             
             <div class="profile-item">
-              <span class="profile-label">Attendance:</span>
+              <span class="profile-label">Attendance</span>
               <span class="profile-value">${attendance || 'N/A'}</span>
             </div>
           </div>
@@ -1147,10 +1358,10 @@
     
     // Show loading indicator
     container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #23356f;">
-        <h3>Loading VESPA Homepage...</h3>
+      <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #1a1f2e; border-radius: 12px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);">
+        <h3 style="font-size: 24px; letter-spacing: 1px;">Loading Your Dashboard...</h3>
         <div style="margin-top: 20px;">
-          <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+          <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
             <circle cx="25" cy="25" r="20" fill="none" stroke="#00e5db" stroke-width="5">
               <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
               <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
@@ -1187,3 +1398,4 @@
   };
 
 })(); // End of IIFE
+
