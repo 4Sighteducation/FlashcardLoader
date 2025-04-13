@@ -849,11 +849,45 @@
     window.currentKnackUser = user;
     debugLog("Current user:", user);
     
-    // Find the target container
-    const container = document.querySelector(config.elementSelector);
+    // Find the target container - add more logging to troubleshoot
+    console.log(`[Homepage] Looking for container with selector: ${config.elementSelector}`);
+    
+    // Try alternative selectors if the main one fails
+    let container = document.querySelector(config.elementSelector);
+    
     if (!container) {
-      console.error(`Homepage Error: Container not found using selector: ${config.elementSelector}`);
-      return;
+      console.log(`[Homepage] Primary selector failed, trying alternatives...`);
+      
+      // Try alternative selectors
+      const alternatives = [
+        `.kn-view-${config.viewKey}`,         // Class based on view key
+        `#${config.viewKey}`,                 // Direct ID
+        `#kn-${config.viewKey}`,              // Knack prefixed ID
+        `.kn-scene .kn-content`,              // Generic content area
+        `.kn-form-view-${config.viewKey}`     // Form view class
+      ];
+      
+      for (const altSelector of alternatives) {
+        console.log(`[Homepage] Trying alternative selector: ${altSelector}`);
+        container = document.querySelector(altSelector);
+        if (container) {
+          console.log(`[Homepage] Found container with alternative selector: ${altSelector}`);
+          break;
+        }
+      }
+    }
+    
+    // If still not found, report error
+    if (!container) {
+      console.error(`Homepage Error: Container not found using selector: ${config.elementSelector} or alternatives`);
+      
+      // Dump the DOM structure to help debug
+      console.log(`[Homepage] DOM structure for debugging:`, 
+        document.querySelector('.kn-content')?.innerHTML || 'No .kn-content found');
+      
+      // Last resort - just use the body
+      container = document.body;
+      console.warn(`[Homepage] Using document.body as last resort container`);
     }
     
     // Show loading indicator
@@ -898,3 +932,4 @@
   };
 
 })(); // End of IIFE
+
