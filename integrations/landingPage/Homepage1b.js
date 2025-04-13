@@ -200,27 +200,36 @@
   function getKnackHeaders() {
     // Reading knackAppId and knackApiKey from HOMEPAGE_CONFIG
     const config = window.HOMEPAGE_CONFIG;
-    if (!config || !config.knackAppId || !config.knackApiKey) {
-      console.error("[Homepage] Missing Knack App ID or API Key in HOMEPAGE_CONFIG.");
-      throw new Error("Knack configuration missing in window.HOMEPAGE_CONFIG");
-    }
-    const knackAppId = config.knackAppId;
-    const knackApiKey = config.knackApiKey;
-
+    
+    console.log("[Homepage] Config for headers:", JSON.stringify(config));
+    
+    // Fallback to using Knack's global application ID if not in config
+    const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
+    // Use our known API key if not in config
+    const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '8f733aa5-dd35-4464-8348-64824d1f5f0d';
+    
+    console.log(`[Homepage] Using AppID: ${knackAppId}`);
+    
     if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
       console.error("[Homepage] Knack object or getUserToken function not available.");
       throw new Error("Knack authentication context not available.");
     }
+    
     const token = Knack.getUserToken();
     if (!token) {
       console.warn("[Homepage] Knack user token is null or undefined. API calls may fail.");
     }
-    return {
+    
+    const headers = {
       'X-Knack-Application-Id': knackAppId,
       'X-Knack-REST-API-Key': knackApiKey,
       'Authorization': token || '',
       'Content-Type': 'application/json'
     };
+    
+    console.log("[Homepage] Headers being used:", JSON.stringify(headers));
+    
+    return headers;
   }
 
   // --- User Profile Data Management ---
