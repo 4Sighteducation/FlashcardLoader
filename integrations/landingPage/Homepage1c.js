@@ -73,7 +73,7 @@
       },
       {
         name: "Taskboard",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-taskboard/",
+        url: "https://vespaacademy.knack.com/vespa-academy#task-board/",
         icon: "https://www.vespa.academy/Icons/taskboard.png",
         description: "Manage your tasks and assignments with this visual organization tool."
       }
