@@ -73,7 +73,7 @@
       },
       {
         name: "Taskboard",
-        url: "https://vespaacademy.knack.com/vespa-academy#task-board/",
+        url: "https://vespaacademy.knack.com/vespa-academy#vespa-taskboard/",
         icon: "https://www.vespa.academy/Icons/taskboard.png",
         description: "Manage your tasks and assignments with this visual organization tool."
       }
@@ -151,6 +151,15 @@
     // If it's a string
     if (typeof value === 'string') {
       return isValidKnackId(value) ? value : null;
+    }
+
+    // If it's an array, process each item
+    if (Array.isArray(value)) {
+      const validIds = value
+        .map(item => extractValidRecordId(item))
+        .filter(id => id !== null);
+      
+      return validIds.length > 0 ? (validIds.length === 1 ? validIds[0] : validIds) : null;
     }
 
     return null;
@@ -232,6 +241,109 @@
     return headers;
   }
 
+  // Process user data to extract connection fields - similar to StudyPlanner implementation
+  function processUserConnectionFields(user) {
+    if (!user) return user;
+
+    debugLog("Processing user connection fields", user);
+    
+    // Extract and store connection field IDs safely
+    if (user.id) {
+      user.emailId = extractValidRecordId(user.id);
+    }
+    
+    // For VESPA Customer ID (field_122/school)
+    if (user.field_122_raw && Array.isArray(user.field_122_raw) && user.field_122_raw.length > 0) {
+      user.schoolId = extractValidRecordId(user.field_122_raw[0].id);
+      debugLog("Found VESPA Customer ID from field_122_raw", user.schoolId);
+    } else if (user.school_raw && Array.isArray(user.school_raw) && user.school_raw.length > 0) {
+      user.schoolId = extractValidRecordId(user.school_raw[0].id);
+      debugLog("Found VESPA Customer ID from school_raw", user.schoolId);
+    } else if (user.field_122 || user.school) {
+      user.schoolId = extractValidRecordId(user.school || user.field_122);
+      debugLog("Using fallback for VESPA Customer ID", user.schoolId);
+    }
+    
+    // For tutor connection(s) - handle as array
+    if (user.field_1682_raw && Array.isArray(user.field_1682_raw) && user.field_1682_raw.length > 0) {
+      // Get all tutor IDs
+      const tutorIds = user.field_1682_raw
+        .map(item => extractValidRecordId(item.id))
+        .filter(id => id);
+        
+      if (tutorIds.length === 1) {
+        user.teacherId = tutorIds[0];
+        debugLog("Found single Tutor ID from field_1682_raw", user.teacherId);
+      } else if (tutorIds.length > 1) {
+        user.teacherId = tutorIds; // Store as array
+        debugLog(`Found ${tutorIds.length} Tutor IDs from field_1682_raw`, tutorIds);
+      }
+    } else if (user.tutor_raw && Array.isArray(user.tutor_raw) && user.tutor_raw.length > 0) {
+      // Get all tutor IDs from tutor_raw
+      const tutorIds = user.tutor_raw
+        .map(item => extractValidRecordId(item.id))
+        .filter(id => id);
+        
+      if (tutorIds.length === 1) {
+        user.teacherId = tutorIds[0];
+        debugLog("Found single Tutor ID from tutor_raw", user.teacherId);
+      } else if (tutorIds.length > 1) {
+        user.teacherId = tutorIds; // Store as array
+        debugLog(`Found ${tutorIds.length} Tutor IDs from tutor_raw`, tutorIds);
+      }
+    } else if (user.tutor || user.field_1682) {
+      // Fallback for single tutor
+      const singleTutorId = extractValidRecordId(user.tutor || user.field_1682);
+      if (singleTutorId) {
+        user.teacherId = singleTutorId;
+        debugLog("Using fallback for Tutor ID", user.teacherId);
+      }
+    }
+    
+    // For role ID
+    if (user.role) {
+      user.roleId = extractValidRecordId(user.role);
+    }
+    
+    // Staff admin connection (field_190) - handle as array
+    if (user.field_190_raw && Array.isArray(user.field_190_raw) && user.field_190_raw.length > 0) {
+      // Get all staff admin IDs
+      const staffAdminIds = user.field_190_raw
+        .map(item => extractValidRecordId(item.id))
+        .filter(id => id);
+        
+      if (staffAdminIds.length === 1) {
+        user.staffAdminId = staffAdminIds[0];
+        debugLog("Found single Staff Admin ID from field_190_raw", user.staffAdminId);
+      } else if (staffAdminIds.length > 1) {
+        user.staffAdminId = staffAdminIds; // Store as array
+        debugLog(`Found ${staffAdminIds.length} Staff Admin IDs from field_190_raw`, staffAdminIds);
+      }
+    } else if (user.staffAdmin_raw && Array.isArray(user.staffAdmin_raw) && user.staffAdmin_raw.length > 0) {
+      // Get all staff admin IDs from staffAdmin_raw
+      const staffAdminIds = user.staffAdmin_raw
+        .map(item => extractValidRecordId(item.id))
+        .filter(id => id);
+        
+      if (staffAdminIds.length === 1) {
+        user.staffAdminId = staffAdminIds[0];
+        debugLog("Found single Staff Admin ID from staffAdmin_raw", user.staffAdminId);
+      } else if (staffAdminIds.length > 1) {
+        user.staffAdminId = staffAdminIds; // Store as array
+        debugLog(`Found ${staffAdminIds.length} Staff Admin IDs from staffAdmin_raw`, staffAdminIds);
+      }
+    } else if (user.staffAdmin || user.field_190) {
+      // Fallback for direct field access
+      const staffAdminId = extractValidRecordId(user.staffAdmin || user.field_190);
+      if (staffAdminId) {
+        user.staffAdminId = staffAdminId;
+        debugLog("Using fallback for Staff Admin ID", user.staffAdminId);
+      }
+    }
+    
+    return user;
+  }
+
   // --- User Profile Data Management ---
   // Find or create the user profile record
   async function findOrCreateUserProfile(userId, userName, userEmail) {
@@ -310,42 +422,145 @@
       // Connection fields - User Account (direct user ID)
       data[FIELD_MAPPING.userConnection] = userId;
       
-      // Connection fields from user object
+      // Enhanced connection field extraction for VESPA Customer
+      let vespaCustomerId = null;
+      
+      // Try from user object first
       if (user.schoolId) {
-        data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
+        vespaCustomerId = user.schoolId;
+        debugLog('Found VESPA Customer ID from user.schoolId', vespaCustomerId);
+      } else if (user.vespaCustomerId) {
+        vespaCustomerId = user.vespaCustomerId;
+        debugLog('Found VESPA Customer ID from user.vespaCustomerId', vespaCustomerId);
       }
       
-      // Extract connection fields from student record if available
-      if (studentRecord) {
-        // VESPA Customer (school) if not already set
-        if (!data[FIELD_MAPPING.vespaCustomer] && studentRecord.field_122_raw) {
-          const schoolId = extractValidRecordId(studentRecord.field_122_raw);
-          if (schoolId) {
-            data[FIELD_MAPPING.vespaCustomer] = schoolId;
-          }
+      // Try student record if still not found
+      if (!vespaCustomerId && studentRecord) {
+        // Try field_122_raw (array version)
+        if (studentRecord.field_122_raw && Array.isArray(studentRecord.field_122_raw) && studentRecord.field_122_raw.length > 0) {
+          vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw[0]);
+          debugLog('Found VESPA Customer ID from field_122_raw array', vespaCustomerId);
+        } 
+        // Try field_122_raw (direct object version)
+        else if (studentRecord.field_122_raw && typeof studentRecord.field_122_raw === 'object') {
+          vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw);
+          debugLog('Found VESPA Customer ID from field_122_raw object', vespaCustomerId);
         }
-        
-        // Tutor connections - handle multiple
+        // Try field_122 as fallback
+        else if (studentRecord.field_122) {
+          vespaCustomerId = extractValidRecordId(studentRecord.field_122);
+          debugLog('Found VESPA Customer ID from field_122 fallback', vespaCustomerId);
+        }
+      }
+      
+      // Set VESPA Customer ID if found through any method
+      if (vespaCustomerId) {
+        data[FIELD_MAPPING.vespaCustomer] = vespaCustomerId;
+        debugLog('Setting VESPA Customer connection field', vespaCustomerId);
+      }
+      
+      // Use processed user fields
+      // First try the teacherId we extracted in processUserConnectionFields
+      let tutorIds = [];
+      
+      // Check for teacher/tutor IDs directly from processed user object
+      if (user.teacherId) {
+        // It might be a single ID or an array
+        if (Array.isArray(user.teacherId)) {
+          tutorIds = user.teacherId;
+          debugLog('Using tutor IDs array from processed user object', tutorIds);
+        } else {
+          tutorIds = [user.teacherId];
+          debugLog('Using single tutor ID from processed user object', user.teacherId);
+        }
+      }
+      
+      // If we still don't have tutor IDs, try from student record
+      if (tutorIds.length === 0 && studentRecord) {
+        // Tutor connections - enhanced extraction with fallbacks
+        // Try field_1682_raw first (primary method)
         if (studentRecord.field_1682_raw && Array.isArray(studentRecord.field_1682_raw)) {
-          const tutorIds = studentRecord.field_1682_raw
+          tutorIds = studentRecord.field_1682_raw
             .map(item => extractValidRecordId(item))
             .filter(id => id);
             
-          if (tutorIds.length > 0) {
-            data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
+          debugLog('Extracted tutor IDs from field_1682_raw', tutorIds);
+        }
+        // Fallback to field_1682 if available
+        else if (studentRecord.field_1682) {
+          if (Array.isArray(studentRecord.field_1682)) {
+            tutorIds = studentRecord.field_1682
+              .map(item => extractValidRecordId(item))
+              .filter(id => id);
+            
+            debugLog('Extracted tutor IDs from field_1682 array fallback', tutorIds);
+          } else {
+            const tutorId = extractValidRecordId(studentRecord.field_1682);
+            if (tutorId) {
+              tutorIds = [tutorId];
+              debugLog('Extracted tutor ID from field_1682 direct fallback', tutorId);
+            }
           }
         }
+      }
+      
+      // Add tutors if found
+      if (tutorIds.length > 0) {
+        data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
+        debugLog(`Setting ${tutorIds.length} tutor connection(s)`, data[FIELD_MAPPING.tutorConnection]);
+      }
         
-        // Staff Admin connections - handle multiple
+      // Check for staff admin IDs directly from processed user object
+      let staffAdminIds = [];
+      
+      if (user.staffAdminId) {
+        // It might be a single ID or an array
+        if (Array.isArray(user.staffAdminId)) {
+          staffAdminIds = user.staffAdminId;
+          debugLog('Using staff admin IDs array from processed user object', staffAdminIds);
+        } else {
+          staffAdminIds = [user.staffAdminId];
+          debugLog('Using single staff admin ID from processed user object', user.staffAdminId);
+        }
+      }
+      
+      // If we still don't have staff admin IDs, try from student record
+      if (staffAdminIds.length === 0 && studentRecord) {
+        // Staff Admin connections - enhanced extraction with fallbacks
+        // Try field_190_raw first (primary method)
         if (studentRecord.field_190_raw && Array.isArray(studentRecord.field_190_raw)) {
-          const staffAdminIds = studentRecord.field_190_raw
+          staffAdminIds = studentRecord.field_190_raw
             .map(item => extractValidRecordId(item))
             .filter(id => id);
             
-          if (staffAdminIds.length > 0) {
-            data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
+          debugLog('Extracted staff admin IDs from field_190_raw', staffAdminIds);
+        }
+        // Fallback to field_190 if available
+        else if (studentRecord.field_190) {
+          if (Array.isArray(studentRecord.field_190)) {
+            staffAdminIds = studentRecord.field_190
+              .map(item => extractValidRecordId(item))
+              .filter(id => id);
+            
+            debugLog('Extracted staff admin IDs from field_190 array fallback', staffAdminIds);
+          } else {
+            const staffAdminId = extractValidRecordId(studentRecord.field_190);
+            if (staffAdminId) {
+              staffAdminIds = [staffAdminId];
+              debugLog('Extracted staff admin ID from field_190 direct fallback', staffAdminId);
+            }
           }
         }
+      }
+      
+      // Add staff admins if found
+      if (staffAdminIds.length > 0) {
+        data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
+        debugLog(`Setting ${staffAdminIds.length} staff admin connection(s)`, data[FIELD_MAPPING.staffAdminConnection]);
+      }
+      
+      // Get additional data from student record if available
+      if (studentRecord) {
         
         // Get Tutor Group if available
         if (studentRecord.field_34) {
@@ -423,12 +638,18 @@
   async function findStudentRecord(email) {
     if (!email) return null;
     
+    debugLog(`Looking up student record for email: ${email}`);
+    
+    // Enhanced filter to search for email using multiple possible fields and methods
     const filters = encodeURIComponent(JSON.stringify({
       match: 'or',
       rules: [
+        // Exact matches
         { field: 'field_91', operator: 'is', value: email },
         { field: 'field_70', operator: 'is', value: email },
-        { field: 'field_91', operator: 'contains', value: email }
+        // Contains matches (useful for emails embedded in other text)
+        { field: 'field_91', operator: 'contains', value: email },
+        { field: 'field_70', operator: 'contains', value: email }
       ]
     }));
     
@@ -447,9 +668,33 @@
       });
       
       if (response && response.records && response.records.length > 0) {
+        debugLog(`Found ${response.records.length} student record matches for ${email}`, response.records[0]);
+        
+        // If multiple records were found, try to find the best match
+        if (response.records.length > 1) {
+          let bestMatch = response.records[0];
+          
+          // Look for exact email match
+          for (const record of response.records) {
+            const recordEmail = sanitizeField(record.field_91 || record.field_70 || '');
+            if (recordEmail.toLowerCase() === email.toLowerCase()) {
+              debugLog(`Selected best matching student record by exact email match`, record);
+              bestMatch = record;
+              break;
+            }
+          }
+          
+          // Process the best match to extract connection fields
+          processUserConnectionFields(bestMatch);
+          return bestMatch;
+        }
+        
+        // Process the single record to extract connection fields
+        processUserConnectionFields(response.records[0]);
         return response.records[0];
       }
       
+      debugLog(`No student record found for email: ${email}`);
       return null;
     } catch (error) {
       console.error('[Homepage] Error finding student record:', error);
@@ -854,9 +1099,10 @@
       return;
     }
     
-    // Store user info globally
-    window.currentKnackUser = user;
-    debugLog("Current user:", user);
+    // Process and store user info globally
+    // This enhances the user object with properly extracted connection fields
+    window.currentKnackUser = processUserConnectionFields(user);
+    debugLog("Processed user data with connection fields:", window.currentKnackUser);
     
     // Find the target container - add more logging to troubleshoot
     console.log(`[Homepage] Looking for container with selector: ${config.elementSelector}`);
@@ -941,4 +1187,3 @@
   };
 
 })(); // End of IIFE
-
