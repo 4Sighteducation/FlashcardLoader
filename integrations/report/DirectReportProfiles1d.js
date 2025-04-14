@@ -587,7 +587,7 @@ var DirectReportProfilesModule = {
             this.observers.reportObserver.disconnect();
         }
         
-        // Create a new observer with debounced handler and Vue compatibility features
+        // Create a new observer with debounced handler and enhanced Vue compatibility
         const debouncedHandler = this.debounce((mutations) => {
             // Skip handling if we're in the middle of updating the DOM ourselves
             if (this.isUpdatingDOM) {
@@ -595,17 +595,41 @@ var DirectReportProfilesModule = {
                 return;
             }
             
-            // Skip if these are Vue-initiated changes
+            // Improved Vue change detection with better tolerance
             if (this.config.vueCompatMode) {
+                // Skip if this is a Vue-initiated change
+                const isOurOwnVueWrapper = mutations.some(mutation => {
+                    // Check if any affected nodes are our own wrappers
+                    if (mutation.type === 'childList') {
+                        const addedNodes = Array.from(mutation.addedNodes || []);
+                        return addedNodes.some(node => 
+                            node.nodeType === 1 && 
+                            node.hasAttribute && 
+                            node.hasAttribute('data-vespa-profile')
+                        );
+                    }
+                    return false;
+                });
+
+                if (isOurOwnVueWrapper) {
+                    this.debugLog("Detected our own profile wrapper being added - skipping");
+                    return;
+                }
+                
+                // Check for Vue-initiated changes to avoid handling those
                 const isVueChange = mutations.some(mutation => {
                     const target = mutation.target;
                     return target && (
+                        // Check for Vue specific attributes
                         (target.hasAttribute && target.hasAttribute('data-v-')) || 
+                        // Check for Vue classes
                         (target.classList && 
                          typeof target.classList.contains === 'function' && 
-                         target.classList.contains('vue-')) ||
+                         (target.classList.contains('vue-') || target.classList.contains('v-'))) ||
+                        // Check for Vue attributes on parent
                         (target.parentElement && target.parentElement.hasAttribute && 
-                         target.parentElement.hasAttribute('data-v-'))
+                         (target.parentElement.hasAttribute('data-v-') || 
+                          target.parentElement.hasAttribute('data-nonvue')))
                     );
                 });
                 
@@ -615,8 +639,22 @@ var DirectReportProfilesModule = {
                 }
             }
             
+            // Look for specific changes that indicate a report is being shown
+            const significantChange = mutations.some(mutation => {
+                // Report content has changed substantially
+                return mutation.type === 'childList' && 
+                       mutation.addedNodes.length > 0 &&
+                       (mutation.target.textContent || '').includes('STUDENT:');
+            });
+            
+            // Process changes with extra logging in Vue mode
+            if (this.config.vueCompatMode) {
+                this.debugLog("Processing mutation in Vue compatibility mode", 
+                    { mutationCount: mutations.length, significantChange });
+            }
+            
             this.handleReportChanges(reportContainer, profileContainer);
-        }, 500); // Increased debounce time to prevent excessive triggering
+        }, this.config.vueCompatMode ? 750 : 500); // Even longer debounce time in Vue mode
         
         this.observers.reportObserver = new MutationObserver(debouncedHandler);
         
@@ -1468,10 +1506,16 @@ var DirectReportProfilesModule = {
             return;
         }
         
-        // Check if the container is Vue-controlled and adjust our strategy
-        const isVueElement = this.config.vueCompatMode && this.isVueControlled(profileContainer);
+        // Check if Vue compatibility mode is enabled
+        const useVueSafeRendering = !!this.config.vueCompatMode;
+        
+        // Also check if the container itself is Vue-controlled
+        const isVueElement = useVueSafeRendering && this.isVueControlled(profileContainer);
+        
         if (isVueElement) {
             this.debugLog("Profile container appears to be Vue-controlled, using cautious render approach");
+        } else if (useVueSafeRendering) {
+            this.debugLog("Vue compatibility mode enabled, using enhanced rendering approach");
         }
         
         // Calculate a hash of the current profile data to avoid redundant renders
@@ -1675,28 +1719,43 @@ var DirectReportProfilesModule = {
         `;
         
         // Clear container and add content - special handling for Vue
-        if (isVueElement) {
-            // For Vue-controlled containers, use a more careful approach
-            // First create a wrapper that Vue won't re-render
-            const wrapper = document.createElement('div');
-            wrapper.className = 'vespa-profile-wrapper';
-            wrapper.dataset.nonvue = 'true'; // Mark as not controlled by Vue
-            
-            // Set inner HTML of our wrapper
-            wrapper.innerHTML = profileHTML;
-            
-            // Empty the container carefully
-            while (profileContainer.firstChild) {
-                profileContainer.removeChild(profileContainer.firstChild);
+        try {
+            if (isVueElement || useVueSafeRendering) {
+                this.debugLog("Using Vue-safe DOM insertion");
+                
+                // For Vue-controlled containers, use a more careful approach
+                // Create a wrapper that Vue won't re-render
+                const wrapper = document.createElement('div');
+                wrapper.className = 'vespa-profile-wrapper';
+                wrapper.setAttribute('data-nonvue', 'true'); // Mark as not controlled by Vue
+                wrapper.setAttribute('data-vespa-profile', 'true'); // Extra marker for our own identification
+                
+                // Set inner HTML of our wrapper
+                wrapper.innerHTML = profileHTML;
+                
+                // Empty the container carefully using a safer approach
+                this.debugLog("Safely clearing container before insertion");
+                profileContainer.innerHTML = '';
+                
+                // Small delay before inserting to avoid Vue rendering collisions
+                setTimeout(() => {
+                    // Append our wrapper to the container
+                    profileContainer.appendChild(wrapper);
+                    this.debugLog("Profile element inserted with Vue-safe wrapper");
+                }, 50);
+            } else {
+                // Standard approach for non-Vue elements
+                profileContainer.innerHTML = profileHTML;
+                this.debugLog("Profile rendered with standard approach");
             }
-            
-            // Append our wrapper to the container
-            profileContainer.appendChild(wrapper);
-            
-            this.debugLog("Used Vue-safe rendering approach");
-        } else {
-            // Standard approach for non-Vue elements
-            profileContainer.innerHTML = profileHTML;
+        } catch (error) {
+            console.error('[DirectReportProfiles] Error during profile rendering:', error);
+            // Fallback rendering as last resort
+            try {
+                profileContainer.innerHTML = profileHTML;
+            } catch (fallbackError) {
+                console.error('[DirectReportProfiles] Even fallback rendering failed:', fallbackError);
+            }
         }
         
         // Reset the DOM update flag after a slight delay to ensure rendering completes
@@ -1713,46 +1772,111 @@ var DirectReportProfilesModule = {
 
 // Global initializer function for the Multi-App Loader
 window.initializeDirectReportProfiles = function(config) {
-    console.log('[DirectReportProfiles] Initializing with loader config:', config);
-    
-    // Merge default config with provided config
-    const mergedConfig = {};
-    
-    // Copy default field mappings
-    if (DEFAULT_CONFIG && DEFAULT_CONFIG.FIELD_MAPPING) {
-        mergedConfig.FIELD_MAPPING = { ...DEFAULT_CONFIG.FIELD_MAPPING };
-    }
-    
-    // Merge in other default properties
-    if (DEFAULT_CONFIG) {
-        Object.keys(DEFAULT_CONFIG).forEach(key => {
-            if (key !== 'FIELD_MAPPING') {
-                mergedConfig[key] = DEFAULT_CONFIG[key];
+    try {
+        // Log version and initialization start
+        console.log('[DirectReportProfiles v1.4] Initializing...');
+        
+        // Check for configurations in various locations:
+        // 1. Direct parameter passed to this function
+        // 2. Global window variable that might be set by the loader
+        // 3. Look for any object with a matching name pattern in window
+        let effectiveConfig = config;
+        
+        if (!effectiveConfig) {
+            // Try the standard global config variable
+            if (window.DIRECT_REPORT_PROFILES_CONFIG) {
+                console.log('[DirectReportProfiles] Using global DIRECT_REPORT_PROFILES_CONFIG variable');
+                effectiveConfig = window.DIRECT_REPORT_PROFILES_CONFIG;
+            } 
+            // Look for any other possible naming variations in the global scope
+            else if (window.directReportProfilesConfig) {
+                console.log('[DirectReportProfiles] Using global directReportProfilesConfig variable');
+                effectiveConfig = window.directReportProfilesConfig;
             }
-        });
-    }
-    
-    // Handle nested FIELD_MAPPING from provided config
-    if (config && config.FIELD_MAPPING) {
-        mergedConfig.FIELD_MAPPING = {
-            ...mergedConfig.FIELD_MAPPING,
-            ...config.FIELD_MAPPING
-        };
-    }
-    
-    // Merge top-level config
-    if (config) {
-        Object.keys(config).forEach(key => {
-            if (key !== 'FIELD_MAPPING') {
-                mergedConfig[key] = config[key];
+            // If we have Knack.scene and view information, create a basic config
+            else if (typeof Knack !== 'undefined' && Knack.scene_hash && Knack.view_hash) {
+                console.log('[DirectReportProfiles] Creating config from Knack scene/view context');
+                effectiveConfig = {
+                    sceneKey: Knack.scene_hash,
+                    viewKey: Knack.view_hash,
+                    vueCompatMode: true  // Default to Vue compatibility mode for safety
+                };
             }
-        });
+            // Last resort - create a new empty config
+            else {
+                console.warn('[DirectReportProfiles] No configuration found, using defaults only');
+                effectiveConfig = {};
+            }
+        }
+        
+        // Set a reference to the effective config for diagnostic purposes
+        window._directReportProfilesEffectiveConfig = effectiveConfig;
+        
+        console.log('[DirectReportProfiles] Initializing with config:', effectiveConfig);
+        console.log('[DirectReportProfiles] Vue compatibility mode:', effectiveConfig?.vueCompatMode);
+        
+        // Merge default config with provided config
+        const mergedConfig = {};
+        
+        // First copy all default config
+        if (DEFAULT_CONFIG) {
+            // Handle field mappings separately
+            if (DEFAULT_CONFIG.FIELD_MAPPING) {
+                mergedConfig.FIELD_MAPPING = { ...DEFAULT_CONFIG.FIELD_MAPPING };
+            }
+            
+            // Copy other properties
+            Object.keys(DEFAULT_CONFIG).forEach(key => {
+                if (key !== 'FIELD_MAPPING') {
+                    mergedConfig[key] = DEFAULT_CONFIG[key];
+                }
+            });
+        }
+        
+        // Then merge in the provided config
+        if (config) {
+            // Handle nested FIELD_MAPPING from provided config
+            if (config.FIELD_MAPPING) {
+                mergedConfig.FIELD_MAPPING = {
+                    ...mergedConfig.FIELD_MAPPING,
+                    ...config.FIELD_MAPPING
+                };
+            }
+            
+            // Merge top-level config
+            Object.keys(config).forEach(key => {
+                if (key !== 'FIELD_MAPPING') {
+                    mergedConfig[key] = config[key];
+                }
+            });
+        }
+        
+        // Always ensure Vue compatibility mode is set correctly
+        if (mergedConfig.vueCompatMode === undefined && config?.vueCompatMode !== undefined) {
+            mergedConfig.vueCompatMode = !!config.vueCompatMode;
+        }
+        
+        // Save the final config for debugging
+        window._directReportProfilesConfig = mergedConfig;
+        
+        // Verify required selectors are set
+        if (!mergedConfig.reportSelector || !mergedConfig.profileSelector) {
+            console.error('[DirectReportProfiles] Missing required selectors in config. Using defaults.');
+            mergedConfig.reportSelector = mergedConfig.reportSelector || '#view_2776 .kn-rich_text__content';
+            mergedConfig.profileSelector = mergedConfig.profileSelector || '#view_3015 .kn-rich_text__content';
+        }
+        
+        // Initialize the module with merged config
+        DirectReportProfilesModule.initialize(mergedConfig);
+        
+        console.log('[DirectReportProfiles] Initialization complete');
+        
+        // Return true to indicate successful initialization
+        return true;
+    } catch (error) {
+        console.error('[DirectReportProfiles] Initialization failed:', error);
+        return false;
     }
-    
-    // Initialize the module with merged config
-    DirectReportProfilesModule.initialize(mergedConfig);
-    
-    console.log('[DirectReportProfiles] Initialization complete');
 };
 
 // Global cleanup function 
