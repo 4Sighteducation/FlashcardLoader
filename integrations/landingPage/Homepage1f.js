@@ -43,19 +43,19 @@
         name: "VESPA Questionnaire",
         url: "https://vespaacademy.knack.com/vespa-academy#add-q/",
         icon: "https://www.vespa.academy/Icons/vespaq.png",
-        description: "Discover your learning superpowers! Quick quiz to unlock your V-E-S-P-A potential."
+        description: "Complete the VESPA Questionnaire to measure your mindset in Vision, Effort, Systems, Practice and Attitude."
       },
       {
         name: "VESPA Coaching Report",
         url: "https://vespaacademy.knack.com/vespa-academy#vespa-results/",
         icon: "https://www.vespa.academy/Icons/coachingreport.png",
-        description: "See your VESPA stats and get personalized tips to level up your learning game!"
+        description: "View and reflect on your VESPA Scores and personalized coaching feedback."
       },
       {
         name: "VESPA Activities",
         url: "https://vespaacademy.knack.com/vespa-academy#my-vespa/",
         icon: "https://www.vespa.academy/Icons/myvespa.png",
-        description: "Custom activities tailored to your VESPA profile. Fun challenges to boost your skills!"
+        description: "Access your personalized programme of ideas and activities based on your VESPA scores."
       }
     ],
     productivity: [
@@ -63,19 +63,19 @@
         name: "Study Planner",
         url: "https://vespaacademy.knack.com/vespa-academy#studyplanner/",
         icon: "https://www.vespa.academy/Icons/studyplanner.png",
-        description: "Map out your study time like a pro! Simple calendar to keep you on track."
+        description: "Plan and organize your study sessions with this interactive calendar tool."
       },
       {
         name: "Flashcards",
         url: "https://vespaacademy.knack.com/vespa-academy#flashcards/",
         icon: "https://www.vespa.academy/Icons/flashcards.png",
-        description: "Flashcards that adapt to you! Learn faster with cards that know when you need a review."
+        description: "Create and study with digital flashcards using our spaced repetition system."
       },
       {
         name: "Taskboard",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-taskboard/",
+        url: "https://vespaacademy.knack.com/vespa-academy#task-board/",
         icon: "https://www.vespa.academy/Icons/taskboard.png",
-        description: "Your digital to-do list! Drag, drop, and dominate your assignments with ease."
+        description: "Manage your tasks and assignments with this visual organization tool."
       }
     ]
   };
@@ -151,15 +151,6 @@
     // If it's a string
     if (typeof value === 'string') {
       return isValidKnackId(value) ? value : null;
-    }
-
-    // If it's an array, process each item
-    if (Array.isArray(value)) {
-      const validIds = value
-        .map(item => extractValidRecordId(item))
-        .filter(id => id !== null);
-      
-      return validIds.length > 0 ? (validIds.length === 1 ? validIds[0] : validIds) : null;
     }
 
     return null;
@@ -241,160 +232,6 @@
     return headers;
   }
 
-  // Process user data to extract connection fields - similar to StudyPlanner implementation
-  function processUserConnectionFields(user) {
-    if (!user) return user;
-
-    debugLog("Processing user connection fields", user);
-    
-    // Extract and store connection field IDs safely
-    if (user.id) {
-      user.emailId = extractValidRecordId(user.id);
-    }
-    
-    // For VESPA Customer ID (field_122/school) - Enhanced extraction
-    // First try raw fields which contain the most complete data
-    if (user.field_122_raw) {
-      // It could be an array of objects or a single object
-      if (Array.isArray(user.field_122_raw) && user.field_122_raw.length > 0) {
-        // Extract from first item
-        if (user.field_122_raw[0].id) {
-          user.schoolId = extractValidRecordId(user.field_122_raw[0].id);
-          debugLog("Found VESPA Customer ID from field_122_raw array", user.schoolId);
-        } else {
-          user.schoolId = extractValidRecordId(user.field_122_raw[0]);
-          debugLog("Found VESPA Customer ID from field_122_raw array item", user.schoolId);
-        }
-      } else if (typeof user.field_122_raw === 'object') {
-        // Direct object with ID
-        if (user.field_122_raw.id) {
-          user.schoolId = extractValidRecordId(user.field_122_raw.id);
-          debugLog("Found VESPA Customer ID from field_122_raw.id", user.schoolId);
-        } else {
-          user.schoolId = extractValidRecordId(user.field_122_raw);
-          debugLog("Found VESPA Customer ID from field_122_raw object", user.schoolId);
-        }
-      } else {
-        // Direct value
-        user.schoolId = extractValidRecordId(user.field_122_raw);
-        debugLog("Found VESPA Customer ID from field_122_raw direct value", user.schoolId);
-      }
-    } else if (user.school_raw) {
-      // It could be an array of objects or a single object
-      if (Array.isArray(user.school_raw) && user.school_raw.length > 0) {
-        // Extract from first item
-        if (user.school_raw[0].id) {
-          user.schoolId = extractValidRecordId(user.school_raw[0].id);
-          debugLog("Found VESPA Customer ID from school_raw array", user.schoolId);
-        } else {
-          user.schoolId = extractValidRecordId(user.school_raw[0]);
-          debugLog("Found VESPA Customer ID from school_raw array item", user.schoolId);
-        }
-      } else if (typeof user.school_raw === 'object') {
-        // Direct object with ID
-        if (user.school_raw.id) {
-          user.schoolId = extractValidRecordId(user.school_raw.id);
-          debugLog("Found VESPA Customer ID from school_raw.id", user.schoolId);
-        } else {
-          user.schoolId = extractValidRecordId(user.school_raw);
-          debugLog("Found VESPA Customer ID from school_raw object", user.schoolId);
-        }
-      } else {
-        // Direct value
-        user.schoolId = extractValidRecordId(user.school_raw);
-        debugLog("Found VESPA Customer ID from school_raw direct value", user.schoolId);
-      }
-    } else if (user.field_122 || user.school) {
-      user.schoolId = extractValidRecordId(user.school || user.field_122);
-      debugLog("Using fallback for VESPA Customer ID from field_122/school", user.schoolId);
-    }
-    
-    // Set vespaCustomerId as a convenience alias - based on StudyPlanner approach
-    user.vespaCustomerId = user.schoolId;
-    if (user.vespaCustomerId) {
-      debugLog("Set alias vespaCustomerId to use schoolId value", user.vespaCustomerId);
-    }
-    
-    // For tutor connection(s) - handle as array
-    if (user.field_1682_raw && Array.isArray(user.field_1682_raw) && user.field_1682_raw.length > 0) {
-      // Get all tutor IDs
-      const tutorIds = user.field_1682_raw
-        .map(item => extractValidRecordId(item.id))
-        .filter(id => id);
-        
-      if (tutorIds.length === 1) {
-        user.teacherId = tutorIds[0];
-        debugLog("Found single Tutor ID from field_1682_raw", user.teacherId);
-      } else if (tutorIds.length > 1) {
-        user.teacherId = tutorIds; // Store as array
-        debugLog(`Found ${tutorIds.length} Tutor IDs from field_1682_raw`, tutorIds);
-      }
-    } else if (user.tutor_raw && Array.isArray(user.tutor_raw) && user.tutor_raw.length > 0) {
-      // Get all tutor IDs from tutor_raw
-      const tutorIds = user.tutor_raw
-        .map(item => extractValidRecordId(item.id))
-        .filter(id => id);
-        
-      if (tutorIds.length === 1) {
-        user.teacherId = tutorIds[0];
-        debugLog("Found single Tutor ID from tutor_raw", user.teacherId);
-      } else if (tutorIds.length > 1) {
-        user.teacherId = tutorIds; // Store as array
-        debugLog(`Found ${tutorIds.length} Tutor IDs from tutor_raw`, tutorIds);
-      }
-    } else if (user.tutor || user.field_1682) {
-      // Fallback for single tutor
-      const singleTutorId = extractValidRecordId(user.tutor || user.field_1682);
-      if (singleTutorId) {
-        user.teacherId = singleTutorId;
-        debugLog("Using fallback for Tutor ID", user.teacherId);
-      }
-    }
-    
-    // For role ID
-    if (user.role) {
-      user.roleId = extractValidRecordId(user.role);
-    }
-    
-    // Staff admin connection (field_190) - handle as array
-    if (user.field_190_raw && Array.isArray(user.field_190_raw) && user.field_190_raw.length > 0) {
-      // Get all staff admin IDs
-      const staffAdminIds = user.field_190_raw
-        .map(item => extractValidRecordId(item.id))
-        .filter(id => id);
-        
-      if (staffAdminIds.length === 1) {
-        user.staffAdminId = staffAdminIds[0];
-        debugLog("Found single Staff Admin ID from field_190_raw", user.staffAdminId);
-      } else if (staffAdminIds.length > 1) {
-        user.staffAdminId = staffAdminIds; // Store as array
-        debugLog(`Found ${staffAdminIds.length} Staff Admin IDs from field_190_raw`, staffAdminIds);
-      }
-    } else if (user.staffAdmin_raw && Array.isArray(user.staffAdmin_raw) && user.staffAdmin_raw.length > 0) {
-      // Get all staff admin IDs from staffAdmin_raw
-      const staffAdminIds = user.staffAdmin_raw
-        .map(item => extractValidRecordId(item.id))
-        .filter(id => id);
-        
-      if (staffAdminIds.length === 1) {
-        user.staffAdminId = staffAdminIds[0];
-        debugLog("Found single Staff Admin ID from staffAdmin_raw", user.staffAdminId);
-      } else if (staffAdminIds.length > 1) {
-        user.staffAdminId = staffAdminIds; // Store as array
-        debugLog(`Found ${staffAdminIds.length} Staff Admin IDs from staffAdmin_raw`, staffAdminIds);
-      }
-    } else if (user.staffAdmin || user.field_190) {
-      // Fallback for direct field access
-      const staffAdminId = extractValidRecordId(user.staffAdmin || user.field_190);
-      if (staffAdminId) {
-        user.staffAdminId = staffAdminId;
-        debugLog("Using fallback for Staff Admin ID", user.staffAdminId);
-      }
-    }
-    
-    return user;
-  }
-
   // --- User Profile Data Management ---
   // Find or create the user profile record
   async function findOrCreateUserProfile(userId, userName, userEmail) {
@@ -473,198 +310,42 @@
       // Connection fields - User Account (direct user ID)
       data[FIELD_MAPPING.userConnection] = userId;
       
-      // Enhanced connection field extraction for VESPA Customer
-      let vespaCustomerId = null;
-      
-      // Try from user object first - prioritize pre-processed values
+      // Connection fields from user object
       if (user.schoolId) {
-        vespaCustomerId = user.schoolId;
-        debugLog('Found VESPA Customer ID from user.schoolId', vespaCustomerId);
-      } else if (user.vespaCustomerId) {
-        vespaCustomerId = user.vespaCustomerId;
-        debugLog('Found VESPA Customer ID from user.vespaCustomerId', vespaCustomerId);
+        data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
       }
       
-      // Try student record with enhanced extraction if still not found
-      if (!vespaCustomerId && studentRecord) {
-        debugLog('Trying to extract VESPA Customer ID from student record', studentRecord);
-        
-        // Process all possible versions of field_122_raw
-        if (studentRecord.field_122_raw) {
-          // It could be an array of objects, a single object, or a direct ID
-          if (Array.isArray(studentRecord.field_122_raw)) {
-            // Try each item in the array
-            for (const item of studentRecord.field_122_raw) {
-              const id = extractValidRecordId(item);
-              if (id) {
-                vespaCustomerId = id;
-                debugLog('Found VESPA Customer ID from field_122_raw array item', vespaCustomerId);
-                break;
-              }
-            }
-          } else if (typeof studentRecord.field_122_raw === 'object') {
-            // Try to extract from object
-            if (studentRecord.field_122_raw.id) {
-              vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw.id);
-              debugLog('Found VESPA Customer ID from field_122_raw.id object property', vespaCustomerId);
-            } else {
-              vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw);
-              debugLog('Found VESPA Customer ID from field_122_raw object', vespaCustomerId);
-            }
-          } else {
-            // Try direct value
-            vespaCustomerId = extractValidRecordId(studentRecord.field_122_raw);
-            debugLog('Found VESPA Customer ID from field_122_raw direct value', vespaCustomerId);
-          }
-        }
-        
-        // Try school_raw if field_122_raw didn't work
-        if (!vespaCustomerId && studentRecord.school_raw) {
-          // Similar logic for school_raw as field_122_raw
-          if (Array.isArray(studentRecord.school_raw)) {
-            for (const item of studentRecord.school_raw) {
-              const id = extractValidRecordId(item);
-              if (id) {
-                vespaCustomerId = id;
-                debugLog('Found VESPA Customer ID from school_raw array item', vespaCustomerId);
-                break;
-              }
-            }
-          } else if (typeof studentRecord.school_raw === 'object') {
-            if (studentRecord.school_raw.id) {
-              vespaCustomerId = extractValidRecordId(studentRecord.school_raw.id);
-              debugLog('Found VESPA Customer ID from school_raw.id object property', vespaCustomerId);
-            } else {
-              vespaCustomerId = extractValidRecordId(studentRecord.school_raw);
-              debugLog('Found VESPA Customer ID from school_raw object', vespaCustomerId);
-            }
-          } else {
-            vespaCustomerId = extractValidRecordId(studentRecord.school_raw);
-            debugLog('Found VESPA Customer ID from school_raw direct value', vespaCustomerId);
-          }
-        }
-        
-        // Try standard field values as last resort
-        if (!vespaCustomerId) {
-          // Try standard field values
-          if (studentRecord.field_122) {
-            vespaCustomerId = extractValidRecordId(studentRecord.field_122);
-            debugLog('Found VESPA Customer ID from field_122 standard field', vespaCustomerId);
-          } else if (studentRecord.school) {
-            vespaCustomerId = extractValidRecordId(studentRecord.school);
-            debugLog('Found VESPA Customer ID from school standard field', vespaCustomerId);
-          }
-        }
-      }
-      
-      // Set VESPA Customer ID if found through any method
-      if (vespaCustomerId) {
-        data[FIELD_MAPPING.vespaCustomer] = vespaCustomerId;
-        debugLog('Setting VESPA Customer connection field', vespaCustomerId);
-      }
-      
-      // Use processed user fields
-      // First try the teacherId we extracted in processUserConnectionFields
-      let tutorIds = [];
-      
-      // Check for teacher/tutor IDs directly from processed user object
-      if (user.teacherId) {
-        // It might be a single ID or an array
-        if (Array.isArray(user.teacherId)) {
-          tutorIds = user.teacherId;
-          debugLog('Using tutor IDs array from processed user object', tutorIds);
-        } else {
-          tutorIds = [user.teacherId];
-          debugLog('Using single tutor ID from processed user object', user.teacherId);
-        }
-      }
-      
-      // If we still don't have tutor IDs, try from student record
-      if (tutorIds.length === 0 && studentRecord) {
-        // Tutor connections - enhanced extraction with fallbacks
-        // Try field_1682_raw first (primary method)
-        if (studentRecord.field_1682_raw && Array.isArray(studentRecord.field_1682_raw)) {
-          tutorIds = studentRecord.field_1682_raw
-            .map(item => extractValidRecordId(item))
-            .filter(id => id);
-            
-          debugLog('Extracted tutor IDs from field_1682_raw', tutorIds);
-        }
-        // Fallback to field_1682 if available
-        else if (studentRecord.field_1682) {
-          if (Array.isArray(studentRecord.field_1682)) {
-            tutorIds = studentRecord.field_1682
-              .map(item => extractValidRecordId(item))
-              .filter(id => id);
-            
-            debugLog('Extracted tutor IDs from field_1682 array fallback', tutorIds);
-          } else {
-            const tutorId = extractValidRecordId(studentRecord.field_1682);
-            if (tutorId) {
-              tutorIds = [tutorId];
-              debugLog('Extracted tutor ID from field_1682 direct fallback', tutorId);
-            }
-          }
-        }
-      }
-      
-      // Add tutors if found
-      if (tutorIds.length > 0) {
-        data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
-        debugLog(`Setting ${tutorIds.length} tutor connection(s)`, data[FIELD_MAPPING.tutorConnection]);
-      }
-        
-      // Check for staff admin IDs directly from processed user object
-      let staffAdminIds = [];
-      
-      if (user.staffAdminId) {
-        // It might be a single ID or an array
-        if (Array.isArray(user.staffAdminId)) {
-          staffAdminIds = user.staffAdminId;
-          debugLog('Using staff admin IDs array from processed user object', staffAdminIds);
-        } else {
-          staffAdminIds = [user.staffAdminId];
-          debugLog('Using single staff admin ID from processed user object', user.staffAdminId);
-        }
-      }
-      
-      // If we still don't have staff admin IDs, try from student record
-      if (staffAdminIds.length === 0 && studentRecord) {
-        // Staff Admin connections - enhanced extraction with fallbacks
-        // Try field_190_raw first (primary method)
-        if (studentRecord.field_190_raw && Array.isArray(studentRecord.field_190_raw)) {
-          staffAdminIds = studentRecord.field_190_raw
-            .map(item => extractValidRecordId(item))
-            .filter(id => id);
-            
-          debugLog('Extracted staff admin IDs from field_190_raw', staffAdminIds);
-        }
-        // Fallback to field_190 if available
-        else if (studentRecord.field_190) {
-          if (Array.isArray(studentRecord.field_190)) {
-            staffAdminIds = studentRecord.field_190
-              .map(item => extractValidRecordId(item))
-              .filter(id => id);
-            
-            debugLog('Extracted staff admin IDs from field_190 array fallback', staffAdminIds);
-          } else {
-            const staffAdminId = extractValidRecordId(studentRecord.field_190);
-            if (staffAdminId) {
-              staffAdminIds = [staffAdminId];
-              debugLog('Extracted staff admin ID from field_190 direct fallback', staffAdminId);
-            }
-          }
-        }
-      }
-      
-      // Add staff admins if found
-      if (staffAdminIds.length > 0) {
-        data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
-        debugLog(`Setting ${staffAdminIds.length} staff admin connection(s)`, data[FIELD_MAPPING.staffAdminConnection]);
-      }
-      
-      // Get additional data from student record if available
+      // Extract connection fields from student record if available
       if (studentRecord) {
+        // VESPA Customer (school) if not already set
+        if (!data[FIELD_MAPPING.vespaCustomer] && studentRecord.field_122_raw) {
+          const schoolId = extractValidRecordId(studentRecord.field_122_raw);
+          if (schoolId) {
+            data[FIELD_MAPPING.vespaCustomer] = schoolId;
+          }
+        }
+        
+        // Tutor connections - handle multiple
+        if (studentRecord.field_1682_raw && Array.isArray(studentRecord.field_1682_raw)) {
+          const tutorIds = studentRecord.field_1682_raw
+            .map(item => extractValidRecordId(item))
+            .filter(id => id);
+            
+          if (tutorIds.length > 0) {
+            data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
+          }
+        }
+        
+        // Staff Admin connections - handle multiple
+        if (studentRecord.field_190_raw && Array.isArray(studentRecord.field_190_raw)) {
+          const staffAdminIds = studentRecord.field_190_raw
+            .map(item => extractValidRecordId(item))
+            .filter(id => id);
+            
+          if (staffAdminIds.length > 0) {
+            data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
+          }
+        }
         
         // Get Tutor Group if available
         if (studentRecord.field_34) {
@@ -742,18 +423,12 @@
   async function findStudentRecord(email) {
     if (!email) return null;
     
-    debugLog(`Looking up student record for email: ${email}`);
-    
-    // Enhanced filter to search for email using multiple possible fields and methods
     const filters = encodeURIComponent(JSON.stringify({
       match: 'or',
       rules: [
-        // Exact matches
         { field: 'field_91', operator: 'is', value: email },
         { field: 'field_70', operator: 'is', value: email },
-        // Contains matches (useful for emails embedded in other text)
-        { field: 'field_91', operator: 'contains', value: email },
-        { field: 'field_70', operator: 'contains', value: email }
+        { field: 'field_91', operator: 'contains', value: email }
       ]
     }));
     
@@ -772,33 +447,9 @@
       });
       
       if (response && response.records && response.records.length > 0) {
-        debugLog(`Found ${response.records.length} student record matches for ${email}`, response.records[0]);
-        
-        // If multiple records were found, try to find the best match
-        if (response.records.length > 1) {
-          let bestMatch = response.records[0];
-          
-          // Look for exact email match
-          for (const record of response.records) {
-            const recordEmail = sanitizeField(record.field_91 || record.field_70 || '');
-            if (recordEmail.toLowerCase() === email.toLowerCase()) {
-              debugLog(`Selected best matching student record by exact email match`, record);
-              bestMatch = record;
-              break;
-            }
-          }
-          
-          // Process the best match to extract connection fields
-          processUserConnectionFields(bestMatch);
-          return bestMatch;
-        }
-        
-        // Process the single record to extract connection fields
-        processUserConnectionFields(response.records[0]);
         return response.records[0];
       }
       
-      debugLog(`No student record found for email: ${email}`);
       return null;
     } catch (error) {
       console.error('[Homepage] Error finding student record:', error);
@@ -860,86 +511,60 @@
     // Add the CSS
     const styleElement = document.createElement('style');
     styleElement.textContent = `
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: #1a1f2e;
-        color: #e8ecf3;
-        overflow-x: hidden;
-      }
-      
       #vespa-homepage {
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
-        min-height: 100vh;
-        padding: 2vh 3vw;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        color: #333;
       }
       
       .vespa-section {
-        background-color: #232938;
-        border-radius: 12px;
-        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
-        padding: 24px;
-        margin-bottom: 2vh;
-        transition: transform 0.3s, box-shadow 0.3s;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      
-      .vespa-section:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 30px;
       }
       
       .vespa-section-title {
-        color: #00e5db;
-        font-size: 26px;
+        color: #23356f;
+        font-size: 24px;
         font-weight: 600;
         margin-bottom: 20px;
         padding-bottom: 10px;
         border-bottom: 2px solid #00e5db;
-        letter-spacing: 0.5px;
       }
       
       /* Profile Section */
       .profile-info {
         display: flex;
         flex-wrap: wrap;
-        gap: 24px;
+        gap: 20px;
       }
       
       .profile-details {
         flex: 1;
         min-width: 250px;
-        background-color: rgba(35, 53, 111, 0.3);
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid rgba(0, 229, 219, 0.2);
       }
       
       .profile-name {
         font-size: 28px;
-        color: #ffffff;
+        color: #23356f;
         margin-bottom: 15px;
-        letter-spacing: 0.5px;
       }
       
       .profile-item {
-        margin-bottom: 16px;
+        margin-bottom: 10px;
       }
       
       .profile-label {
         font-weight: 600;
-        color: #00e5db;
-        margin-bottom: 4px;
-        display: block;
+        color: #23356f;
       }
       
       .profile-value {
-        color: #e8ecf3;
-        font-size: 16px;
+        color: #333;
       }
       
       .subjects-container {
@@ -949,45 +574,33 @@
       
       .subjects-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
       }
       
       .subject-card {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-        padding: 16px;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(0, 229, 219, 0.15);
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      
-      .subject-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
-        border-color: rgba(0, 229, 219, 0.3);
+        background-color: #f8f8f8;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       }
       
       .subject-name {
         font-weight: 600;
-        color: #ffffff;
+        color: #23356f;
         margin-bottom: 8px;
-        font-size: 16px;
       }
       
       .subject-meta {
         font-size: 0.85em;
-        color: #b0b7c4;
-        margin-bottom: 8px;
+        color: #666;
+        margin-bottom: 5px;
       }
       
       .grades-container {
         display: flex;
         justify-content: space-between;
-        margin-top: 12px;
-        background-color: rgba(0, 0, 0, 0.15);
-        padding: 10px;
-        border-radius: 6px;
+        margin-top: 10px;
       }
       
       .grade-item {
@@ -996,17 +609,16 @@
       
       .grade-label {
         font-size: 0.75em;
-        color: #b0b7c4;
-        margin-bottom: 4px;
+        color: #666;
       }
       
       .grade-value {
-        font-size: 1.3em;
+        font-size: 1.2em;
         font-weight: 600;
       }
       
       .grade-meg {
-        color: #ffd166;
+        color: #23356f;
       }
       
       .grade-current {
@@ -1015,33 +627,29 @@
       
       /* App Hubs */
       .app-hub {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
         justify-content: center;
       }
       
       .app-card {
-        background: linear-gradient(145deg, #2a3142, #232938);
-        border-radius: 12px;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 250px;
         overflow: hidden;
-        transition: all 0.3s ease;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        transition: transform 0.3s, box-shadow 0.3s;
       }
       
       .app-card:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.35);
-        border-color: rgba(0, 229, 219, 0.3);
+        transform: translateY(-5px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
       }
       
       .app-card-header {
-        background: linear-gradient(45deg, #23356f, #2a4494);
-        padding: 20px;
+        background-color: #23356f;
+        padding: 15px;
         text-align: center;
       }
       
@@ -1049,114 +657,50 @@
         width: 80px;
         height: 80px;
         object-fit: contain;
-        margin-bottom: 15px;
-        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
-        transition: transform 0.3s;
-      }
-      
-      .app-card:hover .app-icon {
-        transform: scale(1.1);
+        margin-bottom: 10px;
       }
       
       .app-name {
         color: white;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 600;
-        letter-spacing: 0.5px;
       }
       
       .app-description {
-        padding: 20px;
-        color: #d1d7e2;
-        font-size: 15px;
-        flex-grow: 1;
+        padding: 15px;
+        color: #333;
+        font-size: 14px;
+        height: 100px;
         display: flex;
         align-items: center;
         text-align: center;
-        line-height: 1.5;
       }
       
       .app-button {
         display: block;
-        background: linear-gradient(90deg, #00e5db, #00c2b8);
-        color: #1a1f2e;
+        background-color: #00e5db;
+        color: #23356f;
         text-align: center;
-        padding: 12px;
+        padding: 10px;
         text-decoration: none;
         font-weight: 600;
-        transition: all 0.3s;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        font-size: 14px;
+        transition: background-color 0.3s;
       }
       
       .app-button:hover {
-        background: linear-gradient(90deg, #00f7ec, #00d4c9);
-        letter-spacing: 1px;
+        background-color: #00c2b8;
       }
       
-      /* Responsive adjustments for full screen */
-      @media screen and (min-width: 1024px) {
-        #vespa-homepage {
-          height: 100vh;
-          overflow: hidden;
-        }
-        
-        .app-hub {
-          grid-template-columns: repeat(3, 1fr);
-        }
-      }
-      
+      /* Responsive adjustments */
       @media (max-width: 768px) {
         .subjects-grid {
-          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         }
         
-        .app-hub {
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        .app-card {
+          width: 100%;
+          max-width: 300px;
         }
-        
-        #vespa-homepage {
-          height: auto;
-          overflow: auto;
-        }
-      }
-      
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      
-      ::-webkit-scrollbar-track {
-        background: #1a1f2e;
-      }
-      
-      ::-webkit-scrollbar-thumb {
-        background: #00e5db;
-        border-radius: 4px;
-      }
-      
-      ::-webkit-scrollbar-thumb:hover {
-        background: #00c2b8;
-      }
-      
-      /* Animation for cards */
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      .vespa-section, .app-card, .subject-card {
-        animation: fadeIn 0.5s ease-out forwards;
-      }
-      
-      .no-subjects {
-        color: #b0b7c4;
-        text-align: center;
-        padding: 20px;
-        grid-column: 1 / -1;
-        background-color: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
       }
     `;
     
@@ -1209,33 +753,33 @@
         `;
       });
     } else {
-      subjectsHTML = '<div class="no-subjects">No subjects added yet</div>';
+      subjectsHTML = '<div class="no-subjects">No subjects available</div>';
     }
     
     return `
       <section class="vespa-section profile-section">
-        <h2 class="vespa-section-title">Your Dashboard</h2>
+        <h2 class="vespa-section-title">Student Profile</h2>
         <div class="profile-info">
           <div class="profile-details">
             <div class="profile-name">${name}</div>
             
             <div class="profile-item">
-              <span class="profile-label">School</span>
+              <span class="profile-label">School:</span>
               <span class="profile-value">${school || 'N/A'}</span>
             </div>
             
             <div class="profile-item">
-              <span class="profile-label">Year Group</span>
+              <span class="profile-label">Year Group:</span>
               <span class="profile-value">${yearGroup || 'N/A'}</span>
             </div>
             
             <div class="profile-item">
-              <span class="profile-label">Tutor Group</span>
+              <span class="profile-label">Tutor Group:</span>
               <span class="profile-value">${tutorGroup || 'N/A'}</span>
             </div>
             
             <div class="profile-item">
-              <span class="profile-label">Attendance</span>
+              <span class="profile-label">Attendance:</span>
               <span class="profile-value">${attendance || 'N/A'}</span>
             </div>
           </div>
@@ -1310,10 +854,9 @@
       return;
     }
     
-    // Process and store user info globally
-    // This enhances the user object with properly extracted connection fields
-    window.currentKnackUser = processUserConnectionFields(user);
-    debugLog("Processed user data with connection fields:", window.currentKnackUser);
+    // Store user info globally
+    window.currentKnackUser = user;
+    debugLog("Current user:", user);
     
     // Find the target container - add more logging to troubleshoot
     console.log(`[Homepage] Looking for container with selector: ${config.elementSelector}`);
@@ -1358,10 +901,10 @@
     
     // Show loading indicator
     container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #1a1f2e; border-radius: 12px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);">
-        <h3 style="font-size: 24px; letter-spacing: 1px;">Loading Your Dashboard...</h3>
+      <div style="padding: 30px; text-align: center; color: #23356f;">
+        <h3>Loading VESPA Homepage...</h3>
         <div style="margin-top: 20px;">
-          <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+          <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
             <circle cx="25" cy="25" r="20" fill="none" stroke="#00e5db" stroke-width="5">
               <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
               <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
@@ -1398,4 +941,3 @@
   };
 
 })(); // End of IIFE
-
