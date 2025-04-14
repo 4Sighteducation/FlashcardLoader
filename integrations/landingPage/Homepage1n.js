@@ -579,20 +579,46 @@
       // Extract connection fields from student record if available
       if (studentRecord) {
         // VESPA Customer (school) if not already set
-        if (!data[FIELD_MAPPING.vespaCustomer] && studentRecord.field_122_raw) {
-          // First try to extract from raw field
-          let schoolId = extractValidRecordId(studentRecord.field_122_raw);
+        // First try field_122_raw (original field)
+        if (!data[FIELD_MAPPING.vespaCustomer]) {
+          let schoolId = null;
           
-          // If that fails, try alternative formats
-          if (!schoolId && studentRecord.field_122_raw.id) {
-            schoolId = studentRecord.field_122_raw.id;
-          } else if (!schoolId && typeof studentRecord.field_122 === 'string' && isValidKnackId(studentRecord.field_122)) {
-            schoolId = studentRecord.field_122;
+          // Log all potential VESPA Customer fields for debugging
+          console.log('[Homepage] Potential VESPA Customer fields:');
+          console.log('- field_122_raw:', studentRecord.field_122_raw);
+          console.log('- field_122:', studentRecord.field_122);
+          console.log('- field_179:', studentRecord.field_179);
+          
+          // Try field_122_raw first
+          if (studentRecord.field_122_raw) {
+            schoolId = extractValidRecordId(studentRecord.field_122_raw);
+            if (schoolId) {
+              console.log(`[Homepage] Found VESPA Customer in field_122_raw: ${schoolId}`);
+            }
           }
           
+          // If not found, try field_179 (alternative field)
+          if (!schoolId && studentRecord.field_179) {
+            schoolId = extractValidRecordId(studentRecord.field_179);
+            if (schoolId) {
+              console.log(`[Homepage] Found VESPA Customer in field_179: ${schoolId}`);
+            }
+          }
+          
+          // If still not found, try non-raw field_122
+          if (!schoolId && studentRecord.field_122) {
+            if (typeof studentRecord.field_122 === 'string' && isValidKnackId(studentRecord.field_122)) {
+              schoolId = studentRecord.field_122;
+              console.log(`[Homepage] Found VESPA Customer in field_122: ${schoolId}`);
+            }
+          }
+          
+          // Set the school ID if found in any field
           if (schoolId) {
             data[FIELD_MAPPING.vespaCustomer] = schoolId;
             console.log(`[Homepage] Setting VESPA Customer from student record: ${schoolId}`);
+          } else {
+            console.log('[Homepage] Could not find valid VESPA Customer ID in any field');
           }
         }
         
@@ -1283,30 +1309,7 @@
     `;
     
     try {
-      // Find or create user profile
-      const userProfile = await findOrCreateUserProfile(user.id, user.name, user.email);
-      
-      if (userProfile) {
-        // Render the homepage UI
-        renderHomepage(userProfile);
-      } else {
-        container.innerHTML = `
-          <div style="padding: 30px; text-align: center; color: #23356f;">
-            <h3>Error Loading Homepage</h3>
-            <p>Unable to load or create your user profile. Please try refreshing the page.</p>
-          </div>
-        `;
-      }
-    } catch (error) {
-      console.error("Homepage Error during initialization:", error);
-      container.innerHTML = `
-        <div style="padding: 30px; text-align: center; color: #23356f;">
-          <h3>Error Loading Homepage</h3>
-          <p>An unexpected error occurred. Please try refreshing the page.</p>
-        </div>
-      `;
-    }
-  };
+
 
 })(); // End of IIFE
 
