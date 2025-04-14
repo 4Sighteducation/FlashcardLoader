@@ -18,6 +18,7 @@
     tutorGroup: 'field_3077',      // Tutor Group
     yearGroup: 'field_3078',       // Year Group
     numLogins: 'field_3079',       // NumLogins
+    upn: 'field_3136',            // Unique Pupil Number (UPN)
     // Subject fields
     sub1: 'field_3080',
     sub2: 'field_3081',
@@ -288,8 +289,11 @@
       // New Authentication Flow: Check Object_113 for subject data
       if (profileRecord && userEmail) {
         try {
-          debugLog(`Fetching subject data from Object_113 for email: ${userEmail}`);
-          const subjectRecords = await fetchSubjectDataFromObject113(userEmail);
+          // Get UPN from profile record if available
+          const userUpn = profileRecord[FIELD_MAPPING.upn];
+          
+          debugLog(`Fetching subject data from Object_113 for email: ${userEmail}${userUpn ? ` and UPN: ${userUpn}` : ''}`);
+          const subjectRecords = await fetchSubjectDataFromObject113(userEmail, userUpn);
           
           if (subjectRecords && subjectRecords.length > 0) {
             debugLog(`Found ${subjectRecords.length} subject records in Object_113`, subjectRecords);
@@ -348,20 +352,32 @@
     }
   }
   
-  // Fetch subject data from Object_113 using user email
-  async function fetchSubjectDataFromObject113(userEmail) {
-    if (!userEmail) {
-      console.error("[Homepage] Cannot fetch subject data: userEmail is missing.");
+  // Fetch subject data from Object_113 using user email and/or UPN
+  async function fetchSubjectDataFromObject113(userEmail, userUpn) {
+    if (!userEmail && !userUpn) {
+      console.error("[Homepage] Cannot fetch subject data: Both userEmail and userUpn are missing.");
       return [];
     }
     
     try {
-      // Create filter to find by user email in Object_113
+      const rules = [];
+      
+      // Prioritize UPN for more precise matching if available
+      if (userUpn) {
+        rules.push({ field: 'field_3130', operator: 'is', value: userUpn }); // UPN field in Object_113
+        debugLog(`Filtering Object_113 by UPN: ${userUpn}`);
+      }
+      
+      // If no UPN, use email, or add email as fallback even with UPN
+      if (!userUpn || (userUpn && userEmail)) {
+        rules.push({ field: 'field_3111', operator: 'is', value: userEmail }); // Email field
+        debugLog(`Filtering Object_113 by email: ${userEmail}`);
+      }
+      
+      // Create filter to find records by UPN and/or email
       const filters = encodeURIComponent(JSON.stringify({
-        match: 'and',
-        rules: [
-          { field: 'field_3111', operator: 'is', value: userEmail } // Assuming field_3111 is the email field in Object_113
-        ]
+        match: 'or', // Match either UPN or email
+        rules: rules
       }));
       
       const response = await retryApiCall(() => {
@@ -378,6 +394,7 @@
       });
       
       if (response && response.records && response.records.length > 0) {
+        debugLog(`Found ${response.records.length} subject records in Object_113`, response.records);
         return response.records;
       }
       
@@ -396,7 +413,7 @@
     
     return records.map(record => {
       return {
-        subject: sanitizeField(record.field_3112 || ''),
+        subject: sanitizeField(record.field_3109 || ''), // Corrected to field_3109 for subject name
         examType: sanitizeField(record.field_3103 || ''),
         examBoard: sanitizeField(record.field_3102 || ''),
         minimumExpectedGrade: sanitizeField(record.field_3131 || ''),
@@ -476,6 +493,12 @@
       // Connection fields from user object
       if (user.schoolId) {
         data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
+      }
+      
+      // Store UPN if available from student record
+      if (studentRecord && studentRecord.field_3129) {
+        data[FIELD_MAPPING.upn] = sanitizeField(studentRecord.field_3129);
+        debugLog(`Adding UPN to user profile: ${studentRecord.field_3129}`);
       }
       
       // Extract connection fields from student record if available
@@ -610,7 +633,14 @@
       });
       
       if (response && response.records && response.records.length > 0) {
-        return response.records[0];
+        const studentRecord = response.records[0];
+        // Extract UPN (Unique Pupil Number) if available
+        if (studentRecord.field_3129) {
+          debugLog(`Found UPN for student: ${studentRecord.field_3129}`);
+        } else {
+          console.log('[Homepage] No UPN found in student record (field_3129)');
+        }
+        return studentRecord;
       }
       
       return null;
