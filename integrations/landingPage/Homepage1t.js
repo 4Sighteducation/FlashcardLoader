@@ -959,7 +959,7 @@
       .vespa-section:nth-child(3) { animation-delay: 0.3s; }
       
       .vespa-section-title {
-        color: #079baa;
+        color: #00e5db !important; /* Added !important to override any competing styles */
         font-size: 22px;
         font-weight: 600;
         margin-bottom: 16px;
@@ -1019,7 +1019,7 @@
       
       .profile-name {
         font-size: 22px;
-        color: #079baa;
+        color: #00e5db;
         margin-bottom: 8px;
         font-weight: 700;
         padding: 4px 8px;
@@ -1041,7 +1041,7 @@
       
       .profile-label {
         font-weight: 600;
-        color: #079baa;
+        color: #00e5db;
         margin-right: 4px;
         min-width: 80px;
       }
@@ -1077,14 +1077,14 @@
       
       .subject-name {
         font-weight: 600;
-        color: #079baa;
+        color: #ffffff;
         margin-bottom: 4px;
         font-size: 0.95em;
       }
       
       .subject-meta {
         font-size: 0.75em;
-        color: #b0b0b0;
+        color: #ffffff;
         margin-bottom: 3px;
       }
       
@@ -1110,7 +1110,7 @@
       
       .grade-label {
         font-size: 0.7em;
-        color: #b0b0b0;
+        color: #ffffff;
         margin-bottom: 3px;
       }
       
@@ -1125,7 +1125,7 @@
       }
       
       .grade-meg {
-        color: #079baa;
+        color: #00e5db;
       }
       
       /* Grade indicators - will be dynamically applied in the rendering function */
@@ -1167,6 +1167,46 @@
         transition: transform 0.3s, box-shadow 0.3s;
         animation: fadeIn 0.5s ease-out forwards;
         border: 1px solid rgba(7, 155, 170, 0.3);
+        position: relative;
+      }
+      
+      /* Tooltip/Popup Styles */
+      .app-tooltip {
+        position: absolute;
+        background-color: #1c2b5f;
+        color: #ffffff;
+        padding: 10px;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        width: 220px;
+        z-index: 100;
+        top: 85%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+        pointer-events: none;
+        border: 1px solid #00e5db;
+        font-size: 13px;
+        text-align: center;
+      }
+      
+      .app-tooltip::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        margin-left: -8px;
+        border-width: 8px;
+        border-style: solid;
+        border-color: transparent transparent #1c2b5f transparent;
+      }
+      
+      .app-card:hover .app-tooltip {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(8px);
       }
       
       /* Stagger app card animations */
@@ -1228,14 +1268,29 @@
         font-weight: 600;
       }
       
-      .app-description {
-        padding: 10px;
-        color: #ffffff;
-        font-size: 12px;
-        height: 80px;
+      /* Info icon for tooltip trigger */
+      .app-info-icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 20px;
+        height: 20px;
+        background-color: #00e5db;
+        color: #1c2b5f;
+        border-radius: 50%;
         display: flex;
         align-items: center;
-        text-align: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+        cursor: help;
+        transition: all 0.2s;
+        z-index: 2;
+      }
+      
+      .app-info-icon:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 6px rgba(0, 229, 219, 0.6);
       }
       
       .app-button {
@@ -1564,10 +1619,11 @@
       appsHTML += `
         <div class="app-card">
           <div class="app-card-header">
+            <div class="app-info-icon" title="Click for details">i</div>
             <img src="${app.icon}" alt="${app.name}" class="app-icon">
             <div class="app-name">${sanitizeField(app.name)}</div>
           </div>
-          <div class="app-description">
+          <div class="app-tooltip">
             ${sanitizeField(app.description)}
           </div>
           <a href="${app.url}" class="app-button">Launch</a>
@@ -1709,4 +1765,5 @@
   };
 
 })(); // End of IIFE
+
 
