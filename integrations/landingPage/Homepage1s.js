@@ -898,28 +898,32 @@
     
     debugLog('Rendering homepage with profile data:', profileData);
     
-    // Create the main container
+    // Create the main container with app hubs side-by-side
     const homepageHTML = `
       <div id="vespa-homepage">
         ${renderProfileSection(profileData)}
-        ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
-        ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity)}
+        <div class="app-hubs-container">
+          ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
+          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity)}
+        </div>
       </div>
     `;
     
     // Add the CSS
     const styleElement = document.createElement('style');
     styleElement.textContent = `
-      /* Main Container - Dark Theme */
+      /* Main Container - VESPA Theme */
       #vespa-homepage {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         max-width: 1200px;
         margin: 0 auto;
         padding: 16px;
-        color: #f0f0f0;
-        background-color: #121212;
+        color: #ffffff;
+        background-color: #23356f;
         line-height: 1.4;
         overflow-x: hidden;
+        border: 3px solid #2a3c7a;
+        border-radius: 10px;
       }
       
       /* Animation Keyframes */
@@ -936,13 +940,14 @@
       
       /* Sections */
       .vespa-section {
-        background-color: #1e1e1e;
+        background-color: #2a3c7a;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         padding: 16px;
         margin-bottom: 24px;
         animation: fadeIn 0.5s ease-out forwards;
         transition: transform 0.2s, box-shadow 0.2s;
+        border: 2px solid #079baa;
       }
       
       .vespa-section:hover {
@@ -954,12 +959,12 @@
       .vespa-section:nth-child(3) { animation-delay: 0.3s; }
       
       .vespa-section-title {
-        color: #00e5db;
+        color: #079baa;
         font-size: 22px;
         font-weight: 600;
         margin-bottom: 16px;
         padding-bottom: 8px;
-        border-bottom: 2px solid #00e5db;
+        border-bottom: 2px solid #079baa;
         position: relative;
         overflow: hidden;
       }
@@ -971,7 +976,7 @@
         left: -100%;
         width: 100%;
         height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(0, 229, 219, 0.8), transparent);
+        background: linear-gradient(90deg, transparent, rgba(7, 155, 170, 0.8), transparent);
         animation: shimmer 2.5s infinite;
       }
       
@@ -980,40 +985,65 @@
         100% { left: 100%; }
       }
       
-      /* Profile Section */
+      /* App hubs container for side-by-side layout */
+      .app-hubs-container {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      
+      .app-hubs-container .vespa-section {
+        flex: 1;
+        margin-bottom: 0;
+        min-width: 0; /* Allow flex items to shrink below content size */
+      }
+      
+      /* Profile Section - more compact */
       .profile-info {
         display: flex;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 10px;
       }
       
       .profile-details {
         flex: 1;
-        min-width: 220px;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 4px;
+        background-color: #334285;
+        border-radius: 8px;
+        border: 1px solid rgba(7, 155, 170, 0.3);
       }
       
       .profile-name {
-        font-size: 24px;
-        color: #00e5db;
-        margin-bottom: 12px;
+        font-size: 22px;
+        color: #079baa;
+        margin-bottom: 8px;
         font-weight: 700;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(7, 155, 170, 0.3);
       }
       
       .profile-item {
-        margin-bottom: 8px;
-        padding: 8px;
+        margin-bottom: 3px;
+        padding: 3px 8px;
         border-radius: 4px;
         transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
       }
       
       .profile-item:hover {
-        background-color: #2a2a2a;
+        background-color: #3a4b90;
       }
       
       .profile-label {
         font-weight: 600;
-        color: #00e5db;
+        color: #079baa;
         margin-right: 4px;
+        min-width: 80px;
       }
       
       .profile-value {
@@ -1032,11 +1062,12 @@
       }
       
       .subject-card {
-        background-color: #2d2d2d;
+        background-color: #334285;
         border-radius: 6px;
-        padding: 10px;
+        padding: 8px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         transition: all 0.2s ease;
+        border: 1px solid rgba(7, 155, 170, 0.3);
       }
       
       .subject-card:hover {
@@ -1046,14 +1077,15 @@
       
       .subject-name {
         font-weight: 600;
-        color: #00e5db;
-        margin-bottom: 6px;
+        color: #079baa;
+        margin-bottom: 4px;
+        font-size: 0.95em;
       }
       
       .subject-meta {
-        font-size: 0.8em;
+        font-size: 0.75em;
         color: #b0b0b0;
-        margin-bottom: 5px;
+        margin-bottom: 3px;
       }
       
       .grades-container {
@@ -1093,7 +1125,7 @@
       }
       
       .grade-meg {
-        color: #00e5db;
+        color: #079baa;
       }
       
       /* Grade indicators - will be dynamically applied in the rendering function */
@@ -1126,14 +1158,15 @@
       }
       
       .app-card {
-        background-color: #2d2d2d;
+        background-color: #334285;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
         width: 100%;
-        max-width: 230px;
+        max-width: 210px;
         overflow: hidden;
         transition: transform 0.3s, box-shadow 0.3s;
         animation: fadeIn 0.5s ease-out forwards;
+        border: 1px solid rgba(7, 155, 170, 0.3);
       }
       
       /* Stagger app card animations */
@@ -1148,11 +1181,12 @@
       }
       
       .app-card-header {
-        background-color: #23356f;
-        padding: 12px;
+        background-color: #1c2b5f;
+        padding: 10px;
         text-align: center;
         position: relative;
         overflow: hidden;
+        border-bottom: 2px solid #079baa;
       }
       
       .app-card-header::before {
@@ -1177,10 +1211,10 @@
       }
       
       .app-icon {
-        width: 70px;
-        height: 70px;
+        width: 60px;
+        height: 60px;
         object-fit: contain;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         transition: transform 0.3s;
       }
       
@@ -1195,10 +1229,10 @@
       }
       
       .app-description {
-        padding: 12px;
-        color: #e0e0e0;
-        font-size: 13px;
-        height: 90px;
+        padding: 10px;
+        color: #ffffff;
+        font-size: 12px;
+        height: 80px;
         display: flex;
         align-items: center;
         text-align: center;
@@ -1206,16 +1240,17 @@
       
       .app-button {
         display: block;
-        background-color: #00e5db;
-        color: #121212;
+        background-color: #079baa;
+        color: #ffffff;
         text-align: center;
-        padding: 10px;
+        padding: 8px;
         text-decoration: none;
         font-weight: 600;
         transition: all 0.3s;
         position: relative;
         overflow: hidden;
         z-index: 1;
+        font-size: 0.9em;
       }
       
       .app-button::before {
@@ -1268,6 +1303,11 @@
         .subjects-grid {
           grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           gap: 10px;
+        }
+        
+        .app-hubs-container {
+          flex-direction: column;
+          gap: 16px;
         }
         
         .app-card {
@@ -1337,16 +1377,35 @@
   function renderProfileSection(profileData) {
     const name = sanitizeField(profileData.name);
     
-    // Fix for school field - handle if it's an object
+    // Fix for school field - handle if it's an object - improved to handle connection fields better
     let schoolDisplay = 'N/A';
     if (profileData.school) {
+      // Log the school field to debug
+      console.log('[Homepage] School field value:', profileData.school);
+      
       if (typeof profileData.school === 'object' && profileData.school !== null) {
-        // For Knack connection fields, try to get the display name
-        schoolDisplay = sanitizeField(profileData.school.identifier || 
-                     profileData.school.name || 
-                     (profileData.school.text && typeof profileData.school.text === 'string' ? profileData.school.text : 
-                     JSON.stringify(profileData.school)));
-      } else {
+        // Check for raw versions first
+        if (profileData.school.field_122_raw) {
+          schoolDisplay = sanitizeField(profileData.school.field_122_raw.identifier || 
+                        profileData.school.field_122_raw.name || 'VESPA ACADEMY');
+        }
+        // For Knack connection fields, use the text property which often contains the display name
+        else if (profileData.school.text) {
+          schoolDisplay = sanitizeField(profileData.school.text);
+        }
+        // Try to get the display name from various properties
+        else if (profileData.school.identifier) {
+          schoolDisplay = sanitizeField(profileData.school.identifier);
+        }
+        else if (profileData.school.name) {
+          schoolDisplay = sanitizeField(profileData.school.name);
+        }
+        // If all else fails, fall back to "VESPA ACADEMY" rather than showing the raw JSON
+        else {
+          schoolDisplay = "VESPA ACADEMY";
+        }
+      } else if (typeof profileData.school === 'string') {
+        // If it's just a string, use it directly
         schoolDisplay = sanitizeField(profileData.school);
       }
     }
@@ -1604,15 +1663,15 @@
     
     // Show loading indicator
     container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #121212; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+      <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
         <h3>Loading VESPA Homepage...</h3>
         <div style="margin-top: 20px;">
           <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="#00e5db" stroke-width="4">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#079baa" stroke-width="4">
               <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
               <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
             </circle>
-            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(0, 229, 219, 0.3)" stroke-width="2">
+            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(7, 155, 170, 0.3)" stroke-width="2">
               <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
               <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
             </circle>
@@ -1630,20 +1689,20 @@
         renderHomepage(userProfile);
       } else {
         container.innerHTML = `
-          <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #121212; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+          <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
             <h3>Error Loading Homepage</h3>
-            <p style="color: #f0f0f0;">Unable to load or create your user profile. Please try refreshing the page.</p>
-            <button onclick="location.reload()" style="margin-top: 15px; background-color: #00e5db; color: #121212; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
+            <p style="color: #ffffff;">Unable to load or create your user profile. Please try refreshing the page.</p>
+            <button onclick="location.reload()" style="margin-top: 15px; background-color: #079baa; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
           </div>
         `;
       }
     } catch (error) {
       console.error("Homepage Error during initialization:", error);
       container.innerHTML = `
-        <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #121212; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Homepage</h3>
-          <p style="color: #f0f0f0;">An unexpected error occurred. Please try refreshing the page.</p>
-          <button onclick="location.reload()" style="margin-top: 15px; background-color: #00e5db; color: #121212; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
+          <p style="color: #ffffff;">An unexpected error occurred. Please try refreshing the page.</p>
+          <button onclick="location.reload()" style="margin-top: 15px; background-color: #079baa; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
         </div>
       `;
     }
