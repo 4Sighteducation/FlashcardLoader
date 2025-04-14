@@ -264,24 +264,187 @@
         });
       });
       
+      let profileRecord = null;
+      
       if (response && response.records && response.records.length > 0) {
-        debugLog(`Found existing user profile record: ${response.records[0].id}`, response.records[0]);
+        profileRecord = response.records[0];
+        debugLog(`Found existing user profile record: ${profileRecord.id}`, profileRecord);
         
         // Update the login count
-        if (response.records[0][FIELD_MAPPING.numLogins] !== undefined) {
-          const currentLogins = parseInt(response.records[0][FIELD_MAPPING.numLogins], 10) || 0;
-          updateUserProfileField(response.records[0].id, FIELD_MAPPING.numLogins, currentLogins + 1);
+        if (profileRecord[FIELD_MAPPING.numLogins] !== undefined) {
+          const currentLogins = parseInt(profileRecord[FIELD_MAPPING.numLogins], 10) || 0;
+          updateUserProfileField(profileRecord.id, FIELD_MAPPING.numLogins, currentLogins + 1);
         }
-        
-        return response.records[0];
+      } else {
+        // No profile found, create a new one
+        debugLog(`No user profile found, creating new record for user: ${userId}`);
+        profileRecord = await createUserProfile(userId, userName, userEmail);
+        if (!profileRecord) {
+          console.error('[Homepage] Failed to create user profile');
+          return null;
+        }
       }
       
-      // No profile found, create a new one
-      debugLog(`No user profile found, creating new record for user: ${userId}`);
-      return await createUserProfile(userId, userName, userEmail);
+      // New Authentication Flow: Check Object_113 for subject data
+      if (profileRecord && userEmail) {
+        try {
+          debugLog(`Fetching subject data from Object_113 for email: ${userEmail}`);
+          const subjectRecords = await fetchSubjectDataFromObject113(userEmail);
+          
+          if (subjectRecords && subjectRecords.length > 0) {
+            debugLog(`Found ${subjectRecords.length} subject records in Object_113`, subjectRecords);
+            
+            // Convert records to subject data format
+            const subjectDataArray = buildSubjectDataFromObject113Records(subjectRecords);
+            
+            // Update the user profile with new subject data
+            if (subjectDataArray.length > 0) {
+              await updateUserProfileSubjects(profileRecord.id, subjectDataArray);
+              debugLog(`Updated user profile with ${subjectDataArray.length} subjects from Object_113`);
+              
+              // Refresh profile record to include updated subject data
+              profileRecord = await getUserProfileRecord(profileRecord.id);
+            }
+          } else {
+            debugLog(`No subject records found in Object_113 for user ${userEmail}, keeping existing data`);
+          }
+        } catch (error) {
+          console.error('[Homepage] Error processing subject data from Object_113:', error);
+        }
+      }
+      
+      return profileRecord;
     } catch (error) {
       console.error('[Homepage] Error finding or creating user profile:', error);
       return null;
+    }
+  }
+  
+  // Fetch a user profile record by ID
+  async function getUserProfileRecord(recordId) {
+    if (!recordId) {
+      console.error('[Homepage] Cannot get user profile: recordId is missing');
+      return null;
+    }
+    
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records/${recordId}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      return response;
+    } catch (error) {
+      console.error(`[Homepage] Error getting user profile record ${recordId}:`, error);
+      return null;
+    }
+  }
+  
+  // Fetch subject data from Object_113 using user email
+  async function fetchSubjectDataFromObject113(userEmail) {
+    if (!userEmail) {
+      console.error("[Homepage] Cannot fetch subject data: userEmail is missing.");
+      return [];
+    }
+    
+    try {
+      // Create filter to find by user email in Object_113
+      const filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: 'field_3111', operator: 'is', value: userEmail } // Assuming field_3111 is the email field in Object_113
+        ]
+      }));
+      
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_113/records?filters=${filters}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      if (response && response.records && response.records.length > 0) {
+        return response.records;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('[Homepage] Error fetching subject data from Object_113:', error);
+      return [];
+    }
+  }
+  
+  // Build subject data JSON objects from Object_113 records
+  function buildSubjectDataFromObject113Records(records) {
+    if (!records || !Array.isArray(records) || records.length === 0) {
+      return [];
+    }
+    
+    return records.map(record => {
+      return {
+        subject: sanitizeField(record.field_3112 || ''),
+        examType: sanitizeField(record.field_3103 || ''),
+        examBoard: sanitizeField(record.field_3102 || ''),
+        minimumExpectedGrade: sanitizeField(record.field_3131 || ''),
+        currentGrade: sanitizeField(record.field_3132 || ''),
+        targetGrade: sanitizeField(record.field_3135 || ''),
+        effortGrade: sanitizeField(record.field_3133 || ''),
+        behaviourGrade: sanitizeField(record.field_3134 || '')
+      };
+    });
+  }
+  
+  // Update subject fields in user profile
+  async function updateUserProfileSubjects(recordId, subjectDataArray) {
+    if (!recordId || !subjectDataArray || !Array.isArray(subjectDataArray)) {
+      console.error('[Homepage] Cannot update subjects: Invalid parameters');
+      return false;
+    }
+    
+    // Limit to 15 subjects max
+    const maxSubjects = Math.min(subjectDataArray.length, 15);
+    
+    // Prepare update data
+    const updateData = {};
+    
+    for (let i = 0; i < maxSubjects; i++) {
+      const fieldId = `field_${3080 + i}`; // field_3080 for index 0, field_3081 for index 1, etc.
+      updateData[fieldId] = JSON.stringify(subjectDataArray[i]);
+    }
+    
+    try {
+      await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records/${recordId}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify(updateData),
+            contentType: 'application/json',
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('[Homepage] Error updating user profile subjects:', error);
+      return false;
     }
   }
   
@@ -941,3 +1104,4 @@
   };
 
 })(); // End of IIFE
+
