@@ -716,14 +716,19 @@
           console.log('[Homepage] No staff admin field found in student record');
         }
         
-        // Get Tutor Group if available
-        if (studentRecord.field_34) {
-          data[FIELD_MAPPING.tutorGroup] = sanitizeField(studentRecord.field_34);
+        // Get Tutor Group from field_565
+        if (studentRecord.field_565) {
+          data[FIELD_MAPPING.tutorGroup] = sanitizeField(studentRecord.field_565);
         }
         
-        // Get Year Group if available
-        if (studentRecord.field_32) {
-          data[FIELD_MAPPING.yearGroup] = sanitizeField(studentRecord.field_32);
+        // Get Year Group from field_548
+        if (studentRecord.field_548) {
+          data[FIELD_MAPPING.yearGroup] = sanitizeField(studentRecord.field_548);
+        }
+        
+        // Get Attendance from field_3139
+        if (studentRecord.field_3139) {
+          data[FIELD_MAPPING.attendance] = sanitizeField(studentRecord.field_3139);
         }
       }
       
@@ -1162,20 +1167,26 @@
               <span class="profile-value">${school || 'N/A'}</span>
             </div>
             
-            <div class="profile-item">
-              <span class="profile-label">Year Group:</span>
-              <span class="profile-value">${yearGroup || 'N/A'}</span>
-            </div>
-            
-            <div class="profile-item">
-              <span class="profile-label">Tutor Group:</span>
-              <span class="profile-value">${tutorGroup || 'N/A'}</span>
-            </div>
-            
-            <div class="profile-item">
-              <span class="profile-label">Attendance:</span>
-              <span class="profile-value">${attendance || 'N/A'}</span>
-            </div>
+          ${yearGroup ? `
+          <div class="profile-item">
+            <span class="profile-label">Year Group:</span>
+            <span class="profile-value">${yearGroup}</span>
+          </div>
+          ` : ''}
+          
+          ${tutorGroup ? `
+          <div class="profile-item">
+            <span class="profile-label">Tutor Group:</span>
+            <span class="profile-value">${tutorGroup}</span>
+          </div>
+          ` : ''}
+          
+          ${attendance ? `
+          <div class="profile-item">
+            <span class="profile-label">Attendance:</span>
+            <span class="profile-value">${attendance}</span>
+          </div>
+          ` : ''}
           </div>
           
           <div class="subjects-container">
