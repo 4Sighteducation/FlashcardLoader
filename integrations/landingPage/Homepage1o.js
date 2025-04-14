@@ -1309,8 +1309,29 @@
     `;
     
     try {
-
+      // Find or create user profile
+      const userProfile = await findOrCreateUserProfile(user.id, user.name, user.email);
+      
+      if (userProfile) {
+        // Render the homepage UI
+        renderHomepage(userProfile);
+      } else {
+        container.innerHTML = `
+          <div style="padding: 30px; text-align: center; color: #23356f;">
+            <h3>Error Loading Homepage</h3>
+            <p>Unable to load or create your user profile. Please try refreshing the page.</p>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error("Homepage Error during initialization:", error);
+      container.innerHTML = `
+        <div style="padding: 30px; text-align: center; color: #23356f;">
+          <h3>Error Loading Homepage</h3>
+          <p>An unexpected error occurred. Please try refreshing the page.</p>
+        </div>
+      `;
+    }
+  };
 
 })(); // End of IIFE
-
-
