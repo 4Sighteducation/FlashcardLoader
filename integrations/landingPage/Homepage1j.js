@@ -286,6 +286,15 @@
         }
       }
       
+      // Store connection fields data to preserve it through subject data update
+      const connectionFields = {
+        vespaCustomer: profileRecord[FIELD_MAPPING.vespaCustomer],
+        tutorConnection: profileRecord[FIELD_MAPPING.tutorConnection],
+        staffAdminConnection: profileRecord[FIELD_MAPPING.staffAdminConnection]
+      };
+      
+      debugLog(`Preserved connection fields before subject data update:`, connectionFields);
+      
       // New Authentication Flow: Check Object_113 for subject data
       if (profileRecord && userEmail) {
         try {
@@ -307,7 +316,31 @@
               debugLog(`Updated user profile with ${subjectDataArray.length} subjects from Object_113`);
               
               // Refresh profile record to include updated subject data
-              profileRecord = await getUserProfileRecord(profileRecord.id);
+              const refreshedProfile = await getUserProfileRecord(profileRecord.id);
+              
+              if (refreshedProfile) {
+                // Merge refreshed profile with connection fields to ensure they're preserved
+                profileRecord = refreshedProfile;
+                
+                // Restore connection fields if they were lost
+                if (connectionFields.vespaCustomer && !profileRecord[FIELD_MAPPING.vespaCustomer]) {
+                  profileRecord[FIELD_MAPPING.vespaCustomer] = connectionFields.vespaCustomer;
+                  await updateUserProfileField(profileRecord.id, FIELD_MAPPING.vespaCustomer, connectionFields.vespaCustomer);
+                  debugLog(`Restored VESPA Customer connection:`, connectionFields.vespaCustomer);
+                }
+                
+                if (connectionFields.tutorConnection && !profileRecord[FIELD_MAPPING.tutorConnection]) {
+                  profileRecord[FIELD_MAPPING.tutorConnection] = connectionFields.tutorConnection;
+                  await updateUserProfileField(profileRecord.id, FIELD_MAPPING.tutorConnection, connectionFields.tutorConnection);
+                  debugLog(`Restored Tutor connection:`, connectionFields.tutorConnection);
+                }
+                
+                if (connectionFields.staffAdminConnection && !profileRecord[FIELD_MAPPING.staffAdminConnection]) {
+                  profileRecord[FIELD_MAPPING.staffAdminConnection] = connectionFields.staffAdminConnection;
+                  await updateUserProfileField(profileRecord.id, FIELD_MAPPING.staffAdminConnection, connectionFields.staffAdminConnection);
+                  debugLog(`Restored Staff Admin connection:`, connectionFields.staffAdminConnection);
+                }
+              }
             }
           } else {
             debugLog(`No subject records found in Object_113 for user ${userEmail}, keeping existing data`);
@@ -344,6 +377,9 @@
           });
         });
       });
+      
+      // Make sure the connection fields in the response are properly formatted
+      debugLog(`Retrieved user profile record: ${recordId}`, response);
       
       return response;
     } catch (error) {
