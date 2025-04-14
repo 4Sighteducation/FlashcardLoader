@@ -127,33 +127,67 @@
     return typeof id === 'string' && /^[0-9a-f]{24}$/i.test(id);
   }
 
-  // Extract a valid record ID from various formats
+  // Extract a valid record ID from various formats - enhanced to handle more edge cases
   function extractValidRecordId(value) {
     if (!value) return null;
+    
+    console.log('[Homepage] Extracting valid record ID from value type:', typeof value, value);
 
-    // If it's already an object
-    if (typeof value === 'object') {
-      let idToCheck = null;
-      if (value.id) {
-        idToCheck = value.id;
-      } else if (value.identifier) {
-        idToCheck = value.identifier;
-      } else if (Array.isArray(value) && value.length === 1 && value[0].id) {
-        idToCheck = value[0].id;
-      } else if (Array.isArray(value) && value.length === 1 && typeof value[0] === 'string') {
-        idToCheck = value[0];
+    // Handle objects (most common case in Knack connections)
+    if (typeof value === 'object' && value !== null) {
+      // Check for direct ID property
+      if (value.id && isValidKnackId(value.id)) {
+        console.log('[Homepage] Found valid ID in object.id:', value.id);
+        return value.id;
       }
-
-      if (idToCheck) {
-        return isValidKnackId(idToCheck) ? idToCheck : null;
+      
+      // Check for identifier property (sometimes used by Knack)
+      if (value.identifier && isValidKnackId(value.identifier)) {
+        console.log('[Homepage] Found valid ID in object.identifier:', value.identifier);
+        return value.identifier;
+      }
+      
+      // Handle arrays from connection fields
+      if (Array.isArray(value)) {
+        console.log('[Homepage] Value is an array with length:', value.length);
+        
+        // Handle single item array
+        if (value.length === 1) {
+          if (typeof value[0] === 'object' && value[0].id) {
+            console.log('[Homepage] Found valid ID in array[0].id:', value[0].id);
+            return isValidKnackId(value[0].id) ? value[0].id : null;
+          }
+          if (typeof value[0] === 'string' && isValidKnackId(value[0])) {
+            console.log('[Homepage] Found valid ID as string in array[0]:', value[0]);
+            return value[0];
+          }
+        }
+        
+        // For debugging, log contents of larger arrays
+        if (value.length > 1) {
+          console.log('[Homepage] Array contains multiple items, first few are:', 
+                     value.slice(0, 3));
+        }
+      }
+      
+      // Check for '_id' property which is sometimes used
+      if (value._id && isValidKnackId(value._id)) {
+        console.log('[Homepage] Found valid ID in object._id:', value._id);
+        return value._id;
       }
     }
 
-    // If it's a string
+    // If it's a direct string ID
     if (typeof value === 'string') {
-      return isValidKnackId(value) ? value : null;
+      if (isValidKnackId(value)) {
+        console.log('[Homepage] Value is a valid ID string:', value);
+        return value;
+      } else {
+        console.log('[Homepage] String is not a valid Knack ID:', value);
+      }
     }
 
+    console.log('[Homepage] No valid record ID found in value');
     return null;
   }
 
@@ -497,11 +531,26 @@
       const studentRecord = await findStudentRecord(userEmail);
       debugLog('Found student record for connections:', studentRecord);
       
-      // Log detailed information about connection fields in student record
+      // Log detailed information about ALL fields in student record
       if (studentRecord) {
-        console.log('[Homepage] Student record VESPA Customer field:', studentRecord.field_122_raw);
-        console.log('[Homepage] Student record Tutor field:', studentRecord.field_1682_raw);
-        console.log('[Homepage] Student record Staff Admin field:', studentRecord.field_190_raw);
+        console.log('[Homepage] Student record field data:');
+        console.log('[Homepage] VESPA Customer field:', studentRecord.field_122_raw);
+        
+        // Log ALL fields related to tutors to debug the issue
+        console.log('[Homepage] Tutor field raw:', studentRecord.field_1682_raw);
+        console.log('[Homepage] Tutor field non-raw:', studentRecord.field_1682);
+        
+        // Log ALL fields related to staff admins to debug the issue
+        console.log('[Homepage] Staff Admin field raw:', studentRecord.field_190_raw);
+        console.log('[Homepage] Staff Admin field non-raw:', studentRecord.field_190);
+        
+        // Log any other key fields that might contain connection info
+        console.log('[Homepage] Connection fields in record:');
+        for (const key in studentRecord) {
+          if (key.includes('connect') || key.includes('tutor') || key.includes('admin') || key.includes('staff')) {
+            console.log(`[Homepage] Found potential connection field: ${key}:`, studentRecord[key]);
+          }
+        }
       }
       
       // Prepare basic profile data
@@ -547,50 +596,98 @@
           }
         }
         
-        // Tutor connections - handle multiple
+        // Tutor connections - handle multiple - try both raw and non-raw versions
+        let tutorField = null;
+        
+        // First check the raw field (original)
         if (studentRecord.field_1682_raw) {
+          tutorField = studentRecord.field_1682_raw;
+          console.log('[Homepage] Using field_1682_raw for tutors');
+        } 
+        // Then check the non-raw field as fallback
+        else if (studentRecord.field_1682) {
+          tutorField = studentRecord.field_1682;
+          console.log('[Homepage] Using field_1682 for tutors');
+        }
+        
+        if (tutorField) {
           let tutorIds = [];
           
-          // Handle array or single value
-          if (Array.isArray(studentRecord.field_1682_raw)) {
-            tutorIds = studentRecord.field_1682_raw
+          // Handle array
+          if (Array.isArray(tutorField)) {
+            console.log('[Homepage] Tutor field is an array with', tutorField.length, 'items');
+            tutorIds = tutorField
               .map(item => extractValidRecordId(item))
               .filter(id => id);
-          } else if (typeof studentRecord.field_1682_raw === 'object') {
-            const id = extractValidRecordId(studentRecord.field_1682_raw);
+          } 
+          // Handle object
+          else if (typeof tutorField === 'object') {
+            console.log('[Homepage] Tutor field is an object');
+            const id = extractValidRecordId(tutorField);
             if (id) tutorIds.push(id);
-          } else if (typeof studentRecord.field_1682_raw === 'string' && isValidKnackId(studentRecord.field_1682_raw)) {
-            tutorIds.push(studentRecord.field_1682_raw);
+          } 
+          // Handle string (direct ID)
+          else if (typeof tutorField === 'string' && isValidKnackId(tutorField)) {
+            console.log('[Homepage] Tutor field is a string ID');
+            tutorIds.push(tutorField);
           }
-            
+          
           if (tutorIds.length > 0) {
             // For Knack connection fields, format depends on single vs multiple
             data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
             console.log(`[Homepage] Setting Tutor connection: ${JSON.stringify(tutorIds)}`);
+          } else {
+            console.log('[Homepage] No valid tutor IDs found after processing');
           }
+        } else {
+          console.log('[Homepage] No tutor field found in student record');
         }
         
-        // Staff Admin connections - handle multiple
+        // Staff Admin connections - handle multiple - try both raw and non-raw versions
+        let staffAdminField = null;
+        
+        // First check the raw field (original)
         if (studentRecord.field_190_raw) {
+          staffAdminField = studentRecord.field_190_raw;
+          console.log('[Homepage] Using field_190_raw for staff admins');
+        } 
+        // Then check the non-raw field as fallback
+        else if (studentRecord.field_190) {
+          staffAdminField = studentRecord.field_190;
+          console.log('[Homepage] Using field_190 for staff admins');
+        }
+        
+        if (staffAdminField) {
           let staffAdminIds = [];
           
-          // Handle array or single value
-          if (Array.isArray(studentRecord.field_190_raw)) {
-            staffAdminIds = studentRecord.field_190_raw
+          // Handle array
+          if (Array.isArray(staffAdminField)) {
+            console.log('[Homepage] Staff Admin field is an array with', staffAdminField.length, 'items');
+            staffAdminIds = staffAdminField
               .map(item => extractValidRecordId(item))
               .filter(id => id);
-          } else if (typeof studentRecord.field_190_raw === 'object') {
-            const id = extractValidRecordId(studentRecord.field_190_raw);
+          } 
+          // Handle object
+          else if (typeof staffAdminField === 'object') {
+            console.log('[Homepage] Staff Admin field is an object');
+            const id = extractValidRecordId(staffAdminField);
             if (id) staffAdminIds.push(id);
-          } else if (typeof studentRecord.field_190_raw === 'string' && isValidKnackId(studentRecord.field_190_raw)) {
-            staffAdminIds.push(studentRecord.field_190_raw);
+          } 
+          // Handle string (direct ID)
+          else if (typeof staffAdminField === 'string' && isValidKnackId(staffAdminField)) {
+            console.log('[Homepage] Staff Admin field is a string ID');
+            staffAdminIds.push(staffAdminField);
           }
-            
+          
           if (staffAdminIds.length > 0) {
             // For Knack connection fields, format depends on single vs multiple
             data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
             console.log(`[Homepage] Setting Staff Admin connection: ${JSON.stringify(staffAdminIds)}`);
+          } else {
+            console.log('[Homepage] No valid staff admin IDs found after processing');
           }
+        } else {
+          console.log('[Homepage] No staff admin field found in student record');
         }
         
         // Get Tutor Group if available
@@ -700,12 +797,24 @@
       
       if (response && response.records && response.records.length > 0) {
         const studentRecord = response.records[0];
+        
+        // Log the entire student record structure to identify all available fields
+        console.log('[Homepage] COMPLETE STUDENT RECORD:', JSON.stringify(studentRecord, null, 2));
+        
+        // Check explicitly for the tutor and staff admin fields
+        console.log('[Homepage] Checking for connection fields:');
+        console.log('- Tutor field_1682 exists:', studentRecord.field_1682 !== undefined);
+        console.log('- Tutor field_1682_raw exists:', studentRecord.field_1682_raw !== undefined);
+        console.log('- Staff Admin field_190 exists:', studentRecord.field_190 !== undefined);
+        console.log('- Staff Admin field_190_raw exists:', studentRecord.field_190_raw !== undefined);
+        
         // Extract UPN (Unique Pupil Number) if available
         if (studentRecord.field_3129) {
           debugLog(`Found UPN for student: ${studentRecord.field_3129}`);
         } else {
           console.log('[Homepage] No UPN found in student record (field_3129)');
         }
+        
         return studentRecord;
       }
       
