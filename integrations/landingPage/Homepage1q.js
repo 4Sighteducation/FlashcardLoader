@@ -1122,7 +1122,21 @@
   // Render the profile section
   function renderProfileSection(profileData) {
     const name = sanitizeField(profileData.name);
-    const school = sanitizeField(profileData.school);
+    
+    // Fix for school field - handle if it's an object
+    let schoolDisplay = 'N/A';
+    if (profileData.school) {
+      if (typeof profileData.school === 'object' && profileData.school !== null) {
+        // For Knack connection fields, try to get the display name
+        schoolDisplay = sanitizeField(profileData.school.identifier || 
+                     profileData.school.name || 
+                     (profileData.school.text && typeof profileData.school.text === 'string' ? profileData.school.text : 
+                     JSON.stringify(profileData.school)));
+      } else {
+        schoolDisplay = sanitizeField(profileData.school);
+      }
+    }
+    
     const tutorGroup = sanitizeField(profileData.tutorGroup);
     const yearGroup = sanitizeField(profileData.yearGroup);
     const attendance = sanitizeField(profileData.attendance);
@@ -1140,12 +1154,16 @@
             </div>
             <div class="grades-container">
               <div class="grade-item">
-                <div class="grade-label">Target</div>
+                <div class="grade-label">MEG</div>
                 <div class="grade-value grade-meg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
               </div>
               <div class="grade-item">
                 <div class="grade-label">Current</div>
                 <div class="grade-value grade-current">${sanitizeField(subject.currentGrade || 'N/A')}</div>
+              </div>
+              <div class="grade-item">
+                <div class="grade-label">Target</div>
+                <div class="grade-value">${sanitizeField(subject.targetGrade || 'N/A')}</div>
               </div>
             </div>
           </div>
@@ -1164,7 +1182,7 @@
             
             <div class="profile-item">
               <span class="profile-label">School:</span>
-              <span class="profile-value">${school || 'N/A'}</span>
+              <span class="profile-value">${schoolDisplay}</span>
             </div>
             
           ${yearGroup ? `
