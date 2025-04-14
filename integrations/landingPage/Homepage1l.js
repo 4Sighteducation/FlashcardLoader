@@ -497,6 +497,13 @@
       const studentRecord = await findStudentRecord(userEmail);
       debugLog('Found student record for connections:', studentRecord);
       
+      // Log detailed information about connection fields in student record
+      if (studentRecord) {
+        console.log('[Homepage] Student record VESPA Customer field:', studentRecord.field_122_raw);
+        console.log('[Homepage] Student record Tutor field:', studentRecord.field_1682_raw);
+        console.log('[Homepage] Student record Staff Admin field:', studentRecord.field_190_raw);
+      }
+      
       // Prepare basic profile data
       const data = {
         [FIELD_MAPPING.userId]: userId,
@@ -504,12 +511,14 @@
         [FIELD_MAPPING.numLogins]: 1, // First login
       };
       
-      // Connection fields - User Account (direct user ID)
+      // Connection fields - User Account (direct user ID) - Always set directly
       data[FIELD_MAPPING.userConnection] = userId;
+      console.log(`[Homepage] Setting User Connection: ${userId}`);
       
       // Connection fields from user object
       if (user.schoolId) {
         data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
+        console.log(`[Homepage] Setting VESPA Customer from user: ${user.schoolId}`);
       }
       
       // Store UPN if available from student record
@@ -522,31 +531,65 @@
       if (studentRecord) {
         // VESPA Customer (school) if not already set
         if (!data[FIELD_MAPPING.vespaCustomer] && studentRecord.field_122_raw) {
-          const schoolId = extractValidRecordId(studentRecord.field_122_raw);
+          // First try to extract from raw field
+          let schoolId = extractValidRecordId(studentRecord.field_122_raw);
+          
+          // If that fails, try alternative formats
+          if (!schoolId && studentRecord.field_122_raw.id) {
+            schoolId = studentRecord.field_122_raw.id;
+          } else if (!schoolId && typeof studentRecord.field_122 === 'string' && isValidKnackId(studentRecord.field_122)) {
+            schoolId = studentRecord.field_122;
+          }
+          
           if (schoolId) {
             data[FIELD_MAPPING.vespaCustomer] = schoolId;
+            console.log(`[Homepage] Setting VESPA Customer from student record: ${schoolId}`);
           }
         }
         
         // Tutor connections - handle multiple
-        if (studentRecord.field_1682_raw && Array.isArray(studentRecord.field_1682_raw)) {
-          const tutorIds = studentRecord.field_1682_raw
-            .map(item => extractValidRecordId(item))
-            .filter(id => id);
+        if (studentRecord.field_1682_raw) {
+          let tutorIds = [];
+          
+          // Handle array or single value
+          if (Array.isArray(studentRecord.field_1682_raw)) {
+            tutorIds = studentRecord.field_1682_raw
+              .map(item => extractValidRecordId(item))
+              .filter(id => id);
+          } else if (typeof studentRecord.field_1682_raw === 'object') {
+            const id = extractValidRecordId(studentRecord.field_1682_raw);
+            if (id) tutorIds.push(id);
+          } else if (typeof studentRecord.field_1682_raw === 'string' && isValidKnackId(studentRecord.field_1682_raw)) {
+            tutorIds.push(studentRecord.field_1682_raw);
+          }
             
           if (tutorIds.length > 0) {
+            // For Knack connection fields, format depends on single vs multiple
             data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
+            console.log(`[Homepage] Setting Tutor connection: ${JSON.stringify(tutorIds)}`);
           }
         }
         
         // Staff Admin connections - handle multiple
-        if (studentRecord.field_190_raw && Array.isArray(studentRecord.field_190_raw)) {
-          const staffAdminIds = studentRecord.field_190_raw
-            .map(item => extractValidRecordId(item))
-            .filter(id => id);
+        if (studentRecord.field_190_raw) {
+          let staffAdminIds = [];
+          
+          // Handle array or single value
+          if (Array.isArray(studentRecord.field_190_raw)) {
+            staffAdminIds = studentRecord.field_190_raw
+              .map(item => extractValidRecordId(item))
+              .filter(id => id);
+          } else if (typeof studentRecord.field_190_raw === 'object') {
+            const id = extractValidRecordId(studentRecord.field_190_raw);
+            if (id) staffAdminIds.push(id);
+          } else if (typeof studentRecord.field_190_raw === 'string' && isValidKnackId(studentRecord.field_190_raw)) {
+            staffAdminIds.push(studentRecord.field_190_raw);
+          }
             
           if (staffAdminIds.length > 0) {
+            // For Knack connection fields, format depends on single vs multiple
             data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
+            console.log(`[Homepage] Setting Staff Admin connection: ${JSON.stringify(staffAdminIds)}`);
           }
         }
         
@@ -560,6 +603,12 @@
           data[FIELD_MAPPING.yearGroup] = sanitizeField(studentRecord.field_32);
         }
       }
+      
+      // Debug log the final data with explicit connection fields info
+      console.log('[Homepage] Connection fields in record creation:');
+      console.log(`[Homepage] - VESPA Customer: ${data[FIELD_MAPPING.vespaCustomer]}`);
+      console.log(`[Homepage] - Tutor: ${JSON.stringify(data[FIELD_MAPPING.tutorConnection])}`);
+      console.log(`[Homepage] - Staff Admin: ${JSON.stringify(data[FIELD_MAPPING.staffAdminConnection])}`);
       
       debugLog('Creating user profile with prepared data:', data);
       
