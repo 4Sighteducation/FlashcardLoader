@@ -1172,24 +1172,22 @@
       
       /* Tooltip/Popup Styles */
       .app-tooltip {
-        position: absolute;
+        position: fixed; /* Changed from absolute to fixed */
         background-color: #1c2b5f;
         color: #ffffff;
-        padding: 10px;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        width: 220px;
-        z-index: 100;
-        top: 85%;
-        left: 50%;
-        transform: translateX(-50%);
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+        width: 250px;
+        z-index: 9999; /* Much higher z-index */
         opacity: 0;
         visibility: hidden;
         transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
-        pointer-events: none;
-        border: 1px solid #00e5db;
-        font-size: 13px;
+        border: 2px solid #00e5db;
+        font-size: 14px;
         text-align: center;
+        pointer-events: none;
+        max-width: 90vw; /* Prevent overflow on mobile */
       }
       
       .app-tooltip::before {
@@ -1203,11 +1201,7 @@
         border-color: transparent transparent #1c2b5f transparent;
       }
       
-      .app-card:hover .app-tooltip {
-        opacity: 1;
-        visibility: visible;
-        transform: translateX(-50%) translateY(8px);
-      }
+      /* We'll manually position the tooltip via JavaScript */
       
       /* Stagger app card animations */
       .app-hub .app-card:nth-child(1) { animation-delay: 0.4s; }
@@ -1273,8 +1267,8 @@
         position: absolute;
         top: 10px;
         right: 10px;
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         background-color: #00e5db;
         color: #1c2b5f;
         border-radius: 50%;
@@ -1283,14 +1277,22 @@
         justify-content: center;
         font-weight: bold;
         font-size: 14px;
-        cursor: help;
+        cursor: pointer; /* Changed from help to pointer */
         transition: all 0.2s;
-        z-index: 2;
+        z-index: 10;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
       }
       
-      .app-info-icon:hover {
+      .app-info-icon:hover,
+      .app-info-icon:focus {
         transform: scale(1.1);
-        box-shadow: 0 0 6px rgba(0, 229, 219, 0.6);
+        box-shadow: 0 0 8px rgba(0, 229, 219, 0.8);
+      }
+      
+      /* Active state for the tooltip to show it */
+      .tooltip-active {
+        opacity: 1 !important;
+        visibility: visible !important;
       }
       
       .app-button {
@@ -1426,6 +1428,9 @@
         }
       });
     });
+    
+    // Initialize tooltips
+    setupTooltips();
   }
   
   // Render the profile section
@@ -1611,19 +1616,83 @@
     `;
   }
   
+  // Setup tooltips with proper positioning and click handling
+  function setupTooltips() {
+    const tooltips = document.querySelectorAll('.app-tooltip');
+    const infoIcons = document.querySelectorAll('.app-info-icon');
+    
+    // Create a container for all tooltips at the body level
+    const tooltipContainer = document.createElement('div');
+    tooltipContainer.className = 'tooltip-container';
+    document.body.appendChild(tooltipContainer);
+    
+    // Move all tooltips to the container for better positioning
+    tooltips.forEach(tooltip => {
+      tooltipContainer.appendChild(tooltip);
+    });
+    
+    // Add click listeners to each info icon
+    infoIcons.forEach((icon, index) => {
+      icon.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Get the corresponding tooltip
+        const tooltip = tooltips[index];
+        
+        // Hide all other tooltips first
+        tooltips.forEach(tip => {
+          if (tip !== tooltip) {
+            tip.classList.remove('tooltip-active');
+          }
+        });
+        
+        // Toggle the current tooltip
+        tooltip.classList.toggle('tooltip-active');
+        
+        if (tooltip.classList.contains('tooltip-active')) {
+          // Position the tooltip relative to the info icon
+          const iconRect = icon.getBoundingClientRect();
+          const tooltipWidth = 250; // Match the width in CSS
+          
+          tooltip.style.top = (iconRect.bottom + window.scrollY + 15) + 'px';
+          tooltip.style.left = (iconRect.left + (iconRect.width / 2) - (tooltipWidth / 2) + window.scrollX) + 'px';
+          
+          // Add a click event to the document to close the tooltip when clicking elsewhere
+          setTimeout(() => {
+            document.addEventListener('click', closeTooltip);
+          }, 10);
+        }
+      });
+    });
+    
+    // Function to close tooltip when clicking outside
+    function closeTooltip(e) {
+      const activeTooltips = document.querySelectorAll('.tooltip-active');
+      if (activeTooltips.length) {
+        activeTooltips.forEach(tooltip => {
+          tooltip.classList.remove('tooltip-active');
+        });
+        document.removeEventListener('click', closeTooltip);
+      }
+    }
+  }
+  
   // Render an app hub section
   function renderAppHubSection(title, apps) {
     let appsHTML = '';
+    let id = 0;
     
     apps.forEach(app => {
+      const tooltipId = `tooltip-${title.replace(/\s+/g, '-').toLowerCase()}-${id++}`;
       appsHTML += `
         <div class="app-card">
           <div class="app-card-header">
-            <div class="app-info-icon" title="Click for details">i</div>
+            <div class="app-info-icon" title="Click for details" data-tooltip="${tooltipId}">i</div>
             <img src="${app.icon}" alt="${app.name}" class="app-icon">
             <div class="app-name">${sanitizeField(app.name)}</div>
           </div>
-          <div class="app-tooltip">
+          <div id="${tooltipId}" class="app-tooltip">
             ${sanitizeField(app.description)}
           </div>
           <a href="${app.url}" class="app-button">Launch</a>
