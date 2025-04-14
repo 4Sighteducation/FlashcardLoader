@@ -1616,114 +1616,66 @@
     `;
   }
   
-  // Setup tooltips with proper positioning and click handling for both desktop and mobile
+  // Setup tooltips with proper positioning and click handling
   function setupTooltips() {
-    // Create overlay for mobile
-    const overlay = document.createElement('div');
-    overlay.className = 'tooltip-overlay';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none;';
-    document.body.appendChild(overlay);
-    
-    // Get all tooltips and info icons
     const tooltips = document.querySelectorAll('.app-tooltip');
     const infoIcons = document.querySelectorAll('.app-info-icon');
     
-    // Make tooltip content more direct - replace tooltips with simple text containers
-    tooltips.forEach((tooltip, index) => {
-      // Store the content
-      const content = tooltip.innerHTML;
-      
-      // Add data attribute to corresponding icon
-      if (infoIcons[index]) {
-        infoIcons[index].setAttribute('data-tooltip-content', content);
-      }
-      
-      // Remove the tooltip from DOM (we'll create it when needed)
-      if (tooltip.parentNode) {
-        tooltip.parentNode.removeChild(tooltip);
-      }
+    // Create a container for all tooltips at the body level
+    const tooltipContainer = document.createElement('div');
+    tooltipContainer.className = 'tooltip-container';
+    document.body.appendChild(tooltipContainer);
+    
+    // Move all tooltips to the container for better positioning
+    tooltips.forEach(tooltip => {
+      tooltipContainer.appendChild(tooltip);
     });
     
-    // Single shared tooltip element that we'll position as needed
-    const sharedTooltip = document.createElement('div');
-    sharedTooltip.className = 'app-tooltip';
-    sharedTooltip.style.display = 'none';
-    document.body.appendChild(sharedTooltip);
-    
-    // Add click event to info icons
-    infoIcons.forEach(icon => {
-      icon.addEventListener('click', function(e) {
+    // Add click listeners to each info icon
+    infoIcons.forEach((icon, index) => {
+      icon.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         
-        // Get content
-        const content = this.getAttribute('data-tooltip-content');
+        // Get the corresponding tooltip
+        const tooltip = tooltips[index];
         
-        // Check if we're opening or closing
-        const isOpening = sharedTooltip.style.display === 'none';
+        // Hide all other tooltips first
+        tooltips.forEach(tip => {
+          if (tip !== tooltip) {
+            tip.classList.remove('tooltip-active');
+          }
+        });
         
-        // If opening, populate and position the tooltip
-        if (isOpening) {
-          // Set content
-          sharedTooltip.innerHTML = content;
+        // Toggle the current tooltip
+        tooltip.classList.toggle('tooltip-active');
+        
+        if (tooltip.classList.contains('tooltip-active')) {
+          // Position the tooltip relative to the info icon
+          const iconRect = icon.getBoundingClientRect();
+          const tooltipWidth = 250; // Match the width in CSS
           
-          // Get position
-          const rect = this.getBoundingClientRect();
-          const isMobile = window.innerWidth <= 768;
+          tooltip.style.top = (iconRect.bottom + window.scrollY + 15) + 'px';
+          tooltip.style.left = (iconRect.left + (iconRect.width / 2) - (tooltipWidth / 2) + window.scrollX) + 'px';
           
-          if (isMobile) {
-            // For mobile - center in screen
-            sharedTooltip.style.left = '50%';
-            sharedTooltip.style.top = '50%';
-            sharedTooltip.style.transform = 'translate(-50%, -50%)';
-            sharedTooltip.style.maxWidth = '80%';
-            sharedTooltip.style.width = '300px';
-            
-            // Show overlay
-            overlay.style.display = 'block';
-          } else {
-            // For desktop - position near icon
-            const tooltipWidth = 250;
-            sharedTooltip.style.top = (rect.bottom + window.scrollY + 15) + 'px';
-            sharedTooltip.style.left = (rect.left + (rect.width / 2) - (tooltipWidth / 2) + window.scrollX) + 'px';
-            sharedTooltip.style.transform = 'none';
-            sharedTooltip.style.maxWidth = '250px';
-            sharedTooltip.style.width = 'auto';
-          }
-          
-          // Show tooltip
-          sharedTooltip.style.display = 'block';
-          
-          // Add close button for mobile
-          if (isMobile) {
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '×';
-            closeBtn.className = 'tooltip-close-btn';
-            closeBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; background: #00e5db; color: #1c2b5f; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 18px; cursor: pointer; line-height: 24px; padding: 0;';
-            sharedTooltip.appendChild(closeBtn);
-            
-            closeBtn.addEventListener('click', closeTooltip);
-          }
-          
-          // Add event listener to close when clicking outside
+          // Add a click event to the document to close the tooltip when clicking elsewhere
           setTimeout(() => {
             document.addEventListener('click', closeTooltip);
           }, 10);
-        } else {
-          closeTooltip();
         }
       });
     });
     
-    // Close the tooltip
-    function closeTooltip() {
-      sharedTooltip.style.display = 'none';
-      overlay.style.display = 'none';
-      document.removeEventListener('click', closeTooltip);
+    // Function to close tooltip when clicking outside
+    function closeTooltip(e) {
+      const activeTooltips = document.querySelectorAll('.tooltip-active');
+      if (activeTooltips.length) {
+        activeTooltips.forEach(tooltip => {
+          tooltip.classList.remove('tooltip-active');
+        });
+        document.removeEventListener('click', closeTooltip);
+      }
     }
-    
-    // Close when clicking overlay
-    overlay.addEventListener('click', closeTooltip);
   }
   
   // Render an app hub section
@@ -1882,6 +1834,3 @@
   };
 
 })(); // End of IIFE
-
-
-
