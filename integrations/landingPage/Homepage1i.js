@@ -359,20 +359,24 @@
       return [];
     }
     
+    console.log(`[Homepage] DEBUG: Attempting to fetch subject data with Email:${userEmail}, UPN:${userUpn}`);
+    
     try {
       const rules = [];
       
       // Prioritize UPN for more precise matching if available
       if (userUpn) {
-        rules.push({ field: 'field_3130', operator: 'is', value: userUpn }); // UPN field in Object_113
+        rules.push({ field: 'field_3126', operator: 'is', value: userUpn }); // FIXED: UPN field in Object_113 is field_3126
         debugLog(`Filtering Object_113 by UPN: ${userUpn}`);
       }
       
       // If no UPN, use email, or add email as fallback even with UPN
       if (!userUpn || (userUpn && userEmail)) {
-        rules.push({ field: 'field_3111', operator: 'is', value: userEmail }); // Email field
+        rules.push({ field: 'field_3130', operator: 'is', value: userEmail }); // FIXED: Email field in Object_113 is field_3130
         debugLog(`Filtering Object_113 by email: ${userEmail}`);
       }
+      
+      console.log('[Homepage] DEBUG: Using filter:', JSON.stringify({ match: 'or', rules }));
       
       // Create filter to find records by UPN and/or email
       const filters = encodeURIComponent(JSON.stringify({
@@ -392,6 +396,9 @@
           });
         });
       });
+      
+      // Log the COMPLETE response for debugging
+      console.log(`[Homepage] DEBUG: Complete API Response from Object_113:`, response);
       
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found ${response.records.length} subject records in Object_113`, response.records);
@@ -1134,4 +1141,5 @@
   };
 
 })(); // End of IIFE
+
 
