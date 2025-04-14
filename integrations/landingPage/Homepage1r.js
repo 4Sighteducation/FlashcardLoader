@@ -44,19 +44,19 @@
         name: "VESPA Questionnaire",
         url: "https://vespaacademy.knack.com/vespa-academy#add-q/",
         icon: "https://www.vespa.academy/Icons/vespaq.png",
-        description: "Complete the VESPA Questionnaire to measure your mindset in Vision, Effort, Systems, Practice and Attitude."
+        description: "Discover your learning superpowers with our questionnaire on Vision, Effort, Systems, Practice and Attitude!"
       },
       {
         name: "VESPA Coaching Report",
         url: "https://vespaacademy.knack.com/vespa-academy#vespa-results/",
         icon: "https://www.vespa.academy/Icons/coachingreport.png",
-        description: "View and reflect on your VESPA Scores and personalized coaching feedback."
+        description: "See how awesome you can be! Your personal roadmap to success with tailored feedback just for you."
       },
       {
         name: "VESPA Activities",
         url: "https://vespaacademy.knack.com/vespa-academy#my-vespa/",
         icon: "https://www.vespa.academy/Icons/myvespa.png",
-        description: "Access your personalized programme of ideas and activities based on your VESPA scores."
+        description: "Unlock fun activities and cool ideas perfectly matched to your unique learning style and VESPA scores!"
       }
     ],
     productivity: [
@@ -64,19 +64,19 @@
         name: "Study Planner",
         url: "https://vespaacademy.knack.com/vespa-academy#studyplanner/",
         icon: "https://www.vespa.academy/Icons/studyplanner.png",
-        description: "Plan and organize your study sessions with this interactive calendar tool."
+        description: "Take control of your time with this super-smart calendar that makes study planning a breeze!"
       },
       {
         name: "Flashcards",
         url: "https://vespaacademy.knack.com/vespa-academy#flashcards/",
         icon: "https://www.vespa.academy/Icons/flashcards.png",
-        description: "Create and study with digital flashcards using our spaced repetition system."
+        description: "Turn boring facts into brain-friendly flashcards that make remembering stuff actually fun!"
       },
       {
         name: "Taskboard",
         url: "https://vespaacademy.knack.com/vespa-academy#task-board/",
         icon: "https://www.vespa.academy/Icons/taskboard.png",
-        description: "Manage your tasks and assignments with this visual organization tool."
+        description: "Zap your to-do list into an organized masterpiece with this colorful drag-and-drop task manager!"
       }
     ]
   };
@@ -910,166 +910,295 @@
     // Add the CSS
     const styleElement = document.createElement('style');
     styleElement.textContent = `
+      /* Main Container - Dark Theme */
       #vespa-homepage {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         max-width: 1200px;
         margin: 0 auto;
-        padding: 20px;
-        color: #333;
+        padding: 16px;
+        color: #f0f0f0;
+        background-color: #121212;
+        line-height: 1.4;
+        overflow-x: hidden;
       }
       
-      .vespa-section {
-        background-color: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        margin-bottom: 30px;
+      /* Animation Keyframes */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
+      
+      @keyframes pulseGlow {
+        0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+        50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.25); }
+        100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+      }
+      
+      /* Sections */
+      .vespa-section {
+        background-color: #1e1e1e;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        padding: 16px;
+        margin-bottom: 24px;
+        animation: fadeIn 0.5s ease-out forwards;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      
+      .vespa-section:hover {
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+      }
+      
+      .vespa-section:nth-child(1) { animation-delay: 0.1s; }
+      .vespa-section:nth-child(2) { animation-delay: 0.2s; }
+      .vespa-section:nth-child(3) { animation-delay: 0.3s; }
       
       .vespa-section-title {
-        color: #23356f;
-        font-size: 24px;
+        color: #00e5db;
+        font-size: 22px;
         font-weight: 600;
-        margin-bottom: 20px;
-        padding-bottom: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
         border-bottom: 2px solid #00e5db;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .vespa-section-title::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: -100%;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(0, 229, 219, 0.8), transparent);
+        animation: shimmer 2.5s infinite;
+      }
+      
+      @keyframes shimmer {
+        0% { left: -100%; }
+        100% { left: 100%; }
       }
       
       /* Profile Section */
       .profile-info {
         display: flex;
         flex-wrap: wrap;
-        gap: 20px;
+        gap: 16px;
       }
       
       .profile-details {
         flex: 1;
-        min-width: 250px;
+        min-width: 220px;
       }
       
       .profile-name {
-        font-size: 28px;
-        color: #23356f;
-        margin-bottom: 15px;
+        font-size: 24px;
+        color: #00e5db;
+        margin-bottom: 12px;
+        font-weight: 700;
       }
       
       .profile-item {
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+        padding: 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+      }
+      
+      .profile-item:hover {
+        background-color: #2a2a2a;
       }
       
       .profile-label {
         font-weight: 600;
-        color: #23356f;
+        color: #00e5db;
+        margin-right: 4px;
       }
       
       .profile-value {
-        color: #333;
+        color: #f0f0f0;
       }
       
       .subjects-container {
         flex: 2;
-        min-width: 300px;
+        min-width: 280px;
       }
       
       .subjects-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
       }
       
       .subject-card {
-        background-color: #f8f8f8;
-        border-radius: 8px;
-        padding: 12px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        background-color: #2d2d2d;
+        border-radius: 6px;
+        padding: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        transition: all 0.2s ease;
+      }
+      
+      .subject-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
       }
       
       .subject-name {
         font-weight: 600;
-        color: #23356f;
-        margin-bottom: 8px;
+        color: #00e5db;
+        margin-bottom: 6px;
       }
       
       .subject-meta {
-        font-size: 0.85em;
-        color: #666;
+        font-size: 0.8em;
+        color: #b0b0b0;
         margin-bottom: 5px;
       }
       
       .grades-container {
         display: flex;
         justify-content: space-between;
-        margin-top: 10px;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #3d3d3d;
       }
       
       .grade-item {
         text-align: center;
+        flex: 1;
+        padding: 4px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+      }
+      
+      .grade-item:hover {
+        background-color: #3a3a3a;
       }
       
       .grade-label {
-        font-size: 0.75em;
-        color: #666;
+        font-size: 0.7em;
+        color: #b0b0b0;
+        margin-bottom: 3px;
       }
       
       .grade-value {
-        font-size: 1.2em;
+        font-size: 1.1em;
         font-weight: 600;
+        transition: transform 0.2s;
+      }
+      
+      .grade-item:hover .grade-value {
+        transform: scale(1.1);
       }
       
       .grade-meg {
-        color: #23356f;
+        color: #00e5db;
       }
       
-      .grade-current {
-        color: #00e5db;
+      /* Grade indicators - will be dynamically applied in the rendering function */
+      .grade-exceeding {
+        color: #4caf50;
+      }
+      
+      .grade-exceeding-high {
+        color: #2e7d32;
+      }
+      
+      .grade-matching {
+        color: #ff9800;
+      }
+      
+      .grade-below {
+        color: #f44336;
+      }
+      
+      .grade-below-far {
+        color: #b71c1c;
       }
       
       /* App Hubs */
       .app-hub {
         display: flex;
         flex-wrap: wrap;
-        gap: 20px;
+        gap: 16px;
         justify-content: center;
       }
       
       .app-card {
-        background-color: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        width: 250px;
+        background-color: #2d2d2d;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+        width: 100%;
+        max-width: 230px;
         overflow: hidden;
         transition: transform 0.3s, box-shadow 0.3s;
+        animation: fadeIn 0.5s ease-out forwards;
       }
       
+      /* Stagger app card animations */
+      .app-hub .app-card:nth-child(1) { animation-delay: 0.4s; }
+      .app-hub .app-card:nth-child(2) { animation-delay: 0.5s; }
+      .app-hub .app-card:nth-child(3) { animation-delay: 0.6s; }
+      
       .app-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        animation: pulseGlow 2s infinite;
       }
       
       .app-card-header {
         background-color: #23356f;
-        padding: 15px;
+        padding: 12px;
         text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .app-card-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.05),
+          transparent
+        );
+        transform: skewX(-25deg);
+        transition: 0.7s;
+      }
+      
+      .app-card:hover .app-card-header::before {
+        left: 125%;
       }
       
       .app-icon {
-        width: 80px;
-        height: 80px;
+        width: 70px;
+        height: 70px;
         object-fit: contain;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+        transition: transform 0.3s;
+      }
+      
+      .app-card:hover .app-icon {
+        transform: scale(1.1) rotate(5deg);
       }
       
       .app-name {
         color: white;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 600;
       }
       
       .app-description {
-        padding: 15px;
-        color: #333;
-        font-size: 14px;
-        height: 100px;
+        padding: 12px;
+        color: #e0e0e0;
+        font-size: 13px;
+        height: 90px;
         display: flex;
         align-items: center;
         text-align: center;
@@ -1078,27 +1207,112 @@
       .app-button {
         display: block;
         background-color: #00e5db;
-        color: #23356f;
+        color: #121212;
         text-align: center;
         padding: 10px;
         text-decoration: none;
         font-weight: 600;
-        transition: background-color 0.3s;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+      }
+      
+      .app-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transition: 0.5s;
+        z-index: -1;
       }
       
       .app-button:hover {
         background-color: #00c2b8;
+        transform: translateY(-2px);
+      }
+      
+      .app-button:hover::before {
+        left: 100%;
+      }
+      
+      /* Loading Indicator */
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
       
       /* Responsive adjustments */
+      @media (max-width: 992px) {
+        #vespa-homepage {
+          padding: 12px;
+        }
+        
+        .vespa-section {
+          padding: 14px;
+        }
+        
+        .subjects-grid {
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        }
+      }
+      
       @media (max-width: 768px) {
+        .profile-info {
+          flex-direction: column;
+        }
+        
         .subjects-grid {
           grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 10px;
         }
         
         .app-card {
+          max-width: 100%;
           width: 100%;
-          max-width: 300px;
+        }
+        
+        .app-description {
+          height: auto;
+          min-height: 70px;
+        }
+        
+        .vespa-section-title {
+          font-size: 20px;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        #vespa-homepage {
+          padding: 10px;
+        }
+        
+        .vespa-section {
+          padding: 12px;
+          margin-bottom: 16px;
+        }
+        
+        .subjects-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .profile-name {
+          font-size: 22px;
+        }
+        
+        .app-card {
+          max-width: 100%;
+        }
+        
+        .grade-item {
+          padding: 2px;
+        }
+        
+        .grade-value {
+          font-size: 1em;
         }
       }
     `;
@@ -1141,10 +1355,76 @@
     const yearGroup = sanitizeField(profileData.yearGroup);
     const attendance = sanitizeField(profileData.attendance);
     
+    // Helper function to compare grades and return appropriate CSS class
+    function getGradeColorClass(grade, minExpected) {
+      // Handle cases where grades are not available
+      if (!grade || !minExpected || grade === 'N/A' || minExpected === 'N/A') {
+        return '';
+      }
+      
+      // Simple comparison for letter grades (A, B, C, etc.)
+      if (/^[A-E][*+-]?$/.test(grade) && /^[A-E][*+-]?$/.test(minExpected)) {
+        // Extract the base grade letter
+        const gradeValue = grade.charAt(0);
+        const minExpectedValue = minExpected.charAt(0);
+        
+        // Compare (A is better than B, etc.)
+        if (gradeValue < minExpectedValue) {
+          return 'grade-exceeding-high'; // Much better (e.g. A vs C expected)
+        } else if (gradeValue === minExpectedValue) {
+          // Check for + or - modifiers
+          if (grade.includes('+') || minExpected.includes('-')) {
+            return 'grade-exceeding';
+          } else if (grade.includes('-') || minExpected.includes('+')) {
+            return 'grade-below';
+          }
+          return 'grade-matching';
+        } else {
+          // Grade is below expected
+          const diff = gradeValue.charCodeAt(0) - minExpectedValue.charCodeAt(0);
+          return diff > 1 ? 'grade-below-far' : 'grade-below';
+        }
+      }
+      
+      // Numeric grade comparison (1-9, or percentages)
+      const numGrade = parseFloat(grade);
+      const numMinExpected = parseFloat(minExpected);
+      
+      if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
+        const diff = numGrade - numMinExpected;
+        
+        if (diff > 1) {
+          return 'grade-exceeding-high';
+        } else if (diff > 0) {
+          return 'grade-exceeding';
+        } else if (diff === 0) {
+          return 'grade-matching';
+        } else if (diff > -2) {
+          return 'grade-below';
+        } else {
+          return 'grade-below-far';
+        }
+      }
+      
+      // For other formats, just do a basic string comparison
+      return grade >= minExpected ? 'grade-exceeding' : 'grade-below';
+    }
+    
     // Render subjects
     let subjectsHTML = '';
     if (profileData.subjects && profileData.subjects.length > 0) {
       profileData.subjects.forEach(subject => {
+        // Get color classes for current and target grades
+        const currentGradeClass = getGradeColorClass(
+          subject.currentGrade, 
+          subject.minimumExpectedGrade
+        );
+        
+        const targetGradeClass = getGradeColorClass(
+          subject.targetGrade,
+          subject.minimumExpectedGrade
+        );
+        
         subjectsHTML += `
           <div class="subject-card">
             <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
@@ -1159,11 +1439,11 @@
               </div>
               <div class="grade-item">
                 <div class="grade-label">Current</div>
-                <div class="grade-value grade-current">${sanitizeField(subject.currentGrade || 'N/A')}</div>
+                <div class="grade-value ${currentGradeClass}">${sanitizeField(subject.currentGrade || 'N/A')}</div>
               </div>
               <div class="grade-item">
                 <div class="grade-label">Target</div>
-                <div class="grade-value">${sanitizeField(subject.targetGrade || 'N/A')}</div>
+                <div class="grade-value ${targetGradeClass}">${sanitizeField(subject.targetGrade || 'N/A')}</div>
               </div>
             </div>
           </div>
@@ -1324,13 +1604,17 @@
     
     // Show loading indicator
     container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #23356f;">
+      <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #121212; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
         <h3>Loading VESPA Homepage...</h3>
         <div style="margin-top: 20px;">
-          <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="#00e5db" stroke-width="5">
+          <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#00e5db" stroke-width="4">
               <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
               <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(0, 229, 219, 0.3)" stroke-width="2">
+              <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
+              <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
             </circle>
           </svg>
         </div>
@@ -1346,21 +1630,24 @@
         renderHomepage(userProfile);
       } else {
         container.innerHTML = `
-          <div style="padding: 30px; text-align: center; color: #23356f;">
+          <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #121212; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
             <h3>Error Loading Homepage</h3>
-            <p>Unable to load or create your user profile. Please try refreshing the page.</p>
+            <p style="color: #f0f0f0;">Unable to load or create your user profile. Please try refreshing the page.</p>
+            <button onclick="location.reload()" style="margin-top: 15px; background-color: #00e5db; color: #121212; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
           </div>
         `;
       }
     } catch (error) {
       console.error("Homepage Error during initialization:", error);
       container.innerHTML = `
-        <div style="padding: 30px; text-align: center; color: #23356f;">
+        <div style="padding: 30px; text-align: center; color: #00e5db; background-color: #121212; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Homepage</h3>
-          <p>An unexpected error occurred. Please try refreshing the page.</p>
+          <p style="color: #f0f0f0;">An unexpected error occurred. Please try refreshing the page.</p>
+          <button onclick="location.reload()" style="margin-top: 15px; background-color: #00e5db; color: #121212; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
         </div>
       `;
     }
   };
 
 })(); // End of IIFE
+
