@@ -82,6 +82,12 @@ var DirectReportProfilesModule = {
         
         this.debugLog("DirectReportProfiles initializing with config", this.config);
         
+        // Check for Vue compatibility mode
+        if (this.config.vueCompatMode) {
+            this.debugLog("Vue compatibility mode enabled");
+            this.setupVueCompatibility();
+        }
+        
         // Add CSS styles
         this.addStyles();
         
@@ -93,6 +99,47 @@ var DirectReportProfilesModule = {
         
         this.isInitialized = true;
         this.debugLog("DirectReportProfiles initialization complete");
+    },
+    
+    // Setup function for Vue compatibility mode
+    setupVueCompatibility: function() {
+        // Adjust timings to let Vue render first
+        this.config.CHECK_INTERVAL = Math.max(this.config.CHECK_INTERVAL || 500, 800);
+        this.config.RENDER_COOLDOWN = Math.max(this.config.RENDER_COOLDOWN || 1000, 1500);
+        
+        // Add Vue detection to window if not already there
+        window._vueDetected = window._vueDetected || !!document.querySelector('[data-v-]');
+        
+        this.debugLog("Vue compatibility adjustments applied", {
+            CHECK_INTERVAL: this.config.CHECK_INTERVAL,
+            RENDER_COOLDOWN: this.config.RENDER_COOLDOWN,
+            vueDetected: window._vueDetected
+        });
+    },
+    
+    // Helper function to check if an element is controlled by Vue
+    isVueControlled: function(element) {
+        if (!element) return false;
+        
+        // Check for Vue attributes on this element or parents
+        let current = element;
+        let depth = 0;
+        const maxDepth = 5; // Only check 5 levels up to avoid performance issues
+        
+        while (current && depth < maxDepth) {
+            // Check various Vue indicators
+            if (current.hasAttribute && (
+                current.hasAttribute('data-v-') || 
+                (current.getAttribute && current.getAttribute('class') && 
+                 current.getAttribute('class').includes('vue-')) ||
+                (current && typeof current.__vue__ !== 'undefined') // Vue instance reference
+            )) {
+                return true;
+            }
+            current = current.parentElement;
+            depth++;
+        }
+        return false;
     },
     
     // Cleanup method for when navigating away
@@ -540,25 +587,48 @@ var DirectReportProfilesModule = {
             this.observers.reportObserver.disconnect();
         }
         
-        // Create a new observer with debounced handler
+        // Create a new observer with debounced handler and Vue compatibility features
         const debouncedHandler = this.debounce((mutations) => {
             // Skip handling if we're in the middle of updating the DOM ourselves
             if (this.isUpdatingDOM) {
                 this.debugLog("Observer triggered while updating DOM - skipping");
                 return;
             }
+            
+            // Skip if these are Vue-initiated changes
+            if (this.config.vueCompatMode) {
+                const isVueChange = mutations.some(mutation => {
+                    const target = mutation.target;
+                    return target && (
+                        (target.hasAttribute && target.hasAttribute('data-v-')) || 
+                        (target.classList && 
+                         typeof target.classList.contains === 'function' && 
+                         target.classList.contains('vue-')) ||
+                        (target.parentElement && target.parentElement.hasAttribute && 
+                         target.parentElement.hasAttribute('data-v-'))
+                    );
+                });
+                
+                if (isVueChange) {
+                    this.debugLog("Detected Vue-initiated DOM changes - ignoring");
+                    return;
+                }
+            }
+            
             this.handleReportChanges(reportContainer, profileContainer);
         }, 500); // Increased debounce time to prevent excessive triggering
         
         this.observers.reportObserver = new MutationObserver(debouncedHandler);
         
-        // Start observing the report container with more thorough options
-        this.observers.reportObserver.observe(reportContainer, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            characterData: true
-        });
+        // Start observing the report container with options adjusted for Vue compatibility
+        const observerOptions = {
+            childList: true,   // Keep watching for added/removed elements
+            subtree: this.config.vueCompatMode ? false : true, // Only watch direct children in Vue mode
+            attributes: this.config.vueCompatMode ? false : true, // Don't watch all attributes in Vue mode
+            characterData: this.config.vueCompatMode ? false : true // Don't watch all text in Vue mode
+        };
+        
+        this.observers.reportObserver.observe(reportContainer, observerOptions);
         
         // Also observe the entire document body for navigation events and buttons
         const debouncedDocHandler = this.debounce((mutations) => {
@@ -1398,6 +1468,12 @@ var DirectReportProfilesModule = {
             return;
         }
         
+        // Check if the container is Vue-controlled and adjust our strategy
+        const isVueElement = this.config.vueCompatMode && this.isVueControlled(profileContainer);
+        if (isVueElement) {
+            this.debugLog("Profile container appears to be Vue-controlled, using cautious render approach");
+        }
+        
         // Calculate a hash of the current profile data to avoid redundant renders
         const profileHash = this.hashProfileData(profileData);
         
@@ -1598,8 +1674,30 @@ var DirectReportProfilesModule = {
             </div>
         `;
         
-        // Clear container and add content
-        profileContainer.innerHTML = profileHTML;
+        // Clear container and add content - special handling for Vue
+        if (isVueElement) {
+            // For Vue-controlled containers, use a more careful approach
+            // First create a wrapper that Vue won't re-render
+            const wrapper = document.createElement('div');
+            wrapper.className = 'vespa-profile-wrapper';
+            wrapper.dataset.nonvue = 'true'; // Mark as not controlled by Vue
+            
+            // Set inner HTML of our wrapper
+            wrapper.innerHTML = profileHTML;
+            
+            // Empty the container carefully
+            while (profileContainer.firstChild) {
+                profileContainer.removeChild(profileContainer.firstChild);
+            }
+            
+            // Append our wrapper to the container
+            profileContainer.appendChild(wrapper);
+            
+            this.debugLog("Used Vue-safe rendering approach");
+        } else {
+            // Standard approach for non-Vue elements
+            profileContainer.innerHTML = profileHTML;
+        }
         
         // Reset the DOM update flag after a slight delay to ensure rendering completes
         setTimeout(() => {
