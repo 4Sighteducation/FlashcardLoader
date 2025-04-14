@@ -1,3 +1,54 @@
+/**
+ * DirectReportProfiles.js - Student Profile Integration for VESPA Reports
+ * GitHub version for loading via jsDelivr
+ */
+
+// ===== CONFIGURATION DEFAULTS =====
+var DEFAULT_CONFIG = {
+    KNACK_API_URL: 'https://api.knack.com/v1',
+    HOMEPAGE_OBJECT: 'object_112', // User Profile object for homepage
+    DEBUG_MODE: true, // Enable console logging
+    CHECK_INTERVAL: 500, // Check every 500ms
+    MAX_CHECKS: 20, // Give up after 10 seconds (20 checks)
+    CACHE_TTL: 5 * 60 * 1000, // Cache TTL: 5 minutes
+    API_COOLDOWN: 1000, // 1 second cooldown between API requests
+    RENDER_COOLDOWN: 1000, // Minimum time between renders
+    BUTTON_POLL_INTERVAL: 1000, // Check every 1 second
+    BUTTON_POLL_MAX_ATTEMPTS: 60, // Try for up to 60 seconds
+    reportSelector: '#view_2776 .kn-rich_text__content',
+    profileSelector: '#view_3015 .kn-rich_text__content',
+    
+    // Field mappings for the user profile object
+    FIELD_MAPPING: {
+        userId: 'field_3064',         // User ID
+        userConnection: 'field_3070',  // User Account connection
+        vespaCustomer: 'field_3069',   // VESPA Customer (User School)
+        studentName: 'field_3066',     // Student Name
+        tutorConnection: 'field_3071', // Student Tutors
+        staffAdminConnection: 'field_3072', // Staff Admins
+        attendance: 'field_3076',      // Attendance
+        tutorGroup: 'field_3077',      // Tutor Group
+        yearGroup: 'field_3078',       // Year Group
+        numLogins: 'field_3079',       // NumLogins
+        upn: 'field_3136',            // Unique Pupil Number (UPN)
+        // Subject fields
+        sub1: 'field_3080',
+        sub2: 'field_3081',
+        sub3: 'field_3082',
+        sub4: 'field_3083',
+        sub5: 'field_3084',
+        sub6: 'field_3085',
+        sub7: 'field_3086',
+        sub8: 'field_3087',
+        sub9: 'field_3088',
+        sub10: 'field_3089',
+        sub11: 'field_3090',
+        sub12: 'field_3091',
+        sub13: 'field_3092',
+        sub14: 'field_3093',
+        sub15: 'field_3094'
+    }
+};
 // DirectReportProfilesModule.js - Core module for DirectReportProfiles
 var DirectReportProfilesModule = {
     // State variables
@@ -1559,55 +1610,6 @@ var DirectReportProfilesModule = {
         this.debugLog("Profile rendered successfully", { name, subjects: subjectData.length });
     }
 };
-
-// DirectReportProfilesExport.js - Export functions for DirectReportProfiles
-// This file provides global functions for the Multi-App Loader to call
-
-// Global initializer function for the Multi-App Loader
-window.initializeDirectReportProfiles = function(config) {
-    // Log the initialization
-    console.log('[DirectReportProfiles] Initializing with loader config:', config);
-    
-    // Merge default config with provided config
-    const mergedConfig = {...DEFAULT_CONFIG};
-    
-    // Handle nested FIELD_MAPPING if provided
-    if (config && config.FIELD_MAPPING) {
-        mergedConfig.FIELD_MAPPING = {
-            ...mergedConfig.FIELD_MAPPING,
-            ...config.FIELD_MAPPING
-        };
-    }
-    
-    // Merge top-level config
-    if (config) {
-        Object.keys(config).forEach(key => {
-            if (key !== 'FIELD_MAPPING') {
-                mergedConfig[key] = config[key];
-            }
-        });
-    }
-    
-    // Initialize the module with merged config
-    DirectReportProfilesModule.initialize(mergedConfig);
-    
-    console.log('[DirectReportProfiles] Initialization complete');
-};
-
-// Global cleanup function 
-window.disposeDirectReportProfiles = function() {
-    console.log('[DirectReportProfiles] Disposing...');
-    
-    // Call the module's dispose method
-    DirectReportProfilesModule.dispose();
-    
-    console.log('[DirectReportProfiles] Disposal complete');
-};
-
-// Additional helper function to check if the module is initialized
-window.isDirectReportProfilesInitialized = function() {
-    return DirectReportProfilesModule.isInitialized === true;
-};
 // ===== GLOBAL INITIALIZER FUNCTIONS =====
 // These functions are called by the Multi-App Loader
 
@@ -1669,4 +1671,3 @@ window.disposeDirectReportProfiles = function() {
 window.isDirectReportProfilesInitialized = function() {
     return DirectReportProfilesModule.isInitialized === true;
 };
-
