@@ -144,11 +144,14 @@ function startPolling() {
         profileContainer: '#view_3015 .kn-rich_text__content' 
       });
       
-      // Set up MutationObserver to watch for changes
-      setupObservers(reportContainer, profileContainer);
-      
-      // Check immediately in case the report is already showing
-      checkForIndividualReport(reportContainer, profileContainer);
+  // Set up MutationObserver to watch for changes
+  setupObservers(reportContainer, profileContainer);
+  
+  // Check immediately in case the report is already showing
+  checkForIndividualReport(reportContainer, profileContainer);
+  
+  // Reset lastRenderedProfileHash to ensure a fresh render on page reload
+  lastRenderedProfileHash = null;
     } else {
       checkCount++;
       if (checkCount >= MAX_CHECKS) {
@@ -425,6 +428,10 @@ function handleReportChanges(reportContainer, profileContainer) {
         
         // Always clear the profile view when changing students
         clearProfileView(profileContainer);
+        
+        // Reset the rendered profile hash to force a new render when changing students
+        lastRenderedProfileHash = null;
+        debugLog("Reset profile hash due to student change");
       }
       
       // Update current student
@@ -1051,8 +1058,16 @@ function renderStudentProfile(profileData, profileContainer) {
   
   // Ensure the container is truly accessible and part of the DOM
   if (!document.contains(profileContainer)) {
-    debugLog("Cannot render profile: Container element is no longer in the DOM");
-    return;
+    debugLog("Container element is no longer in the DOM, attempting to find it again");
+    // Try to find the container again
+    const newContainer = document.querySelector('#view_3015 .kn-rich_text__content');
+    if (newContainer) {
+      profileContainer = newContainer;
+      debugLog("Found new container reference");
+    } else {
+      debugLog("Could not find replacement container, cannot render profile");
+      return;
+    }
   }
   
   // Calculate a hash of the current profile data to avoid redundant renders
@@ -1255,14 +1270,19 @@ function renderStudentProfile(profileData, profileContainer) {
     </div>
   `;
   
-  // Clear container and add content
-  profileContainer.innerHTML = profileHTML;
-  
-  // Reset the DOM update flag after a slight delay to ensure rendering completes
+  // Delay rendering slightly to ensure DOM stability
   setTimeout(() => {
-    isUpdatingDOM = false;
-    debugLog("DOM update lock released");
-  }, 100);
+    // Clear container and add content
+    profileContainer.innerHTML = profileHTML;
+    
+    debugLog("Profile rendered with delay to ensure DOM stability");
+    
+    // Reset the DOM update flag after a slight delay to ensure rendering completes
+    setTimeout(() => {
+      isUpdatingDOM = false;
+      debugLog("DOM update lock released");
+    }, 100);
+  }, 50);
   
   debugLog("Profile rendered successfully", { name, subjects: subjectData.length });
 }
@@ -1535,3 +1555,4 @@ function addStyles() {
 
 // Expose initializer to global scope so the Multi-App Loader can access it
 window.initializeReportProfiles = initializeReportProfiles;
+
