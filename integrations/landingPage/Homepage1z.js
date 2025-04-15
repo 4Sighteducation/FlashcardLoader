@@ -1680,17 +1680,27 @@
     const tooltips = homepageContainer.querySelectorAll('.app-tooltip');
     const infoIcons = homepageContainer.querySelectorAll('.app-info-icon');
     
-    // Make tooltip content more direct - replace tooltips with simple text containers
-    tooltips.forEach((tooltip, index) => {
-      // Store the content
-      const content = tooltip.innerHTML;
-      
-      // Add data attribute to corresponding icon
-      if (infoIcons[index]) {
-        infoIcons[index].setAttribute('data-tooltip-content', content);
+    // Create a content map to properly associate tooltips with their info icons
+    const tooltipContentMap = {};
+    
+    // First collect all tooltip contents by ID
+    tooltips.forEach(tooltip => {
+      const tooltipId = tooltip.id;
+      if (tooltipId) {
+        tooltipContentMap[tooltipId] = tooltip.innerHTML;
       }
-      
-      // Remove the tooltip from DOM (we'll create it when needed)
+    });
+    
+    // Then associate each info icon with its tooltip content
+    infoIcons.forEach(icon => {
+      const tooltipId = icon.getAttribute('data-tooltip');
+      if (tooltipId && tooltipContentMap[tooltipId]) {
+        icon.setAttribute('data-tooltip-content', tooltipContentMap[tooltipId]);
+      }
+    });
+    
+    // Remove all original tooltips from DOM (we'll create them when needed)
+    tooltips.forEach(tooltip => {
       if (tooltip.parentNode) {
         tooltip.parentNode.removeChild(tooltip);
       }
@@ -1709,8 +1719,12 @@
         e.preventDefault();
         e.stopPropagation();
         
-        // Get content
+        // Get content from data-tooltip-content attribute (which we've properly set above)
         const content = this.getAttribute('data-tooltip-content');
+        if (!content) {
+          console.warn('[Homepage] No tooltip content found for info icon');
+          return;
+        }
         
         // Check if we're opening or closing
         const isOpening = sharedTooltip.style.display === 'none';
@@ -1794,6 +1808,7 @@
     let id = 0;
     
     apps.forEach(app => {
+      // Create a consistent tooltip ID format
       const tooltipId = `tooltip-${title.replace(/\s+/g, '-').toLowerCase()}-${id++}`;
       appsHTML += `
         <div class="app-card">
@@ -1947,5 +1962,6 @@
   };
 
 })(); // End of IIFE
+
 
 
