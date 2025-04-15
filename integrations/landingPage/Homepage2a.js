@@ -1661,145 +1661,119 @@
       return;
     }
     
-    // Create a single tooltip container to hold all tooltips
-    const tooltipContainer = document.createElement('div');
-    tooltipContainer.className = 'tooltip-container';
-    // Position the tooltip container for proper absolute positioning context
-    tooltipContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none;';
-    document.body.appendChild(tooltipContainer);
-    tooltipElements.push(tooltipContainer);
+    // Get all tooltips and info icons within the homepage container
+    const tooltips = homepageContainer.querySelectorAll('.app-tooltip');
+    const infoIcons = homepageContainer.querySelectorAll('.app-info-icon');
     
     // Create overlay for mobile
     const overlay = document.createElement('div');
     overlay.className = 'tooltip-overlay';
     overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none;';
-    tooltipContainer.appendChild(overlay);
+    document.body.appendChild(overlay);
     tooltipElements.push(overlay);
     
-    // Get all tooltips and info icons within the homepage container
-    const tooltips = homepageContainer.querySelectorAll('.app-tooltip');
-    const infoIcons = homepageContainer.querySelectorAll('.app-info-icon');
-    
-    // Create a content map to properly associate tooltips with their info icons
-    const tooltipContentMap = {};
-    
-    // First collect all tooltip contents by ID
-    tooltips.forEach(tooltip => {
-      const tooltipId = tooltip.id;
-      if (tooltipId) {
-        tooltipContentMap[tooltipId] = tooltip.innerHTML;
-      }
-    });
-    
-    // Then associate each info icon with its tooltip content
+    // Simple direct approach - connect each info icon to its tooltip
     infoIcons.forEach(icon => {
+      // Find the tooltip this icon controls using the data-tooltip attribute
       const tooltipId = icon.getAttribute('data-tooltip');
-      if (tooltipId && tooltipContentMap[tooltipId]) {
-        icon.setAttribute('data-tooltip-content', tooltipContentMap[tooltipId]);
-      }
-    });
-    
-    // Remove all original tooltips from DOM (we'll create them when needed)
-    tooltips.forEach(tooltip => {
-      if (tooltip.parentNode) {
-        tooltip.parentNode.removeChild(tooltip);
-      }
-    });
-    
-    // Single shared tooltip element that we'll position as needed
-    const sharedTooltip = document.createElement('div');
-    sharedTooltip.className = 'app-tooltip';
-    sharedTooltip.style.cssText = 'position: fixed; background-color: #1c2b5f; color: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); width: 250px; z-index: 10000; display: none; opacity: 0; visibility: hidden; border: 2px solid #00e5db; font-size: 14px; text-align: center; max-width: 90vw; pointer-events: auto;';
-    tooltipContainer.appendChild(sharedTooltip);
-    tooltipElements.push(sharedTooltip);
-    
-    // Add click event to info icons
-    infoIcons.forEach(icon => {
+      if (!tooltipId) return;
+      
+      const tooltip = document.getElementById(tooltipId);
+      if (!tooltip) return;
+      
+      // Style the tooltip for proper display
+      tooltip.style.cssText = 'position: fixed; background-color: #1c2b5f; color: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); width: 250px; z-index: 10000; display: none; opacity: 0; visibility: hidden; border: 2px solid #00e5db; font-size: 14px; text-align: center; max-width: 90vw; pointer-events: auto;';
+      
+      // Track this tooltip element for cleanup
+      tooltipElements.push(tooltip);
+      
+      // Simple toggle function for this specific tooltip
+      let isVisible = false;
+      
       icon.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         
-        // Get content from data-tooltip-content attribute (which we've properly set above)
-        const content = this.getAttribute('data-tooltip-content');
-        if (!content) {
-          console.warn('[Homepage] No tooltip content found for info icon');
-          return;
-        }
-        
-        // Check if we're opening or closing
-        const isOpening = sharedTooltip.style.display === 'none';
-        
-        // If opening, populate and position the tooltip
-        if (isOpening) {
-          // Set content
-          sharedTooltip.innerHTML = content;
-          
-          // Get position
+        // Toggle visibility
+        if (!isVisible) {
+          // Position the tooltip based on the icon
           const rect = this.getBoundingClientRect();
           const isMobile = window.innerWidth <= 768;
           
           if (isMobile) {
-            // For mobile - center in screen
-            sharedTooltip.style.left = '50%';
-            sharedTooltip.style.top = '50%';
-            sharedTooltip.style.transform = 'translate(-50%, -50%)';
-            sharedTooltip.style.maxWidth = '80%';
-            sharedTooltip.style.width = '300px';
-            
-            // Show overlay
+            // Mobile positioning - center
+            tooltip.style.left = '50%';
+            tooltip.style.top = '50%';
+            tooltip.style.transform = 'translate(-50%, -50%)';
+            tooltip.style.maxWidth = '80%';
+            tooltip.style.width = '300px';
             overlay.style.display = 'block';
           } else {
-            // For desktop - position near icon
+            // Desktop positioning - below icon
             const tooltipWidth = 250;
-            sharedTooltip.style.top = (rect.bottom + window.scrollY + 15) + 'px';
-            sharedTooltip.style.left = (rect.left + (rect.width / 2) - (tooltipWidth / 2) + window.scrollX) + 'px';
-            sharedTooltip.style.transform = 'none';
-            sharedTooltip.style.maxWidth = '250px';
-            sharedTooltip.style.width = 'auto';
+            tooltip.style.top = (rect.bottom + window.scrollY + 15) + 'px';
+            tooltip.style.left = (rect.left + (rect.width / 2) - (tooltipWidth / 2) + window.scrollX) + 'px';
+            tooltip.style.transform = 'none';
+            tooltip.style.maxWidth = '250px';
+            tooltip.style.width = 'auto';
           }
           
-          // Show tooltip - ensure visibility with a slight delay for the animation
-          requestAnimationFrame(() => {
-            sharedTooltip.style.display = 'block';
-            // Tiny timeout to ensure the display change has taken effect
-            setTimeout(() => {
-              sharedTooltip.style.opacity = '1';
-              sharedTooltip.style.visibility = 'visible';
-            }, 10);
-          });
-          
-          // Add close button for mobile
-          if (isMobile) {
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '×';
-            closeBtn.className = 'tooltip-close-btn';
-            closeBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; background: #00e5db; color: #1c2b5f; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 18px; cursor: pointer; line-height: 24px; padding: 0;';
-            sharedTooltip.appendChild(closeBtn);
-            
-            closeBtn.addEventListener('click', closeTooltip);
-          }
-          
-          // Add event listener to close when clicking outside
+          // Make it visible
+          tooltip.style.display = 'block';
           setTimeout(() => {
-            document.addEventListener('click', closeTooltip);
+            tooltip.style.opacity = '1';
+            tooltip.style.visibility = 'visible';
           }, 10);
+          
+          // Add close functions
+          const closeTooltip = function() {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+            setTimeout(() => {
+              tooltip.style.display = 'none';
+              overlay.style.display = 'none';
+            }, 300);
+            isVisible = false;
+            document.removeEventListener('click', documentClickHandler);
+          };
+          
+          const documentClickHandler = function(event) {
+            if (event.target !== icon && !tooltip.contains(event.target)) {
+              closeTooltip();
+            }
+          };
+          
+          // Close when clicking outside
+          setTimeout(() => {
+            document.addEventListener('click', documentClickHandler);
+          }, 10);
+          
+          isVisible = true;
         } else {
-          closeTooltip();
+          // Hide tooltip
+          tooltip.style.opacity = '0';
+          tooltip.style.visibility = 'hidden';
+          setTimeout(() => {
+            tooltip.style.display = 'none';
+            overlay.style.display = 'none';
+          }, 300);
+          isVisible = false;
         }
       });
     });
     
-    // Close the tooltip
-    function closeTooltip() {
-      sharedTooltip.style.display = 'none';
-      sharedTooltip.style.opacity = '0';
-      sharedTooltip.style.visibility = 'hidden';
-      overlay.style.display = 'none';
-      document.removeEventListener('click', closeTooltip);
-    }
-    
     // Close when clicking overlay
-    overlay.addEventListener('click', closeTooltip);
+    overlay.addEventListener('click', function() {
+      // Hide all tooltips when overlay is clicked
+      tooltips.forEach(tooltip => {
+        tooltip.style.opacity = '0';
+        tooltip.style.visibility = 'hidden';
+        setTimeout(() => {
+          tooltip.style.display = 'none';
+        }, 300);
+      });
+      overlay.style.display = 'none';
+    });
   }
   
   // Render an app hub section
@@ -1808,7 +1782,7 @@
     let id = 0;
     
     apps.forEach(app => {
-      // Create a consistent tooltip ID format
+      // Simple, unique tooltip ID format
       const tooltipId = `tooltip-${title.replace(/\s+/g, '-').toLowerCase()}-${id++}`;
       appsHTML += `
         <div class="app-card">
