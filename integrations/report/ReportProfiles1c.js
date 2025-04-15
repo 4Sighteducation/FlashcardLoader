@@ -416,6 +416,9 @@ function handleReportChanges(reportContainer, profileContainer) {
     
     // If we found a student ID, process it
     if (studentId) {
+      // Show loading indicator immediately
+      showLoadingIndicator(profileContainer);
+      
       // Check if this is a new student (different from the current one)
       const isNewStudent = currentStudentId !== null && currentStudentId !== studentId;
       
@@ -493,6 +496,28 @@ function clearProfileView(profileContainer) {
   }
 }
 
+// Show a loading indicator in the profile container
+function showLoadingIndicator(profileContainer) {
+  if (!profileContainer) return;
+  
+  // Create a loading indicator with VESPA styling
+  const loadingHTML = `
+    <div id="vespa-profile">
+      <section class="vespa-section profile-section loading-profile">
+        <h2 class="vespa-section-title">Student Profile</h2>
+        <div class="profile-loading">
+          <div class="profile-loading-spinner"></div>
+          <div class="profile-loading-text">Loading student profile...</div>
+        </div>
+      </section>
+    </div>
+  `;
+  
+  // Add the loading indicator to the container
+  profileContainer.innerHTML = loadingHTML;
+  debugLog("Loading indicator displayed");
+}
+
 // Helper function to manage API requests with throttling
 async function makeRequest(url, options, cacheKey) {
   // Check if we should throttle this request
@@ -559,6 +584,9 @@ async function makeRequest(url, options, cacheKey) {
 
 async function processStudentProfileById(studentId, profileContainer) {
   try {
+    // Show loading indicator immediately
+    showLoadingIndicator(profileContainer);
+    
     // Step 1: Get student record directly by ID
     debugLog(`Looking up student record with ID: ${studentId}`);
     
@@ -691,6 +719,9 @@ async function processStudentProfileById(studentId, profileContainer) {
 // Legacy function - updated with request management
 async function processStudentProfile(studentName, profileContainer) {
   try {
+    // Show loading indicator immediately
+    showLoadingIndicator(profileContainer);
+    
     // Step 1: Find student record by name to get email
     debugLog(`Looking up student record for: ${studentName}`);
     
@@ -1298,6 +1329,44 @@ function addStyles() {
   
   // Add the CSS
   styleElement.textContent = `
+    /* Loading Animation for Profile */
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+    
+    #vespa-profile .profile-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    
+    #vespa-profile .profile-loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(0, 229, 219, 0.1);
+      border-radius: 50%;
+      border-top: 4px solid #00e5db;
+      margin-bottom: 20px;
+      animation: rotate 1s linear infinite;
+    }
+    
+    #vespa-profile .profile-loading-text {
+      color: #00e5db;
+      font-size: 16px;
+      font-weight: 600;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+    
     /* Main Container - VESPA Theme */
     #vespa-profile {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
