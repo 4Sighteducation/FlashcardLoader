@@ -1664,7 +1664,9 @@
     // Create a single tooltip container to hold all tooltips
     const tooltipContainer = document.createElement('div');
     tooltipContainer.className = 'tooltip-container';
-    homepageContainer.appendChild(tooltipContainer);
+    // Position the tooltip container for proper absolute positioning context
+    tooltipContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none;';
+    document.body.appendChild(tooltipContainer);
     tooltipElements.push(tooltipContainer);
     
     // Create overlay for mobile
@@ -1697,7 +1699,7 @@
     // Single shared tooltip element that we'll position as needed
     const sharedTooltip = document.createElement('div');
     sharedTooltip.className = 'app-tooltip';
-    sharedTooltip.style.display = 'none';
+    sharedTooltip.style.cssText = 'position: fixed; background-color: #1c2b5f; color: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); width: 250px; z-index: 10000; display: none; opacity: 0; visibility: hidden; border: 2px solid #00e5db; font-size: 14px; text-align: center; max-width: 90vw; pointer-events: auto;';
     tooltipContainer.appendChild(sharedTooltip);
     tooltipElements.push(sharedTooltip);
     
@@ -1742,8 +1744,15 @@
             sharedTooltip.style.width = 'auto';
           }
           
-          // Show tooltip
-          sharedTooltip.style.display = 'block';
+          // Show tooltip - ensure visibility with a slight delay for the animation
+          requestAnimationFrame(() => {
+            sharedTooltip.style.display = 'block';
+            // Tiny timeout to ensure the display change has taken effect
+            setTimeout(() => {
+              sharedTooltip.style.opacity = '1';
+              sharedTooltip.style.visibility = 'visible';
+            }, 10);
+          });
           
           // Add close button for mobile
           if (isMobile) {
@@ -1769,6 +1778,8 @@
     // Close the tooltip
     function closeTooltip() {
       sharedTooltip.style.display = 'none';
+      sharedTooltip.style.opacity = '0';
+      sharedTooltip.style.visibility = 'hidden';
       overlay.style.display = 'none';
       document.removeEventListener('click', closeTooltip);
     }
@@ -1936,4 +1947,5 @@
   };
 
 })(); // End of IIFE
+
 
