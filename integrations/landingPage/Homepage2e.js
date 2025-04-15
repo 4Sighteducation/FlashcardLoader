@@ -1649,9 +1649,45 @@
     tooltipElements = [];
   }
   
-  // Ultra-simple tooltip setup with direct alert-style popup
+  // Enhanced tooltip setup with better styling
   function setupTooltips() {
-    console.log("[Homepage] Setting up ULTRA SIMPLE tooltips");
+    console.log("[Homepage] Setting up enhanced tooltips");
+    
+    // Create overlay for mobile
+    const overlay = document.createElement('div');
+    overlay.className = 'tooltip-overlay';
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none;';
+    document.body.appendChild(overlay);
+    tooltipElements.push(overlay);
+    
+    // Handle clicks on overlay to close tooltips
+    overlay.addEventListener('click', function() {
+      hideAllTooltips();
+    });
+    
+    // Track active tooltip for cleanup
+    let activeTooltip = null;
+    
+    // Function to hide all tooltips
+    function hideAllTooltips() {
+      if (activeTooltip) {
+        activeTooltip.classList.add('tooltip-hiding');
+        setTimeout(() => {
+          if (activeTooltip && activeTooltip.parentNode) {
+            activeTooltip.parentNode.removeChild(activeTooltip);
+          }
+          activeTooltip = null;
+        }, 300);
+        overlay.style.display = 'none';
+      }
+    }
+    
+    // Add global click listener to close tooltips when clicking outside
+    document.addEventListener('click', function(e) {
+      if (activeTooltip && !e.target.closest('.app-info-icon') && !e.target.closest('.vespa-tooltip')) {
+        hideAllTooltips();
+      }
+    });
     
     // Get all info icons
     const infoIcons = document.querySelectorAll('.app-info-icon');
@@ -1661,16 +1697,13 @@
     infoIcons.forEach((icon, index) => {
       console.log(`[Homepage] Setting up icon #${index + 1}`);
       
-      // Store the tooltip text in the icon's data attribute
-      const descText = icon.getAttribute('data-description');
-      if (!descText) {
-        console.warn(`[Homepage] No description text for icon #${index + 1}`);
-      }
-      
       // Add click event
       icon.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
+        
+        // Close any existing tooltip first
+        hideAllTooltips();
         
         console.log(`[Homepage] Icon #${index + 1} clicked!`);
         
@@ -1681,53 +1714,123 @@
           return;
         }
         
-        // Create a simple popup element
-        const popup = document.createElement('div');
-        popup.className = 'simple-tooltip-popup';
-        popup.innerHTML = `
-          <div class="popup-content">${description}</div>
-          <button class="popup-close">Close</button>
+        // Create tooltip element with arrow
+        const tooltip = document.createElement('div');
+        tooltip.className = 'vespa-tooltip';
+        tooltip.innerHTML = `
+          <div class="tooltip-arrow"></div>
+          <div class="tooltip-content">${description}</div>
         `;
         
-        // Style the popup
-        popup.style.cssText = `
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background-color: #1c2b5f;
-          color: white;
-          padding: 20px;
-          border-radius: 8px;
-          border: 3px solid #00e5db;
-          box-shadow: 0 0 20px rgba(0,0,0,0.7);
-          z-index: 10000;
-          max-width: 80%;
-          text-align: center;
+        // Get position of the icon
+        const rect = this.getBoundingClientRect();
+        const isMobile = window.innerWidth <= 768;
+        
+        // Style the tooltip
+        if (isMobile) {
+          // Mobile styling - center in screen
+          tooltip.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #1c2b5f;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #00e5db;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+            width: 80%;
+            max-width: 300px;
+            z-index: 10000;
+            text-align: center;
+            animation: tooltipFadeIn 0.3s forwards;
+            font-size: 14px;
+          `;
+          
+          // Show overlay on mobile
+          overlay.style.display = 'block';
+          
+          // Hide the arrow on mobile
+          tooltip.querySelector('.tooltip-arrow').style.display = 'none';
+          
+          // Add close button for mobile
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = 'Close';
+          closeBtn.className = 'tooltip-close-btn';
+          closeBtn.style.cssText = `
+            background-color: #00e5db;
+            color: #1c2b5f;
+            border: none;
+            padding: 6px 12px;
+            margin-top: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+          `;
+          
+          closeBtn.addEventListener('click', hideAllTooltips);
+          tooltip.appendChild(closeBtn);
+        } else {
+          // Desktop styling - position below icon
+          const tooltipWidth = 250;
+          tooltip.style.cssText = `
+            position: fixed;
+            top: ${rect.bottom + window.scrollY + 10}px;
+            left: ${rect.left + (rect.width / 2) - (tooltipWidth / 2) + window.scrollX}px;
+            background-color: #1c2b5f;
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #00e5db;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+            width: ${tooltipWidth}px;
+            z-index: 10000;
+            text-align: center;
+            animation: tooltipFadeIn 0.3s forwards;
+            font-size: 14px;
+          `;
+          
+          // Style the arrow
+          const arrow = tooltip.querySelector('.tooltip-arrow');
+          arrow.style.cssText = `
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            margin-left: -8px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid #1c2b5f;
+          `;
+        }
+        
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: ${isMobile ? 'translate(-50%, -60%)' : 'translateY(-10px)'}; }
+            to { opacity: 1; transform: ${isMobile ? 'translate(-50%, -50%)' : 'translateY(0)'}; }
+          }
+          
+          @keyframes tooltipFadeOut {
+            from { opacity: 1; transform: ${isMobile ? 'translate(-50%, -50%)' : 'translateY(0)'}; }
+            to { opacity: 0; transform: ${isMobile ? 'translate(-50%, -60%)' : 'translateY(-10px)'}; }
+          }
+          
+          .tooltip-hiding {
+            animation: tooltipFadeOut 0.3s forwards;
+          }
         `;
+        document.head.appendChild(style);
         
-        // Style close button
-        const closeBtn = popup.querySelector('.popup-close');
-        closeBtn.style.cssText = `
-          background-color: #00e5db;
-          color: #1c2b5f;
-          border: none;
-          padding: 8px 15px;
-          margin-top: 15px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: bold;
-        `;
+        // Add tooltip to body and save reference
+        document.body.appendChild(tooltip);
+        activeTooltip = tooltip;
         
-        // Add click handler to close button
-        closeBtn.addEventListener('click', function() {
-          document.body.removeChild(popup);
-        });
-        
-        // Add popup to body
-        document.body.appendChild(popup);
-        
-        console.log(`[Homepage] Popup created and displayed for icon #${index + 1}`);
+        console.log(`[Homepage] Tooltip created and displayed for icon #${index + 1}`);
       });
     });
   }
