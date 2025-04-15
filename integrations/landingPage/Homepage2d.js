@@ -1649,130 +1649,86 @@
     tooltipElements = [];
   }
   
-  // Setup tooltips with proper positioning and click handling for both desktop and mobile
+  // Ultra-simple tooltip setup with direct alert-style popup
   function setupTooltips() {
-    // Clean up any existing tooltips first
-    cleanupTooltips();
+    console.log("[Homepage] Setting up ULTRA SIMPLE tooltips");
     
-    // Get the homepage container
-    const homepageContainer = document.getElementById('vespa-homepage');
-    if (!homepageContainer) {
-      console.error('[Homepage] Cannot setup tooltips: Homepage container not found');
-      return;
-    }
+    // Get all info icons
+    const infoIcons = document.querySelectorAll('.app-info-icon');
+    console.log(`[Homepage] Found ${infoIcons.length} info icons`);
     
-    // Get all tooltips and info icons within the homepage container
-    const tooltips = homepageContainer.querySelectorAll('.app-tooltip');
-    const infoIcons = homepageContainer.querySelectorAll('.app-info-icon');
-    
-    // Create overlay for mobile
-    const overlay = document.createElement('div');
-    overlay.className = 'tooltip-overlay';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none;';
-    document.body.appendChild(overlay);
-    tooltipElements.push(overlay);
-    
-    // Simple direct approach - connect each info icon to its tooltip
-    infoIcons.forEach(icon => {
-      // Find the tooltip this icon controls using the data-tooltip attribute
-      const tooltipId = icon.getAttribute('data-tooltip');
-      if (!tooltipId) return;
+    // Add click handlers to each icon
+    infoIcons.forEach((icon, index) => {
+      console.log(`[Homepage] Setting up icon #${index + 1}`);
       
-      const tooltip = document.getElementById(tooltipId);
-      if (!tooltip) return;
+      // Store the tooltip text in the icon's data attribute
+      const descText = icon.getAttribute('data-description');
+      if (!descText) {
+        console.warn(`[Homepage] No description text for icon #${index + 1}`);
+      }
       
-      // Style the tooltip for proper display
-      tooltip.style.cssText = 'position: fixed; background-color: #1c2b5f; color: #ffffff; padding: 12px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); width: 250px; z-index: 10000; display: none; opacity: 0; visibility: hidden; border: 2px solid #00e5db; font-size: 14px; text-align: center; max-width: 90vw; pointer-events: auto;';
-      
-      // Track this tooltip element for cleanup
-      tooltipElements.push(tooltip);
-      
-      // Simple toggle function for this specific tooltip
-      let isVisible = false;
-      
+      // Add click event
       icon.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         
-        // Toggle visibility
-        if (!isVisible) {
-          // Position the tooltip based on the icon
-          const rect = this.getBoundingClientRect();
-          const isMobile = window.innerWidth <= 768;
-          
-          if (isMobile) {
-            // Mobile positioning - center
-            tooltip.style.left = '50%';
-            tooltip.style.top = '50%';
-            tooltip.style.transform = 'translate(-50%, -50%)';
-            tooltip.style.maxWidth = '80%';
-            tooltip.style.width = '300px';
-            overlay.style.display = 'block';
-          } else {
-            // Desktop positioning - below icon
-            const tooltipWidth = 250;
-            tooltip.style.top = (rect.bottom + window.scrollY + 15) + 'px';
-            tooltip.style.left = (rect.left + (rect.width / 2) - (tooltipWidth / 2) + window.scrollX) + 'px';
-            tooltip.style.transform = 'none';
-            tooltip.style.maxWidth = '250px';
-            tooltip.style.width = 'auto';
-          }
-          
-          // Make it visible
-          tooltip.style.display = 'block';
-          setTimeout(() => {
-            tooltip.style.opacity = '1';
-            tooltip.style.visibility = 'visible';
-          }, 10);
-          
-          // Add close functions
-          const closeTooltip = function() {
-            tooltip.style.opacity = '0';
-            tooltip.style.visibility = 'hidden';
-            setTimeout(() => {
-              tooltip.style.display = 'none';
-              overlay.style.display = 'none';
-            }, 300);
-            isVisible = false;
-            document.removeEventListener('click', documentClickHandler);
-          };
-          
-          const documentClickHandler = function(event) {
-            if (event.target !== icon && !tooltip.contains(event.target)) {
-              closeTooltip();
-            }
-          };
-          
-          // Close when clicking outside
-          setTimeout(() => {
-            document.addEventListener('click', documentClickHandler);
-          }, 10);
-          
-          isVisible = true;
-        } else {
-          // Hide tooltip
-          tooltip.style.opacity = '0';
-          tooltip.style.visibility = 'hidden';
-          setTimeout(() => {
-            tooltip.style.display = 'none';
-            overlay.style.display = 'none';
-          }, 300);
-          isVisible = false;
+        console.log(`[Homepage] Icon #${index + 1} clicked!`);
+        
+        // Get description from attribute
+        const description = this.getAttribute('data-description');
+        if (!description) {
+          console.error(`[Homepage] No description found for clicked icon #${index + 1}`);
+          return;
         }
+        
+        // Create a simple popup element
+        const popup = document.createElement('div');
+        popup.className = 'simple-tooltip-popup';
+        popup.innerHTML = `
+          <div class="popup-content">${description}</div>
+          <button class="popup-close">Close</button>
+        `;
+        
+        // Style the popup
+        popup.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background-color: #1c2b5f;
+          color: white;
+          padding: 20px;
+          border-radius: 8px;
+          border: 3px solid #00e5db;
+          box-shadow: 0 0 20px rgba(0,0,0,0.7);
+          z-index: 10000;
+          max-width: 80%;
+          text-align: center;
+        `;
+        
+        // Style close button
+        const closeBtn = popup.querySelector('.popup-close');
+        closeBtn.style.cssText = `
+          background-color: #00e5db;
+          color: #1c2b5f;
+          border: none;
+          padding: 8px 15px;
+          margin-top: 15px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: bold;
+        `;
+        
+        // Add click handler to close button
+        closeBtn.addEventListener('click', function() {
+          document.body.removeChild(popup);
+        });
+        
+        // Add popup to body
+        document.body.appendChild(popup);
+        
+        console.log(`[Homepage] Popup created and displayed for icon #${index + 1}`);
       });
-    });
-    
-    // Close when clicking overlay
-    overlay.addEventListener('click', function() {
-      // Hide all tooltips when overlay is clicked
-      tooltips.forEach(tooltip => {
-        tooltip.style.opacity = '0';
-        tooltip.style.visibility = 'hidden';
-        setTimeout(() => {
-          tooltip.style.display = 'none';
-        }, 300);
-      });
-      overlay.style.display = 'none';
     });
   }
   
@@ -1782,17 +1738,14 @@
     let id = 0;
     
     apps.forEach(app => {
-      // Simple, unique tooltip ID format
-      const tooltipId = `tooltip-${title.replace(/\s+/g, '-').toLowerCase()}-${id++}`;
+      // Store the description directly in the info icon data-attribute
+      const sanitizedDescription = sanitizeField(app.description);
       appsHTML += `
         <div class="app-card">
           <div class="app-card-header">
-            <div class="app-info-icon" title="Click for details" data-tooltip="${tooltipId}">i</div>
+            <div class="app-info-icon" title="Click for details" data-description="${sanitizedDescription}">i</div>
             <img src="${app.icon}" alt="${app.name}" class="app-icon">
             <div class="app-name">${sanitizeField(app.name)}</div>
-          </div>
-          <div id="${tooltipId}" class="app-tooltip">
-            ${sanitizeField(app.description)}
           </div>
           <a href="${app.url}" class="app-button">Launch</a>
         </div>
@@ -1936,4 +1889,5 @@
   };
 
 })(); // End of IIFE
+
 
