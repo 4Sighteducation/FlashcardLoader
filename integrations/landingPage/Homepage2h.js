@@ -1090,8 +1090,8 @@
       
       .subjects-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
       }
       
       /* Add GCSE grid - 4 columns for smaller cards */
@@ -1109,10 +1109,10 @@
         border: 1px solid rgba(7, 155, 170, 0.3);
       }
       
-      /* GCSE subject styling */
+      /* GCSE subject styling - matching the screenshot */
       .subject-card.gcse {
-        background-color: #33852a; /* Green background for GCSE */
-        padding: 6px;
+        background-color: #4B7F3D; /* Green background for GCSE as seen in screenshot */
+        padding: 8px;
         border: 1px solid rgba(170, 185, 7, 0.3);
       }
       
@@ -1637,101 +1637,57 @@
       return grade >= minExpected ? 'grade-exceeding' : 'grade-below';
     }
     
-    // Separate subjects by type
-    let aLevelSubjects = [];
-    let gcseSubjects = [];
-    let vocationalSubjects = [];
-    
-    // Group subjects by type
+    // Render all subjects in a single grid with color coding by type
+    let subjectsHTML = '';
     if (profileData.subjects && profileData.subjects.length > 0) {
       profileData.subjects.forEach(subject => {
+        // Determine the card type based on exam type
+        let cardType = '';
         const examType = (subject.examType || '').trim();
-        
         if (examType === 'GCSE') {
-          gcseSubjects.push(subject);
+          cardType = 'gcse';
         } else if (examType === 'Vocational') {
-          vocationalSubjects.push(subject);
-        } else {
-          // Default to A-Level for anything else
-          aLevelSubjects.push(subject);
+          cardType = 'vocational';
         }
+        
+        // Get color classes for current and target grades, passing the exam type for proper handling
+        const currentGradeClass = getGradeColorClass(
+          subject.currentGrade,
+          subject.minimumExpectedGrade,
+          examType
+        );
+        
+        const targetGradeClass = getGradeColorClass(
+          subject.targetGrade,
+          subject.minimumExpectedGrade,
+          examType
+        );
+        
+        subjectsHTML += `
+          <div class="subject-card ${cardType}">
+            <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
+            <div class="subject-meta">
+              ${subject.examType ? sanitizeField(subject.examType) : 'N/A'}
+              ${subject.examBoard ? ` • ${sanitizeField(subject.examBoard)}` : ''}
+            </div>
+            <div class="grades-container">
+              <div class="grade-item">
+                <div class="grade-label">MEG</div>
+                <div class="grade-value grade-meg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
+              </div>
+              <div class="grade-item">
+                <div class="grade-label">Current</div>
+                <div class="grade-value ${currentGradeClass}">${sanitizeField(subject.currentGrade || 'N/A')}</div>
+              </div>
+              <div class="grade-item">
+                <div class="grade-label">Target</div>
+                <div class="grade-value ${targetGradeClass}">${sanitizeField(subject.targetGrade || 'N/A')}</div>
+              </div>
+            </div>
+          </div>
+        `;
       });
-    }
-    
-    // Function to render a single subject card
-    function renderSubjectCard(subject, cardType = '') {
-      // Get color classes for current and target grades, passing the exam type for proper handling
-      const currentGradeClass = getGradeColorClass(
-        subject.currentGrade,
-        subject.minimumExpectedGrade,
-        subject.examType
-      );
-      
-      const targetGradeClass = getGradeColorClass(
-        subject.targetGrade,
-        subject.minimumExpectedGrade,
-        subject.examType
-      );
-      
-      return `
-        <div class="subject-card ${cardType}">
-          <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
-          <div class="subject-meta">
-            ${subject.examType ? sanitizeField(subject.examType) : 'N/A'}
-            ${subject.examBoard ? ` • ${sanitizeField(subject.examBoard)}` : ''}
-          </div>
-          <div class="grades-container">
-            <div class="grade-item">
-              <div class="grade-label">MEG</div>
-              <div class="grade-value grade-meg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
-            </div>
-            <div class="grade-item">
-              <div class="grade-label">Current</div>
-              <div class="grade-value ${currentGradeClass}">${sanitizeField(subject.currentGrade || 'N/A')}</div>
-            </div>
-            <div class="grade-item">
-              <div class="grade-label">Target</div>
-              <div class="grade-value ${targetGradeClass}">${sanitizeField(subject.targetGrade || 'N/A')}</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    
-    // Render A-Level subjects
-    let subjectsHTML = '';
-    
-    if (aLevelSubjects.length > 0) {
-      subjectsHTML += `
-        <h3 style="color: #00e5db; margin-bottom: 10px;">A-Level Subjects</h3>
-        <div class="subjects-grid">
-          ${aLevelSubjects.map(subject => renderSubjectCard(subject)).join('')}
-        </div>
-      `;
-    }
-    
-    // Render GCSE subjects with special styling
-    if (gcseSubjects.length > 0) {
-      subjectsHTML += `
-        <h3 style="color: #00e5db; margin: 16px 0 10px 0;">GCSE Subjects</h3>
-        <div class="subjects-grid gcse-grid">
-          ${gcseSubjects.map(subject => renderSubjectCard(subject, 'gcse')).join('')}
-        </div>
-      `;
-    }
-    
-    // Render Vocational subjects with special styling
-    if (vocationalSubjects.length > 0) {
-      subjectsHTML += `
-        <h3 style="color: #00e5db; margin: 16px 0 10px 0;">Vocational Subjects</h3>
-        <div class="subjects-grid">
-          ${vocationalSubjects.map(subject => renderSubjectCard(subject, 'vocational')).join('')}
-        </div>
-      `;
-    }
-    
-    // If no subjects at all
-    if (profileData.subjects.length === 0) {
+    } else {
       subjectsHTML = '<div class="no-subjects">No subjects available</div>';
     }
     
@@ -2155,5 +2111,6 @@
   };
 
 })(); // End of IIFE
+
 
 
