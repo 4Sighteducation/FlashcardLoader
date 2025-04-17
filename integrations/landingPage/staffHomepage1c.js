@@ -30,7 +30,7 @@
     userId: 'field_3064',         // User ID 
     userConnection: 'field_3070',  // User Account connection
     staffName: 'field_3066',      // Staff Name
-    staffRole: 'field_73',        // Staff Role(s)
+    staffRole: 'field_73',        // Correct staff role field in Object_3 (was showing "profile#")
     schoolConnection: 'field_122', // School connection
     
     // VESPA results fields
@@ -737,11 +737,20 @@
       return false;
     }
     
-    // Check if "Staff Admin" is in the roles array
-    return roles.some(role => 
-      typeof role === 'string' && 
-      role.toLowerCase().includes('staff admin')
-    );
+    // For debugging - log all roles
+    console.log("[Staff Homepage] Checking admin roles in:", roles);
+    
+    // Check if "Staff Admin" is in the roles array (case insensitive)
+    // Also check for variations like "staffadmin" without a space
+    return roles.some(role => {
+      if (typeof role !== 'string') return false;
+      
+      const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
+      console.log(`[Staff Homepage] Checking role: ${role}, normalized: ${normalizedRole}`);
+      
+      return normalizedRole.includes('staffadmin') || 
+             normalizedRole.includes('admin');
+    });
   }
   
   // --- UI Rendering ---
@@ -1244,10 +1253,11 @@
         margin-bottom: 0;
       }
       
-      /* App Hubs */
+      /* App Hubs - Fixed 2x2 grid */
       .app-hub {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, auto);
         gap: 16px;
       }
       
@@ -1382,7 +1392,7 @@
       
       .chart-title {
         font-size: 18px;
-        color: #ffffff;
+        color: ${THEME.TEXT};
         margin-bottom: 10px;
         text-align: center;
       }
@@ -1396,7 +1406,7 @@
       
       canvas {
         width: 100% !important;
-        height: 300px !important;
+        height: 180px !important; /* Reduced from 300px to make charts more compact */
       }
       
       .no-results {
