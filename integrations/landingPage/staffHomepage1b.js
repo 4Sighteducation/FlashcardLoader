@@ -13,6 +13,16 @@
     PRACTICE: '#7f31a4',
     ATTITUDE: '#ff6b6b'  // Using a complementary color as it wasn't specified
   };
+  
+  // Theme Colors - Updated as requested
+  const THEME = {
+    PRIMARY: '#06206e',    // Main background color 
+    ACCENT: '#00e5db',     // Accent color
+    TEXT: '#ffffff',       // Text color
+    CARD_BG: '#102983',    // Card background
+    SECTION_BG: '#0d2274', // Section background
+    BORDER: '#00e5db'      // Border color
+  };
 
   // Staff profile field mappings
   const FIELD_MAPPING = {
@@ -1095,10 +1105,10 @@
         margin: 0 auto;
         padding: 16px;
         color: #ffffff;
-        background-color: #23356f;
+        background-color: ${THEME.PRIMARY};
         line-height: 1.4;
         overflow-x: hidden;
-        border: 3px solid #7f31a4;
+        border: 3px solid ${THEME.ACCENT};
         border-radius: 10px;
       }
       
@@ -1109,25 +1119,25 @@
       }
       
       @keyframes pulseGlow {
-        0% { box-shadow: 0 4px 12px rgba(127, 49, 164, 0.1); }
-        50% { box-shadow: 0 4px 18px rgba(127, 49, 164, 0.25); }
-        100% { box-shadow: 0 4px 12px rgba(127, 49, 164, 0.1); }
+        0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+        50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.25); }
+        100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
       }
       
       /* Sections */
       .vespa-section {
-        background-color: #2a3c7a;
+        background-color: ${THEME.SECTION_BG};
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        padding: 16px;
+        padding: 20px;
         margin-bottom: 24px;
         animation: fadeIn 0.5s ease-out forwards;
         transition: transform 0.2s, box-shadow 0.2s;
-        border: 2px solid #7f31a4;
+        border: 2px solid ${THEME.ACCENT};
       }
       
       .vespa-section:hover {
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 6px 16px rgba(0, 229, 219, 0.35);
       }
       
       .vespa-section:nth-child(1) { animation-delay: 0.1s; }
@@ -1135,12 +1145,14 @@
       .vespa-section:nth-child(3) { animation-delay: 0.3s; }
       
       .vespa-section-title {
-        color: #7f31a4;
+        color: ${THEME.TEXT};
         font-size: 22px;
         font-weight: 600;
         margin-bottom: 16px;
         padding-bottom: 8px;
-        border-bottom: 2px solid #7f31a4;
+        border-bottom: 2px solid ${THEME.ACCENT};
+        text-transform: uppercase;
+        letter-spacing: 1px;
       }
       
       /* Profile Section */
@@ -1157,9 +1169,10 @@
         flex-direction: column;
         justify-content: flex-start;
         padding: 16px;
-        background-color: #334285;
+        background-color: ${THEME.CARD_BG};
         border-radius: 8px;
-        border: 1px solid rgba(127, 49, 164, 0.3);
+        border: 1px solid ${THEME.ACCENT};
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
       }
       
       .school-logo {
@@ -1190,24 +1203,25 @@
       
       .profile-label {
         font-weight: 600;
-        color: #7f31a4;
+        color: ${THEME.ACCENT};
         margin-right: 8px;
       }
       
       .dashboard-button {
         display: flex;
         align-items: center;
-        background-color: #7f31a4;
-        color: white;
+        background-color: ${THEME.ACCENT};
+        color: ${THEME.PRIMARY};
         padding: 8px 16px;
         border-radius: 4px;
         text-decoration: none;
         transition: all 0.3s;
         margin-top: 10px;
+        font-weight: bold;
       }
       
       .dashboard-button:hover {
-        background-color: #9c4bc1;
+        background-color: rgba(0, 229, 219, 0.8);
         transform: translateY(-2px);
       }
       
@@ -1217,11 +1231,17 @@
         margin-right: 8px;
       }
       
-      /* App sections container */
-      .app-sections-container {
+      /* Group Resources Container for side-by-side layout on desktop */
+      .group-resources-container {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         gap: 20px;
+        margin-bottom: 24px;
+      }
+      
+      .group-resources-container > section {
+        flex: 1;
+        margin-bottom: 0;
       }
       
       /* App Hubs */
@@ -1232,13 +1252,13 @@
       }
       
       .app-card {
-        background-color: #334285;
+        background-color: ${THEME.CARD_BG};
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
         overflow: hidden;
         transition: transform 0.3s, box-shadow 0.3s;
         animation: fadeIn 0.5s ease-out forwards;
-        border: 1px solid rgba(127, 49, 164, 0.3);
+        border: 1px solid ${THEME.ACCENT};
         display: flex;
         flex-direction: column;
       }
@@ -1250,11 +1270,11 @@
       }
       
       .app-card-header {
-        background-color: #1c2b5f;
+        background-color: ${THEME.PRIMARY};
         padding: 16px;
         text-align: center;
         position: relative;
-        border-bottom: 2px solid #7f31a4;
+        border-bottom: 2px solid ${THEME.ACCENT};
       }
       
       .app-icon {
@@ -1282,8 +1302,8 @@
         right: 10px;
         width: 24px;
         height: 24px;
-        background-color: #7f31a4;
-        color: white;
+        background-color: ${THEME.ACCENT};
+        color: ${THEME.PRIMARY};
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -1296,7 +1316,7 @@
       
       .app-info-icon:hover {
         transform: scale(1.1);
-        background-color: #9c4bc1;
+        background-color: rgba(0, 229, 219, 0.8);
       }
       
       /* Tooltips */
@@ -1312,7 +1332,7 @@
         opacity: 0;
         visibility: hidden;
         transition: opacity 0.3s;
-        border: 2px solid #7f31a4;
+        border: 2px solid ${THEME.ACCENT};
         font-size: 14px;
         text-align: center;
       }
@@ -1324,8 +1344,8 @@
       
       .app-button {
         display: block;
-        background-color: #7f31a4;
-        color: #ffffff;
+        background-color: ${THEME.ACCENT};
+        color: ${THEME.PRIMARY};
         text-align: center;
         padding: 12px;
         text-decoration: none;
@@ -1335,7 +1355,8 @@
       }
       
       .app-button:hover {
-        background-color: #9c4bc1;
+        background-color: rgba(0, 229, 219, 0.8);
+        transform: translateY(-2px);
       }
       
       /* VESPA Dashboard */
@@ -1352,11 +1373,11 @@
       .chart-wrapper {
         flex: 1;
         min-width: 300px;
-        background-color: #334285;
+        background-color: ${THEME.CARD_BG};
         border-radius: 8px;
         padding: 16px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(127, 49, 164, 0.3);
+        border: 1px solid ${THEME.ACCENT};
       }
       
       .chart-title {
@@ -1413,17 +1434,17 @@
     // Clear the container
     container.innerHTML = '';
     
-    // Show loading indicator
+    // Show loading indicator with updated theme colors
     container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #7f31a4; background-color: #23356f; border-radius: 8px; border: 2px solid #7f31a4; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+      <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
         <h3>Loading VESPA Staff Homepage...</h3>
         <div style="margin-top: 20px;">
           <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="#7f31a4" stroke-width="4">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="${THEME.ACCENT}" stroke-width="4">
               <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
               <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
             </circle>
-            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(127, 49, 164, 0.3)" stroke-width="2">
+            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(0, 229, 219, 0.3)" stroke-width="2">
               <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
               <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
             </circle>
@@ -1437,10 +1458,10 @@
       const profileData = await getStaffProfileData();
       if (!profileData) {
         container.innerHTML = `
-          <div style="padding: 30px; text-align: center; color: #7f31a4; background-color: #23356f; border-radius: 8px; border: 2px solid #7f31a4; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+          <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
             <h3>Error Loading Staff Homepage</h3>
             <p style="color: #ffffff;">Unable to load your staff profile. Please try refreshing the page.</p>
-            <button onclick="location.reload()" style="margin-top: 15px; background-color: #7f31a4; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
+            <button onclick="location.reload()" style="margin-top: 15px; background-color: ${THEME.ACCENT}; color: ${THEME.PRIMARY}; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
           </div>
         `;
         return;
@@ -1456,16 +1477,16 @@
       // Check if user is a staff admin
       const hasAdminRole = isStaffAdmin(profileData.roles);
       
-      // Build the homepage HTML
+      // Build the homepage HTML with updated layout based on feedback
       const homepageHTML = `
         <div id="staff-homepage">
           ${renderProfileSection(profileData, hasAdminRole)}
-          <div class="app-sections-container">
+          ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
+          <div class="group-resources-container">
             ${renderGroupSection()}
             ${renderResourcesSection()}
-            ${hasAdminRole ? renderAdminSection() : ''}
           </div>
-          ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
+          ${hasAdminRole ? renderAdminSection() : ''}
         </div>
       `;
       
@@ -1501,10 +1522,10 @@
     } catch (error) {
       console.error("Error rendering staff homepage:", error);
       container.innerHTML = `
-        <div style="padding: 30px; text-align: center; color: #7f31a4; background-color: #23356f; border-radius: 8px; border: 2px solid #7f31a4; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Staff Homepage</h3>
           <p style="color: #ffffff;">An unexpected error occurred. Please try refreshing the page.</p>
-          <button onclick="location.reload()" style="margin-top: 15px; background-color: #7f31a4; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
+          <button onclick="location.reload()" style="margin-top: 15px; background-color: ${THEME.ACCENT}; color: ${THEME.PRIMARY}; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
         </div>
       `;
     }
