@@ -1,82 +1,122 @@
-// Homepage Integration Script for Knack - v1.0
-// This script enables an enhanced homepage with user profile and app hubs
+// Staff Homepage Integration Script for Knack - v1.0
+// This script enables an enhanced homepage with staff profile and app hubs
 (function() {
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
   const DEBUG_MODE = true; // Enable console logging
 
-  // Field mappings for the user profile object
-  const FIELD_MAPPING = {
-    userId: 'field_3064',         // User ID
-    userConnection: 'field_3070',  // User Account connection
-    vespaCustomer: 'field_3069',   // VESPA Customer (User School)
-    studentName: 'field_3066',     // Student Name
-    tutorConnection: 'field_3071', // Student Tutors
-    staffAdminConnection: 'field_3072', // Staff Admins
-    attendance: 'field_3076',      // Attendance
-    tutorGroup: 'field_3077',      // Tutor Group
-    yearGroup: 'field_3078',       // Year Group
-    numLogins: 'field_3079',       // NumLogins
-    upn: 'field_3136',            // Unique Pupil Number (UPN)
-    // Subject fields
-    sub1: 'field_3080',
-    sub2: 'field_3081',
-    sub3: 'field_3082',
-    sub4: 'field_3083',
-    sub5: 'field_3084',
-    sub6: 'field_3085',
-    sub7: 'field_3086',
-    sub8: 'field_3087',
-    sub9: 'field_3088',
-    sub10: 'field_3089',
-    sub11: 'field_3090',
-    sub12: 'field_3091',
-    sub13: 'field_3092',
-    sub14: 'field_3093',
-    sub15: 'field_3094'
+  // VESPA Colors for the dashboard
+  const VESPA_COLORS = {
+    VISION: '#e59437',
+    EFFORT: '#86b4f0', 
+    SYSTEMS: '#72cb44',
+    PRACTICE: '#7f31a4',
+    ATTITUDE: '#ff6b6b'  // Using a complementary color as it wasn't specified
   };
 
-  // App hub configuration
-  const APP_HUBS = {
-    vespa: [
+  // Staff profile field mappings
+  const FIELD_MAPPING = {
+    // Staff user fields
+    userId: 'field_3064',         // User ID 
+    userConnection: 'field_3070',  // User Account connection
+    staffName: 'field_3066',      // Staff Name
+    staffRole: 'field_73',        // Staff Role(s)
+    schoolConnection: 'field_122', // School connection
+    
+    // VESPA results fields
+    vision: 'field_147',
+    effort: 'field_148',
+    systems: 'field_149',
+    practice: 'field_150',
+    attitude: 'field_151',
+    
+    // Connection fields for staff
+    tutor: 'field_145',
+    headOfYear: 'field_429',
+    subjectTeacher: 'field_2191',
+    
+    // School field for results lookup
+    resultsSchool: 'field_133'
+  };
+
+  // App hub configurations
+  const APP_SECTIONS = {
+    group: [
       {
-        name: "VESPA Questionnaire",
-        url: "https://vespaacademy.knack.com/vespa-academy#add-q/",
-        icon: "https://www.vespa.academy/Icons/vespaq.png",
-        description: "Discover your learning superpowers with our questionnaire on Vision, Effort, Systems, Practice and Attitude!"
+        name: "VESPA Results",
+        url: "https://vespaacademy.knack.com/vespa-academy#mygroup-student-results/",
+        icon: "https://www.vespa.academy/Icons/survey-results.png",
+        description: "View detailed results from your students' VESPA questionnaires"
       },
       {
-        name: "VESPA Coaching Report",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-results/",
-        icon: "https://www.vespa.academy/Icons/coachingreport.png",
-        description: "See how awesome you can be! Your personal roadmap to success with tailored feedback just for you."
+        name: "Coaching Reports",
+        url: "https://vespaacademy.knack.com/vespa-academy#mygroup/mygroup-vespa-results2/",
+        icon: "https://www.vespa.academy/Icons/conversation.png",
+        description: "Access coaching reports and feedback for your student group"
       },
       {
-        name: "VESPA Activities",
-        url: "https://vespaacademy.knack.com/vespa-academy#my-vespa/",
-        icon: "https://www.vespa.academy/Icons/myvespa.png",
-        description: "Unlock fun activities and cool ideas perfectly matched to your unique learning style and VESPA scores!"
+        name: "Student Activities",
+        url: "https://vespaacademy.knack.com/vespa-academy#my-vespa2/",
+        icon: "https://www.vespa.academy/Icons/activities.png",
+        description: "Browse and assign activities tailored to your students' needs"
+      },
+      {
+        name: "Study Sessions",
+        url: "https://vespaacademy.knack.com/vespa-academy#student-revision/",
+        icon: "https://www.vespa.academy/Icons/study%20plans.png",
+        description: "Monitor and manage student study sessions and revision plans"
       }
     ],
-    productivity: [
+    resources: [
       {
-        name: "Study Planner",
-        url: "https://vespaacademy.knack.com/vespa-academy#studyplanner/",
-        icon: "https://www.vespa.academy/Icons/studyplanner.png",
-        description: "Take control of your time with this super-smart calendar that makes study planning a breeze!"
+        name: "Slide Decks",
+        url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/",
+        icon: "https://www.vespa.academy/Icons/slidedecks.png",
+        description: "Access ready-to-use slide decks for classroom presentations"
       },
       {
-        name: "Flashcards",
-        url: "https://vespaacademy.knack.com/vespa-academy#flashcards/",
-        icon: "https://www.vespa.academy/Icons/flashcards.png",
-        description: "Turn boring facts into brain-friendly flashcards that make remembering stuff actually fun!"
+        name: "Newsletter",
+        url: "https://vespaacademy.knack.com/vespa-academy#vespa-newsletter/",
+        icon: "https://www.vespa.academy/Icons/newsletter%20(1).png",
+        description: "Read the latest VESPA newsletters with updates and best practices"
       },
       {
-        name: "Taskboard",
-        url: "https://vespaacademy.knack.com/vespa-academy#task-board/",
-        icon: "https://www.vespa.academy/Icons/taskboard.png",
-        description: "Zap your to-do list into an organized masterpiece with this colorful drag-and-drop task manager!"
+        name: "Curriculum",
+        url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/",
+        icon: "https://www.vespa.academy/Icons/curriculum.png",
+        description: "Explore the VESPA curriculum and implementation guides"
+      },
+      {
+        name: "Worksheets",
+        url: "https://vespaacademy.knack.com/vespa-academy#worksheets/",
+        icon: "https://www.vespa.academy/Icons/pdf%20(1).png",
+        description: "Download printable worksheets and activities for your students"
+      }
+    ],
+    admin: [
+      {
+        name: "Students",
+        url: "https://vespaacademy.knack.com/vespa-academy#manage/student-accounts/",
+        icon: "https://www.vespa.academy/Icons/education.png",
+        description: "Manage student accounts, groups, and permissions"
+      },
+      {
+        name: "Staff",
+        url: "https://vespaacademy.knack.com/vespa-academy#manage/managestaff/",
+        icon: "https://www.vespa.academy/Icons/classroom.png",
+        description: "Manage staff accounts, roles, and access controls"
+      },
+      {
+        name: "Questionnaire",
+        url: "https://vespaacademy.knack.com/vespa-academy#manage/manage-questionnaire/",
+        icon: "https://www.vespa.academy/Icons/teacher-day.png",
+        description: "Configure and customize VESPA questionnaires"
+      },
+      {
+        name: "Account",
+        url: "https://vespaacademy.knack.com/vespa-academy#manage/account-details2/",
+        icon: "https://www.vespa.academy/Icons/university.png",
+        description: "Manage school account details and subscription"
       }
     ]
   };
@@ -86,7 +126,7 @@
   function debugLog(title, data) {
     if (!DEBUG_MODE) return;
     
-    console.log(`%c[Homepage] ${title}`, 'color: #00e5db; font-weight: bold; font-size: 12px;');
+    console.log(`%c[Staff Homepage] ${title}`, 'color: #7f31a4; font-weight: bold; font-size: 12px;');
     try {
       if (data !== undefined) {
         console.log(JSON.parse(JSON.stringify(data, null, 2)));
@@ -105,17 +145,17 @@
       if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
       return JSON.parse(jsonString);
     } catch (error) {
-      console.warn("[Homepage] JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
+      console.warn("[Staff Homepage] JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
       try {
         const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
         const recovered = cleanedString
           .replace(/\\"/g, '"')
           .replace(/,\s*([}\]])/g, '$1');
         const result = JSON.parse(recovered);
-        console.log("[Homepage] JSON recovery successful.");
+        console.log("[Staff Homepage] JSON recovery successful.");
         return result;
       } catch (secondError) {
-        console.error("[Homepage] JSON recovery failed:", secondError);
+        console.error("[Staff Homepage] JSON recovery failed:", secondError);
         return defaultVal;
       }
     }
@@ -127,52 +167,52 @@
     return typeof id === 'string' && /^[0-9a-f]{24}$/i.test(id);
   }
 
-  // Extract a valid record ID from various formats - enhanced to handle more edge cases
+  // Extract a valid record ID from various formats
   function extractValidRecordId(value) {
     if (!value) return null;
     
-    console.log('[Homepage] Extracting valid record ID from value type:', typeof value, value);
+    console.log('[Staff Homepage] Extracting valid record ID from value type:', typeof value, value);
 
     // Handle objects (most common case in Knack connections)
     if (typeof value === 'object' && value !== null) {
       // Check for direct ID property
       if (value.id && isValidKnackId(value.id)) {
-        console.log('[Homepage] Found valid ID in object.id:', value.id);
+        console.log('[Staff Homepage] Found valid ID in object.id:', value.id);
         return value.id;
       }
       
-      // Check for identifier property (sometimes used by Knack)
+      // Check for identifier property
       if (value.identifier && isValidKnackId(value.identifier)) {
-        console.log('[Homepage] Found valid ID in object.identifier:', value.identifier);
+        console.log('[Staff Homepage] Found valid ID in object.identifier:', value.identifier);
         return value.identifier;
       }
       
       // Handle arrays from connection fields
       if (Array.isArray(value)) {
-        console.log('[Homepage] Value is an array with length:', value.length);
+        console.log('[Staff Homepage] Value is an array with length:', value.length);
         
         // Handle single item array
         if (value.length === 1) {
           if (typeof value[0] === 'object' && value[0].id) {
-            console.log('[Homepage] Found valid ID in array[0].id:', value[0].id);
+            console.log('[Staff Homepage] Found valid ID in array[0].id:', value[0].id);
             return isValidKnackId(value[0].id) ? value[0].id : null;
           }
           if (typeof value[0] === 'string' && isValidKnackId(value[0])) {
-            console.log('[Homepage] Found valid ID as string in array[0]:', value[0]);
+            console.log('[Staff Homepage] Found valid ID as string in array[0]:', value[0]);
             return value[0];
           }
         }
         
         // For debugging, log contents of larger arrays
         if (value.length > 1) {
-          console.log('[Homepage] Array contains multiple items, first few are:', 
+          console.log('[Staff Homepage] Array contains multiple items, first few are:', 
                      value.slice(0, 3));
         }
       }
       
       // Check for '_id' property which is sometimes used
       if (value._id && isValidKnackId(value._id)) {
-        console.log('[Homepage] Found valid ID in object._id:', value._id);
+        console.log('[Staff Homepage] Found valid ID in object._id:', value._id);
         return value._id;
       }
     }
@@ -180,14 +220,14 @@
     // If it's a direct string ID
     if (typeof value === 'string') {
       if (isValidKnackId(value)) {
-        console.log('[Homepage] Value is a valid ID string:', value);
+        console.log('[Staff Homepage] Value is a valid ID string:', value);
         return value;
       } else {
-        console.log('[Homepage] String is not a valid Knack ID:', value);
+        console.log('[Staff Homepage] String is not a valid Knack ID:', value);
       }
     }
 
-    console.log('[Homepage] No valid record ID found in value');
+    console.log('[Staff Homepage] No valid record ID found in value');
     return null;
   }
 
@@ -233,26 +273,26 @@
 
   // Helper to get standard Knack API headers
   function getKnackHeaders() {
-    // Reading knackAppId and knackApiKey from HOMEPAGE_CONFIG
-    const config = window.HOMEPAGE_CONFIG;
+    // Reading knackAppId and knackApiKey from config
+    const config = window.STAFFHOMEPAGE_CONFIG;
     
-    console.log("[Homepage] Config for headers:", JSON.stringify(config));
+    console.log("[Staff Homepage] Config for headers:", JSON.stringify(config));
     
     // Fallback to using Knack's global application ID if not in config
     const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
     // Use our known API key if not in config
     const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '8f733aa5-dd35-4464-8348-64824d1f5f0d';
     
-    console.log(`[Homepage] Using AppID: ${knackAppId}`);
+    console.log(`[Staff Homepage] Using AppID: ${knackAppId}`);
     
     if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-      console.error("[Homepage] Knack object or getUserToken function not available.");
+      console.error("[Staff Homepage] Knack object or getUserToken function not available.");
       throw new Error("Knack authentication context not available.");
     }
     
     const token = Knack.getUserToken();
     if (!token) {
-      console.warn("[Homepage] Knack user token is null or undefined. API calls may fail.");
+      console.warn("[Staff Homepage] Knack user token is null or undefined. API calls may fail.");
     }
     
     const headers = {
@@ -262,586 +302,102 @@
       'Content-Type': 'application/json'
     };
     
-    console.log("[Homepage] Headers being used:", JSON.stringify(headers));
+    console.log("[Staff Homepage] Headers being used:", JSON.stringify(headers));
     
     return headers;
   }
 
-  // --- User Profile Data Management ---
-  // Find or create the user profile record
-  async function findOrCreateUserProfile(userId, userName, userEmail) {
-    if (!userId) {
-      console.error("[Homepage] Cannot find or create user profile: userId is missing.");
+  // --- Staff Profile Data Management ---
+  // Get staff profile information
+  async function getStaffProfileData() {
+    const user = Knack.getUserAttributes();
+    if (!user || !user.id) {
+      console.error("[Staff Homepage] Cannot get staff profile: User is not logged in or missing ID");
       return null;
     }
     
-    debugLog(`Finding or creating user profile for user ID: ${userId}`, { userName, userEmail });
-    
-    // First, try to find an existing profile
-    const findFilters = encodeURIComponent(JSON.stringify({
-      match: 'and',
-      rules: [
-        { field: FIELD_MAPPING.userId, operator: 'is', value: userId }
-      ]
-    }));
-    
     try {
-      const response = await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records?filters=${findFilters}`,
-            type: 'GET',
-            headers: getKnackHeaders(),
-            data: { format: 'raw' },
-            success: resolve,
-            error: reject
-          });
-        });
-      });
+      debugLog("Getting staff profile data for:", user);
       
-      let profileRecord = null;
-      let isNewProfile = false;
+      // Find the staff record based on user email
+      const staffRecord = await findStaffRecord(user.email);
+      if (!staffRecord) {
+        console.error("[Staff Homepage] Staff record not found for email:", user.email);
+        return {
+          name: user.name || "Staff Member",
+          roles: ["Unknown Role"],
+          school: null,
+          email: user.email,
+          userId: user.id
+        };
+      }
       
-      if (response && response.records && response.records.length > 0) {
-        profileRecord = response.records[0];
-        debugLog(`Found existing user profile record: ${profileRecord.id}`, profileRecord);
+      // Extract school ID for later use
+      const schoolId = extractValidRecordId(staffRecord[FIELD_MAPPING.schoolConnection]);
+      
+      // Get school details if we have a school ID
+      let schoolRecord = null;
+      let schoolLogo = null;
+      
+      if (schoolId) {
+        schoolRecord = await getSchoolRecord(schoolId);
         
-        // Update the login count
-        if (profileRecord[FIELD_MAPPING.numLogins] !== undefined) {
-          const currentLogins = parseInt(profileRecord[FIELD_MAPPING.numLogins], 10) || 0;
-          updateUserProfileField(profileRecord.id, FIELD_MAPPING.numLogins, currentLogins + 1);
-        }
-      } else {
-        // No profile found, create a new one
-        debugLog(`No user profile found, creating new record for user: ${userId}`);
-        profileRecord = await createUserProfile(userId, userName, userEmail);
-        isNewProfile = true;
-        if (!profileRecord) {
-          console.error('[Homepage] Failed to create user profile');
-          return null;
-        }
-      }
-      
-      // Check for UPN updates - compare with what we have
-      const profileUpn = profileRecord[FIELD_MAPPING.upn];
-      let studentRecord = null;
-      
-      // Always fetch the student record to check for UPN changes
-      if (userEmail) {
-        studentRecord = await findStudentRecord(userEmail);
-        if (studentRecord && studentRecord.field_3129) {
-          const latestUpn = sanitizeField(studentRecord.field_3129);
-          // If UPN has changed or was missing and now available, update it
-          if (latestUpn && (!profileUpn || profileUpn !== latestUpn)) {
-            debugLog(`UPN changed or added: Old=${profileUpn}, New=${latestUpn}`);
-            await updateUserProfileField(profileRecord.id, FIELD_MAPPING.upn, latestUpn);
-            profileRecord[FIELD_MAPPING.upn] = latestUpn; // Update local copy
-          }
-        }
-      }
-      
-      // ALWAYS refresh subject data on every login (fix for authentication record review issue)
-      if (profileRecord && userEmail) {
-        try {
-          // Get UPN from profile record if available (use updated UPN if we just changed it)
-          const userUpn = profileRecord[FIELD_MAPPING.upn];
-          
-          debugLog(`Fetching latest subject data from Object_113 for email: ${userEmail}${userUpn ? ` and UPN: ${userUpn}` : ''}`);
-          const subjectRecords = await fetchSubjectDataFromObject113(userEmail, userUpn);
-          
-          if (subjectRecords && subjectRecords.length > 0) {
-            debugLog(`Found ${subjectRecords.length} subject records in Object_113`, subjectRecords);
-            
-            // Convert records to subject data format
-            const subjectDataArray = buildSubjectDataFromObject113Records(subjectRecords);
-            
-            // Update the user profile with new subject data
-            if (subjectDataArray.length > 0) {
-              // Always update subject fields on login to ensure fresh data
-              await updateUserProfileSubjects(profileRecord.id, subjectDataArray);
-              debugLog(`Updated user profile with ${subjectDataArray.length} subjects from Object_113`);
-              
-              // Update only subject fields in profile object rather than fetching entire profile again
-              for (let i = 0; i < subjectDataArray.length && i < 15; i++) {
-                const fieldId = `field_${3080 + i}`; // field_3080 for index 0, field_3081 for index 1, etc.
-                profileRecord[fieldId] = JSON.stringify(subjectDataArray[i]);
-              }
-              
-              // If there were no subjects before but there are now, log this recovery
-              const hadNoSubjects = !isNewProfile && !Object.keys(profileRecord).some(key => 
-                key.startsWith('field_308') && profileRecord[key]);
-              
-              if (hadNoSubjects) {
-                console.log('[Homepage] Successfully recovered subject data for existing profile that had no subjects');
-              }
-            }
+        if (schoolRecord) {
+          // Extract school logo URL
+          schoolLogo = schoolRecord.field_61;
+          if (schoolLogo && typeof schoolLogo === 'string') {
+            debugLog("Found school logo URL:", schoolLogo);
           } else {
-            // If this is not a new profile and we couldn't find subjects, it might be an issue
-            if (!isNewProfile) {
-              console.warn(`[Homepage] No subject records found in Object_113 for returning user ${userEmail} with UPN=${userUpn}`);
-            } else {
-              debugLog(`No subject records found in Object_113 for new user ${userEmail}, profile will have no subjects`);
-            }
-          }
-        } catch (error) {
-          console.error('[Homepage] Error processing subject data from Object_113:', error);
-        }
-      }
-      
-      // When returning profile, make sure connection fields are preserved from original creation
-      debugLog(`Final user profile with connection fields and subjects:`, profileRecord);
-      
-      return profileRecord;
-    } catch (error) {
-      console.error('[Homepage] Error finding or creating user profile:', error);
-      return null;
-    }
-  }
-  
-  // Fetch a user profile record by ID
-  async function getUserProfileRecord(recordId) {
-    if (!recordId) {
-      console.error('[Homepage] Cannot get user profile: recordId is missing');
-      return null;
-    }
-    
-    try {
-      const response = await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records/${recordId}`,
-            type: 'GET',
-            headers: getKnackHeaders(),
-            data: { format: 'raw' },
-            success: resolve,
-            error: reject
-          });
-        });
-      });
-      
-      // Make sure the connection fields in the response are properly formatted
-      debugLog(`Retrieved user profile record: ${recordId}`, response);
-      
-      return response;
-    } catch (error) {
-      console.error(`[Homepage] Error getting user profile record ${recordId}:`, error);
-      return null;
-    }
-  }
-  
-  // Fetch subject data from Object_113 using user email and/or UPN
-  async function fetchSubjectDataFromObject113(userEmail, userUpn) {
-    if (!userEmail && !userUpn) {
-      console.error("[Homepage] Cannot fetch subject data: Both userEmail and userUpn are missing.");
-      return [];
-    }
-    
-    console.log(`[Homepage] DEBUG: Attempting to fetch subject data with Email:${userEmail}, UPN:${userUpn}`);
-    
-    try {
-      const rules = [];
-      
-      // Prioritize UPN for more precise matching if available
-      if (userUpn) {
-        rules.push({ field: 'field_3126', operator: 'is', value: userUpn }); // FIXED: UPN field in Object_113 is field_3126
-        debugLog(`Filtering Object_113 by UPN: ${userUpn}`);
-      }
-      
-      // If no UPN, use email, or add email as fallback even with UPN
-      if (!userUpn || (userUpn && userEmail)) {
-        rules.push({ field: 'field_3130', operator: 'is', value: userEmail }); // FIXED: Email field in Object_113 is field_3130
-        debugLog(`Filtering Object_113 by email: ${userEmail}`);
-      }
-      
-      console.log('[Homepage] DEBUG: Using filter:', JSON.stringify({ match: 'or', rules }));
-      
-      // Create filter to find records by UPN and/or email
-      const filters = encodeURIComponent(JSON.stringify({
-        match: 'or', // Match either UPN or email
-        rules: rules
-      }));
-      
-      const response = await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/object_113/records?filters=${filters}`,
-            type: 'GET',
-            headers: getKnackHeaders(),
-            data: { format: 'raw' },
-            success: resolve,
-            error: reject
-          });
-        });
-      });
-      
-      // Log the COMPLETE response for debugging
-      console.log(`[Homepage] DEBUG: Complete API Response from Object_113:`, response);
-      
-      if (response && response.records && response.records.length > 0) {
-        debugLog(`Found ${response.records.length} subject records in Object_113`, response.records);
-        return response.records;
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('[Homepage] Error fetching subject data from Object_113:', error);
-      return [];
-    }
-  }
-  
-  // Build subject data JSON objects from Object_113 records
-  function buildSubjectDataFromObject113Records(records) {
-    if (!records || !Array.isArray(records) || records.length === 0) {
-      return [];
-    }
-    
-    return records.map(record => {
-      return {
-        subject: sanitizeField(record.field_3109 || ''), // Corrected to field_3109 for subject name
-        examType: sanitizeField(record.field_3103 || ''),
-        examBoard: sanitizeField(record.field_3102 || ''),
-        minimumExpectedGrade: sanitizeField(record.field_3131 || ''),
-        currentGrade: sanitizeField(record.field_3132 || ''),
-        targetGrade: sanitizeField(record.field_3135 || ''),
-        effortGrade: sanitizeField(record.field_3133 || ''),
-        behaviourGrade: sanitizeField(record.field_3134 || '')
-      };
-    });
-  }
-  
-  // Update subject fields in user profile
-  async function updateUserProfileSubjects(recordId, subjectDataArray) {
-    if (!recordId || !subjectDataArray || !Array.isArray(subjectDataArray)) {
-      console.error('[Homepage] Cannot update subjects: Invalid parameters');
-      return false;
-    }
-    
-    // Limit to 15 subjects max
-    const maxSubjects = Math.min(subjectDataArray.length, 15);
-    
-    // Prepare update data
-    const updateData = {};
-    
-    for (let i = 0; i < maxSubjects; i++) {
-      const fieldId = `field_${3080 + i}`; // field_3080 for index 0, field_3081 for index 1, etc.
-      updateData[fieldId] = JSON.stringify(subjectDataArray[i]);
-    }
-    
-    try {
-      await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records/${recordId}`,
-            type: 'PUT',
-            headers: getKnackHeaders(),
-            data: JSON.stringify(updateData),
-            contentType: 'application/json',
-            success: resolve,
-            error: reject
-          });
-        });
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('[Homepage] Error updating user profile subjects:', error);
-      return false;
-    }
-  }
-  
-  // Create a new user profile record
-  async function createUserProfile(userId, userName, userEmail) {
-    const user = window.currentKnackUser;
-    if (!user) {
-      console.error("[Homepage] Cannot create user profile: currentKnackUser is missing.");
-      return null;
-    }
-    
-    try {
-      debugLog('Creating user profile with data:', { userId, userName, userEmail });
-      
-      // Look up additional data for connection fields
-      const studentRecord = await findStudentRecord(userEmail);
-      debugLog('Found student record for connections:', studentRecord);
-      
-      // Log detailed information about ALL fields in student record
-      if (studentRecord) {
-        console.log('[Homepage] Student record field data:');
-        console.log('[Homepage] VESPA Customer field:', studentRecord.field_122_raw);
-        
-        // Log ALL fields related to tutors to debug the issue
-        console.log('[Homepage] Tutor field raw:', studentRecord.field_1682_raw);
-        console.log('[Homepage] Tutor field non-raw:', studentRecord.field_1682);
-        
-        // Log ALL fields related to staff admins to debug the issue
-        console.log('[Homepage] Staff Admin field raw:', studentRecord.field_190_raw);
-        console.log('[Homepage] Staff Admin field non-raw:', studentRecord.field_190);
-        
-        // Log any other key fields that might contain connection info
-        console.log('[Homepage] Connection fields in record:');
-        for (const key in studentRecord) {
-          if (key.includes('connect') || key.includes('tutor') || key.includes('admin') || key.includes('staff')) {
-            console.log(`[Homepage] Found potential connection field: ${key}:`, studentRecord[key]);
+            console.warn("[Staff Homepage] No valid school logo found in school record");
+            schoolLogo = null;
           }
         }
       }
       
-      // Prepare basic profile data
-      const data = {
-        [FIELD_MAPPING.userId]: userId,
-        [FIELD_MAPPING.studentName]: sanitizeField(userName || ''),
-        [FIELD_MAPPING.numLogins]: 1, // First login
+      // Extract roles from staff record
+      let roles = [];
+      if (staffRecord[FIELD_MAPPING.staffRole]) {
+        // Check if roles field is an array or string
+        if (Array.isArray(staffRecord[FIELD_MAPPING.staffRole])) {
+          roles = staffRecord[FIELD_MAPPING.staffRole].map(role => sanitizeField(role));
+        } else {
+          roles = [sanitizeField(staffRecord[FIELD_MAPPING.staffRole])];
+        }
+      }
+      
+      // If no roles found, use a default
+      if (roles.length === 0) {
+        roles = ["Staff Member"];
+      }
+      
+      // Create profile data object
+      const profileData = {
+        name: sanitizeField(user.name || staffRecord.field_129 || "Staff Member"),
+        roles: roles,
+        school: schoolRecord ? sanitizeField(schoolRecord.field_2 || "VESPA Academy") : "VESPA Academy",
+        schoolId: schoolId,
+        email: user.email,
+        userId: user.id,
+        schoolLogo: schoolLogo
       };
       
-      // Connection fields - User Account (direct user ID) - Always set directly
-      data[FIELD_MAPPING.userConnection] = userId;
-      console.log(`[Homepage] Setting User Connection: ${userId}`);
-      
-      // Connection fields from user object
-      if (user.schoolId) {
-        data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
-        console.log(`[Homepage] Setting VESPA Customer from user: ${user.schoolId}`);
-      }
-      
-      // Store UPN if available from student record
-      if (studentRecord && studentRecord.field_3129) {
-        data[FIELD_MAPPING.upn] = sanitizeField(studentRecord.field_3129);
-        debugLog(`Adding UPN to user profile: ${studentRecord.field_3129}`);
-      }
-      
-      // Extract connection fields from student record if available
-      if (studentRecord) {
-        // VESPA Customer (school) if not already set
-        // First try field_122_raw (original field)
-        if (!data[FIELD_MAPPING.vespaCustomer]) {
-          let schoolId = null;
-          
-          // Log all potential VESPA Customer fields for debugging
-          console.log('[Homepage] Potential VESPA Customer fields:');
-          console.log('- field_122_raw:', studentRecord.field_122_raw);
-          console.log('- field_122:', studentRecord.field_122);
-          console.log('- field_179:', studentRecord.field_179);
-          
-          // Try field_122_raw first
-          if (studentRecord.field_122_raw) {
-            schoolId = extractValidRecordId(studentRecord.field_122_raw);
-            if (schoolId) {
-              console.log(`[Homepage] Found VESPA Customer in field_122_raw: ${schoolId}`);
-            }
-          }
-          
-          // If not found, try field_179 (alternative field)
-          if (!schoolId && studentRecord.field_179) {
-            schoolId = extractValidRecordId(studentRecord.field_179);
-            if (schoolId) {
-              console.log(`[Homepage] Found VESPA Customer in field_179: ${schoolId}`);
-            }
-          }
-          
-          // If still not found, try non-raw field_122
-          if (!schoolId && studentRecord.field_122) {
-            if (typeof studentRecord.field_122 === 'string' && isValidKnackId(studentRecord.field_122)) {
-              schoolId = studentRecord.field_122;
-              console.log(`[Homepage] Found VESPA Customer in field_122: ${schoolId}`);
-            }
-          }
-          
-          // Set the school ID if found in any field
-          if (schoolId) {
-            data[FIELD_MAPPING.vespaCustomer] = schoolId;
-            console.log(`[Homepage] Setting VESPA Customer from student record: ${schoolId}`);
-          } else {
-            console.log('[Homepage] Could not find valid VESPA Customer ID in any field');
-          }
-        }
-        
-        // Tutor connections - handle multiple - try both raw and non-raw versions
-        let tutorField = null;
-        
-        // First check the raw field (original)
-        if (studentRecord.field_1682_raw) {
-          tutorField = studentRecord.field_1682_raw;
-          console.log('[Homepage] Using field_1682_raw for tutors');
-        } 
-        // Then check the non-raw field as fallback
-        else if (studentRecord.field_1682) {
-          tutorField = studentRecord.field_1682;
-          console.log('[Homepage] Using field_1682 for tutors');
-        }
-        
-        if (tutorField) {
-          let tutorIds = [];
-          
-          // Handle array
-          if (Array.isArray(tutorField)) {
-            console.log('[Homepage] Tutor field is an array with', tutorField.length, 'items');
-            tutorIds = tutorField
-              .map(item => extractValidRecordId(item))
-              .filter(id => id);
-          } 
-          // Handle object
-          else if (typeof tutorField === 'object') {
-            console.log('[Homepage] Tutor field is an object');
-            const id = extractValidRecordId(tutorField);
-            if (id) tutorIds.push(id);
-          } 
-          // Handle string (direct ID)
-          else if (typeof tutorField === 'string' && isValidKnackId(tutorField)) {
-            console.log('[Homepage] Tutor field is a string ID');
-            tutorIds.push(tutorField);
-          }
-          
-          if (tutorIds.length > 0) {
-            // For Knack connection fields, format depends on single vs multiple
-            data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
-            console.log(`[Homepage] Setting Tutor connection: ${JSON.stringify(tutorIds)}`);
-          } else {
-            console.log('[Homepage] No valid tutor IDs found after processing');
-          }
-        } else {
-          console.log('[Homepage] No tutor field found in student record');
-        }
-        
-        // Staff Admin connections - handle multiple - try both raw and non-raw versions
-        let staffAdminField = null;
-        
-        // First check the raw field (original)
-        if (studentRecord.field_190_raw) {
-          staffAdminField = studentRecord.field_190_raw;
-          console.log('[Homepage] Using field_190_raw for staff admins');
-        } 
-        // Then check the non-raw field as fallback
-        else if (studentRecord.field_190) {
-          staffAdminField = studentRecord.field_190;
-          console.log('[Homepage] Using field_190 for staff admins');
-        }
-        
-        if (staffAdminField) {
-          let staffAdminIds = [];
-          
-          // Handle array
-          if (Array.isArray(staffAdminField)) {
-            console.log('[Homepage] Staff Admin field is an array with', staffAdminField.length, 'items');
-            staffAdminIds = staffAdminField
-              .map(item => extractValidRecordId(item))
-              .filter(id => id);
-          } 
-          // Handle object
-          else if (typeof staffAdminField === 'object') {
-            console.log('[Homepage] Staff Admin field is an object');
-            const id = extractValidRecordId(staffAdminField);
-            if (id) staffAdminIds.push(id);
-          } 
-          // Handle string (direct ID)
-          else if (typeof staffAdminField === 'string' && isValidKnackId(staffAdminField)) {
-            console.log('[Homepage] Staff Admin field is a string ID');
-            staffAdminIds.push(staffAdminField);
-          }
-          
-          if (staffAdminIds.length > 0) {
-            // For Knack connection fields, format depends on single vs multiple
-            data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
-            console.log(`[Homepage] Setting Staff Admin connection: ${JSON.stringify(staffAdminIds)}`);
-          } else {
-            console.log('[Homepage] No valid staff admin IDs found after processing');
-          }
-        } else {
-          console.log('[Homepage] No staff admin field found in student record');
-        }
-        
-        // Get Tutor Group from field_565
-        if (studentRecord.field_565) {
-          data[FIELD_MAPPING.tutorGroup] = sanitizeField(studentRecord.field_565);
-        }
-        
-        // Get Year Group from field_548
-        if (studentRecord.field_548) {
-          data[FIELD_MAPPING.yearGroup] = sanitizeField(studentRecord.field_548);
-        }
-        
-        // Get Attendance from field_3139
-        if (studentRecord.field_3139) {
-          data[FIELD_MAPPING.attendance] = sanitizeField(studentRecord.field_3139);
-        }
-      }
-      
-      // Debug log the final data with explicit connection fields info
-      console.log('[Homepage] Connection fields in record creation:');
-      console.log(`[Homepage] - VESPA Customer: ${data[FIELD_MAPPING.vespaCustomer]}`);
-      console.log(`[Homepage] - Tutor: ${JSON.stringify(data[FIELD_MAPPING.tutorConnection])}`);
-      console.log(`[Homepage] - Staff Admin: ${JSON.stringify(data[FIELD_MAPPING.staffAdminConnection])}`);
-      
-      debugLog('Creating user profile with prepared data:', data);
-      
-      // Create the record
-      const response = await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records`,
-            type: 'POST',
-            headers: getKnackHeaders(),
-            data: JSON.stringify(data),
-            contentType: 'application/json',
-            success: resolve,
-            error: reject
-          });
-        });
-      });
-      
-      if (response && response.id) {
-        debugLog(`Created new user profile record: ${response.id}`, response);
-        return response;
-      } else {
-        console.error('[Homepage] Failed to create user profile: No ID returned', response);
-        return null;
-      }
+      debugLog("Compiled staff profile data:", profileData);
+      return profileData;
     } catch (error) {
-      console.error('[Homepage] Error creating user profile:', error);
+      console.error("[Staff Homepage] Error getting staff profile data:", error);
       return null;
     }
   }
   
-  // Update a specific field in the user profile
-  async function updateUserProfileField(recordId, fieldId, value) {
-    if (!recordId || !fieldId) {
-      console.error('[Homepage] Cannot update profile: Missing recordId or fieldId');
-      return false;
-    }
-    
-    try {
-      const data = { [fieldId]: value };
-      
-      await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records/${recordId}`,
-            type: 'PUT',
-            headers: getKnackHeaders(),
-            data: JSON.stringify(data),
-            contentType: 'application/json',
-            success: resolve,
-            error: reject
-          });
-        });
-      });
-      
-      return true;
-    } catch (error) {
-      console.error(`[Homepage] Error updating profile field ${fieldId}:`, error);
-      return false;
-    }
-  }
-  
-  // Find the student record for the user by email
-  async function findStudentRecord(email) {
+  // Find the staff record for the user by email
+  async function findStaffRecord(email) {
     if (!email) return null;
     
     const filters = encodeURIComponent(JSON.stringify({
       match: 'or',
       rules: [
         { field: 'field_91', operator: 'is', value: email },
-        { field: 'field_70', operator: 'is', value: email },
-        { field: 'field_91', operator: 'contains', value: email }
+        { field: 'field_70', operator: 'is', value: email }
       ]
     }));
     
@@ -849,7 +405,7 @@
       const response = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
-            url: `${KNACK_API_URL}/objects/object_6/records?filters=${filters}`,
+            url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
             type: 'GET',
             headers: getKnackHeaders(),
             data: { format: 'raw' },
@@ -860,1113 +416,391 @@
       });
       
       if (response && response.records && response.records.length > 0) {
-        const studentRecord = response.records[0];
-        
-        // Log the entire student record structure to identify all available fields
-        console.log('[Homepage] COMPLETE STUDENT RECORD:', JSON.stringify(studentRecord, null, 2));
-        
-        // Check explicitly for the tutor and staff admin fields
-        console.log('[Homepage] Checking for connection fields:');
-        console.log('- Tutor field_1682 exists:', studentRecord.field_1682 !== undefined);
-        console.log('- Tutor field_1682_raw exists:', studentRecord.field_1682_raw !== undefined);
-        console.log('- Staff Admin field_190 exists:', studentRecord.field_190 !== undefined);
-        console.log('- Staff Admin field_190_raw exists:', studentRecord.field_190_raw !== undefined);
-        
-        // Extract UPN (Unique Pupil Number) if available
-        if (studentRecord.field_3129) {
-          debugLog(`Found UPN for student: ${studentRecord.field_3129}`);
-        } else {
-          console.log('[Homepage] No UPN found in student record (field_3129)');
-        }
-        
-        return studentRecord;
+        const staffRecord = response.records[0];
+        debugLog("Found staff record:", staffRecord);
+        return staffRecord;
       }
       
       return null;
     } catch (error) {
-      console.error('[Homepage] Error finding student record:', error);
+      console.error('[Staff Homepage] Error finding staff record:', error);
       return null;
     }
   }
   
-  // --- UI Rendering ---
-  // Render the main homepage UI
-  function renderHomepage(userProfile) {
-    const container = document.querySelector(window.HOMEPAGE_CONFIG.elementSelector);
-    if (!container) {
-      console.error('[Homepage] Container element not found.');
-      return;
-    }
+  // Get school record by ID
+  async function getSchoolRecord(schoolId) {
+    if (!schoolId) return null;
     
-    // Clear the container
-    container.innerHTML = '';
-    
-    // Parse subject data or initialize empty
-    const subjectData = [];
-    for (let i = 1; i <= 15; i++) {
-      const fieldKey = `sub${i}`;
-      const fieldId = FIELD_MAPPING[fieldKey];
-      
-      if (userProfile[fieldId]) {
-        try {
-          const subject = safeParseJSON(userProfile[fieldId]);
-          if (subject && subject.subject) {
-            subjectData.push(subject);
-          }
-        } catch (e) {
-          console.warn(`[Homepage] Error parsing subject data for ${fieldKey}:`, e);
-        }
-      }
-    }
-    
-    // Extract profile data
-    const profileData = {
-      name: userProfile[FIELD_MAPPING.studentName] || 'Student',
-      school: userProfile[FIELD_MAPPING.vespaCustomer] || '',
-      tutorGroup: userProfile[FIELD_MAPPING.tutorGroup] || '',
-      yearGroup: userProfile[FIELD_MAPPING.yearGroup] || '',
-      attendance: userProfile[FIELD_MAPPING.attendance] || '',
-      subjects: subjectData
-    };
-    
-    debugLog('Rendering homepage with profile data:', profileData);
-    
-    // Create the main container with app hubs side-by-side
-    const homepageHTML = `
-      <div id="vespa-homepage">
-        ${renderProfileSection(profileData)}
-        <div class="app-hubs-container">
-          ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
-          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity)}
-        </div>
-      </div>
-    `;
-    
-    // Add the CSS
-    const styleElement = document.createElement('style');
-    styleElement.textContent = `
-      /* Main Container - VESPA Theme */
-      #vespa-homepage {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 16px;
-        color: #ffffff;
-        background-color: #23356f;
-        line-height: 1.4;
-        overflow-x: hidden;
-        border: 3px solid #2a3c7a;
-        border-radius: 10px;
-      }
-      
-      /* Animation Keyframes */
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      @keyframes pulseGlow {
-        0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-        50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.25); }
-        100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-      }
-      
-      /* Sections */
-      .vespa-section {
-        background-color: #2a3c7a;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        padding: 16px;
-        margin-bottom: 24px;
-        animation: fadeIn 0.5s ease-out forwards;
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 2px solid #079baa;
-      }
-      
-      .vespa-section:hover {
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-      }
-      
-      .vespa-section:nth-child(1) { animation-delay: 0.1s; }
-      .vespa-section:nth-child(2) { animation-delay: 0.2s; }
-      .vespa-section:nth-child(3) { animation-delay: 0.3s; }
-      
-      .vespa-section-title {
-        color: #00e5db !important; /* Added !important to override any competing styles */
-        font-size: 22px;
-        font-weight: 600;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #079baa;
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .vespa-section-title::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: -100%;
-        width: 100%;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(7, 155, 170, 0.8), transparent);
-        animation: shimmer 2.5s infinite;
-      }
-      
-      @keyframes shimmer {
-        0% { left: -100%; }
-        100% { left: 100%; }
-      }
-      
-      /* App hubs container for side-by-side layout */
-      .app-hubs-container {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 20px;
-      }
-      
-      .app-hubs-container .vespa-section {
-        flex: 1;
-        margin-bottom: 0;
-        min-width: 0; /* Allow flex items to shrink below content size */
-      }
-      
-      /* Profile Section - more compact */
-      .profile-info {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-      
-      .profile-details {
-        flex: 1;
-        min-width: 200px;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        padding: 4px;
-        background-color: #334285;
-        border-radius: 8px;
-        border: 1px solid rgba(7, 155, 170, 0.3);
-      }
-      
-      .profile-name {
-        font-size: 22px;
-        color: #00e5db;
-        margin-bottom: 8px;
-        font-weight: 700;
-        padding: 4px 8px;
-        border-bottom: 1px solid rgba(7, 155, 170, 0.3);
-      }
-      
-      .profile-item {
-        margin-bottom: 3px;
-        padding: 3px 8px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-        display: flex;
-        align-items: center;
-      }
-      
-      .profile-item:hover {
-        background-color: #3a4b90;
-      }
-      
-      .profile-label {
-        font-weight: 600;
-        color: #00e5db;
-        margin-right: 4px;
-        min-width: 80px;
-      }
-      
-      .profile-value {
-        color: #f0f0f0;
-      }
-      
-      .subjects-container {
-        flex: 2;
-        min-width: 280px;
-      }
-      
-      .subjects-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 10px;
-      }
-      
-      /* Add GCSE grid - 4 columns for smaller cards */
-      .subjects-grid.gcse-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 10px;
-      }
-      
-      .subject-card {
-        background-color: #334285;
-        border-radius: 6px;
-        padding: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-        transition: all 0.2s ease;
-        border: 1px solid rgba(7, 155, 170, 0.3);
-      }
-      
-      /* GCSE subject styling - matching the screenshot */
-      .subject-card.gcse {
-        background-color: #4B7F3D; /* Green background for GCSE as seen in screenshot */
-        padding: 8px;
-        border: 1px solid rgba(170, 185, 7, 0.3);
-      }
-      
-      /* Vocational subject styling */
-      .subject-card.vocational {
-        background-color: #742a85; /* Purple background for Vocational */
-        padding: 8px;
-        border: 1px solid rgba(170, 7, 185, 0.3);
-      }
-      
-      .subject-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      }
-      
-      .subject-name {
-        font-weight: 600;
-        color: #ffffff;
-        margin-bottom: 4px;
-        font-size: 0.95em;
-      }
-      
-      .subject-meta {
-        font-size: 0.75em;
-        color: #ffffff;
-        margin-bottom: 3px;
-      }
-      
-      .grades-container {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid #3d3d3d;
-      }
-      
-      .grade-item {
-        text-align: center;
-        flex: 1;
-        padding: 4px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-      }
-      
-      .grade-item:hover {
-        background-color: #3a3a3a;
-      }
-      
-      .grade-label {
-        font-size: 0.7em;
-        color: #ffffff;
-        margin-bottom: 3px;
-      }
-      
-      .grade-value {
-        font-size: 1.1em;
-        font-weight: 600;
-        transition: transform 0.2s;
-      }
-      
-      .grade-item:hover .grade-value {
-        transform: scale(1.1);
-      }
-      
-      .grade-meg {
-        color: #00e5db;
-      }
-      
-      /* Grade indicators - will be dynamically applied in the rendering function */
-      .grade-exceeding {
-        color: #4caf50;
-      }
-      
-      .grade-exceeding-high {
-        color: #2e7d32;
-      }
-      
-      .grade-matching {
-        color: #ff9800;
-      }
-      
-      .grade-below {
-        color: #f44336;
-      }
-      
-      .grade-below-far {
-        color: #b71c1c;
-      }
-      
-      /* App Hubs */
-      .app-hub {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        justify-content: center;
-      }
-      
-      .app-card {
-        background-color: #334285;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-        width: 100%;
-        max-width: 210px;
-        overflow: hidden;
-        transition: transform 0.3s, box-shadow 0.3s;
-        animation: fadeIn 0.5s ease-out forwards;
-        border: 1px solid rgba(7, 155, 170, 0.3);
-        position: relative;
-      }
-      
-      /* Tooltip/Popup Styles */
-      .app-tooltip {
-        position: fixed; /* Changed from absolute to fixed */
-        background-color: #1c2b5f;
-        color: #ffffff;
-        padding: 12px;
-        border-radius: 8px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-        width: 250px;
-        z-index: 9999; /* Much higher z-index */
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
-        border: 2px solid #00e5db;
-        font-size: 14px;
-        text-align: center;
-        pointer-events: none;
-        max-width: 90vw; /* Prevent overflow on mobile */
-      }
-      
-      .app-tooltip::before {
-        content: '';
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        margin-left: -8px;
-        border-width: 8px;
-        border-style: solid;
-        border-color: transparent transparent #1c2b5f transparent;
-      }
-      
-      /* We'll manually position the tooltip via JavaScript */
-      
-      /* Stagger app card animations */
-      .app-hub .app-card:nth-child(1) { animation-delay: 0.4s; }
-      .app-hub .app-card:nth-child(2) { animation-delay: 0.5s; }
-      .app-hub .app-card:nth-child(3) { animation-delay: 0.6s; }
-      
-      .app-card:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-        animation: pulseGlow 2s infinite;
-      }
-      
-      .app-card-header {
-        background-color: #1c2b5f;
-        padding: 10px;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-        border-bottom: 2px solid #079baa;
-      }
-      
-      .app-card-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 50%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 255, 255, 0.05),
-          transparent
-        );
-        transform: skewX(-25deg);
-        transition: 0.7s;
-      }
-      
-      .app-card:hover .app-card-header::before {
-        left: 125%;
-      }
-      
-      .app-icon {
-        width: 60px;
-        height: 60px;
-        object-fit: contain;
-        margin-bottom: 6px;
-        transition: transform 0.3s;
-      }
-      
-      .app-card:hover .app-icon {
-        transform: scale(1.1) rotate(5deg);
-      }
-      
-      .app-name {
-        color: white;
-        font-size: 16px;
-        font-weight: 600;
-      }
-      
-      /* Info icon for tooltip trigger */
-      .app-info-icon {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 24px;
-        height: 24px;
-        background-color: #00e5db;
-        color: #1c2b5f;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 14px;
-        cursor: pointer; /* Changed from help to pointer */
-        transition: all 0.2s;
-        z-index: 10;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      }
-      
-      .app-info-icon:hover,
-      .app-info-icon:focus {
-        transform: scale(1.1);
-        box-shadow: 0 0 8px rgba(0, 229, 219, 0.8);
-      }
-      
-      /* Active state for the tooltip to show it */
-      .tooltip-active {
-        opacity: 1 !important;
-        visibility: visible !important;
-      }
-      
-      .app-button {
-        display: block;
-        background-color: #079baa;
-        color: #ffffff;
-        text-align: center;
-        padding: 8px;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s;
-        position: relative;
-        overflow: hidden;
-        z-index: 1;
-        font-size: 0.9em;
-      }
-      
-      .app-button::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-        transition: 0.5s;
-        z-index: -1;
-      }
-      
-      .app-button:hover {
-        background-color: #00c2b8;
-        transform: translateY(-2px);
-      }
-      
-      .app-button:hover::before {
-        left: 100%;
-      }
-      
-      /* Loading Indicator */
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      
-      /* Responsive adjustments */
-      @media (max-width: 992px) {
-        #vespa-homepage {
-          padding: 12px;
-        }
-        
-        .vespa-section {
-          padding: 14px;
-        }
-        
-        .subjects-grid {
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        }
-      }
-      
-      @media (max-width: 768px) {
-        .profile-info {
-          flex-direction: column;
-        }
-        
-        .subjects-grid {
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 10px;
-        }
-        
-        .app-hubs-container {
-          flex-direction: column;
-          gap: 16px;
-        }
-        
-        .app-card {
-          max-width: 100%;
-          width: 100%;
-        }
-        
-        .app-description {
-          height: auto;
-          min-height: 70px;
-        }
-        
-        .vespa-section-title {
-          font-size: 20px;
-        }
-      }
-      
-      @media (max-width: 480px) {
-        #vespa-homepage {
-          padding: 10px;
-        }
-        
-        .vespa-section {
-          padding: 12px;
-          margin-bottom: 16px;
-        }
-        
-        .subjects-grid {
-          grid-template-columns: 1fr;
-        }
-        
-        .profile-name {
-          font-size: 22px;
-        }
-        
-        .app-card {
-          max-width: 100%;
-        }
-        
-        .grade-item {
-          padding: 2px;
-        }
-        
-        .grade-value {
-          font-size: 1em;
-        }
-      }
-    `;
-    
-    // Add style and content to the container
-    container.appendChild(styleElement);
-    container.innerHTML += homepageHTML;
-    
-    // Add event listeners to app cards
-    document.querySelectorAll('.app-button').forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        const url = button.getAttribute('href');
-        if (url) {
-          window.location.href = url;
-        }
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
       });
-    });
-    
-    // Initialize tooltips
-    setupTooltips();
+      
+      if (response) {
+        debugLog("Found school record:", response);
+        return response;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[Staff Homepage] Error getting school record:', error);
+      return null;
+    }
   }
   
-  // Render the profile section
-  function renderProfileSection(profileData) {
-    const name = sanitizeField(profileData.name);
-    
-    // Fix for school field - handle if it's an object - improved to handle connection fields better
-    let schoolDisplay = 'N/A';
-    if (profileData.school) {
-      // Log the school field to debug
-      console.log('[Homepage] School field value:', profileData.school);
-      
-      if (typeof profileData.school === 'object' && profileData.school !== null) {
-        // Check for raw versions first
-        if (profileData.school.field_122_raw) {
-          schoolDisplay = sanitizeField(profileData.school.field_122_raw.identifier || 
-                        profileData.school.field_122_raw.name || 'VESPA ACADEMY');
-        }
-        // For Knack connection fields, use the text property which often contains the display name
-        else if (profileData.school.text) {
-          schoolDisplay = sanitizeField(profileData.school.text);
-        }
-        // Try to get the display name from various properties
-        else if (profileData.school.identifier) {
-          schoolDisplay = sanitizeField(profileData.school.identifier);
-        }
-        else if (profileData.school.name) {
-          schoolDisplay = sanitizeField(profileData.school.name);
-        }
-        // If all else fails, fall back to "VESPA ACADEMY" rather than showing the raw JSON
-        else {
-          schoolDisplay = "VESPA ACADEMY";
-        }
-      } else if (typeof profileData.school === 'string') {
-        // If it's just a string, use it directly
-        schoolDisplay = sanitizeField(profileData.school);
-      }
+  // --- VESPA Results Data Management ---
+  // Get VESPA results for the school
+  async function getSchoolVESPAResults(schoolId) {
+    if (!schoolId) {
+      console.error("[Staff Homepage] Cannot get VESPA results: Missing schoolId");
+      return null;
     }
     
-    const tutorGroup = sanitizeField(profileData.tutorGroup);
-    const yearGroup = sanitizeField(profileData.yearGroup);
-    const attendance = sanitizeField(profileData.attendance);
-    
-    // Helper function to compare grades and return appropriate CSS class
-    function getGradeColorClass(grade, minExpected, examType) {
-      // Handle cases where grades are not available
-      if (!grade || !minExpected || grade === 'N/A' || minExpected === 'N/A') {
-        return '';
-      }
+    try {
+      // Create filter to get all results for the school
+      const filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
+        ]
+      }));
       
-      // GCSE grades are numeric 1-9 (9 is highest)
-      if (examType === 'GCSE') {
-        // GCSE uses numeric grades 1-9 where 9 is highest
-        const numGrade = parseInt(grade, 10);
-        const numMinExpected = parseInt(minExpected, 10);
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_10/records?filters=${filters}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      if (response && response.records && response.records.length > 0) {
+        debugLog(`Found ${response.records.length} VESPA results for school:`, schoolId);
         
-        if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
-          const diff = numGrade - numMinExpected;
-          
-          if (diff >= 2) {
-            return 'grade-exceeding-high';
-          } else if (diff === 1) {
-            return 'grade-exceeding';
-          } else if (diff === 0) {
-            return 'grade-matching';
-          } else if (diff === -1) {
-            return 'grade-below';
-          } else {
-            return 'grade-below-far';
-          }
-        }
-      }
-      
-      // Vocational grades handling (Distinction*, Distinction, Merit, Pass)
-      else if (examType === 'Vocational') {
-        const vocationGradeValues = {
-          'D*': 4, 'D*D*': 8, 'D*D*D*': 12,
-          'D': 3, 'DD': 6, 'DDD': 9,
-          'M': 2, 'MM': 4, 'MMM': 6,
-          'P': 1, 'PP': 2, 'PPP': 3,
-          'D*D': 7, 'D*DD': 10, 
-          'DM': 5, 'DMM': 7,
-          'MP': 3, 'MPP': 4
+        // Calculate averages for each VESPA category
+        const totals = {
+          vision: 0,
+          effort: 0,
+          systems: 0,
+          practice: 0,
+          attitude: 0,
+          count: 0
         };
         
-        const gradeValue = vocationGradeValues[grade] || 0;
-        const minExpectedValue = vocationGradeValues[minExpected] || 0;
-        
-        if (gradeValue && minExpectedValue) {
-          const diff = gradeValue - minExpectedValue;
-          
-          if (diff >= 2) {
-            return 'grade-exceeding-high';
-          } else if (diff > 0) {
-            return 'grade-exceeding';
-          } else if (diff === 0) {
-            return 'grade-matching';
-          } else if (diff > -2) {
-            return 'grade-below';
-          } else {
-            return 'grade-below-far';
+        for (const record of response.records) {
+          // Only count records that have at least one valid VESPA value
+          if (
+            record[FIELD_MAPPING.vision] !== undefined ||
+            record[FIELD_MAPPING.effort] !== undefined ||
+            record[FIELD_MAPPING.systems] !== undefined ||
+            record[FIELD_MAPPING.practice] !== undefined ||
+            record[FIELD_MAPPING.attitude] !== undefined
+          ) {
+            if (record[FIELD_MAPPING.vision] !== undefined) {
+              totals.vision += parseFloat(record[FIELD_MAPPING.vision]) || 0;
+            }
+            if (record[FIELD_MAPPING.effort] !== undefined) {
+              totals.effort += parseFloat(record[FIELD_MAPPING.effort]) || 0;
+            }
+            if (record[FIELD_MAPPING.systems] !== undefined) {
+              totals.systems += parseFloat(record[FIELD_MAPPING.systems]) || 0;
+            }
+            if (record[FIELD_MAPPING.practice] !== undefined) {
+              totals.practice += parseFloat(record[FIELD_MAPPING.practice]) || 0;
+            }
+            if (record[FIELD_MAPPING.attitude] !== undefined) {
+              totals.attitude += parseFloat(record[FIELD_MAPPING.attitude]) || 0;
+            }
+            
+            totals.count++;
           }
         }
-      }
-      
-      // A-Level letter grades (A, B, C, etc.) handling
-      else if (/^[A-E][*+-]?$/.test(grade) && /^[A-E][*+-]?$/.test(minExpected)) {
-        // Extract the base grade letter
-        const gradeValue = grade.charAt(0);
-        const minExpectedValue = minExpected.charAt(0);
         
-        // Compare (A is better than B, etc.)
-        if (gradeValue < minExpectedValue) {
-          return 'grade-exceeding-high'; // Much better (e.g. A vs C expected)
-        } else if (gradeValue === minExpectedValue) {
-          // Check for + or - modifiers
-          if (grade.includes('+') || minExpected.includes('-')) {
-            return 'grade-exceeding';
-          } else if (grade.includes('-') || minExpected.includes('+')) {
-            return 'grade-below';
-          }
-          return 'grade-matching';
-        } else {
-          // Grade is below expected
-          const diff = gradeValue.charCodeAt(0) - minExpectedValue.charCodeAt(0);
-          return diff > 1 ? 'grade-below-far' : 'grade-below';
-        }
-      }
-      
-      // Fallback numeric grade comparison (percentages or other numerical formats)
-      const numGrade = parseFloat(grade);
-      const numMinExpected = parseFloat(minExpected);
-      
-      if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
-        const diff = numGrade - numMinExpected;
+        // Calculate averages
+        const averages = {
+          vision: totals.count > 0 ? (totals.vision / totals.count).toFixed(2) : 0,
+          effort: totals.count > 0 ? (totals.effort / totals.count).toFixed(2) : 0,
+          systems: totals.count > 0 ? (totals.systems / totals.count).toFixed(2) : 0,
+          practice: totals.count > 0 ? (totals.practice / totals.count).toFixed(2) : 0,
+          attitude: totals.count > 0 ? (totals.attitude / totals.count).toFixed(2) : 0,
+          count: totals.count
+        };
         
-        if (diff > 1) {
-          return 'grade-exceeding-high';
-        } else if (diff > 0) {
-          return 'grade-exceeding';
-        } else if (diff === 0) {
-          return 'grade-matching';
-        } else if (diff > -2) {
-          return 'grade-below';
-        } else {
-          return 'grade-below-far';
-        }
+        debugLog("Calculated school VESPA averages:", averages);
+        return averages;
       }
       
-      // For other formats, just do a basic string comparison
-      return grade >= minExpected ? 'grade-exceeding' : 'grade-below';
+      return null;
+    } catch (error) {
+      console.error('[Staff Homepage] Error getting school VESPA results:', error);
+      return null;
+    }
+  }
+  
+  // Get VESPA results for staff's connected students
+  async function getStaffVESPAResults(staffEmail, schoolId) {
+    if (!staffEmail || !schoolId) {
+      console.error("[Staff Homepage] Cannot get staff VESPA results: Missing email or schoolId");
+      return null;
     }
     
-    // Render all subjects in a single grid with color coding by type
-    let subjectsHTML = '';
-    if (profileData.subjects && profileData.subjects.length > 0) {
-      profileData.subjects.forEach(subject => {
-        // Determine the card type based on exam type
-        let cardType = '';
-        const examType = (subject.examType || '').trim();
-        if (examType === 'GCSE') {
-          cardType = 'gcse';
-        } else if (examType === 'Vocational') {
-          cardType = 'vocational';
+    try {
+      // Create filters for each staff connection field, but still filter by the same school
+      const tutorFilter = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.tutor, operator: 'is', value: staffEmail },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
+        ]
+      }));
+      
+      const headOfYearFilter = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.headOfYear, operator: 'is', value: staffEmail },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
+        ]
+      }));
+      
+      const subjectTeacherFilter = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.subjectTeacher, operator: 'is', value: staffEmail },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
+        ]
+      }));
+      
+      // Make separate queries for each role
+      const [tutorResults, headOfYearResults, subjectTeacherResults] = await Promise.all([
+        retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/object_10/records?filters=${tutorFilter}`,
+              type: 'GET',
+              headers: getKnackHeaders(),
+              data: { format: 'raw' },
+              success: resolve,
+              error: reject
+            });
+          });
+        }).catch(error => {
+          console.error('[Staff Homepage] Error getting tutor VESPA results:', error);
+          return { records: [] };
+        }),
+        
+        retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/object_10/records?filters=${headOfYearFilter}`,
+              type: 'GET',
+              headers: getKnackHeaders(),
+              data: { format: 'raw' },
+              success: resolve,
+              error: reject
+            });
+          });
+        }).catch(error => {
+          console.error('[Staff Homepage] Error getting head of year VESPA results:', error);
+          return { records: [] };
+        }),
+        
+        retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/object_10/records?filters=${subjectTeacherFilter}`,
+              type: 'GET',
+              headers: getKnackHeaders(),
+              data: { format: 'raw' },
+              success: resolve,
+              error: reject
+            });
+          });
+        }).catch(error => {
+          console.error('[Staff Homepage] Error getting subject teacher VESPA results:', error);
+          return { records: [] };
+        })
+      ]);
+      
+      // Combine all results, but avoid duplicates by using a Map with record ID as key
+      const allResults = new Map();
+      
+      const addRecordsToMap = (records) => {
+        if (records && Array.isArray(records)) {
+          for (const record of records) {
+            if (record.id) {
+              allResults.set(record.id, record);
+            }
+          }
         }
-        
-        // Get color classes for current and target grades, passing the exam type for proper handling
-        const currentGradeClass = getGradeColorClass(
-          subject.currentGrade,
-          subject.minimumExpectedGrade,
-          examType
-        );
-        
-        const targetGradeClass = getGradeColorClass(
-          subject.targetGrade,
-          subject.minimumExpectedGrade,
-          examType
-        );
-        
-        subjectsHTML += `
-          <div class="subject-card ${cardType}">
-            <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
-            <div class="subject-meta">
-              ${subject.examType ? sanitizeField(subject.examType) : 'N/A'}
-              ${subject.examBoard ? ` • ${sanitizeField(subject.examBoard)}` : ''}
-            </div>
-            <div class="grades-container">
-              <div class="grade-item">
-                <div class="grade-label">MEG</div>
-                <div class="grade-value grade-meg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
-              </div>
-              <div class="grade-item">
-                <div class="grade-label">Current</div>
-                <div class="grade-value ${currentGradeClass}">${sanitizeField(subject.currentGrade || 'N/A')}</div>
-              </div>
-              <div class="grade-item">
-                <div class="grade-label">Target</div>
-                <div class="grade-value ${targetGradeClass}">${sanitizeField(subject.targetGrade || 'N/A')}</div>
-              </div>
-            </div>
-          </div>
-        `;
+      };
+      
+      addRecordsToMap(tutorResults.records);
+      addRecordsToMap(headOfYearResults.records);
+      addRecordsToMap(subjectTeacherResults.records);
+      
+      const combinedResults = Array.from(allResults.values());
+      debugLog(`Found ${combinedResults.length} unique VESPA results for staff email ${staffEmail}`, {
+        tutorCount: tutorResults.records?.length || 0,
+        headOfYearCount: headOfYearResults.records?.length || 0,
+        subjectTeacherCount: subjectTeacherResults.records?.length || 0
       });
-    } else {
-      subjectsHTML = '<div class="no-subjects">No subjects available</div>';
+      
+      // If no connected students found, return null
+      if (combinedResults.length === 0) {
+        return null;
+      }
+      
+      // Calculate averages for each VESPA category
+      const totals = {
+        vision: 0,
+        effort: 0,
+        systems: 0,
+        practice: 0,
+        attitude: 0,
+        count: 0
+      };
+      
+      for (const record of combinedResults) {
+        // Only count records that have at least one valid VESPA value
+        if (
+          record[FIELD_MAPPING.vision] !== undefined ||
+          record[FIELD_MAPPING.effort] !== undefined ||
+          record[FIELD_MAPPING.systems] !== undefined ||
+          record[FIELD_MAPPING.practice] !== undefined ||
+          record[FIELD_MAPPING.attitude] !== undefined
+        ) {
+          if (record[FIELD_MAPPING.vision] !== undefined) {
+            totals.vision += parseFloat(record[FIELD_MAPPING.vision]) || 0;
+          }
+          if (record[FIELD_MAPPING.effort] !== undefined) {
+            totals.effort += parseFloat(record[FIELD_MAPPING.effort]) || 0;
+          }
+          if (record[FIELD_MAPPING.systems] !== undefined) {
+            totals.systems += parseFloat(record[FIELD_MAPPING.systems]) || 0;
+          }
+          if (record[FIELD_MAPPING.practice] !== undefined) {
+            totals.practice += parseFloat(record[FIELD_MAPPING.practice]) || 0;
+          }
+          if (record[FIELD_MAPPING.attitude] !== undefined) {
+            totals.attitude += parseFloat(record[FIELD_MAPPING.attitude]) || 0;
+          }
+          
+          totals.count++;
+        }
+      }
+      
+      // Calculate averages
+      const averages = {
+        vision: totals.count > 0 ? (totals.vision / totals.count).toFixed(2) : 0,
+        effort: totals.count > 0 ? (totals.effort / totals.count).toFixed(2) : 0,
+        systems: totals.count > 0 ? (totals.systems / totals.count).toFixed(2) : 0,
+        practice: totals.count > 0 ? (totals.practice / totals.count).toFixed(2) : 0,
+        attitude: totals.count > 0 ? (totals.attitude / totals.count).toFixed(2) : 0,
+        count: totals.count
+      };
+      
+      debugLog("Calculated staff connected students VESPA averages:", averages);
+      return averages;
+    } catch (error) {
+      console.error('[Staff Homepage] Error getting staff VESPA results:', error);
+      return null;
+    }
+  }
+  
+  // Check if the user has staff admin role
+  function isStaffAdmin(roles) {
+    if (!roles || !Array.isArray(roles)) {
+      return false;
+    }
+    
+    // Check if "Staff Admin" is in the roles array
+    return roles.some(role => 
+      typeof role === 'string' && 
+      role.toLowerCase().includes('staff admin')
+    );
+  }
+  
+  // --- UI Rendering ---
+  // Render the main homepage UI
+  // Render the profile section
+  function renderProfileSection(profileData, hasAdminRole) {
+    let dashboardButton = '';
+    if (hasAdminRole) {
+      dashboardButton = `
+        <div class="profile-item">
+          <a href="https://vespaacademy.knack.com/vespa-academy#dashboard/" class="dashboard-button">
+            <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
+            <span>VESPA Dashboard</span>
+          </a>
+        </div>
+      `;
     }
     
     return `
       <section class="vespa-section profile-section">
-        <h2 class="vespa-section-title">Student Profile</h2>
+        <h2 class="vespa-section-title">Staff Profile</h2>
         <div class="profile-info">
           <div class="profile-details">
-            <div class="profile-name">${name}</div>
+            ${profileData.schoolLogo ? `<img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">` : ''}
+            <div class="profile-name">${sanitizeField(profileData.name)}</div>
             
             <div class="profile-item">
               <span class="profile-label">School:</span>
-              <span class="profile-value">${schoolDisplay}</span>
+              <span class="profile-value">${sanitizeField(profileData.school)}</span>
             </div>
             
-          ${yearGroup ? `
-          <div class="profile-item">
-            <span class="profile-label">Year Group:</span>
-            <span class="profile-value">${yearGroup}</span>
-          </div>
-          ` : ''}
-          
-          ${tutorGroup ? `
-          <div class="profile-item">
-            <span class="profile-label">Tutor Group:</span>
-            <span class="profile-value">${tutorGroup}</span>
-          </div>
-          ` : ''}
-          
-          ${attendance ? `
-          <div class="profile-item">
-            <span class="profile-label">Attendance:</span>
-            <span class="profile-value">${attendance}</span>
-          </div>
-          ` : ''}
-          </div>
-          
-          <div class="subjects-container">
-            <div class="subjects-grid">
-              ${subjectsHTML}
+            <div class="profile-item">
+              <span class="profile-label">Role(s):</span>
+              <span class="profile-value">${profileData.roles.join(', ')}</span>
             </div>
+            
+            ${dashboardButton}
           </div>
         </div>
       </section>
     `;
   }
   
-  // Keep track of tooltip elements for proper cleanup
-  let tooltipElements = [];
-  
-  // Cleanup function to remove all tooltip elements when homepage is unloaded
-  function cleanupTooltips() {
-    // Remove any existing tooltip containers from previous sessions
-    const existingTooltipContainers = document.querySelectorAll('.tooltip-container');
-    existingTooltipContainers.forEach(container => {
-      if (container && container.parentNode) {
-        container.parentNode.removeChild(container);
-      }
-    });
-    
-    // Remove any standalone tooltips
-    const existingTooltips = document.querySelectorAll('.app-tooltip');
-    existingTooltips.forEach(tooltip => {
-      if (tooltip && tooltip.parentNode) {
-        tooltip.parentNode.removeChild(tooltip);
-      }
-    });
-    
-    // Remove any overlay elements
-    const existingOverlays = document.querySelectorAll('.tooltip-overlay');
-    existingOverlays.forEach(overlay => {
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    });
-    
-    // Clear the tracked elements array
-    tooltipElements = [];
+  // Render the group section
+  function renderGroupSection() {
+    return renderAppSection("GROUP", APP_SECTIONS.group);
   }
   
-  // Enhanced tooltip setup with better styling
-  function setupTooltips() {
-    console.log("[Homepage] Setting up enhanced tooltips");
-    
-    // Create overlay for mobile
-    const overlay = document.createElement('div');
-    overlay.className = 'tooltip-overlay';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none;';
-    document.body.appendChild(overlay);
-    tooltipElements.push(overlay);
-    
-    // Handle clicks on overlay to close tooltips
-    overlay.addEventListener('click', function() {
-      hideAllTooltips();
-    });
-    
-    // Track active tooltip for cleanup
-    let activeTooltip = null;
-    
-    // Function to hide all tooltips
-    function hideAllTooltips() {
-      if (activeTooltip) {
-        activeTooltip.classList.add('tooltip-hiding');
-        setTimeout(() => {
-          if (activeTooltip && activeTooltip.parentNode) {
-            activeTooltip.parentNode.removeChild(activeTooltip);
-          }
-          activeTooltip = null;
-        }, 300);
-        overlay.style.display = 'none';
-      }
-    }
-    
-    // Add global click listener to close tooltips when clicking outside
-    document.addEventListener('click', function(e) {
-      if (activeTooltip && !e.target.closest('.app-info-icon') && !e.target.closest('.vespa-tooltip')) {
-        hideAllTooltips();
-      }
-    });
-    
-    // Get all info icons
-    const infoIcons = document.querySelectorAll('.app-info-icon');
-    console.log(`[Homepage] Found ${infoIcons.length} info icons`);
-    
-    // Add click handlers to each icon
-    infoIcons.forEach((icon, index) => {
-      console.log(`[Homepage] Setting up icon #${index + 1}`);
-      
-      // Add click event
-      icon.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Close any existing tooltip first
-        hideAllTooltips();
-        
-        console.log(`[Homepage] Icon #${index + 1} clicked!`);
-        
-        // Get description from attribute
-        const description = this.getAttribute('data-description');
-        if (!description) {
-          console.error(`[Homepage] No description found for clicked icon #${index + 1}`);
-          return;
-        }
-        
-        // Create tooltip element with arrow
-        const tooltip = document.createElement('div');
-        tooltip.className = 'vespa-tooltip';
-        tooltip.innerHTML = `
-          <div class="tooltip-arrow"></div>
-          <div class="tooltip-content">${description}</div>
-        `;
-        
-        // Get position of the icon
-        const rect = this.getBoundingClientRect();
-        const isMobile = window.innerWidth <= 768;
-        
-        // Style the tooltip
-        if (isMobile) {
-          // Mobile styling - center in screen
-          tooltip.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #1c2b5f;
-            color: #ffffff;
-            padding: 15px;
-            border-radius: 8px;
-            border: 2px solid #00e5db;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
-            width: 80%;
-            max-width: 300px;
-            z-index: 10000;
-            text-align: center;
-            animation: tooltipFadeIn 0.3s forwards;
-            font-size: 14px;
-          `;
-          
-          // Show overlay on mobile
-          overlay.style.display = 'block';
-          
-          // Hide the arrow on mobile
-          tooltip.querySelector('.tooltip-arrow').style.display = 'none';
-          
-          // Add close button for mobile
-          const closeBtn = document.createElement('button');
-          closeBtn.textContent = 'Close';
-          closeBtn.className = 'tooltip-close-btn';
-          closeBtn.style.cssText = `
-            background-color: #00e5db;
-            color: #1c2b5f;
-            border: none;
-            padding: 6px 12px;
-            margin-top: 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-          `;
-          
-          closeBtn.addEventListener('click', hideAllTooltips);
-          tooltip.appendChild(closeBtn);
-        } else {
-          // Desktop styling - position below icon
-          const tooltipWidth = 250;
-          tooltip.style.cssText = `
-            position: fixed;
-            top: ${rect.bottom + window.scrollY + 10}px;
-            left: ${rect.left + (rect.width / 2) - (tooltipWidth / 2) + window.scrollX}px;
-            background-color: #1c2b5f;
-            color: #ffffff;
-            padding: 12px;
-            border-radius: 8px;
-            border: 2px solid #00e5db;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
-            width: ${tooltipWidth}px;
-            z-index: 10000;
-            text-align: center;
-            animation: tooltipFadeIn 0.3s forwards;
-            font-size: 14px;
-          `;
-          
-          // Style the arrow
-          const arrow = tooltip.querySelector('.tooltip-arrow');
-          arrow.style.cssText = `
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            margin-left: -8px;
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 8px solid #1c2b5f;
-          `;
-        }
-        
-        // Add CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
-          @keyframes tooltipFadeIn {
-            from { opacity: 0; transform: ${isMobile ? 'translate(-50%, -60%)' : 'translateY(-10px)'}; }
-            to { opacity: 1; transform: ${isMobile ? 'translate(-50%, -50%)' : 'translateY(0)'}; }
-          }
-          
-          @keyframes tooltipFadeOut {
-            from { opacity: 1; transform: ${isMobile ? 'translate(-50%, -50%)' : 'translateY(0)'}; }
-            to { opacity: 0; transform: ${isMobile ? 'translate(-50%, -60%)' : 'translateY(-10px)'}; }
-          }
-          
-          .tooltip-hiding {
-            animation: tooltipFadeOut 0.3s forwards;
-          }
-        `;
-        document.head.appendChild(style);
-        
-        // Add tooltip to body and save reference
-        document.body.appendChild(tooltip);
-        activeTooltip = tooltip;
-        
-        console.log(`[Homepage] Tooltip created and displayed for icon #${index + 1}`);
-      });
-    });
+  // Render the resources section
+  function renderResourcesSection() {
+    return renderAppSection("RESOURCES", APP_SECTIONS.resources);
   }
   
-  // Render an app hub section
-  function renderAppHubSection(title, apps) {
+  // Render the admin section (only for staff admin)
+  function renderAdminSection() {
+    return renderAppSection("MANAGE ACCOUNT", APP_SECTIONS.admin);
+  }
+  
+  // Generic function to render an app section
+  function renderAppSection(title, apps) {
+    if (!apps || !apps.length) return '';
+    
     let appsHTML = '';
-    let id = 0;
-    
     apps.forEach(app => {
-      // Store the description directly in the info icon data-attribute
-      const sanitizedDescription = sanitizeField(app.description);
       appsHTML += `
         <div class="app-card">
           <div class="app-card-header">
-            <div class="app-info-icon" title="Click for details" data-description="${sanitizedDescription}">i</div>
-            <img src="${app.icon}" alt="${app.name}" class="app-icon">
+            <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
+            <img src="${app.icon}" alt="${sanitizeField(app.name)}" class="app-icon">
             <div class="app-name">${sanitizeField(app.name)}</div>
           </div>
           <a href="${app.url}" class="app-button">Launch</a>
@@ -1983,97 +817,613 @@
       </section>
     `;
   }
-
-  // --- Entry Point Function ---
-  // Main initialization function, exposed globally
-  window.initializeHomepage = async function() {
-    debugLog("Initializing Homepage...");
-    
-    // Clean up any existing tooltips from previous sessions
-    cleanupTooltips();
-    
-    // Get config from loader
-    const config = window.HOMEPAGE_CONFIG;
-    if (!config || !config.elementSelector) {
-      console.error("Homepage Error: Missing configuration when initializeHomepage called.");
-      return;
+  
+  // Render the VESPA dashboard
+  function renderVESPADashboard(schoolResults, staffResults, hasAdminRole) {
+    if (!schoolResults) {
+      return `
+        <section class="vespa-section dashboard-section">
+          <h2 class="vespa-section-title">VESPA Dashboard</h2>
+          <div class="no-results">No VESPA results available for your school.</div>
+        </section>
+      `;
     }
     
-    // Verify Knack context and authentication
-    if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-      console.error("Homepage Error: Knack context not available.");
-      return;
+    const showComparison = staffResults && !hasAdminRole;
+    
+    return `
+      <section class="vespa-section dashboard-section">
+        <h2 class="vespa-section-title">VESPA Dashboard</h2>
+        <div class="charts-container ${showComparison ? 'dual-charts' : 'single-chart'}">
+          <div class="chart-wrapper">
+            <h3 class="chart-title">School VESPA Results</h3>
+            <div class="result-count">${schoolResults.count} students</div>
+            <canvas id="schoolChart"></canvas>
+          </div>
+          
+          ${showComparison ? `
+            <div class="chart-wrapper">
+              <h3 class="chart-title">Your Students' VESPA Results</h3>
+              <div class="result-count">${staffResults.count} students</div>
+              <canvas id="staffChart"></canvas>
+            </div>
+          ` : ''}
+        </div>
+      </section>
+    `;
+  }
+  
+  // Initialize VESPA charts using Chart.js
+  function initializeVESPACharts(schoolResults, staffResults, hasAdminRole) {
+    try {
+      // Load Chart.js if not already loaded
+      if (typeof Chart === 'undefined') {
+        debugLog("Loading Chart.js library...");
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
+        script.onload = () => {
+          debugLog("Chart.js loaded successfully");
+          createCharts(schoolResults, staffResults, hasAdminRole);
+        };
+        script.onerror = (error) => {
+          console.error("[Staff Homepage] Failed to load Chart.js:", error);
+        };
+        document.head.appendChild(script);
+      } else {
+        debugLog("Chart.js already loaded, creating charts...");
+        createCharts(schoolResults, staffResults, hasAdminRole);
+      }
+    } catch (error) {
+      console.error("[Staff Homepage] Error initializing VESPA charts:", error);
     }
+  }
+  
+  // Create the actual charts once Chart.js is loaded
+  function createCharts(schoolResults, staffResults, hasAdminRole) {
+    if (!schoolResults) return;
     
-    const userToken = Knack.getUserToken();
-    if (!userToken) {
-      console.error("Homepage Error: User is not authenticated (no token).");
-      return;
-    }
-    
-    // Get user info from Knack
-    const user = Knack.getUserAttributes();
-    if (!user || !user.id) {
-      console.error("Homepage Error: Cannot get user attributes.");
-      return;
-    }
-    
-    // Store user info globally
-    window.currentKnackUser = user;
-    debugLog("Current user:", user);
-    
-    // Find the target container - add more logging to troubleshoot
-    console.log(`[Homepage] Looking for container with selector: ${config.elementSelector}`);
-    
-    // Try alternative selectors if the main one fails
-    let container = document.querySelector(config.elementSelector);
-    
-    if (!container) {
-      console.log(`[Homepage] Primary selector failed, trying alternatives...`);
-      
-      // Try alternative selectors
-      const alternatives = [
-        `.kn-view-${config.viewKey}`,         // Class based on view key
-        `#${config.viewKey}`,                 // Direct ID
-        `#kn-${config.viewKey}`,              // Knack prefixed ID
-        `.kn-scene .kn-content`,              // Generic content area
-        `.kn-form-view-${config.viewKey}`     // Form view class
-      ];
-      
-      for (const altSelector of alternatives) {
-        console.log(`[Homepage] Trying alternative selector: ${altSelector}`);
-        container = document.querySelector(altSelector);
-        if (container) {
-          console.log(`[Homepage] Found container with alternative selector: ${altSelector}`);
-          break;
+    // Create school chart
+    const schoolChartCtx = document.getElementById('schoolChart');
+    if (schoolChartCtx) {
+      new Chart(schoolChartCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'],
+          datasets: [{
+            label: 'School Average',
+            data: [
+              schoolResults.vision,
+              schoolResults.effort,
+              schoolResults.systems,
+              schoolResults.practice,
+              schoolResults.attitude
+            ],
+            backgroundColor: [
+              VESPA_COLORS.VISION,
+              VESPA_COLORS.EFFORT,
+              VESPA_COLORS.SYSTEMS,
+              VESPA_COLORS.PRACTICE,
+              VESPA_COLORS.ATTITUDE
+            ],
+            borderColor: [
+              VESPA_COLORS.VISION,
+              VESPA_COLORS.EFFORT,
+              VESPA_COLORS.SYSTEMS,
+              VESPA_COLORS.PRACTICE,
+              VESPA_COLORS.ATTITUDE
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 10,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)'
+              }
+            },
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          responsive: true,
+          maintainAspectRatio: false
         }
+      });
+    }
+    
+    // Create staff chart if applicable
+    if (staffResults && !hasAdminRole) {
+      const staffChartCtx = document.getElementById('staffChart');
+      if (staffChartCtx) {
+        new Chart(staffChartCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'],
+            datasets: [{
+              label: 'Your Students',
+              data: [
+                staffResults.vision,
+                staffResults.effort,
+                staffResults.systems,
+                staffResults.practice,
+                staffResults.attitude
+              ],
+              backgroundColor: [
+                VESPA_COLORS.VISION,
+                VESPA_COLORS.EFFORT,
+                VESPA_COLORS.SYSTEMS,
+                VESPA_COLORS.PRACTICE,
+                VESPA_COLORS.ATTITUDE
+              ],
+              borderColor: [
+                VESPA_COLORS.VISION,
+                VESPA_COLORS.EFFORT,
+                VESPA_COLORS.SYSTEMS,
+                VESPA_COLORS.PRACTICE,
+                VESPA_COLORS.ATTITUDE
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 10,
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }
+              },
+              x: {
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      }
+    }
+  }
+  
+  // Set up tooltips for app cards
+  function setupTooltips() {
+    // Track active tooltip for cleanup
+    let activeTooltip = null;
+    
+    // Function to hide all tooltips
+    function hideAllTooltips() {
+      if (activeTooltip && activeTooltip.parentNode) {
+        activeTooltip.parentNode.removeChild(activeTooltip);
+        activeTooltip = null;
       }
     }
     
-    // If still not found, report error
+    // Add global click listener to close tooltips when clicking outside
+    document.addEventListener('click', function(e) {
+      if (activeTooltip && !e.target.closest('.app-info-icon')) {
+        hideAllTooltips();
+      }
+    });
+    
+    // Get all info icons
+    const infoIcons = document.querySelectorAll('.app-info-icon');
+    console.log(`[Staff Homepage] Found ${infoIcons.length} info icons`);
+    
+    // Add click handlers to each icon
+    infoIcons.forEach((icon) => {
+      // Add click event
+      icon.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Close any existing tooltip first
+        hideAllTooltips();
+        
+        // Get description from attribute
+        const description = this.getAttribute('data-description');
+        if (!description) return;
+        
+        // Create tooltip element
+        const tooltip = document.createElement('div');
+        tooltip.className = 'app-tooltip';
+        tooltip.innerHTML = description;
+        
+        // Position the tooltip
+        const rect = this.getBoundingClientRect();
+        const isMobile = window.innerWidth <= 768;
+        
+        if (isMobile) {
+          // Center in screen on mobile
+          tooltip.style.left = '50%';
+          tooltip.style.top = '50%';
+          tooltip.style.transform = 'translate(-50%, -50%)';
+        } else {
+          // Position below the icon on desktop
+          tooltip.style.left = rect.left + (rect.width / 2) - 125 + 'px'; // 125px is half the tooltip width
+          tooltip.style.top = rect.bottom + 10 + 'px';
+        }
+        
+        // Add tooltip to body and save reference
+        document.body.appendChild(tooltip);
+        activeTooltip = tooltip;
+        
+        // Make visible with a small delay for animation
+        setTimeout(() => {
+          tooltip.classList.add('tooltip-active');
+        }, 10);
+      });
+    });
+  }
+  
+  // Get CSS styles for the homepage
+  function getStyleCSS() {
+    return `
+      /* Main Container - Staff Theme */
+      #staff-homepage {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px;
+        color: #ffffff;
+        background-color: #23356f;
+        line-height: 1.4;
+        overflow-x: hidden;
+        border: 3px solid #7f31a4;
+        border-radius: 10px;
+      }
+      
+      /* Animation Keyframes */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      @keyframes pulseGlow {
+        0% { box-shadow: 0 4px 12px rgba(127, 49, 164, 0.1); }
+        50% { box-shadow: 0 4px 18px rgba(127, 49, 164, 0.25); }
+        100% { box-shadow: 0 4px 12px rgba(127, 49, 164, 0.1); }
+      }
+      
+      /* Sections */
+      .vespa-section {
+        background-color: #2a3c7a;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        padding: 16px;
+        margin-bottom: 24px;
+        animation: fadeIn 0.5s ease-out forwards;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 2px solid #7f31a4;
+      }
+      
+      .vespa-section:hover {
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+      }
+      
+      .vespa-section:nth-child(1) { animation-delay: 0.1s; }
+      .vespa-section:nth-child(2) { animation-delay: 0.2s; }
+      .vespa-section:nth-child(3) { animation-delay: 0.3s; }
+      
+      .vespa-section-title {
+        color: #7f31a4;
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #7f31a4;
+      }
+      
+      /* Profile Section */
+      .profile-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      
+      .profile-details {
+        flex: 1;
+        min-width: 250px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 16px;
+        background-color: #334285;
+        border-radius: 8px;
+        border: 1px solid rgba(127, 49, 164, 0.3);
+      }
+      
+      .school-logo {
+        max-width: 100px;
+        height: auto;
+        margin-bottom: 10px;
+        align-self: center;
+      }
+      
+      .profile-name {
+        font-size: 24px;
+        color: #ffffff;
+        margin-bottom: 16px;
+        font-weight: 700;
+        text-align: center;
+      }
+      
+      .profile-item {
+        margin-bottom: 10px;
+        padding: 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+      }
+      
+      .profile-item:hover {
+        background-color: #3a4b90;
+      }
+      
+      .profile-label {
+        font-weight: 600;
+        color: #7f31a4;
+        margin-right: 8px;
+      }
+      
+      .dashboard-button {
+        display: flex;
+        align-items: center;
+        background-color: #7f31a4;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        transition: all 0.3s;
+        margin-top: 10px;
+      }
+      
+      .dashboard-button:hover {
+        background-color: #9c4bc1;
+        transform: translateY(-2px);
+      }
+      
+      .dashboard-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 8px;
+      }
+      
+      /* App sections container */
+      .app-sections-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      
+      /* App Hubs */
+      .app-hub {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      
+      .app-card {
+        background-color: #334285;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        transition: transform 0.3s, box-shadow 0.3s;
+        animation: fadeIn 0.5s ease-out forwards;
+        border: 1px solid rgba(127, 49, 164, 0.3);
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .app-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        animation: pulseGlow 2s infinite;
+      }
+      
+      .app-card-header {
+        background-color: #1c2b5f;
+        padding: 16px;
+        text-align: center;
+        position: relative;
+        border-bottom: 2px solid #7f31a4;
+      }
+      
+      .app-icon {
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+        margin-bottom: 10px;
+        transition: transform 0.3s;
+      }
+      
+      .app-card:hover .app-icon {
+        transform: scale(1.1);
+      }
+      
+      .app-name {
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      
+      /* Info icon for tooltip trigger */
+      .app-info-icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 24px;
+        height: 24px;
+        background-color: #7f31a4;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .app-info-icon:hover {
+        transform: scale(1.1);
+        background-color: #9c4bc1;
+      }
+      
+      /* Tooltips */
+      .app-tooltip {
+        position: fixed;
+        background-color: #1c2b5f;
+        color: #ffffff;
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+        width: 250px;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s;
+        border: 2px solid #7f31a4;
+        font-size: 14px;
+        text-align: center;
+      }
+      
+      .tooltip-active {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      .app-button {
+        display: block;
+        background-color: #7f31a4;
+        color: #ffffff;
+        text-align: center;
+        padding: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+        margin-top: auto;
+      }
+      
+      .app-button:hover {
+        background-color: #9c4bc1;
+      }
+      
+      /* VESPA Dashboard */
+      .dashboard-section {
+        margin-top: 30px;
+      }
+      
+      .charts-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      
+      .chart-wrapper {
+        flex: 1;
+        min-width: 300px;
+        background-color: #334285;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(127, 49, 164, 0.3);
+      }
+      
+      .chart-title {
+        font-size: 18px;
+        color: #ffffff;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      
+      .result-count {
+        font-size: 14px;
+        color: #cccccc;
+        text-align: center;
+        margin-bottom: 15px;
+      }
+      
+      canvas {
+        width: 100% !important;
+        height: 300px !important;
+      }
+      
+      .no-results {
+        padding: 30px;
+        text-align: center;
+        color: #cccccc;
+        font-style: italic;
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .app-hub {
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+        
+        .profile-info {
+          flex-direction: column;
+        }
+        
+        .chart-wrapper {
+          min-width: 100%;
+        }
+      }
+    `;
+  }
+  
+  // Render the main homepage UI
+  async function renderHomepage() {
+    const container = document.querySelector(window.STAFFHOMEPAGE_CONFIG.elementSelector);
     if (!container) {
-      console.error(`Homepage Error: Container not found using selector: ${config.elementSelector} or alternatives`);
-      
-      // Dump the DOM structure to help debug
-      console.log(`[Homepage] DOM structure for debugging:`, 
-        document.querySelector('.kn-content')?.innerHTML || 'No .kn-content found');
-      
-      // Last resort - just use the body
-      container = document.body;
-      console.warn(`[Homepage] Using document.body as last resort container`);
+      console.error('[Staff Homepage] Container element not found.');
+      return;
     }
+    
+    // Clear the container
+    container.innerHTML = '';
     
     // Show loading indicator
     container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-        <h3>Loading VESPA Homepage...</h3>
+      <div style="padding: 30px; text-align: center; color: #7f31a4; background-color: #23356f; border-radius: 8px; border: 2px solid #7f31a4; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        <h3>Loading VESPA Staff Homepage...</h3>
         <div style="margin-top: 20px;">
           <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="#079baa" stroke-width="4">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#7f31a4" stroke-width="4">
               <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
               <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
             </circle>
-            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(7, 155, 170, 0.3)" stroke-width="2">
+            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(127, 49, 164, 0.3)" stroke-width="2">
               <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
               <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
             </circle>
@@ -2083,31 +1433,102 @@
     `;
     
     try {
-      // Find or create user profile
-      const userProfile = await findOrCreateUserProfile(user.id, user.name, user.email);
-      
-      if (userProfile) {
-        // Render the homepage UI
-        renderHomepage(userProfile);
-      } else {
+      // Get staff profile data
+      const profileData = await getStaffProfileData();
+      if (!profileData) {
         container.innerHTML = `
-          <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-            <h3>Error Loading Homepage</h3>
-            <p style="color: #ffffff;">Unable to load or create your user profile. Please try refreshing the page.</p>
-            <button onclick="location.reload()" style="margin-top: 15px; background-color: #079baa; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
+          <div style="padding: 30px; text-align: center; color: #7f31a4; background-color: #23356f; border-radius: 8px; border: 2px solid #7f31a4; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+            <h3>Error Loading Staff Homepage</h3>
+            <p style="color: #ffffff;">Unable to load your staff profile. Please try refreshing the page.</p>
+            <button onclick="location.reload()" style="margin-top: 15px; background-color: #7f31a4; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
           </div>
         `;
+        return;
       }
+      
+      // Get VESPA results data
+      const schoolResults = await getSchoolVESPAResults(profileData.schoolId);
+      
+      // Get staff-specific results if applicable
+      const staffResults = profileData.email ? 
+        await getStaffVESPAResults(profileData.email, profileData.schoolId) : null;
+      
+      // Check if user is a staff admin
+      const hasAdminRole = isStaffAdmin(profileData.roles);
+      
+      // Build the homepage HTML
+      const homepageHTML = `
+        <div id="staff-homepage">
+          ${renderProfileSection(profileData, hasAdminRole)}
+          <div class="app-sections-container">
+            ${renderGroupSection()}
+            ${renderResourcesSection()}
+            ${hasAdminRole ? renderAdminSection() : ''}
+          </div>
+          ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
+        </div>
+      `;
+      
+      // Add the CSS
+      const styleElement = document.createElement('style');
+      styleElement.textContent = getStyleCSS();
+      
+      // Add style and content to the container
+      container.innerHTML = '';
+      container.appendChild(styleElement);
+      container.innerHTML += homepageHTML;
+      
+      // Initialize charts
+      if (schoolResults) {
+        initializeVESPACharts(schoolResults, staffResults, hasAdminRole);
+      }
+      
+      // Add event listeners to app cards
+      document.querySelectorAll('.app-button').forEach(button => {
+        button.addEventListener('click', (e) => {
+          e.preventDefault();
+          const url = button.getAttribute('href');
+          if (url) {
+            window.location.href = url;
+          }
+        });
+      });
+      
+      // Initialize tooltips
+      setupTooltips();
+      
+      debugLog("Staff homepage rendered successfully");
     } catch (error) {
-      console.error("Homepage Error during initialization:", error);
+      console.error("Error rendering staff homepage:", error);
       container.innerHTML = `
-        <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-          <h3>Error Loading Homepage</h3>
+        <div style="padding: 30px; text-align: center; color: #7f31a4; background-color: #23356f; border-radius: 8px; border: 2px solid #7f31a4; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+          <h3>Error Loading Staff Homepage</h3>
           <p style="color: #ffffff;">An unexpected error occurred. Please try refreshing the page.</p>
-          <button onclick="location.reload()" style="margin-top: 15px; background-color: #079baa; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
+          <button onclick="location.reload()" style="margin-top: 15px; background-color: #7f31a4; color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
         </div>
       `;
     }
+  }
+  
+  // --- Main Initialization ---
+  // Initialize the staff homepage
+  window.initializeStaffHomepage = function() {
+    debugLog("Initializing Staff Homepage...");
+    
+    // Verify Knack context and authentication
+    if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
+      console.error("Staff Homepage Error: Knack context not available.");
+      return;
+    }
+    
+    const userToken = Knack.getUserToken();
+    if (!userToken) {
+      console.error("Staff Homepage Error: User is not authenticated (no token).");
+      return;
+    }
+    
+    // Render the homepage
+    renderHomepage();
   };
 
-})(); // End of IIFE
+})();
