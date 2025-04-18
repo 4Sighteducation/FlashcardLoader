@@ -130,7 +130,6 @@
         }
       ]
     };
-
 // --- Helper Functions ---
   // Debug logging helper
   function debugLog(title, data) {
@@ -344,6 +343,83 @@
     console.log("[Staff Homepage] Headers being used:", JSON.stringify(headers));
     
     return headers;
+  }
+  
+  // Helper function to paginate through all records in a Knack object
+  async function getAllRecordsWithPagination(url, filters, maxPages = 10) {
+    console.log(`[Staff Homepage] Starting pagination for ${url} with filters: ${filters}`);
+    
+    let allRecords = [];
+    let currentPage = 1;
+    let hasMoreRecords = true;
+    
+    try {
+      // Use a higher rows_per_page to minimize API calls (Knack's max is 1000)
+      const rowsPerPage = 1000;
+      
+      while (hasMoreRecords && currentPage <= maxPages) {
+        console.log(`[Staff Homepage] Fetching page ${currentPage} of records...`);
+        
+        // Construct pagination parameters
+        const paginationParams = `page=${currentPage}&rows_per_page=${rowsPerPage}`;
+        const fullUrl = `${url}${filters ? `?filters=${filters}&${paginationParams}` : `?${paginationParams}`}`;
+        
+        const response = await retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: fullUrl,
+              type: 'GET',
+              headers: getKnackHeaders(),
+              data: { format: 'raw' },
+              success: resolve,
+              error: reject
+            });
+          });
+        });
+        
+        // Check if we got valid results
+        if (response && response.records && response.records.length > 0) {
+          console.log(`[Staff Homepage] Retrieved ${response.records.length} records from page ${currentPage}`);
+          allRecords = [...allRecords, ...response.records];
+          
+          // If we got fewer records than the page size, we've reached the end
+          if (response.records.length < rowsPerPage) {
+            hasMoreRecords = false;
+            console.log(`[Staff Homepage] Reached end of records with ${response.records.length} < ${rowsPerPage}`);
+          } else {
+            currentPage++;
+          }
+        } else {
+          // No (more) records found
+          hasMoreRecords = false;
+          console.log(`[Staff Homepage] No more records found on page ${currentPage}`);
+        }
+      }
+      
+      console.log(`[Staff Homepage] Total records retrieved through pagination: ${allRecords.length}`);
+      return allRecords;
+    } catch (error) {
+      console.error(`[Staff Homepage] Pagination error:`, error);
+      return [];
+    }
+  }
+  
+  // Helper function to check if user has a teaching role (tutor, HoY, subject teacher)
+  function hasTeachingRole(roles) {
+    if (!roles || !Array.isArray(roles)) {
+      return false;
+    }
+    
+    // Check for teaching roles
+    return roles.some(role => {
+      if (typeof role !== 'string') return false;
+      
+      const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
+      
+      return normalizedRole.includes('tutor') || 
+             normalizedRole.includes('headofyear') ||
+             normalizedRole.includes('subjectteacher');
+    });
   }
 
   // --- Staff Profile Data Management ---
@@ -587,45 +663,39 @@
       const sanitizedSchoolName = sanitizeField(schoolName);
       console.log(`[Staff Homepage] Getting VESPA results for school: "${sanitizedSchoolName}" with ID: ${schoolId}`);
       
-      // FIX: Try different approaches to filter for connected records
-      // For connections, we need to modify our approach
+      // Show loading indicator for pagination
+      console.log("[Staff Homepage] Fetching ALL school VESPA results using pagination (this may take a moment)...");
       
       // First approach: Use the schoolId directly in a contains filter
-      const schoolIdFilter = encodeURIComponent(JSON.stringify({
+      const schoolIdFilter = JSON.stringify({
         match: 'and',
         rules: [
           { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
         ]
-      }));
+      });
       
-      console.log(`[Staff Homepage] Trying VESPA results filter with schoolId:`, decodeURIComponent(schoolIdFilter));
+      console.log(`[Staff Homepage] Trying VESPA results filter with schoolId:`, schoolIdFilter);
       
-      let response = await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/object_10/records?filters=${schoolIdFilter}&limit=500&sort_field=id&sort_order=asc`,
-            type: 'GET',
-            headers: getKnackHeaders(),
-            data: { format: 'raw' },
-            success: resolve,
-            error: reject
-          });
-        });
-      }).catch(error => {
-        console.warn('[Staff Homepage] Error with schoolId filter approach:', error);
-        return { records: [] };
+      // Use pagination to get ALL records - not just the default 25 or limited 500
+      let allRecords = await getAllRecordsWithPagination(
+        `${KNACK_API_URL}/objects/object_10/records`, 
+        encodeURIComponent(schoolIdFilter),
+        20 // Allow up to 20 pages = 20,000 student records with 1000 per page
+      ).catch(error => {
+        console.warn('[Staff Homepage] Error with schoolId pagination:', error);
+        return [];
       });
       
       // If we got results with the ID approach, use them
-      if (response && response.records && response.records.length > 0) {
-        console.log(`[Staff Homepage] VESPA results API schoolId filter success: Found ${response.records.length} records`);
-      } 
+      if (allRecords && allRecords.length > 0) {
+        console.log(`[Staff Homepage] VESPA results API schoolId filter pagination success: Found ${allRecords.length} total records`);
+      }
       // If not, try the name approach
       else {
         console.log('[Staff Homepage] SchoolId filter returned no results, trying with name filter');
         
         // Alternative approach: Try using the school name with different operators
-        const nameFilters = encodeURIComponent(JSON.stringify({
+        const nameFilters = JSON.stringify({
           match: 'or',
           rules: [
             { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: sanitizedSchoolName },
@@ -636,33 +706,26 @@
             { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA ACADEMY" },
             { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA Academy" }
           ]
-        }));
-        
-        console.log(`[Staff Homepage] Trying VESPA results filter with name approaches:`, decodeURIComponent(nameFilters));
-        
-        response = await retryApiCall(() => {
-          return new Promise((resolve, reject) => {
-            $.ajax({
-              url: `${KNACK_API_URL}/objects/object_10/records?filters=${nameFilters}&limit=500&sort_field=id&sort_order=asc`,
-              type: 'GET',
-              headers: getKnackHeaders(),
-              data: { format: 'raw' },
-              success: resolve,
-              error: reject
-            });
-          });
-        }).catch(error => {
-          console.error('[Staff Homepage] Error with name filter approach:', error);
-          return { records: [] };
         });
         
-        console.log(`[Staff Homepage] VESPA results API name filter response:`, 
-                   response ? `Found ${response.records?.length || 0} records` : 'No response');
+        console.log(`[Staff Homepage] Trying VESPA results filter with name approaches:`, nameFilters);
+        
+        // Use pagination with name filters
+        allRecords = await getAllRecordsWithPagination(
+          `${KNACK_API_URL}/objects/object_10/records`, 
+          encodeURIComponent(nameFilters),
+          20 // Allow up to 20 pages = 20,000 student records with 1000 per page
+        ).catch(error => {
+          console.error('[Staff Homepage] Error with name filter pagination:', error);
+          return [];
+        });
+        
+        console.log(`[Staff Homepage] VESPA results API name filter pagination response: Found ${allRecords.length} total records`);
       }
       
       // Process results if we found any with any approach
-      if (response && response.records && response.records.length > 0) {
-        debugLog(`Found ${response.records.length} VESPA results for school:`, schoolId);
+      if (allRecords && allRecords.length > 0) {
+        debugLog(`Found ${allRecords.length} VESPA results for school:`, schoolId);
         
         // Calculate averages for each VESPA category, excluding null or zero values
         const totals = {
@@ -681,7 +744,7 @@
           return (!isNaN(parsed) && parsed > 0) ? parsed : null;
         };
         
-        for (const record of response.records) {
+        for (const record of allRecords) {
           // Get valid values for each category
           const vision = getValidValue(record[FIELD_MAPPING.vision]);
           const effort = getValidValue(record[FIELD_MAPPING.effort]);
@@ -728,7 +791,9 @@
           systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
           practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
           attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
-          count: totals.totalCount
+          count: totals.totalCount,
+          // Add data source info for the chart display
+          label: "All Students"
         };
           
         debugLog("Calculated school VESPA averages:", averages);
@@ -754,16 +819,9 @@
       const schoolName = sanitizeField(await getSchoolName(schoolId));
       console.log(`[Staff Homepage] Looking for staff (${staffEmail}) students in school: "${schoolName}"`);
       
-      // Check if user is only a Staff Admin (they should see only one graph)
-      const isOnlyStaffAdmin = isStaffAdmin(userRoles) && 
-                                userRoles.length === 1 && 
-                                userRoles[0].toLowerCase().includes('admin');
-      
-      if (isOnlyStaffAdmin) {
-        console.log("[Staff Homepage] User is only a Staff Admin - showing only school graph");
-        return null;
-      }
-      
+      // Even if user is only a staff admin, we'll check if they have any students associated
+      // This is a change from previous behavior to support the new chart design
+
       // Role hierarchy for users with multiple roles:
       // 1. Tutor (highest priority)
       // 2. Head of Year 
@@ -789,113 +847,99 @@
       }
       
       // Based on role hierarchy, determine which students to show
-      let resultsToUse = null;
+      let allRecords = [];
       let roleUsed = "none";
       
       if (useTutorRole) {
-        // FIX: Updated approach for tutor records (highest priority) - use contains
-        const tutorFilter = encodeURIComponent(JSON.stringify({
+        // First priority: Tutor - use pagination to get ALL records
+        const tutorFilter = JSON.stringify({
           match: 'and',
           rules: [
             { field: FIELD_MAPPING.tutor, operator: 'contains', value: staffEmail },
             { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
           ]
-        }));
-        
-        const tutorResults = await retryApiCall(() => {
-          return new Promise((resolve, reject) => {
-            $.ajax({
-              url: `${KNACK_API_URL}/objects/object_10/records?filters=${tutorFilter}`,
-              type: 'GET',
-              headers: getKnackHeaders(),
-              data: { format: 'raw' },
-              success: resolve,
-              error: reject
-            });
-          });
-        }).catch(error => {
-          console.error('[Staff Homepage] Error getting tutor VESPA results:', error);
-          return { records: [] };
         });
         
-        if (tutorResults.records && tutorResults.records.length > 0) {
-          resultsToUse = tutorResults.records;
+        console.log("[Staff Homepage] Fetching ALL tutor group VESPA results using pagination...");
+        
+        allRecords = await getAllRecordsWithPagination(
+          `${KNACK_API_URL}/objects/object_10/records`, 
+          encodeURIComponent(tutorFilter),
+          10 // Allow up to 10 pages = 10,000 student records with 1000 per page
+        ).catch(error => {
+          console.error('[Staff Homepage] Error getting tutor VESPA results with pagination:', error);
+          return [];
+        });
+        
+        if (allRecords && allRecords.length > 0) {
+          console.log(`[Staff Homepage] Found ${allRecords.length} total students as Tutor via pagination`);
           roleUsed = "Tutor";
         }
       }
       
-      if (!resultsToUse && useHeadOfYearRole) {
-        // FIX: Updated approach for Head of Year records (medium priority) - use contains
-        const headOfYearFilter = encodeURIComponent(JSON.stringify({
+      if (allRecords.length === 0 && useHeadOfYearRole) {
+        // Second priority: Head of Year - use pagination
+        const headOfYearFilter = JSON.stringify({
           match: 'and',
           rules: [
             { field: FIELD_MAPPING.headOfYear, operator: 'contains', value: staffEmail },
             { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
           ]
-        }));
-        
-        const headOfYearResults = await retryApiCall(() => {
-          return new Promise((resolve, reject) => {
-            $.ajax({
-              url: `${KNACK_API_URL}/objects/object_10/records?filters=${headOfYearFilter}`,
-              type: 'GET',
-              headers: getKnackHeaders(),
-              data: { format: 'raw' },
-              success: resolve,
-              error: reject
-            });
-          });
-        }).catch(error => {
-          console.error('[Staff Homepage] Error getting head of year VESPA results:', error);
-          return { records: [] };
         });
         
-        if (headOfYearResults.records && headOfYearResults.records.length > 0) {
-          resultsToUse = headOfYearResults.records;
+        console.log("[Staff Homepage] Fetching ALL head of year VESPA results using pagination...");
+        
+        allRecords = await getAllRecordsWithPagination(
+          `${KNACK_API_URL}/objects/object_10/records`, 
+          encodeURIComponent(headOfYearFilter),
+          10 // Allow up to 10 pages = 10,000 student records with 1000 per page
+        ).catch(error => {
+          console.error('[Staff Homepage] Error getting head of year VESPA results with pagination:', error);
+          return [];
+        });
+        
+        if (allRecords && allRecords.length > 0) {
+          console.log(`[Staff Homepage] Found ${allRecords.length} total students as Head of Year via pagination`);
           roleUsed = "Head of Year";
         }
       }
       
-      if (!resultsToUse && useSubjectTeacherRole) {
-        // FIX: Updated approach for Subject Teacher records (lowest priority) - use contains 
-        const subjectTeacherFilter = encodeURIComponent(JSON.stringify({
+      if (allRecords.length === 0 && useSubjectTeacherRole) {
+        // Third priority: Subject Teacher - use pagination
+        const subjectTeacherFilter = JSON.stringify({
           match: 'and',
           rules: [
             { field: FIELD_MAPPING.subjectTeacher, operator: 'contains', value: staffEmail },
             { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
           ]
-        }));
-        
-        const subjectTeacherResults = await retryApiCall(() => {
-          return new Promise((resolve, reject) => {
-            $.ajax({
-              url: `${KNACK_API_URL}/objects/object_10/records?filters=${subjectTeacherFilter}`,
-              type: 'GET',
-              headers: getKnackHeaders(),
-              data: { format: 'raw' },
-              success: resolve,
-              error: reject
-            });
-          });
-        }).catch(error => {
-          console.error('[Staff Homepage] Error getting subject teacher VESPA results:', error);
-          return { records: [] };
         });
         
-        if (subjectTeacherResults.records && subjectTeacherResults.records.length > 0) {
-          resultsToUse = subjectTeacherResults.records;
+        console.log("[Staff Homepage] Fetching ALL subject teacher VESPA results using pagination...");
+        
+        allRecords = await getAllRecordsWithPagination(
+          `${KNACK_API_URL}/objects/object_10/records`, 
+          encodeURIComponent(subjectTeacherFilter),
+          10 // Allow up to 10 pages = 10,000 student records with 1000 per page
+        ).catch(error => {
+          console.error('[Staff Homepage] Error getting subject teacher VESPA results with pagination:', error);
+          return [];
+        });
+        
+        if (allRecords && allRecords.length > 0) {
+          console.log(`[Staff Homepage] Found ${allRecords.length} total students as Subject Teacher via pagination`);
           roleUsed = "Subject Teacher";
         }
       }
       
       // If no connected students found based on role hierarchy, return null
-      if (!resultsToUse || resultsToUse.length === 0) {
+      if (allRecords.length === 0) {
+        console.log("[Staff Homepage] No student records found for this staff member in any role");
         return null;
       }
       
-      debugLog(`Using ${roleUsed} role for staff results with ${resultsToUse.length} students`);
+      debugLog(`Using ${roleUsed} role for staff results with ${allRecords.length} students`);
       
-      // Calculate averages for each VESPA category, excluding null or zero values (same as school calculation)
+      // Calculate averages for each VESPA category, excluding null or zero values
       const totals = {
         vision: { sum: 0, count: 0 },
         effort: { sum: 0, count: 0 },
@@ -912,7 +956,7 @@
         return (!isNaN(parsed) && parsed > 0) ? parsed : null;
       };
       
-      for (const record of resultsToUse) {
+      for (const record of allRecords) {
         // Get valid values for each category
         const vision = getValidValue(record[FIELD_MAPPING.vision]);
         const effort = getValidValue(record[FIELD_MAPPING.effort]);
@@ -959,7 +1003,10 @@
         systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
         practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
         attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
-        count: totals.totalCount
+        count: totals.totalCount,
+        // Add role information and label for chart display
+        roleUsed: roleUsed,
+        label: `My ${roleUsed} Students`
       };
       
       debugLog("Calculated staff connected students VESPA averages:", averages);
@@ -994,227 +1041,15 @@
       const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
       console.log(`[Staff Homepage] Checking role: ${role}, normalized: ${normalizedRole}`);
       
-      return normalizedRole.includes('staffadmin') || 
-             normalizedRole.includes('admin');
+      // More precise match to avoid false positives with other roles containing "admin"
+      return normalizedRole === 'staffadmin' || 
+             normalizedRole === 'staff admin' ||
+             role === 'Staff Admin';
     });
-  }
-// --- Helper Functions ---
-  // Debug logging helper
-  function debugLog(title, data) {
-    if (!DEBUG_MODE) return;
-    
-    console.log(`%c[Staff Homepage] ${title}`, 'color: #7f31a4; font-weight: bold; font-size: 12px;');
-    try {
-      if (data !== undefined) {
-        console.log(JSON.parse(JSON.stringify(data, null, 2)));
-      }
-    } catch (e) {
-      console.log("Data could not be fully serialized for logging:", data);
-    }
-    return data;
-  }
-
-  // Safe JSON parsing function
-  function safeParseJSON(jsonString, defaultVal = null) {
-    if (!jsonString) return defaultVal;
-    try {
-      // If it's already an object, return it directly
-      if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
-      return JSON.parse(jsonString);
-    } catch (error) {
-      console.warn("[Staff Homepage] JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
-      try {
-        const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
-        const recovered = cleanedString
-          .replace(/\\"/g, '"')
-          .replace(/,\s*([}\]])/g, '$1');
-        const result = JSON.parse(recovered);
-        console.log("[Staff Homepage] JSON recovery successful.");
-        return result;
-      } catch (secondError) {
-        console.error("[Staff Homepage] JSON recovery failed:", secondError);
-        return defaultVal;
-      }
-    }
-  }
-
-  // Check if a string is a valid Knack record ID
-  function isValidKnackId(id) {
-    if (!id) return false;
-    return typeof id === 'string' && /^[0-9a-f]{24}$/i.test(id);
-  }
-
-  // Extract a valid record ID from various formats - improved version with array handling
-  function extractValidRecordId(value) {
-    if (!value) return null;
-    
-    console.log('[Staff Homepage] Extracting valid record ID from value type:', typeof value, value);
-
-    // Handle objects (most common case in Knack connections)
-    if (typeof value === 'object' && value !== null) {
-      // Check for direct ID property
-      if (value.id && isValidKnackId(value.id)) {
-        console.log('[Staff Homepage] Found valid ID in object.id:', value.id);
-        return value.id;
-      }
-      
-      // Check for identifier property
-      if (value.identifier && isValidKnackId(value.identifier)) {
-        console.log('[Staff Homepage] Found valid ID in object.identifier:', value.identifier);
-        return value.identifier;
-      }
-      
-      // Handle arrays from connection fields
-      if (Array.isArray(value)) {
-        console.log('[Staff Homepage] Value is an array with length:', value.length);
-        
-        // Handle single item array
-        if (value.length === 1) {
-          if (typeof value[0] === 'object' && value[0].id) {
-            console.log('[Staff Homepage] Found valid ID in array[0].id:', value[0].id);
-            return isValidKnackId(value[0].id) ? value[0].id : null;
-          }
-          if (typeof value[0] === 'string' && isValidKnackId(value[0])) {
-            console.log('[Staff Homepage] Found valid ID as string in array[0]:', value[0]);
-            return value[0];
-          }
-        }
-        
-        // IMPORTANT: Handle arrays with multiple items
-        if (value.length > 1) {
-          console.log('[Staff Homepage] Processing multi-item array with length:', value.length);
-          
-          // First try to find an object with an ID property
-          for (let i = 0; i < value.length; i++) {
-            const item = value[i];
-            if (typeof item === 'object' && item !== null && item.id && isValidKnackId(item.id)) {
-              console.log(`[Staff Homepage] Found valid ID in array[${i}].id:`, item.id);
-              return item.id;
-            }
-          }
-          
-          // Then try to find a string that is a valid ID
-          for (let i = 0; i < value.length; i++) {
-            const item = value[i];
-            if (typeof item === 'string' && isValidKnackId(item)) {
-              console.log(`[Staff Homepage] Found valid ID as string in array[${i}]:`, item);
-              return item;
-            }
-          }
-          
-          // If we have objects with identifiers, use the first one
-          for (let i = 0; i < value.length; i++) {
-            const item = value[i];
-            if (typeof item === 'object' && item !== null && item.identifier && isValidKnackId(item.identifier)) {
-              console.log(`[Staff Homepage] Found valid ID in array[${i}].identifier:`, item.identifier);
-              return item.identifier;
-            }
-          }
-          
-          // Log that we couldn't find a valid ID in the array
-          console.log('[Staff Homepage] No valid IDs found in multi-item array');
-        }
-      }
-      
-      // Check for '_id' property which is sometimes used
-      if (value._id && isValidKnackId(value._id)) {
-        console.log('[Staff Homepage] Found valid ID in object._id:', value._id);
-        return value._id;
-      }
-    }
-
-    // If it's a direct string ID
-    if (typeof value === 'string') {
-      if (isValidKnackId(value)) {
-        console.log('[Staff Homepage] Value is a valid ID string:', value);
-        return value;
-      } else {
-        console.log('[Staff Homepage] String is not a valid Knack ID:', value);
-      }
-    }
-
-    console.log('[Staff Homepage] No valid record ID found in value');
-    return null;
-  }
-
-  // Safely remove HTML from strings
-  function sanitizeField(value) {
-    if (value === null || value === undefined) return "";
-    const strValue = String(value);
-    let sanitized = strValue.replace(/<[^>]*?>/g, "");
-    sanitized = sanitized.replace(/[*_~`#]/g, "");
-    sanitized = sanitized
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#039;/g, "'")
-      .replace(/&nbsp;/g, " ");
-    return sanitized.trim();
-  }
-
-  // Generic retry function for API calls
-  function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
-    return new Promise((resolve, reject) => {
-      const attempt = (retryCount) => {
-        apiCall()
-          .then(resolve)
-          .catch((error) => {
-            const attemptsMade = retryCount + 1;
-            console.warn(`API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
-
-            if (retryCount < maxRetries - 1) {
-              const retryDelay = delay * Math.pow(2, retryCount);
-              console.log(`Retrying API call in ${retryDelay}ms...`);
-              setTimeout(() => attempt(retryCount + 1), retryDelay);
-            } else {
-              console.error(`API call failed after ${maxRetries} attempts.`);
-              reject(error);
-            }
-          });
-      };
-      attempt(0);
-    });
-  }
-
-  // Helper to get standard Knack API headers
-  function getKnackHeaders() {
-    // Reading knackAppId and knackApiKey from config
-    const config = window.STAFFHOMEPAGE_CONFIG;
-    
-    console.log("[Staff Homepage] Config for headers:", JSON.stringify(config));
-    
-    // Fallback to using Knack's global application ID if not in config
-    const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
-    // Use our known API key if not in config
-    const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '8f733aa5-dd35-4464-8348-64824d1f5f0d';
-    
-    console.log(`[Staff Homepage] Using AppID: ${knackAppId}`);
-    
-    if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-      console.error("[Staff Homepage] Knack object or getUserToken function not available.");
-      throw new Error("Knack authentication context not available.");
-    }
-    
-    const token = Knack.getUserToken();
-    if (!token) {
-      console.warn("[Staff Homepage] Knack user token is null or undefined. API calls may fail.");
-    }
-    
-    const headers = {
-      'X-Knack-Application-Id': knackAppId,
-      'X-Knack-REST-API-Key': knackApiKey,
-      'Authorization': token || '',
-      'Content-Type': 'application/json'
-    };
-    
-    console.log("[Staff Homepage] Headers being used:", JSON.stringify(headers));
-    
-    return headers;
   }
 
   // --- UI Rendering ---
-  // Render the profile section
+
   function renderProfileSection(profileData, hasAdminRole) {
     let dashboardButton = '';
     if (hasAdminRole) {
@@ -1307,25 +1142,25 @@
       `;
     }
     
-    const showComparison = staffResults && !hasAdminRole;
+    // Get the appropriate title based on whether we have staff results
+    let chartTitle = "School VESPA Results";
+    let countDisplay = `${schoolResults.count} students`;
+    
+    if (staffResults) {
+      // If we have both school and staff results, show a comparison title
+      chartTitle = "VESPA Results Comparison";
+      countDisplay = `School: ${schoolResults.count} students | ${staffResults.roleUsed}: ${staffResults.count} students`;
+    }
     
     return `
       <section class="vespa-section dashboard-section">
         <h2 class="vespa-section-title">VESPA Dashboard</h2>
-        <div class="charts-container ${showComparison ? 'dual-charts' : 'single-chart'}">
+        <div class="charts-container">
           <div class="chart-wrapper">
-            <h3 class="chart-title">School VESPA Results</h3>
-            <div class="result-count">${schoolResults.count} students</div>
-            <canvas id="schoolChart"></canvas>
+            <h3 class="chart-title">${chartTitle}</h3>
+            <div class="result-count">${countDisplay}</div>
+            <canvas id="vespaChart"></canvas>
           </div>
-          
-          ${showComparison ? `
-            <div class="chart-wrapper">
-              <h3 class="chart-title">Your Students' VESPA Results</h3>
-              <div class="result-count">${staffResults.count} students</div>
-              <canvas id="staffChart"></canvas>
-            </div>
-          ` : ''}
         </div>
       </section>
     `;
@@ -1360,137 +1195,136 @@
   function createCharts(schoolResults, staffResults, hasAdminRole) {
     if (!schoolResults) return;
     
-    // Create school chart
-    const schoolChartCtx = document.getElementById('schoolChart');
-    if (schoolChartCtx) {
-      new Chart(schoolChartCtx, {
-        type: 'bar',
-        data: {
-          labels: ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'],
-          datasets: [{
-            label: 'School Average',
-            data: [
-              schoolResults.vision,
-              schoolResults.effort,
-              schoolResults.systems,
-              schoolResults.practice,
-              schoolResults.attitude
-            ],
-            backgroundColor: [
-              VESPA_COLORS.VISION,
-              VESPA_COLORS.EFFORT,
-              VESPA_COLORS.SYSTEMS,
-              VESPA_COLORS.PRACTICE,
-              VESPA_COLORS.ATTITUDE
-            ],
-            borderColor: [
-              VESPA_COLORS.VISION,
-              VESPA_COLORS.EFFORT,
-              VESPA_COLORS.SYSTEMS,
-              VESPA_COLORS.PRACTICE,
-              VESPA_COLORS.ATTITUDE
-            ],
-            borderWidth: 1
-          }]
-        },
-        options: {
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 10,
-              grid: {
-                color: 'rgba(255, 255, 255, 0.1)'
-              },
-              ticks: {
-                color: 'rgba(255, 255, 255, 0.7)'
-              }
-            },
-            x: {
-              grid: {
-                color: 'rgba(255, 255, 255, 0.1)'
-              },
-              ticks: {
-                color: 'rgba(255, 255, 255, 0.7)'
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: false
-            }
-          },
-          responsive: true,
-          maintainAspectRatio: false
-        }
+    // Get the chart container
+    const chartCtx = document.getElementById('vespaChart');
+    if (!chartCtx) {
+      console.error("[Staff Homepage] Chart canvas element not found");
+      return;
+    }
+    
+    // Prepare datasets for the chart
+    const datasets = [];
+    
+    // School results dataset (always included)
+    datasets.push({
+      label: schoolResults.label || 'All Students',
+      data: [
+        schoolResults.vision,
+        schoolResults.effort,
+        schoolResults.systems,
+        schoolResults.practice,
+        schoolResults.attitude
+      ],
+      // Use lighter shades for school results
+      backgroundColor: [
+        VESPA_COLORS.VISION + '99', // Add transparency
+        VESPA_COLORS.EFFORT + '99',
+        VESPA_COLORS.SYSTEMS + '99',
+        VESPA_COLORS.PRACTICE + '99',
+        VESPA_COLORS.ATTITUDE + '99'
+      ],
+      borderColor: [
+        VESPA_COLORS.VISION,
+        VESPA_COLORS.EFFORT,
+        VESPA_COLORS.SYSTEMS,
+        VESPA_COLORS.PRACTICE,
+        VESPA_COLORS.ATTITUDE
+      ],
+      borderWidth: 1
+    });
+    
+    // Staff results dataset (if available)
+    if (staffResults) {
+      datasets.push({
+        label: staffResults.label || `Your Students`,
+        data: [
+          staffResults.vision,
+          staffResults.effort,
+          staffResults.systems,
+          staffResults.practice,
+          staffResults.attitude
+        ],
+        // Use darker/more saturated colors for staff results
+        backgroundColor: [
+          VESPA_COLORS.VISION,
+          VESPA_COLORS.EFFORT,
+          VESPA_COLORS.SYSTEMS,
+          VESPA_COLORS.PRACTICE,
+          VESPA_COLORS.ATTITUDE
+        ],
+        borderColor: [
+          VESPA_COLORS.VISION,
+          VESPA_COLORS.EFFORT,
+          VESPA_COLORS.SYSTEMS,
+          VESPA_COLORS.PRACTICE,
+          VESPA_COLORS.ATTITUDE
+        ],
+        borderWidth: 1
       });
     }
     
-    // Create staff chart if applicable
-    if (staffResults && !hasAdminRole) {
-      const staffChartCtx = document.getElementById('staffChart');
-      if (staffChartCtx) {
-        new Chart(staffChartCtx, {
-          type: 'bar',
-          data: {
-            labels: ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'],
-            datasets: [{
-              label: 'Your Students',
-              data: [
-                staffResults.vision,
-                staffResults.effort,
-                staffResults.systems,
-                staffResults.practice,
-                staffResults.attitude
-              ],
-              backgroundColor: [
-                VESPA_COLORS.VISION,
-                VESPA_COLORS.EFFORT,
-                VESPA_COLORS.SYSTEMS,
-                VESPA_COLORS.PRACTICE,
-                VESPA_COLORS.ATTITUDE
-              ],
-              borderColor: [
-                VESPA_COLORS.VISION,
-                VESPA_COLORS.EFFORT,
-                VESPA_COLORS.SYSTEMS,
-                VESPA_COLORS.PRACTICE,
-                VESPA_COLORS.ATTITUDE
-              ],
-              borderWidth: 1
-            }]
+    // Create the grouped bar chart
+    new Chart(chartCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'],
+        datasets: datasets
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 10,
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.7)'
+            }
           },
-          options: {
-            scales: {
-              y: {
-                beginAtZero: true,
-                max: 10,
-                grid: {
-                  color: 'rgba(255, 255, 255, 0.1)'
-                },
-                ticks: {
-                  color: 'rgba(255, 255, 255, 0.7)'
-                }
-              },
-              x: {
-                grid: {
-                  color: 'rgba(255, 255, 255, 0.1)'
-                },
-                ticks: {
-                  color: 'rgba(255, 255, 255, 0.7)'
-                }
-              }
+          x: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
             },
-            plugins: {
-              legend: {
-                display: false
-              }
-            },
-            responsive: true,
-            maintainAspectRatio: false
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.7)'
+            }
           }
-        });
+        },
+        plugins: {
+          legend: {
+            display: true, // Show legend to differentiate the datasets
+            position: 'top',
+            labels: {
+              color: 'rgba(255, 255, 255, 0.9)',
+              font: {
+                size: 12
+              },
+              padding: 15
+            }
+          },
+          tooltip: {
+            callbacks: {
+              title: function(tooltipItems) {
+                return tooltipItems[0].label; // e.g., "Vision"
+              },
+              label: function(context) {
+                const label = context.dataset.label || '';
+                const value = context.parsed.y;
+                return `${label}: ${value}`;
+              },
+              footer: function(tooltipItems) {
+                const datasetIndex = tooltipItems[0].datasetIndex;
+                const count = datasetIndex === 0 ? schoolResults.count : staffResults?.count;
+                return `Based on ${count} students`;
+              }
+            }
+          }
+        },
+        responsive: true,
+        maintainAspectRatio: false
       }
-    }
+    });
   }
   
   // Set up tooltips for app cards
@@ -2048,7 +1882,8 @@
       `;
     }
   }
- // --- Main Initialization ---
+  
+  // --- Main Initialization ---
   // Initialize the staff homepage
   window.initializeStaffHomepage = function() {
     debugLog("Initializing Staff Homepage...");
@@ -2070,3 +1905,4 @@
   }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
+
