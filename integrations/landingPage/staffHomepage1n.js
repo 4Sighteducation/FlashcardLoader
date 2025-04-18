@@ -809,6 +809,7 @@
   }
   
   // Get VESPA results for staff's connected students
+// Get VESPA results for staff's connected students
 async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     if (!staffEmail || !schoolId) {
       console.error("[Staff Homepage] Cannot get staff VESPA results: Missing email or schoolId");
@@ -821,18 +822,10 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       console.log(`[Staff Homepage] Looking for staff (${staffEmail}) students in school: "${schoolName}"`);
       
       // Add extra debugging to help diagnose tutor connections
-      console.log(`[Staff Homepage] DEBUG - Looking for records where tutor field (${FIELD_MAPPING.tutor}) contains email ${staffEmail}`);
+      console.log(`[Staff Homepage] DEBUG - Looking for records where connection fields contain email ${staffEmail}`);
       console.log(`[Staff Homepage] DEBUG - Staff roles: ${JSON.stringify(userRoles)}`);
       
-      // Even if user is only a staff admin, we'll check if they have any students associated
-      // This is a change from previous behavior to support the new chart design
-  
-      // Role hierarchy for users with multiple roles:
-      // 1. Tutor (highest priority)
-      // 2. Head of Year 
-      // 3. Subject Teacher (lowest priority)
-      
-      // First, check if the user is a tutor
+      // Determine which roles the user has
       let useTutorRole = false;
       let useHeadOfYearRole = false;
       let useSubjectTeacherRole = false;
@@ -855,90 +848,107 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
         }
       }
       
-      // Based on role hierarchy, determine which students to show
-      let allRecords = [];
-      let roleUsed = "none";
-      
-      // Create a comprehensive single query for all staff connection types
-      const staffConnectionFilter = JSON.stringify({
+      // Just get all school records in one go - more reliable than API filtering
+      const schoolFilter = JSON.stringify({
         match: 'and',
         rules: [
-          // School filter remains the same
-          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId },
-          // Check all possible connection fields with exact email matching
-          {
-            match: 'or',
-            rules: [
-              { field: FIELD_MAPPING.tutor, operator: 'is', value: staffEmail },         // Tutor
-              { field: FIELD_MAPPING.headOfYear, operator: 'is', value: staffEmail },    // Head of Year
-              { field: FIELD_MAPPING.subjectTeacher, operator: 'is', value: staffEmail }, // Subject Teacher
-              { field: FIELD_MAPPING.staffAdmin, operator: 'is', value: staffEmail }      // Staff Admin (new field)
-            ]
-          }
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
         ]
       });
       
-      console.log("[Staff Homepage] Using optimized staff connection filter:", staffConnectionFilter);
+      console.log("[Staff Homepage] Fetching ALL school records to filter locally");
       
-      // Limit pagination to 2 pages (2,000 records max) for performance
-      allRecords = await getAllRecordsWithPagination(
+      // Get all school records
+      const allSchoolRecords = await getAllRecordsWithPagination(
         `${KNACK_API_URL}/objects/object_10/records`, 
-        encodeURIComponent(staffConnectionFilter),
-        2 // Limit to 2 pages maximum for performance
+        encodeURIComponent(schoolFilter),
+        10 // Reasonable limit for pagination
       ).catch(error => {
-        console.error('[Staff Homepage] Error getting student connection records:', error);
+        console.error('[Staff Homepage] Error getting school records:', error);
         return [];
       });
       
-      // If no records found, check sample records to diagnose connection format
-      if (allRecords.length === 0) {
-        console.log("[Staff Homepage] No student records found - fetching sample records to inspect field formats");
+      console.log(`[Staff Homepage] Retrieved ${allSchoolRecords.length} total school records`);
+      
+      // Debug: Log a few sample records to see field structure
+      if (allSchoolRecords.length > 0) {
+        console.log("[Staff Homepage] Sample record connection fields:");
+        const sampleRecord = allSchoolRecords[0];
+        console.log("- Tutor field:", sampleRecord[FIELD_MAPPING.tutor]);
+        console.log("- HoY field:", sampleRecord[FIELD_MAPPING.headOfYear]);
+        console.log("- Subject Teacher field:", sampleRecord[FIELD_MAPPING.subjectTeacher]);
+        console.log("- Staff Admin field:", sampleRecord[FIELD_MAPPING.staffAdmin]);
+      }
+      
+      // Function to check if a field contains the exact email
+      const fieldContainsEmail = (field, email) => {
+        // Handle null/undefined fields
+        if (!field) return false;
         
-        // Get a few sample student records to inspect connection field formats
-        const sampleFilter = JSON.stringify({
-          match: 'and',
-          rules: [
-            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
-          ]
-        });
-        
-        const sampleRecords = await getAllRecordsWithPagination(
-          `${KNACK_API_URL}/objects/object_10/records`, 
-          encodeURIComponent(sampleFilter),
-          1 // Just 1 page
-        ).catch(error => {
-          console.error('[Staff Homepage] Error getting sample records:', error);
-          return [];
-        });
-        
-        if (sampleRecords.length > 0) {
-          // Log connection fields from a few sample records
-          for (let i = 0; i < Math.min(3, sampleRecords.length); i++) {
-            console.log(`[Staff Homepage] Sample record ${i+1}:`);
-            console.log(` - Tutor field:`, sampleRecords[i][FIELD_MAPPING.tutor]);
-            console.log(` - Head of Year field:`, sampleRecords[i][FIELD_MAPPING.headOfYear]);
-            console.log(` - Subject Teacher field:`, sampleRecords[i][FIELD_MAPPING.subjectTeacher]);
-            console.log(` - Staff Admin field:`, sampleRecords[i][FIELD_MAPPING.staffAdmin]);
+        // Convert to string if it's an object
+        let fieldValue = field;
+        if (typeof field === 'object') {
+          // Handle array specially
+          if (Array.isArray(field)) {
+            return field.some(item => 
+              (typeof item === 'string' && item.trim() === email) ||
+              (item && item.email === email)
+            );
           }
+          fieldValue = JSON.stringify(field);
+        } else {
+          fieldValue = String(field);
         }
         
-        // If no connected students found, return null
-        console.log("[Staff Homepage] No student records found for this staff member in any role");
+        // Split by common delimiters and check if any part is exactly our email
+        const parts = fieldValue.split(/[\s,;|"\n]+/);
+        return parts.some(part => part.trim() === email);
+      };
+      
+      // Filter the records manually based on role hierarchy
+      console.log("[Staff Homepage] Filtering records by connection fields...");
+      
+      let filteredRecords = [];
+      let roleUsed = "none";
+      
+      // Apply filtering based on role hierarchy
+      if (useTutorRole) {
+        filteredRecords = allSchoolRecords.filter(record => 
+          fieldContainsEmail(record[FIELD_MAPPING.tutor], staffEmail)
+        );
+        if (filteredRecords.length > 0) {
+          roleUsed = "Tutor";
+          console.log(`[Staff Homepage] Found ${filteredRecords.length} students connected as Tutor`);
+        }
+      }
+      
+      if (filteredRecords.length === 0 && useHeadOfYearRole) {
+        filteredRecords = allSchoolRecords.filter(record => 
+          fieldContainsEmail(record[FIELD_MAPPING.headOfYear], staffEmail)
+        );
+        if (filteredRecords.length > 0) {
+          roleUsed = "Head of Year";
+          console.log(`[Staff Homepage] Found ${filteredRecords.length} students connected as Head of Year`);
+        }
+      }
+      
+      if (filteredRecords.length === 0 && useSubjectTeacherRole) {
+        filteredRecords = allSchoolRecords.filter(record => 
+          fieldContainsEmail(record[FIELD_MAPPING.subjectTeacher], staffEmail)
+        );
+        if (filteredRecords.length > 0) {
+          roleUsed = "Subject Teacher";
+          console.log(`[Staff Homepage] Found ${filteredRecords.length} students connected as Subject Teacher`);
+        }
+      }
+      
+      // If we found no connected students based on role, return null
+      if (filteredRecords.length === 0) {
+        console.log("[Staff Homepage] No connected students found for this staff member");
         return null;
       }
       
-      // Determine which role was used based on role hierarchy
-      if (useTutorRole) {
-        roleUsed = "Tutor";
-      } else if (useHeadOfYearRole) {
-        roleUsed = "Head of Year";
-      } else if (useSubjectTeacherRole) {
-        roleUsed = "Subject Teacher";
-      } else if (useStaffAdminRole) {
-        roleUsed = "Staff Admin";
-      }
-      
-      console.log(`[Staff Homepage] Using ${roleUsed} role for staff results with ${allRecords.length} students`);
+      console.log(`[Staff Homepage] Using ${roleUsed} role for staff results with ${filteredRecords.length} students`);
       
       // Calculate averages for each VESPA category, excluding null or zero values
       const totals = {
@@ -957,7 +967,7 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
         return (!isNaN(parsed) && parsed > 0) ? parsed : null;
       };
       
-      for (const record of allRecords) {
+      for (const record of filteredRecords) {
         // Get valid values for each category
         const vision = getValidValue(record[FIELD_MAPPING.vision]);
         const effort = getValidValue(record[FIELD_MAPPING.effort]);
@@ -1016,37 +1026,6 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       console.error('[Staff Homepage] Error getting staff VESPA results:', error);
       return null;
     }
-  }
-  
-  // Check if the user has staff admin role
-  function isStaffAdmin(roles) {
-    if (!roles || !Array.isArray(roles)) {
-      return false;
-    }
-    
-    // For debugging - log all roles
-    console.log("[Staff Homepage] Checking admin roles in:", roles);
-    
-    // Direct check for profile5 and profile6 (Staff Admin roles)
-    if (roles.includes('profile5') || roles.includes('profile6') || 
-        roles.includes('profile_5') || roles.includes('profile_6')) {
-      console.log("[Staff Homepage] Found direct Staff Admin role (profile5/profile6)");
-      return true;
-    }
-    
-    // Check if "Staff Admin" is in the roles array (case insensitive)
-    // Also check for variations like "staffadmin" without a space
-    return roles.some(role => {
-      if (typeof role !== 'string') return false;
-      
-      const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
-      console.log(`[Staff Homepage] Checking role: ${role}, normalized: ${normalizedRole}`);
-      
-      // More precise match to avoid false positives with other roles containing "admin"
-      return normalizedRole === 'staffadmin' || 
-             normalizedRole === 'staff admin' ||
-             role === 'Staff Admin';
-    });
   }
 
   // --- UI Rendering ---
