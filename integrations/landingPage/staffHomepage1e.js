@@ -529,14 +529,17 @@
       const filters = encodeURIComponent(JSON.stringify({
         match: 'and',
         rules: [
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA" }
         ]
       }));
       
+      console.log(`[Staff Homepage] Querying for VESPA results with filter:`, decodeURIComponent(filters));
+      
+      // Add limit parameter to handle large datasets better
       const response = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
-            url: `${KNACK_API_URL}/objects/object_10/records?filters=${filters}`,
+            url: `${KNACK_API_URL}/objects/object_10/records?filters=${filters}&limit=500&sort_field=id&sort_order=asc`,
             type: 'GET',
             headers: getKnackHeaders(),
             data: { format: 'raw' },
@@ -545,6 +548,9 @@
           });
         });
       });
+      
+      console.log(`[Staff Homepage] VESPA results API response status:`, 
+                 response ? `Found ${response.records?.length || 0} records` : 'No response');
       
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found ${response.records.length} VESPA results for school:`, schoolId);
@@ -863,6 +869,12 @@
     
     // For debugging - log all roles
     console.log("[Staff Homepage] Checking admin roles in:", roles);
+    
+    // Direct check for profile5 (Staff Admin role)
+    if (roles.includes('profile5')) {
+      console.log("[Staff Homepage] Found direct Staff Admin role (profile5)");
+      return true;
+    }
     
     // Check if "Staff Admin" is in the roles array (case insensitive)
     // Also check for variations like "staffadmin" without a space
@@ -1278,7 +1290,7 @@
       .vespa-section:nth-child(3) { animation-delay: 0.3s; }
       
       .vespa-section-title {
-        color: ${THEME.ACCENT};
+        color: #ffffff;  /* Changed from THEME.ACCENT to white as requested */
         font-size: 22px;
         font-weight: 600;
         margin-bottom: 16px;
@@ -1687,3 +1699,4 @@
   };
 
 })();
+
