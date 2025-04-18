@@ -398,7 +398,14 @@
       
       // First check if roles are in profile_keys_raw which is most reliable
       if (staffRecord.profile_keys_raw && Array.isArray(staffRecord.profile_keys_raw)) {
-        console.log('[Staff Homepage] Found profile_keys_raw:', staffRecord.profile_keys_raw);
+        console.log('[Staff Homepage] Profile keys raw detailed structure:', 
+          JSON.stringify(staffRecord.profile_keys_raw, null, 2));
+          
+        // Also log the first item to see all its properties
+        if (staffRecord.profile_keys_raw && staffRecord.profile_keys_raw.length > 0) {
+          console.log('First profile key raw object properties:', 
+            Object.keys(staffRecord.profile_keys_raw[0]));
+        }
         
         // Map profile keys to readable role names
         const profileKeyMap = {
@@ -1812,4 +1819,5 @@
   };
 
 })();
+
 
