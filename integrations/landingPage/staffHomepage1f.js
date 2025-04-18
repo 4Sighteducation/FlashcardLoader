@@ -1,3 +1,4 @@
+
 // Staff Homepage Integration Script for Knack - v1.0
 // This script enables an enhanced homepage with staff profile and app hubs
 (function() {
@@ -177,7 +178,7 @@
     return typeof id === 'string' && /^[0-9a-f]{24}$/i.test(id);
   }
 
-  // Extract a valid record ID from various formats
+  // Extract a valid record ID from various formats - improved version with array handling
   function extractValidRecordId(value) {
     if (!value) return null;
     
@@ -213,10 +214,39 @@
           }
         }
         
-        // For debugging, log contents of larger arrays
+        // IMPORTANT: Handle arrays with multiple items
         if (value.length > 1) {
-          console.log('[Staff Homepage] Array contains multiple items, first few are:', 
-                     value.slice(0, 3));
+          console.log('[Staff Homepage] Processing multi-item array with length:', value.length);
+          
+          // First try to find an object with an ID property
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            if (typeof item === 'object' && item !== null && item.id && isValidKnackId(item.id)) {
+              console.log(`[Staff Homepage] Found valid ID in array[${i}].id:`, item.id);
+              return item.id;
+            }
+          }
+          
+          // Then try to find a string that is a valid ID
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            if (typeof item === 'string' && isValidKnackId(item)) {
+              console.log(`[Staff Homepage] Found valid ID as string in array[${i}]:`, item);
+              return item;
+            }
+          }
+          
+          // If we have objects with identifiers, use the first one
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            if (typeof item === 'object' && item !== null && item.identifier && isValidKnackId(item.identifier)) {
+              console.log(`[Staff Homepage] Found valid ID in array[${i}].identifier:`, item.identifier);
+              return item.identifier;
+            }
+          }
+          
+          // Log that we couldn't find a valid ID in the array
+          console.log('[Staff Homepage] No valid IDs found in multi-item array');
         }
       }
       
@@ -520,22 +550,37 @@
     }
     
     try {
-      // Create filter to get all results for the school
-      // For proper school identification based on the logged-in user's school
+      // Get the school name for filtering
       const schoolName = sanitizeField(await getSchoolName(schoolId));
+      console.log(`[Staff Homepage] Getting VESPA results for school: "${schoolName}"`);
       
-      debugLog(`Using school filter to get all students from school: ${schoolName}`);
+      // Create filter for the school - using OR to handle case sensitivity issues with test school
+      let filterRules = [];
       
+      // Special handling for test school "VESPA ACADEMY" which might appear as "VESPA Academy" in UI
+      if (schoolName === "VESPA Academy" || schoolName === "VESPA ACADEMY") {
+        console.log('[Staff Homepage] Test school detected - adding both case variants to filter');
+        filterRules = [
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: "VESPA Academy" },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: "VESPA ACADEMY" }
+        ];
+      } else {
+        // Normal school - use exact match with the name we have
+        console.log(`[Staff Homepage] Using exact school name match: "${schoolName}"`);
+        filterRules = [
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+        ];
+      }
+      
+      // Construct the full filter with OR for multiple possible match values
       const filters = encodeURIComponent(JSON.stringify({
-        match: 'and',
-        rules: [
-          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA" }
-        ]
+        match: filterRules.length > 1 ? 'or' : 'and',
+        rules: filterRules
       }));
       
-      console.log(`[Staff Homepage] Querying for VESPA results with filter:`, decodeURIComponent(filters));
+      console.log(`[Staff Homepage] VESPA results filter:`, decodeURIComponent(filters));
       
-      // Add limit parameter to handle large datasets better
+      // Add pagination to handle large datasets better (20,000+ records)
       const response = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
@@ -643,7 +688,7 @@
     try {
       // Get school name for filtering
       const schoolName = sanitizeField(await getSchoolName(schoolId));
-      debugLog(`Looking for staff (${staffEmail}) students in school: ${schoolName}`);
+      console.log(`[Staff Homepage] Looking for staff (${staffEmail}) students in school: "${schoolName}"`);
       
       // Check if user is only a Staff Admin (they should see only one graph)
       const isOnlyStaffAdmin = isStaffAdmin(userRoles) && 
@@ -651,7 +696,7 @@
                                 userRoles[0].toLowerCase().includes('admin');
       
       if (isOnlyStaffAdmin) {
-        debugLog("User is only a Staff Admin - should not see second graph");
+        console.log("[Staff Homepage] User is only a Staff Admin - showing only school graph");
         return null;
       }
       
@@ -870,9 +915,9 @@
     // For debugging - log all roles
     console.log("[Staff Homepage] Checking admin roles in:", roles);
     
-    // Direct check for profile5 (Staff Admin role)
-    if (roles.includes('profile5')) {
-      console.log("[Staff Homepage] Found direct Staff Admin role (profile5)");
+    // Direct check for profile5 and profile6 (Staff Admin roles)
+    if (roles.includes('profile5') || roles.includes('profile6')) {
+      console.log("[Staff Homepage] Found direct Staff Admin role (profile5/profile6)");
       return true;
     }
     
@@ -1290,7 +1335,7 @@
       .vespa-section:nth-child(3) { animation-delay: 0.3s; }
       
       .vespa-section-title {
-        color: #ffffff;  /* Changed from THEME.ACCENT to white as requested */
+        color: #ffffff !important;  /* Forced white color with !important to override any other styles */
         font-size: 22px;
         font-weight: 600;
         margin-bottom: 16px;
