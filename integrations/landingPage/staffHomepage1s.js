@@ -143,7 +143,7 @@ const ICON_MAPPING = {
     "Study Sessions": "fa-solid fa-calendar-check",
     
     // Resources section
-    "Slide Decks": "fa-solid fa-presentation-screen",
+    "Slide Decks": "fa-solid fa-display", // Changed to fa-display which exists in Font Awesome
     "Newsletter": "fa-solid fa-newspaper",
     "Curriculum": "fa-solid fa-book-open",
     "Worksheets": "fa-solid fa-file-pdf",
@@ -438,12 +438,15 @@ function isStaffAdmin(roles) {
       return false;
     }
     
-    return roles.some(role => {
+    const result = roles.some(role => {
       if (typeof role !== 'string') return false;
       
       const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
       return normalizedRole.includes('staffadmin') || normalizedRole === 'admin';
     });
+    
+    console.log(`[Staff Homepage] isStaffAdmin check with roles ${JSON.stringify(roles)} returned: ${result}`);
+    return result;
   }
 
   // Helper function to check if user has a teaching role (tutor, HoY, subject teacher)
@@ -650,7 +653,8 @@ function isStaffAdmin(roles) {
     if (!schoolId) return null;
     
     try {
-      const response = await retryApiCall(() => {
+      // First try by direct ID
+      let response = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
             url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
@@ -661,10 +665,63 @@ function isStaffAdmin(roles) {
             error: reject
           });
         });
+      }).catch(error => {
+        console.warn('[Staff Homepage] Error getting school record by ID:', error);
+        return null;
       });
       
       if (response) {
-        debugLog("Found school record:", response);
+        debugLog("Found school record by ID:", response);
+        
+        // Check if logo exists and is valid
+        if (response.field_61 && typeof response.field_61 === 'string' && response.field_61.trim() !== '') {
+          console.log("[Staff Homepage] Found valid school logo URL in field_61:", response.field_61);
+        } else {
+          console.warn("[Staff Homepage] No logo found in school record, will search by name");
+          
+          // Try to get school name from record
+          const schoolName = response.field_44 || response.field_2;
+          
+          if (schoolName) {
+            // Search for school by name to find a record with logo
+            const filters = encodeURIComponent(JSON.stringify({
+              match: 'or',
+              rules: [
+                { field: 'field_44', operator: 'is', value: schoolName },
+                { field: 'field_2', operator: 'is', value: schoolName }
+              ]
+            }));
+            
+            const searchResponse = await retryApiCall(() => {
+              return new Promise((resolve, reject) => {
+                $.ajax({
+                  url: `${KNACK_API_URL}/objects/object_2/records?filters=${filters}`,
+                  type: 'GET',
+                  headers: getKnackHeaders(),
+                  data: { format: 'raw' },
+                  success: resolve,
+                  error: reject
+                });
+              });
+            }).catch(error => {
+              console.warn('[Staff Homepage] Error searching for school by name:', error);
+              return null;
+            });
+            
+            if (searchResponse && searchResponse.records && searchResponse.records.length > 0) {
+              // Look for any record with a logo
+              for (const record of searchResponse.records) {
+                if (record.field_61 && typeof record.field_61 === 'string' && record.field_61.trim() !== '') {
+                  console.log("[Staff Homepage] Found alternative record with logo:", record.id);
+                  // Merge the logo into our existing record
+                  response.field_61 = record.field_61;
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
         return response;
       }
       
@@ -1250,7 +1307,7 @@ function renderAppSection(title, apps) {
       const iconClass = ICON_MAPPING[app.name] || ICON_MAPPING.default;
       
       appsHTML += `
-        <div class="app-card">
+        <a href="${app.url}" class="app-card" title="${sanitizeField(app.name)}">
           <div class="app-card-header">
             <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
             <div class="app-icon-container">
@@ -1258,8 +1315,7 @@ function renderAppSection(title, apps) {
             </div>
             <div class="app-name">${sanitizeField(app.name)}</div>
           </div>
-          <a href="${app.url}" class="app-button">Launch</a>
-        </div>
+        </a>
       `;
     });
     
@@ -1689,10 +1745,15 @@ function getStyleCSS() {
     }
     
     /* Profile Section */
+    .profile-section {
+      min-height: 350px; /* Match height with chart section */
+    }
+    
     .profile-info {
       display: flex;
       flex-wrap: wrap;
       gap: 20px;
+      height: 100%;
     }
     
     .profile-details {
@@ -2084,10 +2145,13 @@ document.head.appendChild(fontAwesomeLink);
       const staffResults = profileData.email ? 
         await getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null;
       
-      // Check if user is a staff admin
+      // Check if user is a staff admin (only users with Staff Admin role should see the Management section)
       const hasAdminRole = isStaffAdmin(profileData.roles);
+      console.log(`[Staff Homepage] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
+      console.log(`[Staff Homepage] Has Admin Role: ${hasAdminRole}, Management section will ${hasAdminRole ? 'be shown' : 'NOT be shown'}`);
       
       // Build the homepage HTML with updated layout based on feedback
+      // The admin section is conditionally rendered only for staff admin users
       const homepageHTML = `
         <div id="staff-homepage">
           <div class="top-row">
@@ -2102,7 +2166,7 @@ document.head.appendChild(fontAwesomeLink);
             ${renderGroupSection()}
             ${renderResourcesSection()}
           </div>
-          ${hasAdminRole ? renderAdminSection() : ''}
+          ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
         </div>
       `;
       
@@ -2169,4 +2233,5 @@ document.head.appendChild(fontAwesomeLink);
   }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
+
 
