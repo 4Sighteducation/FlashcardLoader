@@ -439,9 +439,24 @@ const CacheManager = {
   DEFAULT_TTL: 60,
   CACHE_OBJECT: 'object_115',
   
-  // Create a unique cache key
+  // Create a unique cache key - now includes user email for uniqueness
   createKey(type, identifier) {
-    return `${type}_${identifier}`;
+    const user = Knack.getUserAttributes();
+    const userEmail = user?.email || 'anonymous';
+    return `${type}_${identifier}_${userEmail}`;
+  },
+  
+  // Helper function to get UK-localized date (handles BST automatically)
+  getLocalizedDate() {
+    // Create date in user's local timezone (browser automatically handles BST/GMT)
+    const now = new Date();
+    
+    // Log the time difference for debugging
+    const utcTime = new Date(now.toISOString());
+    const timeDiff = (now - utcTime) / (60 * 1000); // difference in minutes
+    console.log(`[Staff Homepage] Current timezone offset: ${timeDiff} minutes from UTC`);
+    
+    return now;
   },
   
   // Retrieve cache from Knack
@@ -524,8 +539,9 @@ const CacheManager = {
       const user = Knack.getUserAttributes();
       console.log(`[Staff Homepage] Storing data in cache: ${cacheKey} (${type})`);
       
-      // Calculate expiry date
-      const expiryDate = new Date();
+      // Calculate expiry date using localized time
+      const now = this.getLocalizedDate();
+      const expiryDate = new Date(now);
       expiryDate.setMinutes(expiryDate.getMinutes() + ttlMinutes);
       
       // Check if cache already exists
@@ -583,7 +599,7 @@ const CacheManager = {
               headers: getKnackHeaders(),
               data: JSON.stringify({
                 field_3188: JSON.stringify(data), // Data
-                field_3192: new Date().toISOString(), // Last Accessed
+                field_3192: this.getLocalizedDate().toISOString(), // Last Accessed
                 field_3193: (parseInt(cacheRecord.field_3193) || 0) + 1, // Access Count + 1
                 field_3194: 'Yes', // Is Valid
                 field_3195: expiryDate.toISOString() // Expiry Date
@@ -609,8 +625,8 @@ const CacheManager = {
                 field_3188: JSON.stringify(data), // Data
                 field_3189: user?.email || 'unknown', // User Email - CORRECTED FIELD ID
                 field_3190: schoolName, // User Organisation (School)
-                field_3191: new Date().toISOString(), // First Login (Created Date)
-                field_3192: new Date().toISOString(), // Last Accessed
+                field_3191: this.getLocalizedDate().toISOString(), // First Login (Created Date)
+                field_3192: this.getLocalizedDate().toISOString(), // Last Accessed
                 field_3193: 1, // Access Count
                 field_3194: 'Yes', // Is Valid
                 field_3195: expiryDate.toISOString(), // Expiry Date
@@ -1189,8 +1205,12 @@ async function getSchoolVESPAResults(schoolId) {
   }
   
   try {
-    // Create a cache key for this school's VESPA results
-    const cacheKey = `school_vespa_${schoolId}`;
+    // Get current user
+    const user = Knack.getUserAttributes();
+    const userEmail = user?.email || 'anonymous';
+    
+    // Create a user-specific cache key for this school's VESPA results
+    const cacheKey = `school_vespa_${schoolId}_${userEmail}`;
     
     // Try to get from cache first
     const cachedResults = await CacheManager.get(cacheKey, 'SchoolResults');
