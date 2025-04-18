@@ -1820,6 +1820,97 @@ window.trackFeatureUse = function(featureName) {
     }
   }
   
+// Lazy load VESPA charts using Intersection Observer
+function lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole) {
+  try {
+    // Store chart data in window for when we need it
+    window.chartData = {
+      schoolResults,
+      staffResults,
+      hasAdminRole
+    };
+    
+    // Add placeholder/loading indicator to chart wrapper
+    const chartContainer = document.getElementById('vespaChart');
+    if (!chartContainer) return;
+    
+    // Add class for targeting with IntersectionObserver
+    chartContainer.parentElement.classList.add('chart-container-lazy');
+    
+    // Add loading indicator
+    chartContainer.innerHTML = `
+      <div class="chart-loading">
+        <div class="chart-loading-spinner"></div>
+        <div>Loading chart data...</div>
+      </div>
+    `;
+    
+    // Create IntersectionObserver to detect when chart is visible
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          // When chart container is visible in viewport
+          if (entry.isIntersecting) {
+            debugLog("Chart container is visible, loading Chart.js");
+            
+            // Lazy load Chart.js
+            if (typeof Chart === 'undefined') {
+              const script = document.createElement('script');
+              script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
+              script.onload = () => {
+                debugLog("Chart.js loaded successfully");
+                // Create chart with stored data
+                createCharts(
+                  window.chartData.schoolResults, 
+                  window.chartData.staffResults, 
+                  window.chartData.hasAdminRole
+                );
+              };
+              script.onerror = (error) => {
+                console.error("[Staff Homepage] Failed to load Chart.js:", error);
+                // Show error in chart container
+                chartContainer.innerHTML = `<div class="chart-error">Unable to load chart library</div>`;
+              };
+              document.head.appendChild(script);
+            } else {
+              // Chart.js already loaded, create charts immediately
+              createCharts(
+                window.chartData.schoolResults, 
+                window.chartData.staffResults, 
+                window.chartData.hasAdminRole
+              );
+            }
+            
+            // Disconnect observer after loading
+            observer.disconnect();
+          }
+        });
+      }, { threshold: 0.1 }); // Trigger when 10% of element is visible
+      
+      // Start observing chart containers
+      const chartContainers = document.querySelectorAll('.chart-container-lazy');
+      chartContainers.forEach(container => observer.observe(container));
+    } else {
+      // Fallback for browsers without IntersectionObserver
+      debugLog("IntersectionObserver not supported, loading Chart.js immediately");
+      
+      // Load Chart.js normally
+      if (typeof Chart === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
+        script.onload = () => {
+          createCharts(schoolResults, staffResults, hasAdminRole);
+        };
+        document.head.appendChild(script);
+      } else {
+        createCharts(schoolResults, staffResults, hasAdminRole);
+      }
+    }
+  } catch (error) {
+    console.error("[Staff Homepage] Error initializing lazy loading for VESPA charts:", error);
+  }
+}
+
   // Create the actual charts once Chart.js is loaded
   function createCharts(schoolResults, staffResults, hasAdminRole) {
     if (!schoolResults) return;
@@ -2519,128 +2610,163 @@ function getStyleCSS() {
         min-width: 100%;
       }
     }
+      /* Chart loading styles */
+.chart-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  color: #cccccc;
+}
+
+.chart-loading-spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+  border: 3px solid rgba(0, 229, 219, 0.3);
+  border-top: 3px solid ${THEME.ACCENT};
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.chart-error {
+  padding: 30px;
+  text-align: center;
+  color: ${THEME.NEGATIVE};
+  font-style: italic;
+}
   `;
 }
-  // Render the main homepage UI
-  async function renderHomepage() {
-    const container = document.querySelector(window.STAFFHOMEPAGE_CONFIG.elementSelector);
-    if (!container) {
-      console.error('[Staff Homepage] Container element not found.');
-      return;
-    }
-    // Add Font Awesome for professional icons
-const fontAwesomeLink = document.createElement('link');
-fontAwesomeLink.rel = 'stylesheet';
-fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
-document.head.appendChild(fontAwesomeLink);
-    // Clear the container
-    container.innerHTML = '';
-    
-    // Show loading indicator with updated theme colors
-    container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-        <h3>Loading VESPA Staff Homepage...</h3>
-        <div style="margin-top: 20px;">
-          <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="${THEME.ACCENT}" stroke-width="4">
-              <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
-              <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
-            </circle>
-            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(0, 229, 219, 0.3)" stroke-width="2">
-              <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
-              <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
-            </circle>
-          </svg>
-        </div>
+ // Render the main homepage UI
+async function renderHomepage() {
+  const container = document.querySelector(window.STAFFHOMEPAGE_CONFIG.elementSelector);
+  if (!container) {
+    console.error('[Staff Homepage] Container element not found.');
+    return;
+  }
+  
+  // Add Font Awesome for professional icons
+  const fontAwesomeLink = document.createElement('link');
+  fontAwesomeLink.rel = 'stylesheet';
+  fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+  document.head.appendChild(fontAwesomeLink);
+  
+  // Clear the container
+  container.innerHTML = '';
+  
+  // Show loading indicator with updated theme colors
+  container.innerHTML = `
+    <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+      <h3>Loading VESPA Staff Homepage...</h3>
+      <div style="margin-top: 20px;">
+        <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="25" cy="25" r="20" fill="none" stroke="${THEME.ACCENT}" stroke-width="4">
+            <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
+            <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(0, 229, 219, 0.3)" stroke-width="2">
+            <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
+            <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
+          </circle>
+        </svg>
       </div>
-    `;
-    
-    try {
-      // Get staff profile data
-      const profileData = await getStaffProfileData();
-      if (!profileData) {
-        container.innerHTML = `
-          <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-            <h3>Error Loading Staff Homepage</h3>
-            <p style="color: #ffffff;">Unable to load your staff profile. Please try refreshing the page.</p>
-            <button onclick="location.reload()" style="margin-top: 15px; background-color: ${THEME.ACCENT}; color: ${THEME.PRIMARY}; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
-          </div>
-        `;
-        return;
-      }
-      
-      // Get VESPA results data
-      const schoolResults = await getSchoolVESPAResults(profileData.schoolId);
-      
-      // Get staff-specific results if applicable
-      const staffResults = profileData.email ? 
-        await getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null;
-      
-      // Check if user is a staff admin (only users with Staff Admin role should see the Management section)
-      const hasAdminRole = isStaffAdmin(profileData.roles);
-      console.log(`[Staff Homepage] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
-      console.log(`[Staff Homepage] Has Admin Role: ${hasAdminRole}, Management section will ${hasAdminRole ? 'be shown' : 'NOT be shown'}`);
-      
-      // Build the homepage HTML with updated layout based on feedback
-      // The admin section is conditionally rendered only for staff admin users
-      const homepageHTML = `
-        <div id="staff-homepage">
-          <div class="top-row">
-            <div class="profile-container">
-              ${renderProfileSection(profileData, hasAdminRole)}
-            </div>
-            <div class="dashboard-container">
-              ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
-            </div>
-          </div>
-          <div class="group-resources-container">
-            ${renderGroupSection()}
-            ${renderResourcesSection()}
-          </div>
-          ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
-        </div>
-      `;
-      
-      // Add the CSS
-      const styleElement = document.createElement('style');
-      styleElement.textContent = getStyleCSS();
-      
-      // Add style and content to the container
-      container.innerHTML = '';
-      container.appendChild(styleElement);
-      container.innerHTML += homepageHTML;
-      
-      // Initialize charts
-      if (schoolResults) {
-        initializeVESPACharts(schoolResults, staffResults, hasAdminRole);
-      }
-      
-      // Add event listeners to app cards
-      document.querySelectorAll('.app-button').forEach(button => {
-        button.addEventListener('click', (e) => {
-          e.preventDefault();
-          const url = button.getAttribute('href');
-          if (url) {
-            window.location.href = url;
-          }
-        });
-      });
-      
-      // Initialize tooltips
-      setupTooltips();
-      
-      debugLog("Staff homepage rendered successfully");
-    } catch (error) {
-      console.error("Error rendering staff homepage:", error);
+    </div>
+  `;
+  
+  try {
+    // Get staff profile data
+    const profileData = await getStaffProfileData();
+    if (!profileData) {
       container.innerHTML = `
         <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Staff Homepage</h3>
-          <p style="color: #ffffff;">An unexpected error occurred. Please try refreshing the page.</p>
+          <p style="color: #ffffff;">Unable to load your staff profile. Please try refreshing the page.</p>
           <button onclick="location.reload()" style="margin-top: 15px; background-color: ${THEME.ACCENT}; color: ${THEME.PRIMARY}; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
         </div>
       `;
+      return;
     }
+    
+    // Check if user is a staff admin
+    const hasAdminRole = isStaffAdmin(profileData.roles);
+    console.log(`[Staff Homepage] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
+    console.log(`[Staff Homepage] Has Admin Role: ${hasAdminRole}, Management section will ${hasAdminRole ? 'be shown' : 'NOT be shown'}`);
+    
+    // OPTIMIZATION: Load VESPA results in parallel instead of sequentially
+    const [schoolResults, staffResults] = await Promise.all([
+      getSchoolVESPAResults(profileData.schoolId),
+      profileData.email ? getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null
+    ]);
+    
+    // Build the homepage HTML with updated layout
+    const homepageHTML = `
+      <div id="staff-homepage">
+        <div class="top-row">
+          <div class="profile-container">
+            ${renderProfileSection(profileData, hasAdminRole)}
+          </div>
+          <div class="dashboard-container">
+            ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
+          </div>
+        </div>
+        <div class="group-resources-container">
+          ${renderGroupSection()}
+          ${renderResourcesSection()}
+        </div>
+        ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
+      </div>
+    `;
+    
+    // Add the CSS
+    const styleElement = document.createElement('style');
+    styleElement.textContent = getStyleCSS();
+    
+    // OPTIMIZATION: Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(styleElement);
+    
+    // Parse HTML string into DOM elements
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = homepageHTML;
+    
+    // Append all children to fragment
+    while (tempDiv.firstChild) {
+      fragment.appendChild(tempDiv.firstChild);
+    }
+    
+    // Replace container content with fragment (single DOM operation)
+    container.innerHTML = '';
+    container.appendChild(fragment);
+    
+    // Initialize charts with lazy loading
+    if (schoolResults) {
+      lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole);
+    }
+    
+    // Initialize tooltips
+    setupTooltips();
+    
+    // Track page view
+    trackPageView('VESPA Dashboard').catch(err => console.warn('[Staff Homepage] Dashboard view tracking failed:', err));
+    
+    debugLog("Staff homepage rendered successfully");
+  } catch (error) {
+    console.error("Error rendering staff homepage:", error);
+    container.innerHTML = `
+      <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        <h3>Error Loading Staff Homepage</h3>
+        <p style="color: #ffffff;">An unexpected error occurred. Please try refreshing the page.</p>
+        <button onclick="location.reload()" style="margin-top: 15px; background-color: ${THEME.ACCENT}; color: ${THEME.PRIMARY}; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Refresh Page</button>
+      </div>
+    `;
   }
+}
   
   // --- Main Initialization ---
   // Initialize the staff homepage
@@ -2669,4 +2795,3 @@ document.head.appendChild(fontAwesomeLink);
   }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
-
