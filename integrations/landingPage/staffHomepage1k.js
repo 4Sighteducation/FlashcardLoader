@@ -486,7 +486,7 @@
         // Map profile keys to readable role names
         const profileKeyMap = {
           'profile_5': 'Staff Admin',
-          'profile_6': 'Staff Admin',
+          'profile_6': 'Student',
           'profile_7': 'Tutor',
           'profile_8': 'Subject Teacher',
           'profile_9': 'Head of Year',
@@ -512,7 +512,7 @@
         // Define role mapping
         const roleMap = {
           'profile5': 'Staff Admin',
-          'profile6': 'Staff Admin',
+          'profile6': 'Student',
           'profile7': 'Tutor',
           'profile8': 'Subject Teacher',
           'profile9': 'Head of Year',
@@ -816,8 +816,12 @@
     
     try {
       // Get school name for filtering
-      const schoolName = sanitizeField(await getSchoolName(schoolId));
-      console.log(`[Staff Homepage] Looking for staff (${staffEmail}) students in school: "${schoolName}"`);
+    const schoolName = sanitizeField(await getSchoolName(schoolId));
+    console.log(`[Staff Homepage] Looking for staff (${staffEmail}) students in school: "${schoolName}"`);
+    
+    // Add extra debugging to help diagnose tutor connections
+    console.log(`[Staff Homepage] DEBUG - Looking for records where tutor field (${FIELD_MAPPING.tutor}) contains email ${staffEmail}`);
+    console.log(`[Staff Homepage] DEBUG - Staff roles: ${JSON.stringify(userRoles)}`);
       
       // Even if user is only a staff admin, we'll check if they have any students associated
       // This is a change from previous behavior to support the new chart design
@@ -851,31 +855,83 @@
       let roleUsed = "none";
       
       if (useTutorRole) {
-        // First priority: Tutor - use pagination to get ALL records
-        const tutorFilter = JSON.stringify({
-          match: 'and',
-          rules: [
-            { field: FIELD_MAPPING.tutor, operator: 'contains', value: staffEmail },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
-          ]
-        });
-        
-        console.log("[Staff Homepage] Fetching ALL tutor group VESPA results using pagination...");
-        
-        allRecords = await getAllRecordsWithPagination(
-          `${KNACK_API_URL}/objects/object_10/records`, 
-          encodeURIComponent(tutorFilter),
-          10 // Allow up to 10 pages = 10,000 student records with 1000 per page
-        ).catch(error => {
-          console.error('[Staff Homepage] Error getting tutor VESPA results with pagination:', error);
-          return [];
-        });
+        // First priority: Tutor - use pagination to get ALL records with multiple query approaches
+const tutorFilters = JSON.stringify({
+    match: 'or',
+    rules: [
+      // Try multiple approaches to find tutor students
+      { 
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.tutor, operator: 'contains', value: staffEmail },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+        ]
+      },
+      // Try exact match approach
+      { 
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.tutor, operator: 'is', value: staffEmail },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+        ]
+      },
+      // Try approach with just the email username (before @)
+      { 
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.tutor, operator: 'contains', value: staffEmail.split('@')[0] },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+        ]
+      }
+    ]
+  });
+  
+  console.log("[Staff Homepage] Fetching ALL tutor group VESPA results using expanded query...");
+  console.log("[Staff Homepage] Using complex tutorFilters:", tutorFilters);
+  
+  allRecords = await getAllRecordsWithPagination(
+    `${KNACK_API_URL}/objects/object_10/records`, 
+    encodeURIComponent(tutorFilters),
+    10 // Allow up to 10 pages = 10,000 student records with 1000 per page
+  ).catch(error => {
+    console.error('[Staff Homepage] Error getting tutor VESPA results with pagination:', error);
+    return [];
+  });
         
         if (allRecords && allRecords.length > 0) {
           console.log(`[Staff Homepage] Found ${allRecords.length} total students as Tutor via pagination`);
           roleUsed = "Tutor";
         }
       }
+
+if (allRecords.length === 0 && useTutorRole) {
+    console.log("[Staff Homepage] No tutor students found - fetching sample records to inspect tutor field format");
+    
+    // Get a few sample student records to inspect tutor field format
+    const sampleFilter = JSON.stringify({
+      match: 'and',
+      rules: [
+        { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+      ]
+    });
+    
+    const sampleRecords = await getAllRecordsWithPagination(
+      `${KNACK_API_URL}/objects/object_10/records`, 
+      encodeURIComponent(sampleFilter),
+      1 // Just 1 page
+    ).catch(error => {
+      console.error('[Staff Homepage] Error getting sample records:', error);
+      return [];
+    });
+    
+    if (sampleRecords.length > 0) {
+      // Log the tutor field format from a few sample records
+      for (let i = 0; i < Math.min(3, sampleRecords.length); i++) {
+        console.log(`[Staff Homepage] Sample record ${i+1} tutor field:`, 
+                    sampleRecords[i][FIELD_MAPPING.tutor]);
+      }
+    }
+  }
       
       if (allRecords.length === 0 && useHeadOfYearRole) {
         // Second priority: Head of Year - use pagination
