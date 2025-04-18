@@ -1382,8 +1382,19 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       return null;
     }
     
-    
     try {
+      // Create a unique cache key for this staff member's students & VESPA results
+      const staffCacheKey = `staff_students_vespa_${schoolId}_${staffEmail}`;
+      
+      // Try to get from cache first
+      const cachedStaffResults = await CacheManager.get(staffCacheKey, 'StaffResults');
+      if (cachedStaffResults) {
+        console.log(`[Staff Homepage] Using cached staff VESPA results for ${staffEmail}`);
+        return cachedStaffResults;
+      }
+      
+      console.log(`[Staff Homepage] Cache miss for staff ${staffEmail}, fetching fresh data`);
+      
       // Get school name for filtering
       const schoolName = sanitizeField(await getSchoolName(schoolId));
       console.log(`[Staff Homepage] Looking for staff (${staffEmail}) students in school: "${schoolName}"`);
@@ -1703,6 +1714,10 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       }
       
       debugLog("Calculated staff connected students VESPA averages:", averages);
+      
+      // Store in cache for future use (120 minutes TTL = 2 hours)
+      await CacheManager.set(staffCacheKey, averages, 'StaffResults', 120);
+      
       return averages;
     } catch (error) {
       console.error('[Staff Homepage] Error getting staff VESPA results:', error);
