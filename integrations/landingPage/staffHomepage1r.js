@@ -14,15 +14,17 @@
       ATTITUDE: '#ff6b6b'  // Using a complementary color as it wasn't specified
     };
     
-    // Theme Colors - Updated as requested
-    const THEME = {
-      PRIMARY: '#06206e',    // Main background color 
-      ACCENT: '#00e5db',     // Accent color
-      TEXT: '#ffffff',       // Text color
-      CARD_BG: '#102983',    // Card background
-      SECTION_BG: '#0d2274', // Section background
-      BORDER: '#00e5db'      // Border color
-    };
+    // Theme Colors - Updated with gradients and refined colors
+const THEME = {
+    PRIMARY: 'linear-gradient(135deg, #0a2b8c 0%, #061a54 100%)',  // Gradient background
+    ACCENT: '#00e5db',     // Keep accent color
+    TEXT: '#ffffff',       // Keep text color
+    CARD_BG: 'linear-gradient(135deg, #15348e 0%, #102983 100%)',  // Card gradient
+    SECTION_BG: 'linear-gradient(135deg, #132c7a 0%, #0d2274 100%)', // Section gradient
+    BORDER: '#00e5db',     // Keep border color
+    POSITIVE: '#4ade80',   // Green for positive trends
+    NEGATIVE: '#f87171'    // Red for negative trends
+  };
   
     // Staff profile field mappings
     const FIELD_MAPPING = {
@@ -131,6 +133,31 @@
         }
       ]
     };
+
+    // Professional icon mapping using Font Awesome classes
+const ICON_MAPPING = {
+    // Group section
+    "VESPA Results": "fa-solid fa-chart-column",
+    "Coaching Reports": "fa-solid fa-comments",
+    "Student Activities": "fa-solid fa-list-check",
+    "Study Sessions": "fa-solid fa-calendar-check",
+    
+    // Resources section
+    "Slide Decks": "fa-solid fa-presentation-screen",
+    "Newsletter": "fa-solid fa-newspaper",
+    "Curriculum": "fa-solid fa-book-open",
+    "Worksheets": "fa-solid fa-file-pdf",
+    
+    // Admin section
+    "Students": "fa-solid fa-user-graduate",
+    "Staff": "fa-solid fa-chalkboard-teacher",
+    "Questionnaire": "fa-solid fa-clipboard-question",
+    "Account": "fa-solid fa-building-user",
+    
+    // Default fallback
+    "default": "fa-solid fa-circle-info"
+  };
+
 // --- Helper Functions ---
   // Debug logging helper
   function debugLog(title, data) {
@@ -1128,7 +1155,6 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
           }
         }
       }
-      
       // Calculate averages - only divide by the count of valid values for that category
       const averages = {
         vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
@@ -1137,10 +1163,19 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
         practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
         attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
         count: totals.totalCount,
-        // Add role information and label for chart display
-        roleUsed: roleUsed,
-        label: `My ${roleUsed} Students`
+        roleUsed: roleUsed
       };
+      
+      // Set role-specific label based on role hierarchy
+      if (roleUsed === "Tutor") {
+        averages.label = "My Tutor Group";
+      } else if (roleUsed === "Head of Year") {
+        averages.label = "My Year Group";
+      } else if (roleUsed === "Subject Teacher") {
+        averages.label = "My Students";
+      } else {
+        averages.label = `My ${roleUsed} Students`;
+      }
       
       debugLog("Calculated staff connected students VESPA averages:", averages);
       return averages;
@@ -1205,17 +1240,22 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     return renderAppSection("MANAGE ACCOUNT", APP_SECTIONS.admin);
   }
   
-  // Generic function to render an app section
-  function renderAppSection(title, apps) {
+  // Generic function to render an app section with Font Awesome icons
+function renderAppSection(title, apps) {
     if (!apps || !apps.length) return '';
     
     let appsHTML = '';
     apps.forEach(app => {
+      // Get Font Awesome icon or use default
+      const iconClass = ICON_MAPPING[app.name] || ICON_MAPPING.default;
+      
       appsHTML += `
         <div class="app-card">
           <div class="app-card-header">
             <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
-            <img src="${app.icon}" alt="${sanitizeField(app.name)}" class="app-icon">
+            <div class="app-icon-container">
+              <i class="${iconClass} app-icon-fa"></i>
+            </div>
             <div class="app-name">${sanitizeField(app.name)}</div>
           </div>
           <a href="${app.url}" class="app-button">Launch</a>
@@ -1296,6 +1336,28 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
   // Create the actual charts once Chart.js is loaded
   function createCharts(schoolResults, staffResults, hasAdminRole) {
     if (!schoolResults) return;
+    
+    // Calculate percentage differences between staff and school results
+    if (staffResults && schoolResults) {
+      // Function to calculate percentage difference
+      const calcPercentDiff = (staffVal, schoolVal) => {
+        if (!schoolVal || schoolVal == 0) return 0;
+        const staff = parseFloat(staffVal);
+        const school = parseFloat(schoolVal);
+        return ((staff - school) / school * 100).toFixed(1);
+      };
+      
+      // Calculate differences for each VESPA category
+      staffResults.differences = {
+        vision: calcPercentDiff(staffResults.vision, schoolResults.vision),
+        effort: calcPercentDiff(staffResults.effort, schoolResults.effort),
+        systems: calcPercentDiff(staffResults.systems, schoolResults.systems),
+        practice: calcPercentDiff(staffResults.practice, schoolResults.practice),
+        attitude: calcPercentDiff(staffResults.attitude, schoolResults.attitude)
+      };
+      
+      console.log("[Staff Homepage] Calculated trend differences:", staffResults.differences);
+    }
     
     // Get the chart container
     const chartCtx = document.getElementById('vespaChart');
@@ -1406,6 +1468,13 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
             }
           },
           tooltip: {
+            backgroundColor: 'rgba(10, 27, 80, 0.9)',
+            titleColor: '#ffffff',
+            bodyColor: '#ffffff',
+            padding: 12,
+            borderColor: THEME.ACCENT,
+            borderWidth: 1,
+            displayColors: false,
             callbacks: {
               title: function(tooltipItems) {
                 return tooltipItems[0].label; // e.g., "Vision"
@@ -1414,6 +1483,21 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
                 const label = context.dataset.label || '';
                 const value = context.parsed.y;
                 return `${label}: ${value}`;
+              },
+              afterLabel: function(context) {
+                // Only show difference for staff results dataset (second dataset)
+                if (staffResults && context.datasetIndex === 1 && staffResults.differences) {
+                  const categoryIndex = context.dataIndex; // 0=vision, 1=effort, etc.
+                  const categories = ['vision', 'effort', 'systems', 'practice', 'attitude'];
+                  const category = categories[categoryIndex];
+                  const diff = staffResults.differences[category];
+                  
+                  // Format with + sign for positive, and appropriate color/symbol
+                  const sign = diff > 0 ? '+' : '';
+                  const symbol = diff > 0 ? '▲' : diff < 0 ? '▼' : '■';
+                  return [`${sign}${diff}% vs. school ${symbol}`];
+                }
+                return null;
               },
               footer: function(tooltipItems) {
                 const datasetIndex = tooltipItems[0].datasetIndex;
@@ -1499,378 +1583,452 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     });
   }
   
-  // Get CSS styles for the homepage
-  function getStyleCSS() {
-    return `
-      /* Main Container - Staff Theme */
-      #staff-homepage {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 16px;
-        color: #ffffff;
-        background-color: ${THEME.PRIMARY};
-        line-height: 1.4;
-        overflow-x: hidden;
-        border: 3px solid ${THEME.ACCENT};
-        border-radius: 10px;
-      }
-      
-      /* Top row layout containing profile and dashboard */
+  // Get CSS styles for the homepage with improved UI
+function getStyleCSS() {
+  return `
+    /* Main Container - Staff Theme */
+    #staff-homepage {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #ffffff;
+      background: ${THEME.PRIMARY};
+      line-height: 1.4;
+      overflow-x: hidden;
+      border: 3px solid ${THEME.ACCENT};
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+    
+    /* Top row layout containing profile and dashboard */
+    .top-row {
+      display: flex;
+      flex-direction: row;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    
+    /* Profile container takes 25% width */
+    .profile-container {
+      flex: 1;
+      max-width: 25%;
+    }
+    
+    /* Dashboard container takes 75% width */
+    .dashboard-container {
+      flex: 3;
+    }
+    
+    /* Animation Keyframes */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+      50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.3); }
+      100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+    }
+    
+    /* Sections */
+    .vespa-section {
+      background: ${THEME.SECTION_BG};
+      border-radius: 10px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+      padding: 22px;
+      margin-bottom: 26px;
+      animation: fadeIn 0.5s ease-out forwards;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 2px solid ${THEME.ACCENT};
+      backdrop-filter: blur(5px);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Section background pattern overlay */
+    .vespa-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* Section content above pattern */
+    .vespa-section > * {
+      position: relative;
+      z-index: 2;
+    }
+    
+    .vespa-section:hover {
+      box-shadow: 0 8px 22px rgba(0, 229, 219, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .vespa-section:nth-child(1) { animation-delay: 0.1s; }
+    .vespa-section:nth-child(2) { animation-delay: 0.2s; }
+    .vespa-section:nth-child(3) { animation-delay: 0.3s; }
+    
+    .vespa-section-title {
+      color: #ffffff !important;  /* Force white color */
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid ${THEME.ACCENT};
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Profile Section */
+    .profile-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    
+    .profile-details {
+      flex: 1;
+      min-width: 250px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: 20px;
+      background: ${THEME.CARD_BG};
+      border-radius: 10px;
+      border: 1px solid ${THEME.ACCENT};
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .school-logo {
+      max-width: 100px;
+      height: auto;
+      margin-bottom: 15px;
+      align-self: center;
+      border-radius: 5px;
+      padding: 5px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .profile-name {
+      font-size: 26px;
+      color: #ffffff;
+      margin-bottom: 18px;
+      font-weight: 700;
+      text-align: center;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    
+    .profile-item {
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+    
+    .profile-item:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .profile-label {
+      font-weight: 600;
+      color: ${THEME.ACCENT};
+      margin-right: 8px;
+    }
+    
+    .dashboard-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: ${THEME.ACCENT};
+      color: ${THEME.PRIMARY};
+      padding: 10px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: all 0.3s;
+      margin-top: 15px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    
+    .dashboard-button:hover {
+      background-color: rgba(0, 229, 219, 0.8);
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0, 229, 219, 0.3);
+    }
+    
+    .dashboard-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+    }
+    
+    /* Group Resources Container for side-by-side layout on desktop */
+    .group-resources-container {
+      display: flex;
+      flex-direction: row;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    
+    .group-resources-container > section {
+      flex: 1;
+      margin-bottom: 0;
+    }
+    
+    /* App Hubs - Fixed 2x2 grid */
+    .app-hub {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, auto);
+      gap: 18px;
+    }
+    
+    .app-card {
+      background: ${THEME.CARD_BG};
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+      animation: fadeIn 0.5s ease-out forwards;
+      border: 1px solid ${THEME.ACCENT};
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .app-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      animation: pulseGlow 2s infinite;
+    }
+    
+    .app-card-header {
+      background: ${THEME.PRIMARY};
+      padding: 18px;
+      text-align: center;
+      position: relative;
+      border-bottom: 2px solid ${THEME.ACCENT};
+    }
+    
+    /* Font Awesome Icon styling */
+    .app-icon-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .app-icon-fa {
+      font-size: 2.5rem;
+      color: ${THEME.ACCENT};
+      transition: transform 0.3s, color 0.3s;
+    }
+    
+    .app-card:hover .app-icon-fa {
+      transform: scale(1.15);
+      color: #ffffff;
+    }
+    
+    /* Legacy image icons if needed */
+    .app-icon {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      margin-bottom: 10px;
+      transition: transform 0.3s;
+    }
+    
+    .app-card:hover .app-icon {
+      transform: scale(1.1);
+    }
+    
+    .app-name {
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Info icon for tooltip trigger */
+    .app-info-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+      background-color: ${THEME.ACCENT};
+      color: ${THEME.PRIMARY};
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .app-info-icon:hover {
+      transform: scale(1.2);
+      background-color: white;
+    }
+    
+    /* Tooltips */
+    .app-tooltip {
+      position: fixed;
+      background: linear-gradient(135deg, #1c2b5f 0%, #0d1b45 100%);
+      color: #ffffff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+      width: 280px;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      border: 2px solid ${THEME.ACCENT};
+      font-size: 14px;
+      text-align: center;
+      backdrop-filter: blur(5px);
+    }
+    
+    .tooltip-active {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .app-button {
+      display: block;
+      background-color: ${THEME.ACCENT};
+      color: ${THEME.PRIMARY};
+      text-align: center;
+      padding: 14px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s;
+      margin-top: auto;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      font-size: 14px;
+    }
+    
+    .app-button:hover {
+      background-color: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* VESPA Dashboard */
+    .dashboard-section {
+      margin-top: 0; /* Changed from 30px since it's now in the top row */
+      height: 100%; /* Fill the container height */
+    }
+    
+    .charts-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    
+    .chart-wrapper {
+      flex: 1;
+      min-width: 300px;
+      background: ${THEME.CARD_BG};
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid ${THEME.ACCENT};
+    }
+    
+    .chart-title {
+      font-size: 18px;
+      color: #ffffff !important; /* Force white color */
+      margin-bottom: 12px;
+      text-align: center;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .result-count {
+      font-size: 14px;
+      color: #cccccc;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    
+    canvas {
+      width: 100% !important;
+      height: 220px !important; /* Increased from 180px for better visibility */
+    }
+    
+    .no-results {
+      padding: 30px;
+      text-align: center;
+      color: #cccccc;
+      font-style: italic;
+    }
+    
+    /* Trend indicator styles */
+    .trend-positive {
+      color: ${THEME.POSITIVE};
+      font-weight: bold;
+    }
+    
+    .trend-negative {
+      color: ${THEME.NEGATIVE};
+      font-weight: bold;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      /* Stack top row content vertically on mobile */
       .top-row {
-        display: flex;
-        flex-direction: row;
-        gap: 20px;
-        margin-bottom: 24px;
+        flex-direction: column;
       }
       
-      /* Profile container takes 25% width */
+      /* Profile takes full width on mobile */
       .profile-container {
-        flex: 1;
-        max-width: 25%;
+        max-width: 100%;
       }
       
-      /* Dashboard container takes 75% width */
+      /* Dashboard takes full width on mobile */
       .dashboard-container {
-        flex: 3;
+        margin-top: 24px;
       }
       
-      /* Animation Keyframes */
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      @keyframes pulseGlow {
-        0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-        50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.25); }
-        100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-      }
-      
-      /* Sections */
-      .vespa-section {
-        background-color: ${THEME.SECTION_BG};
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        padding: 20px;
-        margin-bottom: 24px;
-        animation: fadeIn 0.5s ease-out forwards;
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 2px solid ${THEME.ACCENT};
-      }
-      
-      .vespa-section:hover {
-        box-shadow: 0 6px 16px rgba(0, 229, 219, 0.35);
-      }
-      
-      .vespa-section:nth-child(1) { animation-delay: 0.1s; }
-      .vespa-section:nth-child(2) { animation-delay: 0.2s; }
-      .vespa-section:nth-child(3) { animation-delay: 0.3s; }
-      
-      .vespa-section-title {
-        color: #ffffff !important;  /* Forced white color with !important to override any other styles */
-        font-size: 22px;
-        font-weight: 600;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 2px solid ${THEME.ACCENT};
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-      
-      /* Profile Section */
-      .profile-info {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-      }
-      
-      .profile-details {
-        flex: 1;
-        min-width: 250px;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        padding: 16px;
-        background-color: ${THEME.CARD_BG};
-        border-radius: 8px;
-        border: 1px solid ${THEME.ACCENT};
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-      }
-      
-      .school-logo {
-        max-width: 100px;
-        height: auto;
-        margin-bottom: 10px;
-        align-self: center;
-      }
-      
-      .profile-name {
-        font-size: 24px;
-        color: #ffffff;
-        margin-bottom: 16px;
-        font-weight: 700;
-        text-align: center;
-      }
-      
-      .profile-item {
-        margin-bottom: 10px;
-        padding: 8px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-      }
-      
-      .profile-item:hover {
-        background-color: #3a4b90;
-      }
-      
-      .profile-label {
-        font-weight: 600;
-        color: ${THEME.ACCENT};
-        margin-right: 8px;
-      }
-      
-      .dashboard-button {
-        display: flex;
-        align-items: center;
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-        padding: 8px 16px;
-        border-radius: 4px;
-        text-decoration: none;
-        transition: all 0.3s;
-        margin-top: 10px;
-        font-weight: bold;
-      }
-      
-      .dashboard-button:hover {
-        background-color: rgba(0, 229, 219, 0.8);
-        transform: translateY(-2px);
-      }
-      
-      .dashboard-icon {
-        width: 24px;
-        height: 24px;
-        margin-right: 8px;
-      }
-      
-      /* Group Resources Container for side-by-side layout on desktop */
+      /* Group and Resources stack vertically on mobile */
       .group-resources-container {
-        display: flex;
-        flex-direction: row;
-        gap: 20px;
-        margin-bottom: 24px;
-      }
-      
-      .group-resources-container > section {
-        flex: 1;
-        margin-bottom: 0;
-      }
-      
-      /* App Hubs - Fixed 2x2 grid */
-      .app-hub {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(2, auto);
-        gap: 16px;
-      }
-      
-      .app-card {
-        background-color: ${THEME.CARD_BG};
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-        overflow: hidden;
-        transition: transform 0.3s, box-shadow 0.3s;
-        animation: fadeIn 0.5s ease-out forwards;
-        border: 1px solid ${THEME.ACCENT};
-        display: flex;
         flex-direction: column;
       }
       
-      .app-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-        animation: pulseGlow 2s infinite;
+      /* Make app grid more responsive on mobile */
+      .app-hub {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       }
       
-      .app-card-header {
-        background-color: ${THEME.PRIMARY};
-        padding: 16px;
-        text-align: center;
-        position: relative;
-        border-bottom: 2px solid ${THEME.ACCENT};
+      /* Adjust profile layout for smaller screens */
+      .profile-info {
+        flex-direction: column;
       }
       
-      .app-icon {
-        width: 60px;
-        height: 60px;
-        object-fit: contain;
-        margin-bottom: 10px;
-        transition: transform 0.3s;
-      }
-      
-      .app-card:hover .app-icon {
-        transform: scale(1.1);
-      }
-      
-      .app-name {
-        color: white;
-        font-size: 16px;
-        font-weight: 600;
-      }
-      
-      /* Info icon for tooltip trigger */
-      .app-info-icon {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 24px;
-        height: 24px;
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      
-      .app-info-icon:hover {
-        transform: scale(1.1);
-        background-color: rgba(0, 229, 219, 0.8);
-      }
-      
-      /* Tooltips */
-      .app-tooltip {
-        position: fixed;
-        background-color: #1c2b5f;
-        color: #ffffff;
-        padding: 12px;
-        border-radius: 8px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-        width: 250px;
-        z-index: 10000;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s;
-        border: 2px solid ${THEME.ACCENT};
-        font-size: 14px;
-        text-align: center;
-      }
-      
-      .tooltip-active {
-        opacity: 1;
-        visibility: visible;
-      }
-      
-      .app-button {
-        display: block;
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-        text-align: center;
-        padding: 12px;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s;
-        margin-top: auto;
-      }
-      
-      .app-button:hover {
-        background-color: rgba(0, 229, 219, 0.8);
-        transform: translateY(-2px);
-      }
-      
-      /* VESPA Dashboard */
-      .dashboard-section {
-        margin-top: 0; /* Changed from 30px since it's now in the top row */
-        height: 100%; /* Fill the container height */
-      }
-      
-      .charts-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-      }
-      
+      /* Charts take full width on mobile */
       .chart-wrapper {
-        flex: 1;
-        min-width: 300px;
-        background-color: ${THEME.CARD_BG};
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        border: 1px solid ${THEME.ACCENT};
+        min-width: 100%;
       }
-      
-      .chart-title {
-        font-size: 18px;
-        color: ${THEME.TEXT};
-        margin-bottom: 10px;
-        text-align: center;
-      }
-      
-      .result-count {
-        font-size: 14px;
-        color: #cccccc;
-        text-align: center;
-        margin-bottom: 15px;
-      }
-      
-      canvas {
-        width: 100% !important;
-        height: 180px !important; /* Reduced from 300px to make charts more compact */
-      }
-      
-      .no-results {
-        padding: 30px;
-        text-align: center;
-        color: #cccccc;
-        font-style: italic;
-      }
-      
-      /* Responsive adjustments */
-      @media (max-width: 768px) {
-        /* Stack top row content vertically on mobile */
-        .top-row {
-          flex-direction: column;
-        }
-        
-        /* Profile takes full width on mobile */
-        .profile-container {
-          max-width: 100%;
-        }
-        
-        /* Dashboard takes full width on mobile */
-        .dashboard-container {
-          margin-top: 20px;
-        }
-        
-        /* Group and Resources stack vertically on mobile */
-        .group-resources-container {
-          flex-direction: column;
-        }
-        
-        /* Make app grid more responsive on mobile */
-        .app-hub {
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        }
-        
-        /* Adjust profile layout for smaller screens */
-        .profile-info {
-          flex-direction: column;
-        }
-        
-        /* Charts take full width on mobile */
-        .chart-wrapper {
-          min-width: 100%;
-        }
-      }
-    `;
-  }
-  
+    }
+  `;
+}
   // Render the main homepage UI
   async function renderHomepage() {
     const container = document.querySelector(window.STAFFHOMEPAGE_CONFIG.elementSelector);
@@ -1878,7 +2036,11 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       console.error('[Staff Homepage] Container element not found.');
       return;
     }
-    
+    // Add Font Awesome for professional icons
+const fontAwesomeLink = document.createElement('link');
+fontAwesomeLink.rel = 'stylesheet';
+fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+document.head.appendChild(fontAwesomeLink);
     // Clear the container
     container.innerHTML = '';
     
