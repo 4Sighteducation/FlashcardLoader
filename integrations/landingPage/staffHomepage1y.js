@@ -1096,12 +1096,14 @@ function isStaffAdmin(roles) {
     }
   }
   
-  // Get school record by ID
+  // Get school record by ID - Enhanced with better logo retrieval
   async function getSchoolRecord(schoolId) {
     if (!schoolId) return null;
     
+    console.log(`[Staff Homepage] Getting school record for ID: ${schoolId}`);
+    
     try {
-      // First try by direct ID
+      // Try by direct ID first
       let response = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
@@ -1119,18 +1121,52 @@ function isStaffAdmin(roles) {
       });
       
       if (response) {
-        debugLog("Found school record by ID:", response);
+        console.log("[Staff Homepage] Found school record by ID:", response.id);
+        debugLog("Full school record:", response);
+        
+        // Log all available fields for debugging
+        console.log("[Staff Homepage] School record fields:", Object.keys(response).filter(key => key.startsWith('field_')));
         
         // Check if logo exists and is valid
         if (response.field_61 && typeof response.field_61 === 'string' && response.field_61.trim() !== '') {
-          console.log("[Staff Homepage] Found valid school logo URL in field_61:", response.field_61);
+          console.log("[Staff Homepage] ✅ Found valid school logo URL in field_61:", response.field_61);
+          
+          // Validate URL format
+          if (!response.field_61.startsWith('http')) {
+            console.log("[Staff Homepage] ⚠️ Logo URL does not start with http, may be relative path:", response.field_61);
+            // Convert relative URL to absolute if needed
+            if (response.field_61.startsWith('/')) {
+              response.field_61 = `https://www.vespa.academy${response.field_61}`;
+              console.log("[Staff Homepage] 🔄 Fixed relative URL:", response.field_61);
+            }
+          }
         } else {
-          console.warn("[Staff Homepage] No logo found in school record, will search by name");
+          console.warn("[Staff Homepage] ❌ No logo found in field_61, searching alternative sources");
           
-          // Try to get school name from record
+          // Get school name for secondary search
           const schoolName = response.field_44 || response.field_2;
+          console.log(`[Staff Homepage] School name for secondary search: "${schoolName}"`);
           
-          if (schoolName) {
+          // First, try to see if logo exists in other fields of this record
+          const logoFields = ['field_61', 'field_1', 'field_6', 'field_10', 'field_15', 'logo', 'school_logo'];
+          for (const field of logoFields) {
+            if (response[field] && typeof response[field] === 'string' && 
+                (response[field].includes('.png') || 
+                 response[field].includes('.jpg') || 
+                 response[field].includes('.jpeg') || 
+                 response[field].includes('.svg') || 
+                 response[field].includes('/images/') || 
+                 response[field].includes('/img/'))) {
+              console.log(`[Staff Homepage] ✅ Found logo in alternative field ${field}:`, response[field]);
+              response.field_61 = response[field]; // Use this as the logo
+              break;
+            }
+          }
+          
+          // If no logo found in current record and we have a school name, search by name
+          if ((!response.field_61 || response.field_61.trim() === '') && schoolName) {
+            console.log(`[Staff Homepage] Searching for school by name: "${schoolName}"`);
+            
             // Search for school by name to find a record with logo
             const filters = encodeURIComponent(JSON.stringify({
               match: 'or',
@@ -1157,22 +1193,41 @@ function isStaffAdmin(roles) {
             });
             
             if (searchResponse && searchResponse.records && searchResponse.records.length > 0) {
+              console.log(`[Staff Homepage] Found ${searchResponse.records.length} matching school records by name`);
+              
               // Look for any record with a logo
               for (const record of searchResponse.records) {
-                if (record.field_61 && typeof record.field_61 === 'string' && record.field_61.trim() !== '') {
-                  console.log("[Staff Homepage] Found alternative record with logo:", record.id);
-                  // Merge the logo into our existing record
-                  response.field_61 = record.field_61;
-                  break;
+                // Check all possible logo fields
+                for (const field of logoFields) {
+                  if (record[field] && typeof record[field] === 'string' && 
+                      record[field].trim() !== '' &&
+                      (record[field].includes('.png') || 
+                       record[field].includes('.jpg') || 
+                       record[field].includes('.jpeg') || 
+                       record[field].includes('.svg') || 
+                       record[field].includes('/images/') || 
+                       record[field].includes('/img/'))) {
+                    console.log(`[Staff Homepage] ✅ Found logo in record ${record.id}, field ${field}:`, record[field]);
+                    response.field_61 = record[field];
+                    break;
+                  }
                 }
+                if (response.field_61 && response.field_61.trim() !== '') break;
               }
             }
+          }
+          
+          // If we still don't have a logo, provide a default VESPA logo
+          if (!response.field_61 || response.field_61.trim() === '') {
+            console.log("[Staff Homepage] ⚠️ No logo found in any records, using default VESPA logo");
+            response.field_61 = "https://www.vespa.academy/Icons/vespa-logo.png";
           }
         }
         
         return response;
       }
       
+      console.log("[Staff Homepage] ❌ No school record found for ID:", schoolId);
       return null;
     } catch (error) {
       console.error('[Staff Homepage] Error getting school record:', error);
@@ -2164,61 +2219,98 @@ function lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole) {
       }
     }
     
+    // Function to show tooltip
+    function showTooltip(element, description, isMobile) {
+      // Close any existing tooltip first
+      hideAllTooltips();
+      
+      if (!description) return;
+      
+      // Create tooltip element
+      const tooltip = document.createElement('div');
+      tooltip.className = 'app-tooltip';
+      tooltip.innerHTML = description;
+      
+      // Position the tooltip
+      const rect = element.getBoundingClientRect();
+      
+      if (isMobile) {
+        // Center in screen on mobile
+        tooltip.style.left = '50%';
+        tooltip.style.top = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+      } else {
+        // Position below the element on desktop
+        tooltip.style.left = rect.left + (rect.width / 2) - 125 + 'px'; // 125px is half the tooltip width
+        tooltip.style.top = rect.bottom + 10 + 'px';
+      }
+      
+      // Add tooltip to body and save reference
+      document.body.appendChild(tooltip);
+      activeTooltip = tooltip;
+      
+      // Make visible with a small delay for animation
+      setTimeout(() => {
+        tooltip.classList.add('tooltip-active');
+      }, 10);
+    }
+    
     // Add global click listener to close tooltips when clicking outside
     document.addEventListener('click', function(e) {
-      if (activeTooltip && !e.target.closest('.app-info-icon')) {
+      if (activeTooltip && !e.target.closest('.app-card') && !e.target.closest('.app-info-icon')) {
         hideAllTooltips();
       }
     });
     
-    // Get all info icons
-    const infoIcons = document.querySelectorAll('.app-info-icon');
-    console.log(`[Staff Homepage] Found ${infoIcons.length} info icons`);
+    // Add mouse leave listener to body to hide tooltips when moving away
+    document.addEventListener('mouseleave', hideAllTooltips);
     
-    // Add click handlers to each icon
-    infoIcons.forEach((icon) => {
-      // Add click event
-      icon.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Close any existing tooltip first
-        hideAllTooltips();
-        
-        // Get description from attribute
-        const description = this.getAttribute('data-description');
-        if (!description) return;
-        
-        // Create tooltip element
-        const tooltip = document.createElement('div');
-        tooltip.className = 'app-tooltip';
-        tooltip.innerHTML = description;
-        
-        // Position the tooltip
-        const rect = this.getBoundingClientRect();
-        const isMobile = window.innerWidth <= 768;
-        
-        if (isMobile) {
-          // Center in screen on mobile
-          tooltip.style.left = '50%';
-          tooltip.style.top = '50%';
-          tooltip.style.transform = 'translate(-50%, -50%)';
-        } else {
-          // Position below the icon on desktop
-          tooltip.style.left = rect.left + (rect.width / 2) - 125 + 'px'; // 125px is half the tooltip width
-          tooltip.style.top = rect.bottom + 10 + 'px';
-        }
-        
-        // Add tooltip to body and save reference
-        document.body.appendChild(tooltip);
-        activeTooltip = tooltip;
-        
-        // Make visible with a small delay for animation
-        setTimeout(() => {
-          tooltip.classList.add('tooltip-active');
-        }, 10);
+    // Check if we're on mobile
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+      // Get all info icons
+      const infoIcons = document.querySelectorAll('.app-info-icon');
+      console.log(`[Staff Homepage] Found ${infoIcons.length} info icons (mobile view)`);
+      
+      // Add click handlers to each icon for mobile
+      infoIcons.forEach((icon) => {
+        icon.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const description = this.getAttribute('data-description');
+          showTooltip(this, description, isMobile);
+        });
       });
-    });
+    } else {
+      // Desktop behavior - tooltips on hover of the card
+      const appCards = document.querySelectorAll('.app-card');
+      console.log(`[Staff Homepage] Found ${appCards.length} app cards (desktop view)`);
+      
+      // Hide info icons on desktop
+      document.querySelectorAll('.app-info-icon').forEach(icon => {
+        icon.style.display = 'none';
+      });
+      
+      // Add hover handlers to each card for desktop
+      appCards.forEach((card) => {
+        // Get the description from the info icon inside this card
+        const infoIcon = card.querySelector('.app-info-icon');
+        const description = infoIcon ? infoIcon.getAttribute('data-description') : '';
+        
+        // Add mouse enter event to show tooltip
+        card.addEventListener('mouseenter', function(e) {
+          showTooltip(this, description, isMobile);
+        });
+        
+        // Add mouse leave event to hide tooltip after a short delay
+        card.addEventListener('mouseleave', function(e) {
+          // Small delay to allow moving to the tooltip
+          setTimeout(hideAllTooltips, 100);
+        });
+      });
+    }
   }
   
   // Get CSS styles for the homepage with improved UI
@@ -2245,17 +2337,25 @@ function getStyleCSS() {
       flex-direction: row;
       gap: 24px;
       margin-bottom: 28px;
+      justify-content: center;
+      align-items: stretch;
+      width: 100%;
     }
     
     /* Profile container takes 25% width */
     .profile-container {
       flex: 1;
       max-width: 25%;
+      min-width: 250px;
+      display: flex;
+      flex-direction: column;
     }
     
     /* Dashboard container takes 75% width */
     .dashboard-container {
       flex: 3;
+      display: flex;
+      flex-direction: column;
     }
     
     /* Animation Keyframes */
@@ -2266,7 +2366,7 @@ function getStyleCSS() {
     
     @keyframes pulseGlow {
       0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-      50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.3); }
+      50% { box-shadow: 0 4px 16px rgba(0, 229, 219, 0.2); }
       100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
     }
     
@@ -2529,9 +2629,9 @@ function getStyleCSS() {
     }
     
     .app-card:hover {
-      transform: translateY(-5px);
+      transform: translateY(-3px);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-      animation: pulseGlow 2s infinite;
+      animation: pulseGlow 4s ease-in-out infinite;
     }
     
     .app-card-header {
