@@ -909,16 +909,41 @@ function isStaffAdmin(roles) {
       if (schoolId) {
         schoolRecord = await getSchoolRecord(schoolId);
         
-        if (schoolRecord) {
-          // Extract school logo URL
-          schoolLogo = schoolRecord.field_61;
-          if (schoolLogo && typeof schoolLogo === 'string') {
-            debugLog("Found school logo URL:", schoolLogo);
-          } else {
-            console.warn("[Staff Homepage] No valid school logo found in school record");
-            schoolLogo = null;
+      if (schoolRecord) {
+        // Log all fields in school record to help debugging
+        debugLog("Full school record fields:", Object.keys(schoolRecord));
+        
+        // Try to extract school logo URL from field_61 first (primary location)
+        schoolLogo = schoolRecord.field_61;
+        
+        // If not found, try some other likely fields that might contain the logo
+        if (!schoolLogo || typeof schoolLogo !== 'string') {
+          console.log("[Staff Homepage] Trying alternative fields for school logo");
+          // Try common image field names
+          const possibleLogoFields = ['field_61', 'field_1', 'field_6', 'field_10', 'field_15', 'logo', 'school_logo'];
+          
+          for (const field of possibleLogoFields) {
+            if (schoolRecord[field] && typeof schoolRecord[field] === 'string' && 
+                (schoolRecord[field].includes('.png') || 
+                 schoolRecord[field].includes('.jpg') || 
+                 schoolRecord[field].includes('.jpeg') || 
+                 schoolRecord[field].includes('.svg') || 
+                 schoolRecord[field].includes('/images/') || 
+                 schoolRecord[field].includes('/img/'))) {
+              schoolLogo = schoolRecord[field];
+              console.log(`[Staff Homepage] Found potential logo in field ${field}: ${schoolLogo}`);
+              break;
+            }
           }
         }
+        
+        if (schoolLogo && typeof schoolLogo === 'string') {
+          debugLog("Found school logo URL:", schoolLogo);
+        } else {
+          console.warn("[Staff Homepage] No valid school logo found in school record");
+          schoolLogo = null;
+        }
+      }
       }
       
       // Extract roles from staff record
@@ -1707,12 +1732,12 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
   
   // Render the group section
   function renderGroupSection() {
-    return renderAppSection("GROUP", APP_SECTIONS.group);
+    return renderAppSection("MY GROUP", APP_SECTIONS.group);
   }
   
   // Render the resources section
   function renderResourcesSection() {
-    return renderAppSection("RESOURCES", APP_SECTIONS.resources);
+    return renderAppSection("MYRESOURCES", APP_SECTIONS.resources);
   }
   
   // Render the admin section (only for staff admin)
@@ -2225,8 +2250,21 @@ function getStyleCSS() {
       overflow: hidden;
     }
     
-    /* Section background pattern overlay */
+    /* Create a subtle gradient overlay for sections */
     .vespa-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(to right, ${THEME.ACCENT}, ${THEME.PRIMARY});
+      opacity: 0.7;
+      z-index: 2;
+    }
+    
+    /* Section background pattern overlay */
+    .vespa-section::after {
       content: '';
       position: absolute;
       top: 0;
@@ -2243,6 +2281,35 @@ function getStyleCSS() {
     .vespa-section > * {
       position: relative;
       z-index: 2;
+    }
+    
+    /* Different visual styling for each section type */
+    .profile-section {
+      border-left: 4px solid ${VESPA_COLORS.VISION};
+      box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+    
+    .dashboard-section {
+      border-left: 4px solid ${VESPA_COLORS.EFFORT};
+      box-shadow: 0 4px 12px rgba(134, 180, 240, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Styling for MY GROUP section */
+    .group-resources-container section:first-child {
+      border-left: 4px solid ${VESPA_COLORS.SYSTEMS};
+      box-shadow: 0 4px 12px rgba(114, 203, 68, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Styling for MYRESOURCES section */
+    .group-resources-container section:last-child {
+      border-left: 4px solid ${VESPA_COLORS.PRACTICE};
+      box-shadow: 0 4px 12px rgba(127, 49, 164, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Styling for MANAGE ACCOUNT section */
+    .vespa-section:last-child:not(.dashboard-section):not(.profile-section):not(.group-resources-container section) {
+      border-left: 4px solid ${VESPA_COLORS.ATTITUDE};
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
     }
     
     .vespa-section:hover {
@@ -2387,6 +2454,43 @@ function getStyleCSS() {
       flex-direction: column;
       position: relative;
       z-index: 1;
+    }
+    
+    /* Subtle accent in the corners of app cards */
+    .app-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle at top right, ${THEME.ACCENT}40, transparent 70%);
+      z-index: 1;
+    }
+    
+    .app-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle at bottom left, ${THEME.ACCENT}30, transparent 70%);
+      z-index: 1;
+    }
+    
+    /* Different card styles for each section type */
+    .group-resources-container section:first-child .app-card {
+      border-top: 3px solid ${VESPA_COLORS.SYSTEMS};
+    }
+    
+    .group-resources-container section:last-child .app-card {
+      border-top: 3px solid ${VESPA_COLORS.PRACTICE};
+    }
+    
+    /* Manage Account section cards */
+    .vespa-section:last-child:not(.dashboard-section):not(.profile-section):not(.group-resources-container section) .app-card {
+      border-top: 3px solid ${VESPA_COLORS.ATTITUDE};
     }
     
     .app-card:hover {
