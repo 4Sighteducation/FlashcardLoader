@@ -1,4 +1,3 @@
-
 // Staff Homepage Integration Script for Knack - v1.0
 // This script enables an enhanced homepage with staff profile and app hubs
 (function() {
@@ -394,22 +393,49 @@
         }
       }
       
-      // Extract roles from staff record
+  // Extract roles from staff record
       let roles = [];
-      if (staffRecord[FIELD_MAPPING.staffRole]) {
+      
+      // First check if roles are in profile_keys_raw which is most reliable
+      if (staffRecord.profile_keys_raw && Array.isArray(staffRecord.profile_keys_raw)) {
+        console.log('[Staff Homepage] Found profile_keys_raw:', staffRecord.profile_keys_raw);
+        
+        // Map profile keys to readable role names
+        const profileKeyMap = {
+          'profile5': 'Staff Admin',
+          'profile6': 'Staff Admin',
+          'profile7': 'Tutor',
+          'profile8': 'Subject Teacher',
+          'profile9': 'Head of Year',
+          'profile10': 'School Admin'
+        };
+        
+        roles = staffRecord.profile_keys_raw.map(key => {
+          return profileKeyMap[key] || sanitizeField(key);
+        });
+        
+        console.log('[Staff Homepage] Mapped roles from profile_keys_raw:', roles);
+      } 
+      // Fallback to staffRole field if no profile_keys_raw
+      else if (staffRecord[FIELD_MAPPING.staffRole]) {
+        console.log('[Staff Homepage] Using staffRole field:', staffRecord[FIELD_MAPPING.staffRole]);
+        
+        // Define role mapping
+        const roleMap = {
+          'profile5': 'Staff Admin',
+          'profile6': 'Staff Admin',
+          'profile7': 'Tutor',
+          'profile8': 'Subject Teacher',
+          'profile9': 'Head of Year',
+          'profile10': 'School Admin'
+        };
+        
         // Check if roles field is an array or string
         if (Array.isArray(staffRecord[FIELD_MAPPING.staffRole])) {
           // Process each role to convert "profile#" to actual role names
           roles = staffRecord[FIELD_MAPPING.staffRole].map(role => {
             // If role is like "profile5", convert to actual role name
             if (typeof role === 'string' && role.startsWith('profile')) {
-              const roleMap = {
-                'profile5': 'Staff Admin',
-                'profile7': 'Tutor',
-                'profile8': 'Subject Teacher',
-                'profile9': 'Head of Year',
-                'profile10': 'School Admin'
-              };
               return sanitizeField(roleMap[role] || role);
             }
             return sanitizeField(role);
@@ -418,13 +444,6 @@
           // Handle single role value
           const role = staffRecord[FIELD_MAPPING.staffRole];
           if (typeof role === 'string' && role.startsWith('profile')) {
-            const roleMap = {
-              'profile5': 'Staff Admin',
-              'profile7': 'Tutor',
-              'profile8': 'Subject Teacher',
-              'profile9': 'Head of Year',
-              'profile10': 'School Admin'
-            };
             roles = [sanitizeField(roleMap[role] || role)];
           } else {
             roles = [sanitizeField(role)];
@@ -1302,6 +1321,25 @@
         border-radius: 10px;
       }
       
+      /* Top row layout containing profile and dashboard */
+      .top-row {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+        margin-bottom: 24px;
+      }
+      
+      /* Profile container takes 25% width */
+      .profile-container {
+        flex: 1;
+        max-width: 25%;
+      }
+      
+      /* Dashboard container takes 75% width */
+      .dashboard-container {
+        flex: 3;
+      }
+      
       /* Animation Keyframes */
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
@@ -1552,7 +1590,8 @@
       
       /* VESPA Dashboard */
       .dashboard-section {
-        margin-top: 30px;
+        margin-top: 0; /* Changed from 30px since it's now in the top row */
+        height: 100%; /* Fill the container height */
       }
       
       .charts-container {
@@ -1599,14 +1638,37 @@
       
       /* Responsive adjustments */
       @media (max-width: 768px) {
+        /* Stack top row content vertically on mobile */
+        .top-row {
+          flex-direction: column;
+        }
+        
+        /* Profile takes full width on mobile */
+        .profile-container {
+          max-width: 100%;
+        }
+        
+        /* Dashboard takes full width on mobile */
+        .dashboard-container {
+          margin-top: 20px;
+        }
+        
+        /* Group and Resources stack vertically on mobile */
+        .group-resources-container {
+          flex-direction: column;
+        }
+        
+        /* Make app grid more responsive on mobile */
         .app-hub {
           grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         }
         
+        /* Adjust profile layout for smaller screens */
         .profile-info {
           flex-direction: column;
         }
         
+        /* Charts take full width on mobile */
         .chart-wrapper {
           min-width: 100%;
         }
@@ -1671,8 +1733,14 @@
       // Build the homepage HTML with updated layout based on feedback
       const homepageHTML = `
         <div id="staff-homepage">
-          ${renderProfileSection(profileData, hasAdminRole)}
-          ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
+          <div class="top-row">
+            <div class="profile-container">
+              ${renderProfileSection(profileData, hasAdminRole)}
+            </div>
+            <div class="dashboard-container">
+              ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
+            </div>
+          </div>
           <div class="group-resources-container">
             ${renderGroupSection()}
             ${renderResourcesSection()}
