@@ -1,137 +1,137 @@
 // Staff Homepage Integration Script for Knack - v1.0
 // This script enables an enhanced homepage with staff profile and app hubs
 (function() {
-  // --- Constants and Configuration ---
-  const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = true; // Enable console logging
-
-  // VESPA Colors for the dashboard
-  const VESPA_COLORS = {
-    VISION: '#e59437',
-    EFFORT: '#86b4f0', 
-    SYSTEMS: '#72cb44',
-    PRACTICE: '#7f31a4',
-    ATTITUDE: '#ff6b6b'  // Using a complementary color as it wasn't specified
-  };
+    // --- Constants and Configuration ---
+    const KNACK_API_URL = 'https://api.knack.com/v1';
+    const DEBUG_MODE = true; // Enable console logging
   
-  // Theme Colors - Updated as requested
-  const THEME = {
-    PRIMARY: '#06206e',    // Main background color 
-    ACCENT: '#00e5db',     // Accent color
-    TEXT: '#ffffff',       // Text color
-    CARD_BG: '#102983',    // Card background
-    SECTION_BG: '#0d2274', // Section background
-    BORDER: '#00e5db'      // Border color
-  };
-
-  // Staff profile field mappings
-  const FIELD_MAPPING = {
-    // Staff user fields
-    userId: 'field_3064',         // User ID 
-    userConnection: 'field_3070',  // User Account connection
-    staffName: 'field_3066',      // Staff Name
-    staffRole: 'field_73',        // Correct staff role field in Object_3 (was showing "profile#")
-    schoolConnection: 'field_122', // School connection
+    // VESPA Colors for the dashboard
+    const VESPA_COLORS = {
+      VISION: '#e59437',
+      EFFORT: '#86b4f0', 
+      SYSTEMS: '#72cb44',
+      PRACTICE: '#7f31a4',
+      ATTITUDE: '#ff6b6b'  // Using a complementary color as it wasn't specified
+    };
     
-    // VESPA results fields
-    vision: 'field_147',
-    effort: 'field_148',
-    systems: 'field_149',
-    practice: 'field_150',
-    attitude: 'field_151',
-    
-    // Connection fields for staff
-    tutor: 'field_145',
-    headOfYear: 'field_429',
-    subjectTeacher: 'field_2191',
-    
-    // School field for results lookup
-    resultsSchool: 'field_133'
-  };
+    // Theme Colors - Updated as requested
+    const THEME = {
+      PRIMARY: '#06206e',    // Main background color 
+      ACCENT: '#00e5db',     // Accent color
+      TEXT: '#ffffff',       // Text color
+      CARD_BG: '#102983',    // Card background
+      SECTION_BG: '#0d2274', // Section background
+      BORDER: '#00e5db'      // Border color
+    };
+  
+    // Staff profile field mappings
+    const FIELD_MAPPING = {
+      // Staff user fields
+      userId: 'field_3064',         // User ID 
+      userConnection: 'field_3070',  // User Account connection
+      staffName: 'field_3066',      // Staff Name
+      staffRole: 'field_73',        // Correct staff role field in Object_3 (was showing "profile#")
+      schoolConnection: 'field_122', // School connection
+      
+      // VESPA results fields
+      vision: 'field_147',
+      effort: 'field_148',
+      systems: 'field_149',
+      practice: 'field_150',
+      attitude: 'field_151',
+      
+      // Connection fields for staff
+      tutor: 'field_145',
+      headOfYear: 'field_429',
+      subjectTeacher: 'field_2191',
+      
+      // School field for results lookup
+      resultsSchool: 'field_133'
+    };
+  
+    // App hub configurations
+    const APP_SECTIONS = {
+      group: [
+        {
+          name: "VESPA Results",
+          url: "https://vespaacademy.knack.com/vespa-academy#mygroup-student-results/",
+          icon: "https://www.vespa.academy/Icons/survey-results.png",
+          description: "View detailed results from your students' VESPA questionnaires"
+        },
+        {
+          name: "Coaching Reports",
+          url: "https://vespaacademy.knack.com/vespa-academy#mygroup/mygroup-vespa-results2/",
+          icon: "https://www.vespa.academy/Icons/conversation.png",
+          description: "Access coaching reports and feedback for your student group"
+        },
+        {
+          name: "Student Activities",
+          url: "https://vespaacademy.knack.com/vespa-academy#my-vespa2/",
+          icon: "https://www.vespa.academy/Icons/activities.png",
+          description: "Browse and assign activities tailored to your students' needs"
+        },
+        {
+          name: "Study Sessions",
+          url: "https://vespaacademy.knack.com/vespa-academy#student-revision/",
+          icon: "https://www.vespa.academy/Icons/study%20plans.png",
+          description: "Monitor and manage student study sessions and revision plans"
+        }
+      ],
+      resources: [
+        {
+          name: "Slide Decks",
+          url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/",
+          icon: "https://www.vespa.academy/Icons/slidedecks.png",
+          description: "Access ready-to-use slide decks for classroom presentations"
+        },
+        {
+          name: "Newsletter",
+          url: "https://vespaacademy.knack.com/vespa-academy#vespa-newsletter/",
+          icon: "https://www.vespa.academy/Icons/newsletter%20(1).png",
+          description: "Read the latest VESPA newsletters with updates and best practices"
+        },
+        {
+          name: "Curriculum",
+          url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/",
+          icon: "https://www.vespa.academy/Icons/curriculum.png",
+          description: "Explore the VESPA curriculum and implementation guides"
+        },
+        {
+          name: "Worksheets",
+          url: "https://vespaacademy.knack.com/vespa-academy#worksheets/",
+          icon: "https://www.vespa.academy/Icons/pdf%20(1).png",
+          description: "Download printable worksheets and activities for your students"
+        }
+      ],
+      admin: [
+        {
+          name: "Students",
+          url: "https://vespaacademy.knack.com/vespa-academy#manage/student-accounts/",
+          icon: "https://www.vespa.academy/Icons/education.png",
+          description: "Manage student accounts, groups, and permissions"
+        },
+        {
+          name: "Staff",
+          url: "https://vespaacademy.knack.com/vespa-academy#manage/managestaff/",
+          icon: "https://www.vespa.academy/Icons/classroom.png",
+          description: "Manage staff accounts, roles, and access controls"
+        },
+        {
+          name: "Questionnaire",
+          url: "https://vespaacademy.knack.com/vespa-academy#manage/manage-questionnaire/",
+          icon: "https://www.vespa.academy/Icons/teacher-day.png",
+          description: "Configure and customize VESPA questionnaires"
+        },
+        {
+          name: "Account",
+          url: "https://vespaacademy.knack.com/vespa-academy#manage/account-details2/",
+          icon: "https://www.vespa.academy/Icons/university.png",
+          description: "Manage school account details and subscription"
+        }
+      ]
+    };
 
-  // App hub configurations
-  const APP_SECTIONS = {
-    group: [
-      {
-        name: "VESPA Results",
-        url: "https://vespaacademy.knack.com/vespa-academy#mygroup-student-results/",
-        icon: "https://www.vespa.academy/Icons/survey-results.png",
-        description: "View detailed results from your students' VESPA questionnaires"
-      },
-      {
-        name: "Coaching Reports",
-        url: "https://vespaacademy.knack.com/vespa-academy#mygroup/mygroup-vespa-results2/",
-        icon: "https://www.vespa.academy/Icons/conversation.png",
-        description: "Access coaching reports and feedback for your student group"
-      },
-      {
-        name: "Student Activities",
-        url: "https://vespaacademy.knack.com/vespa-academy#my-vespa2/",
-        icon: "https://www.vespa.academy/Icons/activities.png",
-        description: "Browse and assign activities tailored to your students' needs"
-      },
-      {
-        name: "Study Sessions",
-        url: "https://vespaacademy.knack.com/vespa-academy#student-revision/",
-        icon: "https://www.vespa.academy/Icons/study%20plans.png",
-        description: "Monitor and manage student study sessions and revision plans"
-      }
-    ],
-    resources: [
-      {
-        name: "Slide Decks",
-        url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/",
-        icon: "https://www.vespa.academy/Icons/slidedecks.png",
-        description: "Access ready-to-use slide decks for classroom presentations"
-      },
-      {
-        name: "Newsletter",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-newsletter/",
-        icon: "https://www.vespa.academy/Icons/newsletter%20(1).png",
-        description: "Read the latest VESPA newsletters with updates and best practices"
-      },
-      {
-        name: "Curriculum",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/",
-        icon: "https://www.vespa.academy/Icons/curriculum.png",
-        description: "Explore the VESPA curriculum and implementation guides"
-      },
-      {
-        name: "Worksheets",
-        url: "https://vespaacademy.knack.com/vespa-academy#worksheets/",
-        icon: "https://www.vespa.academy/Icons/pdf%20(1).png",
-        description: "Download printable worksheets and activities for your students"
-      }
-    ],
-    admin: [
-      {
-        name: "Students",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/student-accounts/",
-        icon: "https://www.vespa.academy/Icons/education.png",
-        description: "Manage student accounts, groups, and permissions"
-      },
-      {
-        name: "Staff",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/managestaff/",
-        icon: "https://www.vespa.academy/Icons/classroom.png",
-        description: "Manage staff accounts, roles, and access controls"
-      },
-      {
-        name: "Questionnaire",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/manage-questionnaire/",
-        icon: "https://www.vespa.academy/Icons/teacher-day.png",
-        description: "Configure and customize VESPA questionnaires"
-      },
-      {
-        name: "Account",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/account-details2/",
-        icon: "https://www.vespa.academy/Icons/university.png",
-        description: "Manage school account details and subscription"
-      }
-    ]
-  };
-
-  // --- Helper Functions ---
+// --- Helper Functions ---
   // Debug logging helper
   function debugLog(title, data) {
     if (!DEBUG_MODE) return;
@@ -393,7 +393,7 @@
         }
       }
       
-  // Extract roles from staff record
+      // Extract roles from staff record
       let roles = [];
       
       // First check if roles are in profile_keys_raw which is most reliable
@@ -409,16 +409,22 @@
         
         // Map profile keys to readable role names
         const profileKeyMap = {
-          'profile5': 'Staff Admin',
-          'profile6': 'Staff Admin',
-          'profile7': 'Tutor',
-          'profile8': 'Subject Teacher',
-          'profile9': 'Head of Year',
-          'profile10': 'School Admin'
+          'profile_5': 'Staff Admin',
+          'profile_6': 'Staff Admin',
+          'profile_7': 'Tutor',
+          'profile_8': 'Subject Teacher',
+          'profile_9': 'Head of Year',
+          'profile_10': 'School Admin'
         };
         
+        // FIX: Extract identifier property from each profile_keys_raw object
         roles = staffRecord.profile_keys_raw.map(key => {
-          return profileKeyMap[key] || sanitizeField(key);
+          // Extract identifier from the object 
+          const roleId = key.id || '';
+          const roleIdentifier = key.identifier || '';
+          
+          // Use profileKeyMap for ID mapping, or use the identifier directly, or use the ID as fallback
+          return profileKeyMap[roleId] || sanitizeField(roleIdentifier) || sanitizeField(roleId);
         });
         
         console.log('[Staff Homepage] Mapped roles from profile_keys_raw:', roles);
@@ -577,40 +583,27 @@
     
     try {
       // Get the school name for filtering
-      const schoolName = sanitizeField(await getSchoolName(schoolId));
-      console.log(`[Staff Homepage] Getting VESPA results for school: "${schoolName}"`);
+      const schoolName = await getSchoolName(schoolId);
+      const sanitizedSchoolName = sanitizeField(schoolName);
+      console.log(`[Staff Homepage] Getting VESPA results for school: "${sanitizedSchoolName}" with ID: ${schoolId}`);
       
-      // Create filter for the school - using OR to handle case sensitivity issues with test school
-      let filterRules = [];
+      // FIX: Try different approaches to filter for connected records
+      // For connections, we need to modify our approach
       
-      // Special handling for test school "VESPA ACADEMY" which might appear as "VESPA Academy" in UI
-      if (schoolName === "VESPA Academy" || schoolName === "VESPA ACADEMY") {
-        console.log('[Staff Homepage] Test school detected - adding both case variants to filter');
-        filterRules = [
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: "VESPA Academy" },
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: "VESPA ACADEMY" }
-        ];
-      } else {
-        // Normal school - use exact match with the name we have
-        console.log(`[Staff Homepage] Using exact school name match: "${schoolName}"`);
-        filterRules = [
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
-        ];
-      }
-      
-      // Construct the full filter with OR for multiple possible match values
-      const filters = encodeURIComponent(JSON.stringify({
-        match: filterRules.length > 1 ? 'or' : 'and',
-        rules: filterRules
+      // First approach: Use the schoolId directly in a contains filter
+      const schoolIdFilter = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+        ]
       }));
       
-      console.log(`[Staff Homepage] VESPA results filter:`, decodeURIComponent(filters));
+      console.log(`[Staff Homepage] Trying VESPA results filter with schoolId:`, decodeURIComponent(schoolIdFilter));
       
-      // Add pagination to handle large datasets better (20,000+ records)
-      const response = await retryApiCall(() => {
+      let response = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
-            url: `${KNACK_API_URL}/objects/object_10/records?filters=${filters}&limit=500&sort_field=id&sort_order=asc`,
+            url: `${KNACK_API_URL}/objects/object_10/records?filters=${schoolIdFilter}&limit=500&sort_field=id&sort_order=asc`,
             type: 'GET',
             headers: getKnackHeaders(),
             data: { format: 'raw' },
@@ -618,81 +611,126 @@
             error: reject
           });
         });
+      }).catch(error => {
+        console.warn('[Staff Homepage] Error with schoolId filter approach:', error);
+        return { records: [] };
       });
       
-      console.log(`[Staff Homepage] VESPA results API response status:`, 
-                 response ? `Found ${response.records?.length || 0} records` : 'No response');
+      // If we got results with the ID approach, use them
+      if (response && response.records && response.records.length > 0) {
+        console.log(`[Staff Homepage] VESPA results API schoolId filter success: Found ${response.records.length} records`);
+      } 
+      // If not, try the name approach
+      else {
+        console.log('[Staff Homepage] SchoolId filter returned no results, trying with name filter');
+        
+        // Alternative approach: Try using the school name with different operators
+        const nameFilters = encodeURIComponent(JSON.stringify({
+          match: 'or',
+          rules: [
+            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: sanitizedSchoolName },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: sanitizedSchoolName },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolName },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName },
+            // Special case for VESPA ACADEMY / VESPA Academy
+            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA ACADEMY" },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA Academy" }
+          ]
+        }));
+        
+        console.log(`[Staff Homepage] Trying VESPA results filter with name approaches:`, decodeURIComponent(nameFilters));
+        
+        response = await retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/object_10/records?filters=${nameFilters}&limit=500&sort_field=id&sort_order=asc`,
+              type: 'GET',
+              headers: getKnackHeaders(),
+              data: { format: 'raw' },
+              success: resolve,
+              error: reject
+            });
+          });
+        }).catch(error => {
+          console.error('[Staff Homepage] Error with name filter approach:', error);
+          return { records: [] };
+        });
+        
+        console.log(`[Staff Homepage] VESPA results API name filter response:`, 
+                   response ? `Found ${response.records?.length || 0} records` : 'No response');
+      }
       
+      // Process results if we found any with any approach
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found ${response.records.length} VESPA results for school:`, schoolId);
         
-      // Calculate averages for each VESPA category, excluding null or zero values
-      const totals = {
-        vision: { sum: 0, count: 0 },
-        effort: { sum: 0, count: 0 },
-        systems: { sum: 0, count: 0 },
-        practice: { sum: 0, count: 0 },
-        attitude: { sum: 0, count: 0 },
-        totalCount: 0
-      };
-      
-      // Function to safely parse and validate a VESPA value
-      const getValidValue = (value) => {
-        if (value === undefined || value === null) return null;
-        const parsed = parseFloat(value);
-        return (!isNaN(parsed) && parsed > 0) ? parsed : null;
-      };
-      
-      for (const record of response.records) {
-        // Get valid values for each category
-        const vision = getValidValue(record[FIELD_MAPPING.vision]);
-        const effort = getValidValue(record[FIELD_MAPPING.effort]);
-        const systems = getValidValue(record[FIELD_MAPPING.systems]);
-        const practice = getValidValue(record[FIELD_MAPPING.practice]);
-        const attitude = getValidValue(record[FIELD_MAPPING.attitude]);
+        // Calculate averages for each VESPA category, excluding null or zero values
+        const totals = {
+          vision: { sum: 0, count: 0 },
+          effort: { sum: 0, count: 0 },
+          systems: { sum: 0, count: 0 },
+          practice: { sum: 0, count: 0 },
+          attitude: { sum: 0, count: 0 },
+          totalCount: 0
+        };
         
-        // Only include record in total count if it has at least one valid VESPA value
-        if (vision !== null || effort !== null || systems !== null || practice !== null || attitude !== null) {
-          totals.totalCount++;
+        // Function to safely parse and validate a VESPA value
+        const getValidValue = (value) => {
+          if (value === undefined || value === null) return null;
+          const parsed = parseFloat(value);
+          return (!isNaN(parsed) && parsed > 0) ? parsed : null;
+        };
+        
+        for (const record of response.records) {
+          // Get valid values for each category
+          const vision = getValidValue(record[FIELD_MAPPING.vision]);
+          const effort = getValidValue(record[FIELD_MAPPING.effort]);
+          const systems = getValidValue(record[FIELD_MAPPING.systems]);
+          const practice = getValidValue(record[FIELD_MAPPING.practice]);
+          const attitude = getValidValue(record[FIELD_MAPPING.attitude]);
           
-          // Add valid values to their respective totals
-          if (vision !== null) {
-            totals.vision.sum += vision;
-            totals.vision.count++;
-          }
-          
-          if (effort !== null) {
-            totals.effort.sum += effort;
-            totals.effort.count++;
-          }
-          
-          if (systems !== null) {
-            totals.systems.sum += systems;
-            totals.systems.count++;
-          }
-          
-          if (practice !== null) {
-            totals.practice.sum += practice;
-            totals.practice.count++;
-          }
-          
-          if (attitude !== null) {
-            totals.attitude.sum += attitude;
-            totals.attitude.count++;
+          // Only include record in total count if it has at least one valid VESPA value
+          if (vision !== null || effort !== null || systems !== null || practice !== null || attitude !== null) {
+            totals.totalCount++;
+            
+            // Add valid values to their respective totals
+            if (vision !== null) {
+              totals.vision.sum += vision;
+              totals.vision.count++;
+            }
+            
+            if (effort !== null) {
+              totals.effort.sum += effort;
+              totals.effort.count++;
+            }
+            
+            if (systems !== null) {
+              totals.systems.sum += systems;
+              totals.systems.count++;
+            }
+            
+            if (practice !== null) {
+              totals.practice.sum += practice;
+              totals.practice.count++;
+            }
+            
+            if (attitude !== null) {
+              totals.attitude.sum += attitude;
+              totals.attitude.count++;
+            }
           }
         }
-      }
-        
-      // Calculate averages - only divide by the count of valid values for that category
-      const averages = {
-        vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
-        effort: totals.effort.count > 0 ? (totals.effort.sum / totals.effort.count).toFixed(2) : 0,
-        systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
-        practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
-        attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
-        count: totals.totalCount
-      };
-        
+          
+        // Calculate averages - only divide by the count of valid values for that category
+        const averages = {
+          vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
+          effort: totals.effort.count > 0 ? (totals.effort.sum / totals.effort.count).toFixed(2) : 0,
+          systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
+          practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
+          attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
+          count: totals.totalCount
+        };
+          
         debugLog("Calculated school VESPA averages:", averages);
         return averages;
       }
@@ -755,12 +793,12 @@
       let roleUsed = "none";
       
       if (useTutorRole) {
-        // Create filter for tutor records (highest priority)
+        // FIX: Updated approach for tutor records (highest priority) - use contains
         const tutorFilter = encodeURIComponent(JSON.stringify({
           match: 'and',
           rules: [
-            { field: FIELD_MAPPING.tutor, operator: 'is', value: staffEmail },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+            { field: FIELD_MAPPING.tutor, operator: 'contains', value: staffEmail },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
           ]
         }));
         
@@ -787,12 +825,12 @@
       }
       
       if (!resultsToUse && useHeadOfYearRole) {
-        // Create filter for Head of Year records (medium priority)
+        // FIX: Updated approach for Head of Year records (medium priority) - use contains
         const headOfYearFilter = encodeURIComponent(JSON.stringify({
           match: 'and',
           rules: [
-            { field: FIELD_MAPPING.headOfYear, operator: 'is', value: staffEmail },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+            { field: FIELD_MAPPING.headOfYear, operator: 'contains', value: staffEmail },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
           ]
         }));
         
@@ -819,12 +857,12 @@
       }
       
       if (!resultsToUse && useSubjectTeacherRole) {
-        // Create filter for Subject Teacher records (lowest priority)
+        // FIX: Updated approach for Subject Teacher records (lowest priority) - use contains 
         const subjectTeacherFilter = encodeURIComponent(JSON.stringify({
           match: 'and',
           rules: [
-            { field: FIELD_MAPPING.subjectTeacher, operator: 'is', value: staffEmail },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+            { field: FIELD_MAPPING.subjectTeacher, operator: 'contains', value: staffEmail },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
           ]
         }));
         
@@ -942,7 +980,8 @@
     console.log("[Staff Homepage] Checking admin roles in:", roles);
     
     // Direct check for profile5 and profile6 (Staff Admin roles)
-    if (roles.includes('profile5') || roles.includes('profile6')) {
+    if (roles.includes('profile5') || roles.includes('profile6') || 
+        roles.includes('profile_5') || roles.includes('profile_6')) {
       console.log("[Staff Homepage] Found direct Staff Admin role (profile5/profile6)");
       return true;
     }
@@ -959,9 +998,222 @@
              normalizedRole.includes('admin');
     });
   }
-  
+// --- Helper Functions ---
+  // Debug logging helper
+  function debugLog(title, data) {
+    if (!DEBUG_MODE) return;
+    
+    console.log(`%c[Staff Homepage] ${title}`, 'color: #7f31a4; font-weight: bold; font-size: 12px;');
+    try {
+      if (data !== undefined) {
+        console.log(JSON.parse(JSON.stringify(data, null, 2)));
+      }
+    } catch (e) {
+      console.log("Data could not be fully serialized for logging:", data);
+    }
+    return data;
+  }
+
+  // Safe JSON parsing function
+  function safeParseJSON(jsonString, defaultVal = null) {
+    if (!jsonString) return defaultVal;
+    try {
+      // If it's already an object, return it directly
+      if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
+      return JSON.parse(jsonString);
+    } catch (error) {
+      console.warn("[Staff Homepage] JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
+      try {
+        const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
+        const recovered = cleanedString
+          .replace(/\\"/g, '"')
+          .replace(/,\s*([}\]])/g, '$1');
+        const result = JSON.parse(recovered);
+        console.log("[Staff Homepage] JSON recovery successful.");
+        return result;
+      } catch (secondError) {
+        console.error("[Staff Homepage] JSON recovery failed:", secondError);
+        return defaultVal;
+      }
+    }
+  }
+
+  // Check if a string is a valid Knack record ID
+  function isValidKnackId(id) {
+    if (!id) return false;
+    return typeof id === 'string' && /^[0-9a-f]{24}$/i.test(id);
+  }
+
+  // Extract a valid record ID from various formats - improved version with array handling
+  function extractValidRecordId(value) {
+    if (!value) return null;
+    
+    console.log('[Staff Homepage] Extracting valid record ID from value type:', typeof value, value);
+
+    // Handle objects (most common case in Knack connections)
+    if (typeof value === 'object' && value !== null) {
+      // Check for direct ID property
+      if (value.id && isValidKnackId(value.id)) {
+        console.log('[Staff Homepage] Found valid ID in object.id:', value.id);
+        return value.id;
+      }
+      
+      // Check for identifier property
+      if (value.identifier && isValidKnackId(value.identifier)) {
+        console.log('[Staff Homepage] Found valid ID in object.identifier:', value.identifier);
+        return value.identifier;
+      }
+      
+      // Handle arrays from connection fields
+      if (Array.isArray(value)) {
+        console.log('[Staff Homepage] Value is an array with length:', value.length);
+        
+        // Handle single item array
+        if (value.length === 1) {
+          if (typeof value[0] === 'object' && value[0].id) {
+            console.log('[Staff Homepage] Found valid ID in array[0].id:', value[0].id);
+            return isValidKnackId(value[0].id) ? value[0].id : null;
+          }
+          if (typeof value[0] === 'string' && isValidKnackId(value[0])) {
+            console.log('[Staff Homepage] Found valid ID as string in array[0]:', value[0]);
+            return value[0];
+          }
+        }
+        
+        // IMPORTANT: Handle arrays with multiple items
+        if (value.length > 1) {
+          console.log('[Staff Homepage] Processing multi-item array with length:', value.length);
+          
+          // First try to find an object with an ID property
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            if (typeof item === 'object' && item !== null && item.id && isValidKnackId(item.id)) {
+              console.log(`[Staff Homepage] Found valid ID in array[${i}].id:`, item.id);
+              return item.id;
+            }
+          }
+          
+          // Then try to find a string that is a valid ID
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            if (typeof item === 'string' && isValidKnackId(item)) {
+              console.log(`[Staff Homepage] Found valid ID as string in array[${i}]:`, item);
+              return item;
+            }
+          }
+          
+          // If we have objects with identifiers, use the first one
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            if (typeof item === 'object' && item !== null && item.identifier && isValidKnackId(item.identifier)) {
+              console.log(`[Staff Homepage] Found valid ID in array[${i}].identifier:`, item.identifier);
+              return item.identifier;
+            }
+          }
+          
+          // Log that we couldn't find a valid ID in the array
+          console.log('[Staff Homepage] No valid IDs found in multi-item array');
+        }
+      }
+      
+      // Check for '_id' property which is sometimes used
+      if (value._id && isValidKnackId(value._id)) {
+        console.log('[Staff Homepage] Found valid ID in object._id:', value._id);
+        return value._id;
+      }
+    }
+
+    // If it's a direct string ID
+    if (typeof value === 'string') {
+      if (isValidKnackId(value)) {
+        console.log('[Staff Homepage] Value is a valid ID string:', value);
+        return value;
+      } else {
+        console.log('[Staff Homepage] String is not a valid Knack ID:', value);
+      }
+    }
+
+    console.log('[Staff Homepage] No valid record ID found in value');
+    return null;
+  }
+
+  // Safely remove HTML from strings
+  function sanitizeField(value) {
+    if (value === null || value === undefined) return "";
+    const strValue = String(value);
+    let sanitized = strValue.replace(/<[^>]*?>/g, "");
+    sanitized = sanitized.replace(/[*_~`#]/g, "");
+    sanitized = sanitized
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&nbsp;/g, " ");
+    return sanitized.trim();
+  }
+
+  // Generic retry function for API calls
+  function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
+    return new Promise((resolve, reject) => {
+      const attempt = (retryCount) => {
+        apiCall()
+          .then(resolve)
+          .catch((error) => {
+            const attemptsMade = retryCount + 1;
+            console.warn(`API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
+
+            if (retryCount < maxRetries - 1) {
+              const retryDelay = delay * Math.pow(2, retryCount);
+              console.log(`Retrying API call in ${retryDelay}ms...`);
+              setTimeout(() => attempt(retryCount + 1), retryDelay);
+            } else {
+              console.error(`API call failed after ${maxRetries} attempts.`);
+              reject(error);
+            }
+          });
+      };
+      attempt(0);
+    });
+  }
+
+  // Helper to get standard Knack API headers
+  function getKnackHeaders() {
+    // Reading knackAppId and knackApiKey from config
+    const config = window.STAFFHOMEPAGE_CONFIG;
+    
+    console.log("[Staff Homepage] Config for headers:", JSON.stringify(config));
+    
+    // Fallback to using Knack's global application ID if not in config
+    const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
+    // Use our known API key if not in config
+    const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '8f733aa5-dd35-4464-8348-64824d1f5f0d';
+    
+    console.log(`[Staff Homepage] Using AppID: ${knackAppId}`);
+    
+    if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
+      console.error("[Staff Homepage] Knack object or getUserToken function not available.");
+      throw new Error("Knack authentication context not available.");
+    }
+    
+    const token = Knack.getUserToken();
+    if (!token) {
+      console.warn("[Staff Homepage] Knack user token is null or undefined. API calls may fail.");
+    }
+    
+    const headers = {
+      'X-Knack-Application-Id': knackAppId,
+      'X-Knack-REST-API-Key': knackApiKey,
+      'Authorization': token || '',
+      'Content-Type': 'application/json'
+    };
+    
+    console.log("[Staff Homepage] Headers being used:", JSON.stringify(headers));
+    
+    return headers;
+  }
+
   // --- UI Rendering ---
-  // Render the main homepage UI
   // Render the profile section
   function renderProfileSection(profileData, hasAdminRole) {
     let dashboardButton = '';
@@ -1796,8 +2048,7 @@
       `;
     }
   }
-  
-  // --- Main Initialization ---
+ // --- Main Initialization ---
   // Initialize the staff homepage
   window.initializeStaffHomepage = function() {
     debugLog("Initializing Staff Homepage...");
@@ -1816,8 +2067,6 @@
     
     // Render the homepage
     renderHomepage();
-  };
+  }; // Close initializeStaffHomepage function properly
 
-})();
-
-
+})(); // Close IIFE properly
