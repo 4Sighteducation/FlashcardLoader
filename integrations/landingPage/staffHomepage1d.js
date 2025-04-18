@@ -369,9 +369,36 @@
       if (staffRecord[FIELD_MAPPING.staffRole]) {
         // Check if roles field is an array or string
         if (Array.isArray(staffRecord[FIELD_MAPPING.staffRole])) {
-          roles = staffRecord[FIELD_MAPPING.staffRole].map(role => sanitizeField(role));
+          // Process each role to convert "profile#" to actual role names
+          roles = staffRecord[FIELD_MAPPING.staffRole].map(role => {
+            // If role is like "profile5", convert to actual role name
+            if (typeof role === 'string' && role.startsWith('profile')) {
+              const roleMap = {
+                'profile5': 'Staff Admin',
+                'profile7': 'Tutor',
+                'profile8': 'Subject Teacher',
+                'profile9': 'Head of Year',
+                'profile10': 'School Admin'
+              };
+              return sanitizeField(roleMap[role] || role);
+            }
+            return sanitizeField(role);
+          });
         } else {
-          roles = [sanitizeField(staffRecord[FIELD_MAPPING.staffRole])];
+          // Handle single role value
+          const role = staffRecord[FIELD_MAPPING.staffRole];
+          if (typeof role === 'string' && role.startsWith('profile')) {
+            const roleMap = {
+              'profile5': 'Staff Admin',
+              'profile7': 'Tutor',
+              'profile8': 'Subject Teacher',
+              'profile9': 'Head of Year',
+              'profile10': 'School Admin'
+            };
+            roles = [sanitizeField(roleMap[role] || role)];
+          } else {
+            roles = [sanitizeField(role)];
+          }
         }
       }
       
@@ -468,6 +495,22 @@
     }
   }
   
+  // Get school name from school ID
+  async function getSchoolName(schoolId) {
+    if (!schoolId) return "VESPA Academy"; // Default fallback
+    
+    try {
+      const schoolRecord = await getSchoolRecord(schoolId);
+      if (schoolRecord && schoolRecord.field_2) {
+        return schoolRecord.field_2;
+      }
+      return "VESPA Academy"; // Default fallback if record found but no name
+    } catch (error) {
+      console.error('[Staff Homepage] Error getting school name:', error);
+      return "VESPA Academy"; // Default fallback on error
+    }
+  }
+  
   // --- VESPA Results Data Management ---
   // Get VESPA results for the school
   async function getSchoolVESPAResults(schoolId) {
@@ -478,10 +521,15 @@
     
     try {
       // Create filter to get all results for the school
+      // For proper school identification based on the logged-in user's school
+      const schoolName = sanitizeField(await getSchoolName(schoolId));
+      
+      debugLog(`Using school filter to get all students from school: ${schoolName}`);
+      
       const filters = encodeURIComponent(JSON.stringify({
         match: 'and',
         rules: [
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
         ]
       }));
       
@@ -501,54 +549,72 @@
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found ${response.records.length} VESPA results for school:`, schoolId);
         
-        // Calculate averages for each VESPA category
-        const totals = {
-          vision: 0,
-          effort: 0,
-          systems: 0,
-          practice: 0,
-          attitude: 0,
-          count: 0
-        };
+      // Calculate averages for each VESPA category, excluding null or zero values
+      const totals = {
+        vision: { sum: 0, count: 0 },
+        effort: { sum: 0, count: 0 },
+        systems: { sum: 0, count: 0 },
+        practice: { sum: 0, count: 0 },
+        attitude: { sum: 0, count: 0 },
+        totalCount: 0
+      };
+      
+      // Function to safely parse and validate a VESPA value
+      const getValidValue = (value) => {
+        if (value === undefined || value === null) return null;
+        const parsed = parseFloat(value);
+        return (!isNaN(parsed) && parsed > 0) ? parsed : null;
+      };
+      
+      for (const record of response.records) {
+        // Get valid values for each category
+        const vision = getValidValue(record[FIELD_MAPPING.vision]);
+        const effort = getValidValue(record[FIELD_MAPPING.effort]);
+        const systems = getValidValue(record[FIELD_MAPPING.systems]);
+        const practice = getValidValue(record[FIELD_MAPPING.practice]);
+        const attitude = getValidValue(record[FIELD_MAPPING.attitude]);
         
-        for (const record of response.records) {
-          // Only count records that have at least one valid VESPA value
-          if (
-            record[FIELD_MAPPING.vision] !== undefined ||
-            record[FIELD_MAPPING.effort] !== undefined ||
-            record[FIELD_MAPPING.systems] !== undefined ||
-            record[FIELD_MAPPING.practice] !== undefined ||
-            record[FIELD_MAPPING.attitude] !== undefined
-          ) {
-            if (record[FIELD_MAPPING.vision] !== undefined) {
-              totals.vision += parseFloat(record[FIELD_MAPPING.vision]) || 0;
-            }
-            if (record[FIELD_MAPPING.effort] !== undefined) {
-              totals.effort += parseFloat(record[FIELD_MAPPING.effort]) || 0;
-            }
-            if (record[FIELD_MAPPING.systems] !== undefined) {
-              totals.systems += parseFloat(record[FIELD_MAPPING.systems]) || 0;
-            }
-            if (record[FIELD_MAPPING.practice] !== undefined) {
-              totals.practice += parseFloat(record[FIELD_MAPPING.practice]) || 0;
-            }
-            if (record[FIELD_MAPPING.attitude] !== undefined) {
-              totals.attitude += parseFloat(record[FIELD_MAPPING.attitude]) || 0;
-            }
-            
-            totals.count++;
+        // Only include record in total count if it has at least one valid VESPA value
+        if (vision !== null || effort !== null || systems !== null || practice !== null || attitude !== null) {
+          totals.totalCount++;
+          
+          // Add valid values to their respective totals
+          if (vision !== null) {
+            totals.vision.sum += vision;
+            totals.vision.count++;
+          }
+          
+          if (effort !== null) {
+            totals.effort.sum += effort;
+            totals.effort.count++;
+          }
+          
+          if (systems !== null) {
+            totals.systems.sum += systems;
+            totals.systems.count++;
+          }
+          
+          if (practice !== null) {
+            totals.practice.sum += practice;
+            totals.practice.count++;
+          }
+          
+          if (attitude !== null) {
+            totals.attitude.sum += attitude;
+            totals.attitude.count++;
           }
         }
+      }
         
-        // Calculate averages
-        const averages = {
-          vision: totals.count > 0 ? (totals.vision / totals.count).toFixed(2) : 0,
-          effort: totals.count > 0 ? (totals.effort / totals.count).toFixed(2) : 0,
-          systems: totals.count > 0 ? (totals.systems / totals.count).toFixed(2) : 0,
-          practice: totals.count > 0 ? (totals.practice / totals.count).toFixed(2) : 0,
-          attitude: totals.count > 0 ? (totals.attitude / totals.count).toFixed(2) : 0,
-          count: totals.count
-        };
+      // Calculate averages - only divide by the count of valid values for that category
+      const averages = {
+        vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
+        effort: totals.effort.count > 0 ? (totals.effort.sum / totals.effort.count).toFixed(2) : 0,
+        systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
+        practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
+        attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
+        count: totals.totalCount
+      };
         
         debugLog("Calculated school VESPA averages:", averages);
         return averages;
@@ -562,41 +628,66 @@
   }
   
   // Get VESPA results for staff's connected students
-  async function getStaffVESPAResults(staffEmail, schoolId) {
+  async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     if (!staffEmail || !schoolId) {
       console.error("[Staff Homepage] Cannot get staff VESPA results: Missing email or schoolId");
       return null;
     }
     
     try {
-      // Create filters for each staff connection field, but still filter by the same school
-      const tutorFilter = encodeURIComponent(JSON.stringify({
-        match: 'and',
-        rules: [
-          { field: FIELD_MAPPING.tutor, operator: 'is', value: staffEmail },
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
-        ]
-      }));
+      // Get school name for filtering
+      const schoolName = sanitizeField(await getSchoolName(schoolId));
+      debugLog(`Looking for staff (${staffEmail}) students in school: ${schoolName}`);
       
-      const headOfYearFilter = encodeURIComponent(JSON.stringify({
-        match: 'and',
-        rules: [
-          { field: FIELD_MAPPING.headOfYear, operator: 'is', value: staffEmail },
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
-        ]
-      }));
+      // Check if user is only a Staff Admin (they should see only one graph)
+      const isOnlyStaffAdmin = isStaffAdmin(userRoles) && 
+                                userRoles.length === 1 && 
+                                userRoles[0].toLowerCase().includes('admin');
       
-      const subjectTeacherFilter = encodeURIComponent(JSON.stringify({
-        match: 'and',
-        rules: [
-          { field: FIELD_MAPPING.subjectTeacher, operator: 'is', value: staffEmail },
-          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolId }
-        ]
-      }));
+      if (isOnlyStaffAdmin) {
+        debugLog("User is only a Staff Admin - should not see second graph");
+        return null;
+      }
       
-      // Make separate queries for each role
-      const [tutorResults, headOfYearResults, subjectTeacherResults] = await Promise.all([
-        retryApiCall(() => {
+      // Role hierarchy for users with multiple roles:
+      // 1. Tutor (highest priority)
+      // 2. Head of Year 
+      // 3. Subject Teacher (lowest priority)
+      
+      // First, check if the user is a tutor
+      let useTutorRole = false;
+      let useHeadOfYearRole = false;
+      let useSubjectTeacherRole = false;
+      
+      for (const role of userRoles) {
+        const normalizedRole = role.toLowerCase();
+        if (normalizedRole.includes('tutor')) {
+          useTutorRole = true;
+          break; // Highest priority, no need to check further
+        } else if (normalizedRole.includes('head of year') || normalizedRole.includes('headofyear')) {
+          useHeadOfYearRole = true;
+          // Don't break - continue checking for tutor role
+        } else if (normalizedRole.includes('subject teacher') || normalizedRole.includes('subjectteacher')) {
+          useSubjectTeacherRole = true;
+          // Don't break - continue checking for higher priority roles
+        }
+      }
+      
+      // Based on role hierarchy, determine which students to show
+      let resultsToUse = null;
+      let roleUsed = "none";
+      
+      if (useTutorRole) {
+        // Create filter for tutor records (highest priority)
+        const tutorFilter = encodeURIComponent(JSON.stringify({
+          match: 'and',
+          rules: [
+            { field: FIELD_MAPPING.tutor, operator: 'is', value: staffEmail },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+          ]
+        }));
+        
+        const tutorResults = await retryApiCall(() => {
           return new Promise((resolve, reject) => {
             $.ajax({
               url: `${KNACK_API_URL}/objects/object_10/records?filters=${tutorFilter}`,
@@ -610,9 +701,25 @@
         }).catch(error => {
           console.error('[Staff Homepage] Error getting tutor VESPA results:', error);
           return { records: [] };
-        }),
+        });
         
-        retryApiCall(() => {
+        if (tutorResults.records && tutorResults.records.length > 0) {
+          resultsToUse = tutorResults.records;
+          roleUsed = "Tutor";
+        }
+      }
+      
+      if (!resultsToUse && useHeadOfYearRole) {
+        // Create filter for Head of Year records (medium priority)
+        const headOfYearFilter = encodeURIComponent(JSON.stringify({
+          match: 'and',
+          rules: [
+            { field: FIELD_MAPPING.headOfYear, operator: 'is', value: staffEmail },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+          ]
+        }));
+        
+        const headOfYearResults = await retryApiCall(() => {
           return new Promise((resolve, reject) => {
             $.ajax({
               url: `${KNACK_API_URL}/objects/object_10/records?filters=${headOfYearFilter}`,
@@ -626,9 +733,25 @@
         }).catch(error => {
           console.error('[Staff Homepage] Error getting head of year VESPA results:', error);
           return { records: [] };
-        }),
+        });
         
-        retryApiCall(() => {
+        if (headOfYearResults.records && headOfYearResults.records.length > 0) {
+          resultsToUse = headOfYearResults.records;
+          roleUsed = "Head of Year";
+        }
+      }
+      
+      if (!resultsToUse && useSubjectTeacherRole) {
+        // Create filter for Subject Teacher records (lowest priority)
+        const subjectTeacherFilter = encodeURIComponent(JSON.stringify({
+          match: 'and',
+          rules: [
+            { field: FIELD_MAPPING.subjectTeacher, operator: 'is', value: staffEmail },
+            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName }
+          ]
+        }));
+        
+        const subjectTeacherResults = await retryApiCall(() => {
           return new Promise((resolve, reject) => {
             $.ajax({
               url: `${KNACK_API_URL}/objects/object_10/records?filters=${subjectTeacherFilter}`,
@@ -642,85 +765,86 @@
         }).catch(error => {
           console.error('[Staff Homepage] Error getting subject teacher VESPA results:', error);
           return { records: [] };
-        })
-      ]);
-      
-      // Combine all results, but avoid duplicates by using a Map with record ID as key
-      const allResults = new Map();
-      
-      const addRecordsToMap = (records) => {
-        if (records && Array.isArray(records)) {
-          for (const record of records) {
-            if (record.id) {
-              allResults.set(record.id, record);
-            }
-          }
+        });
+        
+        if (subjectTeacherResults.records && subjectTeacherResults.records.length > 0) {
+          resultsToUse = subjectTeacherResults.records;
+          roleUsed = "Subject Teacher";
         }
-      };
+      }
       
-      addRecordsToMap(tutorResults.records);
-      addRecordsToMap(headOfYearResults.records);
-      addRecordsToMap(subjectTeacherResults.records);
-      
-      const combinedResults = Array.from(allResults.values());
-      debugLog(`Found ${combinedResults.length} unique VESPA results for staff email ${staffEmail}`, {
-        tutorCount: tutorResults.records?.length || 0,
-        headOfYearCount: headOfYearResults.records?.length || 0,
-        subjectTeacherCount: subjectTeacherResults.records?.length || 0
-      });
-      
-      // If no connected students found, return null
-      if (combinedResults.length === 0) {
+      // If no connected students found based on role hierarchy, return null
+      if (!resultsToUse || resultsToUse.length === 0) {
         return null;
       }
       
-      // Calculate averages for each VESPA category
+      debugLog(`Using ${roleUsed} role for staff results with ${resultsToUse.length} students`);
+      
+      // Calculate averages for each VESPA category, excluding null or zero values (same as school calculation)
       const totals = {
-        vision: 0,
-        effort: 0,
-        systems: 0,
-        practice: 0,
-        attitude: 0,
-        count: 0
+        vision: { sum: 0, count: 0 },
+        effort: { sum: 0, count: 0 },
+        systems: { sum: 0, count: 0 },
+        practice: { sum: 0, count: 0 },
+        attitude: { sum: 0, count: 0 },
+        totalCount: 0
       };
       
-      for (const record of combinedResults) {
-        // Only count records that have at least one valid VESPA value
-        if (
-          record[FIELD_MAPPING.vision] !== undefined ||
-          record[FIELD_MAPPING.effort] !== undefined ||
-          record[FIELD_MAPPING.systems] !== undefined ||
-          record[FIELD_MAPPING.practice] !== undefined ||
-          record[FIELD_MAPPING.attitude] !== undefined
-        ) {
-          if (record[FIELD_MAPPING.vision] !== undefined) {
-            totals.vision += parseFloat(record[FIELD_MAPPING.vision]) || 0;
-          }
-          if (record[FIELD_MAPPING.effort] !== undefined) {
-            totals.effort += parseFloat(record[FIELD_MAPPING.effort]) || 0;
-          }
-          if (record[FIELD_MAPPING.systems] !== undefined) {
-            totals.systems += parseFloat(record[FIELD_MAPPING.systems]) || 0;
-          }
-          if (record[FIELD_MAPPING.practice] !== undefined) {
-            totals.practice += parseFloat(record[FIELD_MAPPING.practice]) || 0;
-          }
-          if (record[FIELD_MAPPING.attitude] !== undefined) {
-            totals.attitude += parseFloat(record[FIELD_MAPPING.attitude]) || 0;
+      // Function to safely parse and validate a VESPA value
+      const getValidValue = (value) => {
+        if (value === undefined || value === null) return null;
+        const parsed = parseFloat(value);
+        return (!isNaN(parsed) && parsed > 0) ? parsed : null;
+      };
+      
+      for (const record of resultsToUse) {
+        // Get valid values for each category
+        const vision = getValidValue(record[FIELD_MAPPING.vision]);
+        const effort = getValidValue(record[FIELD_MAPPING.effort]);
+        const systems = getValidValue(record[FIELD_MAPPING.systems]);
+        const practice = getValidValue(record[FIELD_MAPPING.practice]);
+        const attitude = getValidValue(record[FIELD_MAPPING.attitude]);
+        
+        // Only include record in total count if it has at least one valid VESPA value
+        if (vision !== null || effort !== null || systems !== null || practice !== null || attitude !== null) {
+          totals.totalCount++;
+          
+          // Add valid values to their respective totals
+          if (vision !== null) {
+            totals.vision.sum += vision;
+            totals.vision.count++;
           }
           
-          totals.count++;
+          if (effort !== null) {
+            totals.effort.sum += effort;
+            totals.effort.count++;
+          }
+          
+          if (systems !== null) {
+            totals.systems.sum += systems;
+            totals.systems.count++;
+          }
+          
+          if (practice !== null) {
+            totals.practice.sum += practice;
+            totals.practice.count++;
+          }
+          
+          if (attitude !== null) {
+            totals.attitude.sum += attitude;
+            totals.attitude.count++;
+          }
         }
       }
       
-      // Calculate averages
+      // Calculate averages - only divide by the count of valid values for that category
       const averages = {
-        vision: totals.count > 0 ? (totals.vision / totals.count).toFixed(2) : 0,
-        effort: totals.count > 0 ? (totals.effort / totals.count).toFixed(2) : 0,
-        systems: totals.count > 0 ? (totals.systems / totals.count).toFixed(2) : 0,
-        practice: totals.count > 0 ? (totals.practice / totals.count).toFixed(2) : 0,
-        attitude: totals.count > 0 ? (totals.attitude / totals.count).toFixed(2) : 0,
-        count: totals.count
+        vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
+        effort: totals.effort.count > 0 ? (totals.effort.sum / totals.effort.count).toFixed(2) : 0,
+        systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
+        practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
+        attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
+        count: totals.totalCount
       };
       
       debugLog("Calculated staff connected students VESPA averages:", averages);
@@ -1154,7 +1278,7 @@
       .vespa-section:nth-child(3) { animation-delay: 0.3s; }
       
       .vespa-section-title {
-        color: ${THEME.TEXT};
+        color: ${THEME.ACCENT};
         font-size: 22px;
         font-weight: 600;
         margin-bottom: 16px;
@@ -1482,7 +1606,7 @@
       
       // Get staff-specific results if applicable
       const staffResults = profileData.email ? 
-        await getStaffVESPAResults(profileData.email, profileData.schoolId) : null;
+        await getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null;
       
       // Check if user is a staff admin
       const hasAdminRole = isStaffAdmin(profileData.roles);
