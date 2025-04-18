@@ -405,6 +405,20 @@
     }
   }
   
+// Helper function to check if user has a Staff Admin role
+function isStaffAdmin(roles) {
+    if (!roles || !Array.isArray(roles)) {
+      return false;
+    }
+    
+    return roles.some(role => {
+      if (typeof role !== 'string') return false;
+      
+      const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
+      return normalizedRole.includes('staffadmin') || normalizedRole === 'admin';
+    });
+  }
+
   // Helper function to check if user has a teaching role (tutor, HoY, subject teacher)
   function hasTeachingRole(roles) {
     if (!roles || !Array.isArray(roles)) {
@@ -1885,3 +1899,4 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
   }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
+
