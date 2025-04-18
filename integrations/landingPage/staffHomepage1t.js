@@ -432,6 +432,413 @@ const ICON_MAPPING = {
     }
   }
   
+// --- Cache Management System ---
+// Cache manager implementation using Knack Object_115
+const CacheManager = {
+  // Default TTL in minutes
+  DEFAULT_TTL: 60,
+  CACHE_OBJECT: 'object_115',
+  
+  // Create a unique cache key
+  createKey(type, identifier) {
+    return `${type}_${identifier}`;
+  },
+  
+  // Retrieve cache from Knack
+  async get(cacheKey, type) {
+    try {
+      console.log(`[Staff Homepage] Checking cache for: ${cacheKey} (${type})`);
+      
+      // Create a filter to find the cache entry
+      const filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: 'field_3187', operator: 'is', value: cacheKey },
+          { field: 'field_3194', operator: 'is', value: 'Yes' }, // Is Valid
+          { field: 'field_3197', operator: 'is', value: type }   // Cache Type
+        ]
+      }));
+      
+      // Query the cache object
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      if (response && response.records && response.records.length > 0) {
+        const cacheRecord = response.records[0];
+        
+        // Check if cache is expired
+        const expiryDate = new Date(cacheRecord.field_3195);
+        if (expiryDate < new Date()) {
+          console.log(`[Staff Homepage] Cache expired for ${cacheKey}`);
+          
+          // Mark cache as invalid
+          await $.ajax({
+            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify({
+              field_3194: 'No' // Is Valid = No
+            })
+          });
+          
+          return null;
+        }
+        
+        // Update access count and last accessed date
+        await $.ajax({
+          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify({
+            field_3193: (parseInt(cacheRecord.field_3193) || 0) + 1, // Access Count + 1
+            field_3192: new Date().toISOString() // Last Accessed
+          })
+        });
+        
+        console.log(`[Staff Homepage] Cache hit for ${cacheKey}, returning cached data`);
+        // Return the cached data
+        return JSON.parse(cacheRecord.field_3188); // Data field
+      }
+      
+      console.log(`[Staff Homepage] Cache miss for ${cacheKey}`);
+      return null;
+    } catch (error) {
+      console.error(`[Staff Homepage] Error retrieving cache for ${cacheKey}:`, error);
+      return null;
+    }
+  },
+  
+  // Store data in cache
+  async set(cacheKey, data, type, ttlMinutes = this.DEFAULT_TTL) {
+    try {
+      const user = Knack.getUserAttributes();
+      console.log(`[Staff Homepage] Storing data in cache: ${cacheKey} (${type})`);
+      
+      // Calculate expiry date
+      const expiryDate = new Date();
+      expiryDate.setMinutes(expiryDate.getMinutes() + ttlMinutes);
+      
+      // Check if cache already exists
+      const filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: 'field_3187', operator: 'is', value: cacheKey },
+          { field: 'field_3197', operator: 'is', value: type }
+        ]
+      }));
+      
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      // Get user's school information
+      let schoolName = '';
+      if (user && user.id) {
+        try {
+          // This assumes the staff record connected to user has a school name
+          const staffRecord = await findStaffRecord(user.email);
+          if (staffRecord && staffRecord[FIELD_MAPPING.schoolConnection]) {
+            const schoolId = extractValidRecordId(staffRecord[FIELD_MAPPING.schoolConnection]);
+            if (schoolId) {
+              const schoolRecord = await getSchoolRecord(schoolId);
+              if (schoolRecord) {
+                schoolName = sanitizeField(schoolRecord.field_2 || '');
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[Staff Homepage] Error getting school name:', e);
+        }
+      }
+      
+      // If cache exists, update it
+      if (response && response.records && response.records.length > 0) {
+        const cacheRecord = response.records[0];
+        console.log(`[Staff Homepage] Updating existing cache for ${cacheKey}`);
+        
+        await retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+              type: 'PUT',
+              headers: getKnackHeaders(),
+              data: JSON.stringify({
+                field_3188: JSON.stringify(data), // Data
+                field_3192: new Date().toISOString(), // Last Accessed
+                field_3193: (parseInt(cacheRecord.field_3193) || 0) + 1, // Access Count + 1
+                field_3194: 'Yes', // Is Valid
+                field_3195: expiryDate.toISOString() // Expiry Date
+              }),
+              success: resolve,
+              error: reject
+            });
+          });
+        });
+      } 
+      // Otherwise create a new cache entry
+      else {
+        console.log(`[Staff Homepage] Creating new cache entry for ${cacheKey}`);
+        
+        await retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records`,
+              type: 'POST',
+              headers: getKnackHeaders(),
+              data: JSON.stringify({
+                field_3187: cacheKey, // Cache Key
+                field_3188: JSON.stringify(data), // Data
+                field_3189: user?.email || 'unknown', // User Email - CORRECTED FIELD ID
+                field_3190: schoolName, // User Organisation (School)
+                field_3191: new Date().toISOString(), // First Login (Created Date)
+                field_3192: new Date().toISOString(), // Last Accessed
+                field_3193: 1, // Access Count
+                field_3194: 'Yes', // Is Valid
+                field_3195: expiryDate.toISOString(), // Expiry Date
+                field_3196: '', // User IP (could be captured if needed)
+                field_3197: type // Cache Type
+              }),
+              success: resolve,
+              error: reject
+            });
+          });
+        });
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[Staff Homepage] Error setting cache for ${cacheKey}:`, error);
+      return false;
+    }
+  },
+  
+  // Invalidate a specific cache entry
+  async invalidate(cacheKey, type) {
+    try {
+      console.log(`[Staff Homepage] Invalidating cache: ${cacheKey} (${type})`);
+      
+      const filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: 'field_3187', operator: 'is', value: cacheKey },
+          { field: 'field_3197', operator: 'is', value: type }
+        ]
+      }));
+      
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      if (response && response.records && response.records.length > 0) {
+        const cacheRecord = response.records[0];
+        
+        await retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+              type: 'PUT',
+              headers: getKnackHeaders(),
+              data: JSON.stringify({
+                field_3194: 'No' // Is Valid = No
+              }),
+              success: resolve,
+              error: reject
+            });
+          });
+        });
+        
+        console.log(`[Staff Homepage] Successfully invalidated cache: ${cacheKey}`);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error(`[Staff Homepage] Error invalidating cache for ${cacheKey}:`, error);
+      return false;
+    }
+  }
+};
+
+// --- User Activity Tracking Functions ---
+// Track user login activity
+async function trackUserLogin() {
+  try {
+    const user = Knack.getUserAttributes();
+    if (!user || !user.id) return;
+    
+    console.log(`[Staff Homepage] Tracking login for user: ${user.email}`);
+    
+    // Browser detection
+    const browser = navigator.userAgent;
+    
+    // Device type detection (simplified)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isTablet = /iPad|Android(?!.*Mobile)/i.test(navigator.userAgent);
+    const deviceType = isMobile ? (isTablet ? 'Tablet' : 'Mobile') : 'Desktop';
+    
+    // Find the user's record in Object_3
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'or',
+      rules: [
+        { field: 'field_91', operator: 'is', value: user.email },
+        { field: 'field_70', operator: 'is', value: user.email }
+      ]
+    }));
+    
+    const response = await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+          type: 'GET',
+          headers: getKnackHeaders(),
+          data: { format: 'raw' },
+          success: resolve,
+          error: reject
+        });
+      });
+    });
+    
+    if (response && response.records && response.records.length > 0) {
+      const userRecord = response.records[0];
+      
+      // Update user record with login information
+      await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify({
+              field_3198: new Date().toISOString(), // Login Date
+              field_3201: 0, // Page Views (reset on login) - CORRECTED FIELD
+              field_3203: deviceType, // Device Type
+              field_3204: browser.substring(0, 100) // Browser (truncated if too long)
+            }),
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      console.log(`[Staff Homepage] Successfully tracked login for user ${user.email}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('[Staff Homepage] Error tracking user login:', error);
+    return false;
+  }
+}
+
+// Track page views and feature usage
+async function trackPageView(featureUsed = null) {
+  try {
+    const user = Knack.getUserAttributes();
+    if (!user || !user.id) return;
+    
+    console.log(`[Staff Homepage] Tracking page view for user: ${user.email}`);
+    
+    // Find the user's record in Object_3
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'or',
+      rules: [
+        { field: 'field_91', operator: 'is', value: user.email },
+        { field: 'field_70', operator: 'is', value: user.email }
+      ]
+    }));
+    
+    const response = await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+          type: 'GET',
+          headers: getKnackHeaders(),
+          data: { format: 'raw' },
+          success: resolve,
+          error: reject
+        });
+      });
+    });
+    
+    if (response && response.records && response.records.length > 0) {
+      const userRecord = response.records[0];
+      
+      // Update fields for tracking
+      const updateData = {
+        // Increment page views using correct field
+        field_3201: (parseInt(userRecord.field_3201) || 0) + 1
+      };
+      
+      // Add feature used if provided
+      if (featureUsed) {
+        // Get current features (as array)
+        let currentFeatures = userRecord.field_3202 || [];
+        if (!Array.isArray(currentFeatures)) {
+          currentFeatures = [currentFeatures];
+        }
+        
+        // Add new feature if not already there
+        if (!currentFeatures.includes(featureUsed)) {
+          currentFeatures.push(featureUsed);
+          updateData.field_3202 = currentFeatures;
+        }
+      }
+      
+      // Update user record
+      await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify(updateData),
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      console.log(`[Staff Homepage] Successfully tracked page view for ${user.email}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('[Staff Homepage] Error tracking page view:', error);
+    return false;
+  }
+}
+
+
 // Helper function to check if user has a Staff Admin role
 function isStaffAdmin(roles) {
     if (!roles || !Array.isArray(roles)) {
@@ -749,163 +1156,178 @@ function isStaffAdmin(roles) {
   }
   
   // --- VESPA Results Data Management ---
-  // Get VESPA results for the school
-  async function getSchoolVESPAResults(schoolId) {
-    if (!schoolId) {
-      console.error("[Staff Homepage] Cannot get VESPA results: Missing schoolId");
-      return null;
+// Get VESPA results for the school
+async function getSchoolVESPAResults(schoolId) {
+  if (!schoolId) {
+    console.error("[Staff Homepage] Cannot get VESPA results: Missing schoolId");
+    return null;
+  }
+  
+  try {
+    // Create a cache key for this school's VESPA results
+    const cacheKey = `school_vespa_${schoolId}`;
+    
+    // Try to get from cache first
+    const cachedResults = await CacheManager.get(cacheKey, 'SchoolResults');
+    if (cachedResults) {
+      console.log(`[Staff Homepage] Using cached VESPA results for school ${schoolId}`);
+      return cachedResults;
     }
     
-    try {
-      // Get the school name for filtering
-      const schoolName = await getSchoolName(schoolId);
-      const sanitizedSchoolName = sanitizeField(schoolName);
-      console.log(`[Staff Homepage] Getting VESPA results for school: "${sanitizedSchoolName}" with ID: ${schoolId}`);
+    console.log(`[Staff Homepage] Cache miss for school ${schoolId}, fetching fresh data`);
+    
+    // Get the school name for filtering
+    const schoolName = await getSchoolName(schoolId);
+    const sanitizedSchoolName = sanitizeField(schoolName);
+    console.log(`[Staff Homepage] Getting VESPA results for school: "${sanitizedSchoolName}" with ID: ${schoolId}`);
+    
+    // Show loading indicator for pagination
+    console.log("[Staff Homepage] Fetching ALL school VESPA results using pagination (this may take a moment)...");
+    
+    // First approach: Use the schoolId directly in a contains filter
+    const schoolIdFilter = JSON.stringify({
+      match: 'and',
+      rules: [
+        { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+      ]
+    });
+    
+    console.log(`[Staff Homepage] Trying VESPA results filter with schoolId:`, schoolIdFilter);
+    
+    // Use pagination to get ALL records - not just the default 25 or limited 500
+    let allRecords = await getAllRecordsWithPagination(
+      `${KNACK_API_URL}/objects/object_10/records`, 
+      encodeURIComponent(schoolIdFilter),
+      20 // Allow up to 20 pages = 20,000 student records with 1000 per page
+    ).catch(error => {
+      console.warn('[Staff Homepage] Error with schoolId pagination:', error);
+      return [];
+    });
+    
+    // If we got results with the ID approach, use them
+    if (allRecords && allRecords.length > 0) {
+      console.log(`[Staff Homepage] VESPA results API schoolId filter pagination success: Found ${allRecords.length} total records`);
+    }
+    // If not, try the name approach
+    else {
+      console.log('[Staff Homepage] SchoolId filter returned no results, trying with name filter');
       
-      // Show loading indicator for pagination
-      console.log("[Staff Homepage] Fetching ALL school VESPA results using pagination (this may take a moment)...");
-      
-      // First approach: Use the schoolId directly in a contains filter
-      const schoolIdFilter = JSON.stringify({
-        match: 'and',
+      // Alternative approach: Try using the school name with different operators
+      const nameFilters = JSON.stringify({
+        match: 'or',
         rules: [
-          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: sanitizedSchoolName },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: sanitizedSchoolName },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolName },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName },
+          // Special case for VESPA ACADEMY / VESPA Academy
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA ACADEMY" },
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA Academy" }
         ]
       });
       
-      console.log(`[Staff Homepage] Trying VESPA results filter with schoolId:`, schoolIdFilter);
+      console.log(`[Staff Homepage] Trying VESPA results filter with name approaches:`, nameFilters);
       
-      // Use pagination to get ALL records - not just the default 25 or limited 500
-      let allRecords = await getAllRecordsWithPagination(
+      // Use pagination with name filters
+      allRecords = await getAllRecordsWithPagination(
         `${KNACK_API_URL}/objects/object_10/records`, 
-        encodeURIComponent(schoolIdFilter),
+        encodeURIComponent(nameFilters),
         20 // Allow up to 20 pages = 20,000 student records with 1000 per page
       ).catch(error => {
-        console.warn('[Staff Homepage] Error with schoolId pagination:', error);
+        console.error('[Staff Homepage] Error with name filter pagination:', error);
         return [];
       });
       
-      // If we got results with the ID approach, use them
-      if (allRecords && allRecords.length > 0) {
-        console.log(`[Staff Homepage] VESPA results API schoolId filter pagination success: Found ${allRecords.length} total records`);
-      }
-      // If not, try the name approach
-      else {
-        console.log('[Staff Homepage] SchoolId filter returned no results, trying with name filter');
-        
-        // Alternative approach: Try using the school name with different operators
-        const nameFilters = JSON.stringify({
-          match: 'or',
-          rules: [
-            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: sanitizedSchoolName },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: sanitizedSchoolName },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolName },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'is', value: schoolName },
-            // Special case for VESPA ACADEMY / VESPA Academy
-            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA ACADEMY" },
-            { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: "VESPA Academy" }
-          ]
-        });
-        
-        console.log(`[Staff Homepage] Trying VESPA results filter with name approaches:`, nameFilters);
-        
-        // Use pagination with name filters
-        allRecords = await getAllRecordsWithPagination(
-          `${KNACK_API_URL}/objects/object_10/records`, 
-          encodeURIComponent(nameFilters),
-          20 // Allow up to 20 pages = 20,000 student records with 1000 per page
-        ).catch(error => {
-          console.error('[Staff Homepage] Error with name filter pagination:', error);
-          return [];
-        });
-        
-        console.log(`[Staff Homepage] VESPA results API name filter pagination response: Found ${allRecords.length} total records`);
-      }
+      console.log(`[Staff Homepage] VESPA results API name filter pagination response: Found ${allRecords.length} total records`);
+    }
+    
+    // Process results if we found any with any approach
+    if (allRecords && allRecords.length > 0) {
+      debugLog(`Found ${allRecords.length} VESPA results for school:`, schoolId);
       
-      // Process results if we found any with any approach
-      if (allRecords && allRecords.length > 0) {
-        debugLog(`Found ${allRecords.length} VESPA results for school:`, schoolId);
+      // Calculate averages for each VESPA category, excluding null or zero values
+      const totals = {
+        vision: { sum: 0, count: 0 },
+        effort: { sum: 0, count: 0 },
+        systems: { sum: 0, count: 0 },
+        practice: { sum: 0, count: 0 },
+        attitude: { sum: 0, count: 0 },
+        totalCount: 0
+      };
+      
+      // Function to safely parse and validate a VESPA value
+      const getValidValue = (value) => {
+        if (value === undefined || value === null) return null;
+        const parsed = parseFloat(value);
+        return (!isNaN(parsed) && parsed > 0) ? parsed : null;
+      };
+      
+      for (const record of allRecords) {
+        // Get valid values for each category
+        const vision = getValidValue(record[FIELD_MAPPING.vision]);
+        const effort = getValidValue(record[FIELD_MAPPING.effort]);
+        const systems = getValidValue(record[FIELD_MAPPING.systems]);
+        const practice = getValidValue(record[FIELD_MAPPING.practice]);
+        const attitude = getValidValue(record[FIELD_MAPPING.attitude]);
         
-        // Calculate averages for each VESPA category, excluding null or zero values
-        const totals = {
-          vision: { sum: 0, count: 0 },
-          effort: { sum: 0, count: 0 },
-          systems: { sum: 0, count: 0 },
-          practice: { sum: 0, count: 0 },
-          attitude: { sum: 0, count: 0 },
-          totalCount: 0
-        };
-        
-        // Function to safely parse and validate a VESPA value
-        const getValidValue = (value) => {
-          if (value === undefined || value === null) return null;
-          const parsed = parseFloat(value);
-          return (!isNaN(parsed) && parsed > 0) ? parsed : null;
-        };
-        
-        for (const record of allRecords) {
-          // Get valid values for each category
-          const vision = getValidValue(record[FIELD_MAPPING.vision]);
-          const effort = getValidValue(record[FIELD_MAPPING.effort]);
-          const systems = getValidValue(record[FIELD_MAPPING.systems]);
-          const practice = getValidValue(record[FIELD_MAPPING.practice]);
-          const attitude = getValidValue(record[FIELD_MAPPING.attitude]);
+        // Only include record in total count if it has at least one valid VESPA value
+        if (vision !== null || effort !== null || systems !== null || practice !== null || attitude !== null) {
+          totals.totalCount++;
           
-          // Only include record in total count if it has at least one valid VESPA value
-          if (vision !== null || effort !== null || systems !== null || practice !== null || attitude !== null) {
-            totals.totalCount++;
-            
-            // Add valid values to their respective totals
-            if (vision !== null) {
-              totals.vision.sum += vision;
-              totals.vision.count++;
-            }
-            
-            if (effort !== null) {
-              totals.effort.sum += effort;
-              totals.effort.count++;
-            }
-            
-            if (systems !== null) {
-              totals.systems.sum += systems;
-              totals.systems.count++;
-            }
-            
-            if (practice !== null) {
-              totals.practice.sum += practice;
-              totals.practice.count++;
-            }
-            
-            if (attitude !== null) {
-              totals.attitude.sum += attitude;
-              totals.attitude.count++;
-            }
+          // Add valid values to their respective totals
+          if (vision !== null) {
+            totals.vision.sum += vision;
+            totals.vision.count++;
+          }
+          
+          if (effort !== null) {
+            totals.effort.sum += effort;
+            totals.effort.count++;
+          }
+          
+          if (systems !== null) {
+            totals.systems.sum += systems;
+            totals.systems.count++;
+          }
+          
+          if (practice !== null) {
+            totals.practice.sum += practice;
+            totals.practice.count++;
+          }
+          
+          if (attitude !== null) {
+            totals.attitude.sum += attitude;
+            totals.attitude.count++;
           }
         }
-          
-        // Calculate averages - only divide by the count of valid values for that category
-        const averages = {
-          vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
-          effort: totals.effort.count > 0 ? (totals.effort.sum / totals.effort.count).toFixed(2) : 0,
-          systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
-          practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
-          attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
-          count: totals.totalCount,
-          // Add data source info for the chart display
-          label: "All Students"
-        };
-          
-        debugLog("Calculated school VESPA averages:", averages);
-        return averages;
       }
+        
+      // Calculate averages - only divide by the count of valid values for that category
+      const averages = {
+        vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
+        effort: totals.effort.count > 0 ? (totals.effort.sum / totals.effort.count).toFixed(2) : 0,
+        systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
+        practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
+        attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
+        count: totals.totalCount,
+        // Add data source info for the chart display
+        label: "All Students"
+      };
+        
+      debugLog("Calculated school VESPA averages:", averages);
       
-      return null;
-    } catch (error) {
-      console.error('[Staff Homepage] Error getting school VESPA results:', error);
-      return null;
+      // Store in cache for future use
+      await CacheManager.set(cacheKey, averages, 'SchoolResults', 120); // 2 hour TTL
+      
+      return averages;
     }
+    
+    return null;
+  } catch (error) {
+    console.error('[Staff Homepage] Error getting school VESPA results:', error);
+    return null;
   }
-  
+}
   // Get VESPA results for staff's connected students
 // Get VESPA results for staff's connected students
 // Get VESPA results for staff's connected students
@@ -914,6 +1336,7 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       console.error("[Staff Homepage] Cannot get staff VESPA results: Missing email or schoolId");
       return null;
     }
+    
     
     try {
       // Get school name for filtering
@@ -1307,17 +1730,18 @@ function renderAppSection(title, apps) {
       const iconClass = ICON_MAPPING[app.name] || ICON_MAPPING.default;
       
       appsHTML += `
-        <a href="${app.url}" class="app-card" title="${sanitizeField(app.name)}">
-          <div class="app-card-header">
-            <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
-            <div class="app-icon-container">
-              <i class="${iconClass} app-icon-fa"></i>
-            </div>
-            <div class="app-name">${sanitizeField(app.name)}</div>
+      <a href="${app.url}" class="app-card" title="${sanitizeField(app.name)}" 
+         onclick="window.trackFeatureUse('${sanitizeField(app.name)}')">
+        <div class="app-card-header">
+          <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
+          <div class="app-icon-container">
+            <i class="${iconClass} app-icon-fa"></i>
           </div>
-        </a>
-      `;
-    });
+          <div class="app-name">${sanitizeField(app.name)}</div>
+        </div>
+      </a>
+    `;
+  });
     
     return `
       <section class="vespa-section">
@@ -1328,6 +1752,13 @@ function renderAppSection(title, apps) {
       </section>
     `;
   }
+
+  // Add this global function for tracking feature usage
+window.trackFeatureUse = function(featureName) {
+  trackPageView(featureName).catch(err => 
+    console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
+  );
+};
   
   // Render the VESPA dashboard
   function renderVESPADashboard(schoolResults, staffResults, hasAdminRole) {
@@ -2228,10 +2659,14 @@ document.head.appendChild(fontAwesomeLink);
       return;
     }
     
+    // Track user login in the background
+    trackUserLogin().catch(error => {
+      console.warn("[Staff Homepage] Error tracking login:", error);
+    });
+    
     // Render the homepage
     renderHomepage();
   }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
-
 
