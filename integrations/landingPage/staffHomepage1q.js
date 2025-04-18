@@ -824,6 +824,7 @@ function isStaffAdmin(roles) {
   
   // Get VESPA results for staff's connected students
 // Get VESPA results for staff's connected students
+// Get VESPA results for staff's connected students
 async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     if (!staffEmail || !schoolId) {
       console.error("[Staff Homepage] Cannot get staff VESPA results: Missing email or schoolId");
@@ -1127,27 +1128,6 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
           }
         }
       }
-      
-      // Calculate averages - only divide by the count of valid values for that category
-      const averages = {
-        vision: totals.vision.count > 0 ? (totals.vision.sum / totals.vision.count).toFixed(2) : 0,
-        effort: totals.effort.count > 0 ? (totals.effort.sum / totals.effort.count).toFixed(2) : 0,
-        systems: totals.systems.count > 0 ? (totals.systems.sum / totals.systems.count).toFixed(2) : 0,
-        practice: totals.practice.count > 0 ? (totals.practice.sum / totals.practice.count).toFixed(2) : 0,
-        attitude: totals.attitude.count > 0 ? (totals.attitude.sum / totals.attitude.count).toFixed(2) : 0,
-        count: totals.totalCount,
-        // Add role information and label for chart display
-        roleUsed: roleUsed,
-        label: `My ${roleUsed} Students`
-      };
-      
-      debugLog("Calculated staff connected students VESPA averages:", averages);
-      return averages;
-    } catch (error) {
-      console.error('[Staff Homepage] Error getting staff VESPA results:', error);
-      return null;
-    }
-  }
       
       // Calculate averages - only divide by the count of valid values for that category
       const averages = {
