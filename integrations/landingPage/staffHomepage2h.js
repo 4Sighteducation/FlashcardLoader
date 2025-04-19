@@ -3454,6 +3454,17 @@ try {
 window.initializeStaffHomepage = function() {
   debugLog("Initializing Staff Homepage...");
   
+  // First, explicitly check if we're on the login page by looking for login form elements
+  if (document.querySelector('input[type="password"]') && 
+      document.querySelector('form') && 
+      (document.querySelector('button[type="submit"]') || 
+       document.querySelector('input[type="submit"]') ||
+       document.querySelector('button:contains("Sign In")') ||
+       document.querySelector('button').textContent.includes('Sign In'))) {
+    console.log("[Staff Homepage] Login form detected, skipping initialization");
+    return; // Don't initialize on login pages
+  }
+  
   // First verify Knack context is available
   if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
     console.error("[Staff Homepage] Knack context not available.");
@@ -3494,4 +3505,5 @@ window.initializeStaffHomepage = function() {
 }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
+
 
