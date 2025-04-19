@@ -1887,6 +1887,266 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
   }
 }
 
+// --- Questionnaire Cycle Functions ---
+// Get questionnaire cycle dates for a school
+async function getQuestionnaireCycleDates(schoolId) {
+  if (!schoolId) {
+    console.error("[Staff Homepage] Cannot get questionnaire cycles: Missing schoolId");
+    return [];
+  }
+
+  try {
+    // Get current user
+    const user = Knack.getUserAttributes();
+    const userEmail = user?.email || 'anonymous';
+    
+    // Create a user-specific cache key for this school's questionnaire cycles
+    const cacheKey = `school_questionnaire_cycles_${schoolId}_${userEmail}`;
+    
+    // Try to get from cache first
+    const cachedDates = await CacheManager.get(cacheKey, 'QuestionnaireCycles');
+    if (cachedDates) {
+      console.log(`[Staff Homepage] Using cached questionnaire cycles for school ${schoolId}`);
+      return cachedDates;
+    }
+    
+    console.log(`[Staff Homepage] Cache miss for questionnaire cycles, fetching fresh data`);
+    
+    // Define filter based on the Customer field (field_1585)
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [
+        { field: 'field_1585', operator: 'contains', value: schoolId }
+      ]
+    }));
+    
+    // Fetch records from Object_66
+    const response = await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_66/records?filters=${filters}`,
+          type: 'GET',
+          headers: getKnackHeaders(),
+          data: { format: 'raw' },
+          success: resolve,
+          error: reject
+        });
+      });
+    });
+    
+    // Process and return data
+    if (response && response.records && response.records.length > 0) {
+      console.log(`[Staff Homepage] Found ${response.records.length} questionnaire cycles`);
+      
+      const cycleDates = response.records.map(record => ({
+        id: record.id,
+        cycle: parseInt(record.field_1579) || 0,
+        startDate: record.field_1678,
+        cutoffDate: record.field_1580,
+        customer: record.field_1585
+      }));
+      
+      // Sort by cycle number
+      cycleDates.sort((a, b) => a.cycle - b.cycle);
+      
+      // Cache results for future use (60 minutes TTL = 1 hour)
+      await CacheManager.set(cacheKey, cycleDates, 'QuestionnaireCycles', 60);
+      
+      return cycleDates;
+    }
+    
+    console.log(`[Staff Homepage] No questionnaire cycles found for school ${schoolId}`);
+    return [];
+  } catch (error) {
+    console.error('[Staff Homepage] Error getting questionnaire cycles:', error);
+    return [];
+  }
+}
+
+// Determine the current cycle based on dates
+function determineCurrentCycle(cycleDates) {
+  // If no cycles set up, default to 1
+  if (!cycleDates || cycleDates.length === 0) {
+    console.log("[Staff Homepage] No cycles found, defaulting to cycle 1");
+    return 1;
+  }
+  
+  // Get today's date
+  const today = new Date();
+  console.log(`[Staff Homepage] Determining current cycle for date: ${today.toDateString()}`);
+  
+  // Sort cycles by start date
+  const sortedCycles = [...cycleDates].sort((a, b) => 
+    new Date(a.startDate) - new Date(b.startDate));
+  
+  // If today is before first cycle starts, default to 1
+  if (today < new Date(sortedCycles[0].startDate)) {
+    console.log("[Staff Homepage] Current date is before first cycle starts");
+    return 1;
+  }
+  
+  // Check each cycle to see if today falls within it
+  for (let i = 0; i < sortedCycles.length; i++) {
+    const cycle = sortedCycles[i];
+    const startDate = new Date(cycle.startDate);
+    const cutoffDate = new Date(cycle.cutoffDate);
+    
+    console.log(`[Staff Homepage] Checking cycle ${cycle.cycle}: ${startDate.toDateString()} to ${cutoffDate.toDateString()}`);
+    
+    // If today is between start and cutoff, this is the current cycle
+    if (today >= startDate && today <= cutoffDate) {
+      console.log(`[Staff Homepage] Current cycle is ${cycle.cycle} (active)`);
+      return cycle.cycle;
+    }
+    
+    // If this isn't the last cycle, check if we're between two cycles
+    if (i < sortedCycles.length - 1) {
+      const nextCycle = sortedCycles[i + 1];
+      const nextStartDate = new Date(nextCycle.startDate);
+      
+      // If today is after this cycle's cutoff but before next cycle starts,
+      // use the previous cycle number
+      if (today > cutoffDate && today < nextStartDate) {
+        console.log(`[Staff Homepage] Current cycle is ${cycle.cycle} (between cycles)`);
+        return cycle.cycle;
+      }
+    }
+  }
+  
+  // If we've gone through all cycles and none matched, we're after the last cycle
+  // Return the last cycle number
+  const lastCycle = sortedCycles[sortedCycles.length - 1];
+  console.log(`[Staff Homepage] After all cycles, using last cycle: ${lastCycle.cycle}`);
+  return lastCycle.cycle;
+}
+
+// Format date for display - converts from YYYY-MM-DD to DD/MM/YYYY
+function formatDateForDisplay(dateString) {
+  if (!dateString) return 'Not set';
+  
+  try {
+    // Parse the input date
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      // If already in DD/MM/YYYY format, return as is
+      if (dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        return dateString;
+      }
+      return 'Invalid date';
+    }
+    
+    // Format to DD/MM/YYYY
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('[Staff Homepage] Error formatting date:', error);
+    return 'Error';
+  }
+}
+
+// Save or update a cycle
+async function saveCycle(schoolId, cycleData) {
+  if (!schoolId || !cycleData) {
+    console.error("[Staff Homepage] Cannot save cycle: Missing data");
+    return false;
+  }
+  
+  try {
+    // Check if this is an update (has id) or new cycle
+    if (cycleData.id) {
+      // Update existing cycle
+      await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_66/records/${cycleData.id}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify({
+              field_1579: cycleData.cycle.toString(),
+              field_1678: cycleData.startDate,
+              field_1580: cycleData.cutoffDate
+            }),
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      console.log(`[Staff Homepage] Successfully updated cycle ${cycleData.cycle}`);
+    } else {
+      // Create new cycle
+      await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_66/records`,
+            type: 'POST',
+            headers: getKnackHeaders(),
+            data: JSON.stringify({
+              field_1585: schoolId,
+              field_1579: cycleData.cycle.toString(),
+              field_1678: cycleData.startDate,
+              field_1580: cycleData.cutoffDate
+            }),
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      console.log(`[Staff Homepage] Successfully created cycle ${cycleData.cycle}`);
+    }
+    
+    // Invalidate cache to ensure fresh data
+    const user = Knack.getUserAttributes();
+    const userEmail = user?.email || 'anonymous';
+    const cacheKey = `school_questionnaire_cycles_${schoolId}_${userEmail}`;
+    await CacheManager.invalidate(cacheKey, 'QuestionnaireCycles');
+    
+    return true;
+  } catch (error) {
+    console.error('[Staff Homepage] Error saving cycle:', error);
+    return false;
+  }
+}
+
+// Delete a cycle
+async function deleteCycle(cycleId, schoolId) {
+  if (!cycleId) {
+    console.error("[Staff Homepage] Cannot delete cycle: Missing ID");
+    return false;
+  }
+  
+  try {
+    await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_66/records/${cycleId}`,
+          type: 'DELETE',
+          headers: getKnackHeaders(),
+          success: resolve,
+          error: reject
+        });
+      });
+    });
+    
+    console.log(`[Staff Homepage] Successfully deleted cycle ${cycleId}`);
+    
+    // Invalidate cache to ensure fresh data
+    const user = Knack.getUserAttributes();
+    const userEmail = user?.email || 'anonymous';
+    const cacheKey = `school_questionnaire_cycles_${schoolId}_${userEmail}`;
+    await CacheManager.invalidate(cacheKey, 'QuestionnaireCycles');
+    
+    return true;
+  } catch (error) {
+    console.error('[Staff Homepage] Error deleting cycle:', error);
+    return false;
+  }
+}
+
 // --- UI Rendering ---
 
 function renderProfileSection(profileData, hasAdminRole) {
@@ -1998,7 +2258,8 @@ trackPageView(featureName).catch(err =>
 };
 
 // Render the VESPA dashboard
-function renderVESPADashboard(schoolResults, staffResults, hasAdminRole) {
+// Render the VESPA dashboard
+function renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleDates, currentCycle) {
   if (!schoolResults) {
     return `
       <section class="vespa-section dashboard-section">
@@ -2018,6 +2279,14 @@ function renderVESPADashboard(schoolResults, staffResults, hasAdminRole) {
     countDisplay = `School: ${schoolResults.count} students | ${staffResults.roleUsed}: ${staffResults.count} students`;
   }
   
+  // Add current cycle indicator if we have cycle data
+  const cycleIndicator = currentCycle !== undefined ? `
+    <div class="current-cycle-indicator">
+      <span class="cycle-label">Current Cycle:</span>
+      <span class="cycle-number">${currentCycle}</span>
+    </div>
+  ` : '';
+  
   return `
     <section class="vespa-section dashboard-section">
       <h2 class="vespa-section-title">VESPA Dashboard</h2>
@@ -2025,10 +2294,88 @@ function renderVESPADashboard(schoolResults, staffResults, hasAdminRole) {
         <div class="chart-wrapper">
           <h3 class="chart-title">${chartTitle}</h3>
           <div class="result-count">${countDisplay}</div>
+          ${cycleIndicator}
           <canvas id="vespaChart"></canvas>
         </div>
       </div>
+      
+      ${renderQuestionnaireCycles(cycleDates, hasAdminRole, currentCycle)}
     </section>
+  `;
+}
+
+// Render the questionnaire cycles section
+function renderQuestionnaireCycles(cycleDates, hasAdminRole, currentCycle) {
+  // No data case
+  if (!cycleDates || cycleDates.length === 0) {
+    return `
+      <div class="questionnaire-cycles-section">
+        <h3 class="section-title">Questionnaire Cycle Dates</h3>
+        <div class="no-cycles-message">
+          <p>No questionnaire cycles are currently set for your school.</p>
+          ${hasAdminRole ? `
+            <button id="add-cycle-btn" class="vespa-btn vespa-btn-primary">
+              <i class="fas fa-plus-circle"></i> Add Cycle
+            </button>
+          ` : `
+            <p class="contact-admin-note">Please contact your Staff Admin to set up questionnaire cycles.</p>
+          `}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Build table rows for cycles
+  let cycleRows = '';
+  for (let i = 0; i < cycleDates.length; i++) {
+    const cycle = cycleDates[i];
+    const isCurrentCycle = (cycle.cycle === currentCycle);
+    
+    cycleRows += `
+      <tr class="${isCurrentCycle ? 'current-cycle' : ''}">
+        <td class="cycle-number-cell">${cycle.cycle}</td>
+        <td>${formatDateForDisplay(cycle.startDate)}</td>
+        <td>${formatDateForDisplay(cycle.cutoffDate)}</td>
+        ${hasAdminRole ? `
+          <td class="cycle-actions">
+            <button class="cycle-edit-btn vespa-btn vespa-btn-small" data-cycle-id="${cycle.id}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="cycle-delete-btn vespa-btn vespa-btn-small vespa-btn-danger" data-cycle-id="${cycle.id}">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </td>
+        ` : ''}
+      </tr>
+    `;
+  }
+  
+  // Return full table with admin controls if appropriate
+  return `
+    <div class="questionnaire-cycles-section">
+      <h3 class="section-title">Questionnaire Cycle Dates</h3>
+      <table class="cycles-table">
+        <thead>
+          <tr>
+            <th>Cycle</th>
+            <th>Start Date</th>
+            <th>Cutoff Date</th>
+            ${hasAdminRole ? '<th>Actions</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${cycleRows}
+        </tbody>
+      </table>
+      
+      ${hasAdminRole ? `
+        <div class="cycle-admin-controls">
+          <button id="add-cycle-btn" class="vespa-btn vespa-btn-primary">
+            <i class="fas fa-plus-circle"></i> Add Cycle
+          </button>
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -2540,6 +2887,149 @@ function setupLogoControls(schoolId) {
         console.error('[Staff Homepage] Error saving logo:', error);
         alert('Error saving logo. Please try again.');
       }
+    });
+  }
+}
+
+// Set up questionnaire cycle controls
+function setupCycleControls(schoolId) {
+  // Get modal elements
+  const modal = document.getElementById('cycle-modal');
+  if (!modal) return; // Exit if no modal found (non-admin user)
+  
+  const closeBtn = modal.querySelector('.vespa-modal-close');
+  const form = document.getElementById('cycle-form');
+  const idInput = document.getElementById('cycle-id');
+  const cycleSelect = document.getElementById('cycle-number');
+  const startDateInput = document.getElementById('cycle-start-date');
+  const cutoffDateInput = document.getElementById('cycle-cutoff-date');
+  const addBtn = document.getElementById('add-cycle-btn');
+  const cancelBtn = document.getElementById('cycle-cancel-btn');
+  
+  // Show modal when Add Cycle button is clicked
+  if (addBtn) {
+    addBtn.addEventListener('click', function() {
+      // Reset form for new cycle
+      form.reset();
+      idInput.value = '';
+      document.getElementById('cycle-modal-title').textContent = 'Add Questionnaire Cycle';
+      
+      // Show modal
+      modal.style.display = 'block';
+    });
+  }
+  
+  // Close modal when X is clicked
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+  }
+  
+  // Close modal when Cancel is clicked
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+  }
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', function(event) {
+    if (event.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+  
+  // Add click handlers for edit buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.cycle-edit-btn')) {
+      const button = e.target.closest('.cycle-edit-btn');
+      const cycleId = button.getAttribute('data-cycle-id');
+      
+      // Find this cycle's data
+      getQuestionnaireCycleDates(schoolId).then(cycles => {
+        const cycle = cycles.find(c => c.id === cycleId);
+        if (cycle) {
+          // Populate form with cycle data
+          idInput.value = cycle.id;
+          cycleSelect.value = cycle.cycle;
+          startDateInput.value = formatDateForDisplay(cycle.startDate);
+          cutoffDateInput.value = formatDateForDisplay(cycle.cutoffDate);
+          
+          // Update modal title
+          document.getElementById('cycle-modal-title').textContent = `Edit Cycle ${cycle.cycle}`;
+          
+          // Show modal
+          modal.style.display = 'block';
+        }
+      });
+    }
+  });
+  
+  // Add click handlers for delete buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.cycle-delete-btn')) {
+      const button = e.target.closest('.cycle-delete-btn');
+      const cycleId = button.getAttribute('data-cycle-id');
+      
+      // Confirm before deleting
+      if (confirm('Are you sure you want to delete this cycle?')) {
+        deleteCycle(cycleId, schoolId).then(success => {
+          if (success) {
+            // Refresh the page to show updated cycles
+            location.reload();
+          } else {
+            alert('Failed to delete cycle. Please try again.');
+          }
+        });
+      }
+    }
+  });
+  
+  // Handle form submission
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Get form values
+      const cycleId = idInput.value.trim();
+      const cycleNumber = parseInt(cycleSelect.value);
+      const startDate = startDateInput.value.trim();
+      const cutoffDate = cutoffDateInput.value.trim();
+      
+      // Validate dates (basic check for DD/MM/YYYY format)
+      const datePattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+      if (!datePattern.test(startDate) || !datePattern.test(cutoffDate)) {
+        alert('Please enter dates in DD/MM/YYYY format');
+        return;
+      }
+      
+      // Convert DD/MM/YYYY to YYYY-MM-DD for API
+      const convertDate = (dateStr) => {
+        const [day, month, year] = dateStr.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      };
+      
+      // Prepare data for saving
+      const cycleData = {
+        id: cycleId || null,
+        cycle: cycleNumber,
+        startDate: convertDate(startDate),
+        cutoffDate: convertDate(cutoffDate)
+      };
+      
+      // Save the cycle
+      saveCycle(schoolId, cycleData).then(success => {
+        if (success) {
+          // Close modal
+          modal.style.display = 'none';
+          
+          // Refresh the page to show updated cycles
+          location.reload();
+        } else {
+          alert('Failed to save cycle. Please try again.');
+        }
+      });
     });
   }
 }
@@ -3292,7 +3782,141 @@ font-style: italic;
     background-color: rgba(255, 255, 255, 0.2);
     color: #ffffff;
   }
+/* Questionnaire Cycles Styles */
+.questionnaire-cycles-section {
+  margin-top: 25px;
+  background: ${THEME.CARD_BG};
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid ${THEME.ACCENT};
+}
 
+.section-title {
+  font-size: 18px;
+  color: #ffffff;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 8px;
+}
+
+.cycles-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+.cycles-table th {
+  text-align: left;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 2px solid ${THEME.ACCENT};
+}
+
+.cycles-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cycles-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cycles-table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.cycle-number-cell {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.current-cycle {
+  background-color: rgba(0, 229, 219, 0.15);
+}
+
+.current-cycle td {
+  border-left: 3px solid ${THEME.ACCENT};
+}
+
+.current-cycle-indicator {
+  background-color: rgba(0, 229, 219, 0.15);
+  border-radius: 5px;
+  padding: 8px 12px;
+  margin: 10px 0;
+  display: inline-block;
+  border-left: 3px solid ${THEME.ACCENT};
+}
+
+.cycle-label {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.cycle-number {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.no-cycles-message {
+  padding: 20px;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  margin: 15px 0;
+}
+
+.contact-admin-note {
+  font-style: italic;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cycle-admin-controls {
+  margin-top: 15px;
+  text-align: right;
+}
+
+.cycle-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Cycle modal form styles */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.form-group input, 
+.form-group select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid ${THEME.ACCENT};
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Small button styling */
+.vespa-btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  margin-left: 5px;
+}
+
+.vespa-btn-danger {
+  background-color: #f87171;
+}
+
+.vespa-btn-danger:hover {
+  background-color: #ef4444;
+}
 `;
 }
 // Render the main homepage UI
@@ -3350,11 +3974,16 @@ try {
   console.log(`[Staff Homepage] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
   console.log(`[Staff Homepage] Has Admin Role: ${hasAdminRole}, Management section will ${hasAdminRole ? 'be shown' : 'NOT be shown'}`);
   
-  // OPTIMIZATION: Load VESPA results in parallel instead of sequentially
-  const [schoolResults, staffResults] = await Promise.all([
-    getSchoolVESPAResults(profileData.schoolId),
-    profileData.email ? getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null
-  ]);
+  // OPTIMIZATION: Load VESPA results and cycle data in parallel instead of sequentially
+const [schoolResults, staffResults, cycleDates] = await Promise.all([
+  getSchoolVESPAResults(profileData.schoolId),
+  profileData.email ? getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null,
+  getQuestionnaireCycleDates(profileData.schoolId)
+]);
+
+// Determine current cycle
+const currentCycle = determineCurrentCycle(cycleDates);
+console.log(`[Staff Homepage] Current cycle determined to be: ${currentCycle}`);
   
   // Build the homepage HTML with updated layout
   const homepageHTML = `
@@ -3364,7 +3993,7 @@ try {
           ${renderProfileSection(profileData, hasAdminRole)}
         </div>
         <div class="dashboard-container">
-          ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole)}
+          ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole, currentCycle)}
         </div>
       </div>
       <div class="group-resources-container">
@@ -3372,6 +4001,7 @@ try {
         ${renderResourcesSection()}
       </div>
       ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
+      
     </div>
   `;
   
@@ -3435,6 +4065,50 @@ try {
     
     // Add event listeners after modal is added
     setupLogoControls(profileData.schoolId);
+    // Setup cycle controls for admin users
+if (hasAdminRole) {
+  setupCycleControls(profileData.schoolId);
+}
+    // Add modal for cycle editing (for admin users)
+if (hasAdminRole) {
+  const cycleModalHtml = `
+    <div id="cycle-modal" class="vespa-modal">
+      <div class="vespa-modal-content">
+        <span class="vespa-modal-close">&times;</span>
+        <h3 id="cycle-modal-title">Add Questionnaire Cycle</h3>
+        <form id="cycle-form">
+          <input type="hidden" id="cycle-id">
+          
+          <div class="form-group">
+            <label for="cycle-number">Cycle Number:</label>
+            <select id="cycle-number" required>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="cycle-start-date">Start Date (DD/MM/YYYY):</label>
+            <input type="text" id="cycle-start-date" placeholder="01/09/2025" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="cycle-cutoff-date">Cutoff Date (DD/MM/YYYY):</label>
+            <input type="text" id="cycle-cutoff-date" placeholder="31/10/2025" required>
+          </div>
+          
+          <div class="vespa-modal-buttons">
+            <button type="submit" id="cycle-save-btn" class="vespa-btn vespa-btn-primary">Save</button>
+            <button type="button" id="cycle-cancel-btn" class="vespa-btn vespa-btn-neutral">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', cycleModalHtml);
+}
   }
   debugLog("Staff homepage rendered successfully");
 } catch (error) {
@@ -3448,6 +4122,7 @@ try {
   `;
 }
 }
+
 
 // --- Main Initialization ---
 // Initialize the staff homepage
