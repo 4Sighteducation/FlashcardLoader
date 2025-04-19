@@ -313,6 +313,49 @@ function sanitizeField(value) {
   return sanitized.trim();
 }
 
+// Get the current user's school name - used for consistent display
+function getCurrentSchoolName() {
+  try {
+    // Try to get from cache first for performance
+    const cachedSchoolName = sessionStorage.getItem('current_school_name');
+    if (cachedSchoolName) return cachedSchoolName;
+    
+    // If not in cache, get from current user attributes
+    const user = Knack.getUserAttributes();
+    if (!user) return "Unknown School";
+    
+    // Extract school ID from user attributes if available
+    if (user.schoolConnection) {
+      const schoolId = extractValidRecordId(user.schoolConnection);
+      const schoolRecord = getSchoolRecord(schoolId);
+      if (schoolRecord) {
+        // Prioritize establishment name (field_44) over generic name (field_2)
+        const schoolName = sanitizeField(schoolRecord.field_44 || schoolRecord.field_2);
+        if (schoolName) {
+          // Cache for future use
+          sessionStorage.setItem('current_school_name', schoolName);
+          return schoolName;
+        }
+      }
+    }
+    
+    // Final fallback - check if we can find the school name elsewhere in the user data
+    for (const key in user) {
+      if (typeof user[key] === 'string' && 
+          (key.toLowerCase().includes('school') || key.toLowerCase().includes('academy')) && 
+          user[key].length > 0) {
+        return sanitizeField(user[key]);
+      }
+    }
+    
+    return "Unknown School";
+  } catch (e) {
+    console.warn("[Staff Homepage] Error getting current school name:", e);
+    return "Unknown School";
+  }
+}
+
+
 // Generic retry function for API calls
 function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
   return new Promise((resolve, reject) => {
@@ -1040,7 +1083,7 @@ async function getStaffProfileData() {
       
       if (schoolRecord) {
         // Get school name - prioritize field_44 (Establishment) over field_2
-        const schoolName = sanitizeField(schoolRecord.field_44 || schoolRecord.field_2 || "VESPA Academy");
+        const schoolName = sanitizeField(schoolRecord.field_44 || schoolRecord.field_2 || "Unknown School");
         console.log(`[Staff Homepage] Searching for logo for school: ${schoolName}`);
         
         // Skip looking in school record fields and go straight to AI search
@@ -1142,7 +1185,7 @@ async function getStaffProfileData() {
     const profileData = {
       name: sanitizeField(user.name || staffRecord.field_129 || "Staff Member"),
       roles: roles,
-      school: schoolRecord ? sanitizeField(schoolRecord.field_2 || "VESPA Academy") : "VESPA Academy",
+      school: schoolRecord ? sanitizeField(schoolRecord.field_44 || schoolRecord.field_2 || "Unknown School") : (profileData?.school || "Unknown School"),
       schoolId: schoolId,
       email: user.email,
       userId: user.id,
@@ -1282,17 +1325,17 @@ async function getSchoolRecord(schoolId) {
 
 // Get school name from school ID
 async function getSchoolName(schoolId) {
-  if (!schoolId) return "VESPA Academy"; // Default fallback
+  if (!schoolId) return "No School Name Found"; // Default fallback
   
   try {
     const schoolRecord = await getSchoolRecord(schoolId);
     if (schoolRecord && schoolRecord.field_2) {
       return schoolRecord.field_2;
     }
-    return "VESPA Academy"; // Default fallback if record found but no name
+    return "No School Name Found"; // Default fallback if record found but no name
   } catch (error) {
     console.error('[Staff Homepage] Error getting school name:', error);
-    return "VESPA Academy"; // Default fallback on error
+    return "No School Name Found"; // Default fallback on error
   }
 }
 
@@ -1897,6 +1940,7 @@ async function getQuestionnaireCycleData(userId, schoolId) {
   try {
     // Create a unique cache key for this user's cycle data
     const cacheKey = `user_cycles_${userId}_school_${schoolId}`;
+    console.log(`[Staff Homepage] Using cache key: ${cacheKey}`);
     
     // Try to get from cache first
     const cachedCycles = await CacheManager.get(cacheKey, 'UserCycles');
@@ -1916,16 +1960,33 @@ async function getQuestionnaireCycleData(userId, schoolId) {
       return null;
     }
     
-    // Create a filter to find cycles for this user's connected customer 
-    // Assuming the user is connected to a customer through field_1585
-    const filters = encodeURIComponent(JSON.stringify({
-      match: 'and',
-      rules: [
-        { field: 'field_1585', operator: 'contains', value: schoolId }
-      ]
-      
-    }));
-    console.log(`[Staff Homepage] Fetching cycles with filter for schoolId: ${schoolId}`);
+    // First get the school name to use as an alternative search
+let schoolName = "Fallibroome Academy"; // Default fallback
+try {
+  const schoolRecord = await getSchoolRecord(schoolId);
+  if (schoolRecord) {
+    schoolName = schoolRecord.field_44 || schoolRecord.field_2 || "Fallibroome Academy";
+    console.log(`[Staff Homepage] Using school name for cycle search: ${schoolName}`);
+  }
+} catch (e) {
+  console.log(`[Staff Homepage] Error getting school name for cycle search: ${e.message}`);
+}
+
+// Create multiple filters to try different approaches
+const filters = encodeURIComponent(JSON.stringify({
+  match: 'or',
+  rules: [
+    // ID-based searches with different operators
+    { field: 'field_1585', operator: 'is', value: schoolId },
+    { field: 'field_1585', operator: 'contains', value: schoolId },
+    
+    // Name-based searches
+    { field: 'field_1585', operator: 'is', value: schoolName },
+    { field: 'field_1585', operator: 'contains', value: schoolName },
+    { field: 'field_1585', operator: 'contains', value: sanitizeField(schoolName) }
+  ]
+}));
+console.log(`[Staff Homepage] Using expanded filters to find cycles: ${decodeURIComponent(filters)}`);
     
     // Query object_66 for cycle data
     const response = await retryApiCall(() => {
@@ -1941,6 +2002,23 @@ async function getQuestionnaireCycleData(userId, schoolId) {
       });
     });
     
+// Check the raw response to understand what's being returned
+if (response) {
+  console.log(`[Staff Homepage] Cycle API response received with ${response.records?.length || 0} records`);
+  
+  // Log the first record to see its structure
+  if (response.records && response.records.length > 0) {
+    const sampleRecord = response.records[0];
+    console.log(`[Staff Homepage] Sample cycle record:`, JSON.stringify({
+      id: sampleRecord.id,
+      field_1585: sampleRecord.field_1585,  // Customer/School connection
+      field_1584: sampleRecord.field_1584,  // Cycle number
+      field_1678: sampleRecord.field_1678,  // Start date
+      field_1580: sampleRecord.field_1580   // End date
+    }));
+  }
+}
+
     if (!response || !response.records || response.records.length === 0) {
       console.log("[Staff Homepage] No cycle records found for this user");
       
