@@ -2043,7 +2043,7 @@ async function getQuestionnaireCycleDates(schoolId) {
 // Determine the current cycle based on dates
 function determineCurrentCycle(cycleDates) {
   // If no cycles set up, default to 1
-  if (!cycleDates || cycleDates.length === 0) {
+  if (!cycleDates || !Array.isArray(cycleDates) || cycleDates.length === 0) {
     console.log("[Staff Homepage] No cycles found, defaulting to cycle 1");
     return 1;
   }
@@ -2057,15 +2057,34 @@ function determineCurrentCycle(cycleDates) {
     if (!dateString) return null;
     
     try {
+      // If it's already a Date object, return it
+      if (dateString instanceof Date && !isNaN(dateString.getTime())) {
+        return dateString;
+      }
+      
+      // If it's an object with date properties
+      if (typeof dateString === 'object' && dateString !== null) {
+        // Try common date object formats
+        if (dateString.date) return new Date(dateString.date);
+        if (dateString.value) return new Date(dateString.value);
+        if (dateString.iso) return new Date(dateString.iso);
+        
+        // Last resort - try to convert the whole object
+        return new Date(dateString);
+      }
+      
       // Try to parse as ISO date first (YYYY-MM-DD)
       let date = new Date(dateString);
       
       // If that fails, try DD/MM/YYYY format
       if (isNaN(date.getTime())) {
-        const parts = dateString.split('/');
-        if (parts.length === 3) {
-          // Parts in DD/MM/YYYY format
-          date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        // Make sure dateString is a string before calling split
+        if (typeof dateString === 'string') {
+          const parts = dateString.split('/');
+          if (parts.length === 3) {
+            // Parts in DD/MM/YYYY format
+            date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          }
         }
       }
       
@@ -2077,8 +2096,11 @@ function determineCurrentCycle(cycleDates) {
     }
   }
   
+  // Make sure cycleDates is an array
+  const cycleArray = Array.isArray(cycleDates) ? cycleDates : [];
+  
   // Sort cycles by start date
-  const sortedCycles = [...cycleDates].sort((a, b) => {
+  const sortedCycles = [...cycleArray].sort((a, b) => {
     const dateA = parseDate(a.startDate);
     const dateB = parseDate(b.startDate);
     
@@ -2434,15 +2456,18 @@ function renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleDa
 
 // Render the questionnaire cycles section with new card layout
 function renderQuestionnaireCycles(cycleDates, hasAdminRole, currentCycle) {
+  // Ensure cycleDates is an array
+  const cycleArray = Array.isArray(cycleDates) ? cycleDates : [];
+  
   // No data case - still show placeholder cards
-  const emptyCycles = !cycleDates || cycleDates.length === 0;
+  const emptyCycles = !cycleArray || cycleArray.length === 0;
   
   // Create a card for each cycle (1-3)
   const cycleCards = [];
   
   for (let cycleNum = 1; cycleNum <= 3; cycleNum++) {
     // Find data for this cycle number if it exists
-    const cycleData = emptyCycles ? null : cycleDates.find(c => parseInt(c.cycle) === cycleNum);
+    const cycleData = emptyCycles ? null : cycleArray.find(c => parseInt(c.cycle) === cycleNum);
     const isCurrentCycle = cycleNum === currentCycle;
     
     // Format dates for display
@@ -2920,54 +2945,57 @@ function setupEditableDates(schoolId) {
             return;
           }
           
-          // Prepare data for saving
-          const cycleData = {
-            id: cycleId || null,
-            cycle: parseInt(cycleNumber),
-            [fieldName]: newValue
-          };
-          
-          // If we're editing just one field, need to get the other field's value
-          if (!cycleId) {
-            // New cycle - set both dates
-            if (fieldName === 'startDate') {
-              // Need to set a default cutoff date (30 days later)
-              const [day, month, year] = newValue.split('/');
-              const startDate = new Date(`${year}-${month}-${day}`);
-              const cutoffDate = new Date(startDate);
-              cutoffDate.setDate(cutoffDate.getDate() + 30);
-              
-              // Format as DD/MM/YYYY
-              const cutoffDay = cutoffDate.getDate().toString().padStart(2, '0');
-              const cutoffMonth = (cutoffDate.getMonth() + 1).toString().padStart(2, '0');
-              const cutoffYear = cutoffDate.getFullYear();
-              
-              cycleData.cutoffDate = `${cutoffDay}/${cutoffMonth}/${cutoffYear}`;
-            } else {
-              // Need a default start date (30 days before)
-              const [day, month, year] = newValue.split('/');
-              const cutoffDate = new Date(`${year}-${month}-${day}`);
-              const startDate = new Date(cutoffDate);
-              startDate.setDate(startDate.getDate() - 30);
-              
-              // Format as DD/MM/YYYY
-              const startDay = startDate.getDate().toString().padStart(2, '0');
-              const startMonth = (startDate.getMonth() + 1).toString().padStart(2, '0');
-              const startYear = startDate.getFullYear();
-              
-              cycleData.startDate = `${startDay}/${startMonth}/${startYear}`;
-            }
-          } else {
-            // Existing cycle - get other date from DOM
-            const otherField = fieldName === 'startDate' ? 'cutoffDate' : 'startDate';
-            const otherElement = document.querySelector(`.date-value[data-cycle="${cycleNumber}"][data-field="${otherField}"]`);
-            
-            if (otherElement) {
-              cycleData[otherField] = otherElement.getAttribute('data-value');
-            }
-          }
-          
           try {
+            // Get the cutoff or start date depending on which we're editing
+            let startDate, cutoffDate;
+            const otherFieldName = fieldName === 'startDate' ? 'cutoffDate' : 'startDate';
+            const otherElement = document.querySelector(`.date-value[data-cycle="${cycleNumber}"][data-field="${otherFieldName}"]`);
+            
+            if (fieldName === 'startDate') {
+              startDate = newValue;
+              cutoffDate = otherElement ? otherElement.getAttribute('data-value') : 'Not set';
+              
+              // If cutoff is not set, create a default (30 days after)
+              if (cutoffDate === 'Not set') {
+                const [day, month, year] = newValue.split('/');
+                const startDateObj = new Date(`${year}-${month}-${day}`);
+                const cutoffDateObj = new Date(startDateObj);
+                cutoffDateObj.setDate(cutoffDateObj.getDate() + 30);
+                
+                // Format as DD/MM/YYYY
+                cutoffDate = `${cutoffDateObj.getDate().toString().padStart(2, '0')}/${(cutoffDateObj.getMonth() + 1).toString().padStart(2, '0')}/${cutoffDateObj.getFullYear()}`;
+              }
+            } else {
+              cutoffDate = newValue;
+              startDate = otherElement ? otherElement.getAttribute('data-value') : 'Not set';
+              
+              // If start is not set, create a default (30 days before)
+              if (startDate === 'Not set') {
+                const [day, month, year] = newValue.split('/');
+                const cutoffDateObj = new Date(`${year}-${month}-${day}`);
+                const startDateObj = new Date(cutoffDateObj);
+                startDateObj.setDate(startDateObj.getDate() - 30);
+                
+                // Format as DD/MM/YYYY
+                startDate = `${startDateObj.getDate().toString().padStart(2, '0')}/${(startDateObj.getMonth() + 1).toString().padStart(2, '0')}/${startDateObj.getFullYear()}`;
+              }
+            }
+            
+            // Convert dates from DD/MM/YYYY to YYYY-MM-DD for API
+            function convertDate(dateStr) {
+              if (dateStr === 'Not set') return '';
+              const [day, month, year] = dateStr.split('/');
+              return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+            
+            // Prepare cycle data for API
+            const cycleData = {
+              id: cycleId || null,
+              cycle: parseInt(cycleNumber),
+              startDate: convertDate(startDate),
+              cutoffDate: convertDate(cutoffDate)
+            };
+            
             // Save the cycle data
             await saveCycle(schoolId, cycleData);
             
