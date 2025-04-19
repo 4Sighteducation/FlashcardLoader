@@ -3047,24 +3047,25 @@ return `
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
   }
   
-  /* Top row layout containing profile and dashboard */
-  .top-row {
-    display: flex;
-    flex-direction: row;
-    gap: 24px;
-    margin-bottom: 28px;
-  }
-  
-  /* Profile container takes 25% width */
-  .profile-container {
-    flex: 1;
-    max-width: 25%;
-  }
-  
-  /* Dashboard container takes 75% width */
-  .dashboard-container {
-    flex: 3;
-  }
+  /* Top row layout containing profile and dashboard - equal width */
+.top-row {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  margin-bottom: 28px;
+  align-items: stretch;
+}
+
+/* Profile container - equal width */
+.profile-container {
+  flex: 1;
+  /* Removed max-width restriction */
+}
+
+/* Dashboard container - equal width */
+.dashboard-container {
+  flex: 1;
+}
   
   /* Animation Keyframes */
   @keyframes fadeIn {
@@ -3498,9 +3499,9 @@ return `
   }
   
   canvas {
-    width: 100% !important;
-    height: 220px !important; /* Increased from 180px for better visibility */
-  }
+  width: 100% !important;
+  height: 200px !important; /* Adjusted height */
+}
   
   .no-results {
     padding: 30px;
@@ -3772,10 +3773,13 @@ font-style: italic;
   transform: translateY(-2px);
 }
 
-.cycle-columns {
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
+.cycle-column {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;  /* Reduced padding */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s;
 }
 
 .cycle-column {
@@ -3807,7 +3811,7 @@ font-style: italic;
 .cycle-header h4 {
   margin: 0;
   color: white;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -3829,7 +3833,8 @@ font-style: italic;
 .cycle-date {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: 13px;
+  margin-bottom: 4px;
 }
 
 .date-label {
