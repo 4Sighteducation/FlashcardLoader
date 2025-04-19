@@ -3047,26 +3047,30 @@ function getStyleCSS() {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
 }
 
-/* Top row layout containing profile and dashboard */
+/* Top row layout containing profile and dashboard - UPDATED for equal heights */
 .top-row {
   display: flex;
   flex-direction: row;
   gap: 24px;
   margin-bottom: 28px;
   align-items: stretch; /* Make heights equal */
+  min-height: 400px; /* Set minimum height to ensure content has room */
 }
 
 /* Profile container takes 30% width */
 .profile-container {
   flex: 1;
   max-width: 30%;
-  display: flex; /* Added to ensure proper flex behavior */
-  flex-direction: column; /* Added to ensure contents stack properly */
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Ensure it takes full height */
 }
 
 /* Dashboard container takes 70% width */
 .dashboard-container {
   flex: 2.5;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Animation Keyframes */
@@ -3138,15 +3142,17 @@ function getStyleCSS() {
   box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  height: 100%; /* Fill container height */
-  box-sizing: border-box; /* Added to include padding in height calculation */
-  max-height: 100%; /* Added to prevent overflow */
+  height: 100%; /* Takes full height of container */
+  box-sizing: border-box;
+  padding-bottom: 0; /* Remove bottom padding */
 }
 
 .dashboard-section {
   border-left: 4px solid #86b4f0;
   box-shadow: 0 4px 12px rgba(134, 180, 240, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
   height: 100%; /* Fill the container height */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Styling for MY GROUP section */
@@ -3191,11 +3197,10 @@ function getStyleCSS() {
 /* Profile Section */
 .profile-info {
   display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  flex: 1; /* Important: make it grow to fill space */
   height: 100%;
-  box-sizing: border-box; /* Added to include border in height calculation */
-  overflow: hidden; /* Prevent content from overflowing */
+  margin: 0; /* Remove any margins causing gaps */
+  box-sizing: border-box;
 }
 
 .profile-details {
@@ -3203,14 +3208,14 @@ function getStyleCSS() {
   min-width: 250px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   padding: 20px;
   background: linear-gradient(135deg, #15348e 0%, #102983 100%);
   border-radius: 10px;
   border: 1px solid #00e5db;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  overflow: hidden; /* Added to prevent content overflow */
-  margin-bottom: 0; /* Ensure no bottom margin causing overflow */
+  margin: 0; /* Remove any margins */
+  height: auto; /* Let it expand */
+  min-height: 100%; /* Ensure it fills container */
 }
 
 .logo-container {
