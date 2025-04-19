@@ -3032,848 +3032,862 @@ async function updateSchoolLogo(schoolId, logoUrl) {
 // Get CSS styles for the homepage with improved UI
 function getStyleCSS() {
     return `
-      /* Main Container - Staff Theme */
-      #staff-homepage {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-        color: #ffffff;
-        background: ${THEME.PRIMARY};
-        line-height: 1.4;
-        overflow-x: hidden;
-        border: 3px solid ${THEME.ACCENT};
-        border-radius: 12px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-      }
-      
-      /* Top row layout containing profile and dashboard */
-      .top-row {
-        display: flex;
-        flex-direction: row;
-        gap: 24px;
-        margin-bottom: 28px;
-        align-items: stretch; /* Make heights equal */
-      }
-      
-      /* Profile container takes 30% width */
-      .profile-container {
-        flex: 1;
-        max-width: 30%; /* Slightly increased from 25% for better balance */
-      }
-      
-      /* Dashboard container takes 70% width */
-      .dashboard-container {
-        flex: 2.5; /* Reduced from 3 for better proportion */
-      }
-      
-      /* Animation Keyframes */
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      @keyframes pulseGlow {
-        0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-        50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.3); }
-        100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-      }
-      
-      /* Sections */
-      .vespa-section {
-        background: ${THEME.SECTION_BG};
-        border-radius: 10px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-        padding: 22px;
-        margin-bottom: 26px;
-        animation: fadeIn 0.5s ease-out forwards;
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 2px solid ${THEME.ACCENT};
-        backdrop-filter: blur(5px);
-        position: relative;
-        overflow: hidden;
-      }
-      
-      /* Create a subtle gradient overlay for sections */
-      .vespa-section::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 5px;
-        background: linear-gradient(to right, ${THEME.ACCENT}, ${THEME.PRIMARY});
-        opacity: 0.7;
-        z-index: 2;
-      }
-      
-      /* Section background pattern overlay */
-      .vespa-section::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-        background-size: 20px 20px;
-        pointer-events: none;
-        z-index: 1;
-      }
-      
-      /* Section content above pattern */
-      .vespa-section > * {
-        position: relative;
-        z-index: 2;
-      }
-      
-      /* Different visual styling for each section type */
-      .profile-section {
-        border-left: 4px solid ${VESPA_COLORS.VISION};
-        box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
-        height: 100%; /* Fill the container height */
-        display: flex;
-        flex-direction: column;
-      }
-      
-      .dashboard-section {
-        border-left: 4px solid ${VESPA_COLORS.EFFORT};
-        box-shadow: 0 4px 12px rgba(134, 180, 240, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
-        height: 100%; /* Fill the container height */
-      }
-      
-      /* Styling for MY GROUP section */
-      .group-resources-container section:first-child {
-        border-left: 4px solid ${VESPA_COLORS.SYSTEMS};
-        box-shadow: 0 4px 12px rgba(114, 203, 68, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
-      }
-      
-      /* Styling for MYRESOURCES section */
-      .group-resources-container section:last-child {
-        border-left: 4px solid ${VESPA_COLORS.PRACTICE};
-        box-shadow: 0 4px 12px rgba(127, 49, 164, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
-      }
-      
-      /* Styling for MANAGE ACCOUNT section */
-      .vespa-section:last-child:not(.dashboard-section):not(.profile-section):not(.group-resources-container section) {
-        border-left: 4px solid ${VESPA_COLORS.ATTITUDE};
-        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
-      }
-      
-      .vespa-section:hover {
-        box-shadow: 0 8px 22px rgba(0, 229, 219, 0.4);
-        transform: translateY(-2px);
-      }
-      
-      .vespa-section:nth-child(1) { animation-delay: 0.1s; }
-      .vespa-section:nth-child(2) { animation-delay: 0.2s; }
-      .vespa-section:nth-child(3) { animation-delay: 0.3s; }
-      
-      .vespa-section-title {
-        color: #ffffff !important;  /* Force white color */
-        font-size: 22px;
-        font-weight: 600;
-        margin-bottom: 18px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid ${THEME.ACCENT};
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-      }
-      
-      /* Profile Section */
-      .profile-section {
-        min-height: auto; /* Remove fixed height */
-      }
-      
-      .profile-info {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        height: 100%;
-      }
-      
-      .profile-details {
-        flex: 1;
-        min-width: 250px;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        padding: 20px;
-        background: ${THEME.CARD_BG};
-        border-radius: 10px;
-        border: 1px solid ${THEME.ACCENT};
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      }
-      
-      .school-logo {
-        max-width: 60px;
-        height: auto;
-        margin-bottom: 15px;
-        align-self: center;
-        border-radius: 5px;
-        padding: 5px;
-        background: rgba(255, 255, 255, 0.1);
-      }
-      
-      .profile-name {
-        font-size: 26px;
-        color: #ffffff;
-        margin-bottom: 18px;
-        font-weight: 700;
-        text-align: center;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-      }
-      
-      .profile-item {
-        margin-bottom: 12px;
-        padding: 10px;
-        border-radius: 6px;
-        transition: background-color 0.2s;
-      }
-      
-      .profile-item:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-      }
-      
-      .profile-label {
-        font-weight: 600;
-        color: ${THEME.ACCENT};
-        margin-right: 8px;
-      }
-      
-      .dashboard-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-        padding: 10px 16px;
-        border-radius: 6px;
-        text-decoration: none;
-        transition: all 0.3s;
-        margin-top: 15px;
-        font-weight: bold;
-        letter-spacing: 0.5px;
-      }
-      
-      .dashboard-button:hover {
-        background-color: rgba(0, 229, 219, 0.8);
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0, 229, 219, 0.3);
-      }
-      
-      .dashboard-icon {
-        width: 24px;
-        height: 24px;
-        margin-right: 10px;
-      }
-      
-      /* Group Resources Container for side-by-side layout on desktop */
-      .group-resources-container {
-        display: flex;
-        flex-direction: row;
-        gap: 24px;
-        margin-bottom: 28px;
-      }
-      
-      .group-resources-container > section {
-        flex: 1;
-        margin-bottom: 0;
-      }
-      
-      /* App Hubs - Fixed 2x2 grid */
-      .app-hub {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(2, auto);
-        gap: 18px;
-      }
-      
-      .app-card {
-        background: ${THEME.CARD_BG};
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        overflow: hidden;
-        transition: transform 0.3s, box-shadow 0.3s;
-        animation: fadeIn 0.5s ease-out forwards;
-        border: 1px solid ${THEME.ACCENT};
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        z-index: 1;
-      }
-      
-      /* Subtle accent in the corners of app cards */
-      .app-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 20px;
-        height: 20px;
-        background: radial-gradient(circle at top right, ${THEME.ACCENT}40, transparent 70%);
-        z-index: 1;
-      }
-      
-      .app-card::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 20px;
-        height: 20px;
-        background: radial-gradient(circle at bottom left, ${THEME.ACCENT}30, transparent 70%);
-        z-index: 1;
-      }
-      
-      /* Different card styles for each section type */
-      .group-resources-container section:first-child .app-card {
-        border-top: 3px solid ${VESPA_COLORS.SYSTEMS};
-      }
-      
-      .group-resources-container section:last-child .app-card {
-        border-top: 3px solid ${VESPA_COLORS.PRACTICE};
-      }
-      
-      /* Manage Account section cards */
-      .vespa-section:last-child:not(.dashboard-section):not(.profile-section):not(.group-resources-container section) .app-card {
-        border-top: 3px solid ${VESPA_COLORS.ATTITUDE};
-      }
-      
-      .app-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-        animation: pulseGlow 2s infinite;
-      }
-      
-      .app-card-header {
-        background: ${THEME.PRIMARY};
-        padding: 18px;
-        text-align: center;
-        position: relative;
-        border-bottom: 2px solid ${THEME.ACCENT};
-      }
-      
-      /* Font Awesome Icon styling */
-      .app-icon-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 12px;
-      }
-      
-      .app-icon-fa {
-        font-size: 2.5rem;
-        color: ${THEME.ACCENT};
-        transition: transform 0.3s, color 0.3s;
-      }
-      
-      .app-card:hover .app-icon-fa {
-        transform: scale(1.15);
-        color: #ffffff;
-      }
-      
-      /* Legacy image icons if needed */
-      .app-icon {
-        width: 60px;
-        height: 60px;
-        object-fit: contain;
-        margin-bottom: 10px;
-        transition: transform 0.3s;
-      }
-      
-      .app-card:hover .app-icon {
-        transform: scale(1.1);
-      }
-      
-      .app-name {
-        color: white;
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-      }
-      
-      /* Info icon for tooltip trigger */
-      .app-info-icon {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 24px;
-        height: 24px;
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-      }
-      
-      .app-info-icon:hover {
-        transform: scale(1.2);
-        background-color: white;
-      }
-      
-      /* Tooltips */
-      .app-tooltip {
-        position: fixed;
-        background: linear-gradient(135deg, #1c2b5f 0%, #0d1b45 100%);
-        color: #ffffff;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-        width: 280px;
-        z-index: 10000;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.3s;
-        border: 2px solid ${THEME.ACCENT};
-        font-size: 14px;
-        text-align: center;
-        backdrop-filter: blur(5px);
-      }
-      
-      .tooltip-active {
-        opacity: 1;
-        visibility: visible;
-      }
-      
-      .app-button {
-        display: block;
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-        text-align: center;
-        padding: 14px;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s;
-        margin-top: auto;
-        letter-spacing: 0.7px;
-        text-transform: uppercase;
-        font-size: 14px;
-      }
-      
-      .app-button:hover {
-        background-color: #ffffff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-      }
-      
-      /* VESPA Dashboard */
-      .dashboard-section {
-        margin-top: 0; /* Changed from 30px since it's now in the top row */
-        height: 100%; /* Fill the container height */
-      }
-      
-      .charts-container {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-      
-      .chart-wrapper {
-        flex: 1;
-        min-width: 300px;
-        background: ${THEME.CARD_BG};
-        border-radius: 10px;
-        padding: 16px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        border: 1px solid ${THEME.ACCENT};
-      }
-      
-      .chart-title {
-        font-size: 18px;
-        color: #ffffff !important; /* Force white color */
-        margin-bottom: 12px;
-        text-align: center;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-      }
-      
-      .result-count {
-        font-size: 14px;
-        color: #cccccc;
-        text-align: center;
-        margin-bottom: 12px;
-      }
-      
-      canvas {
-        width: 100% !important;
-        height: 230px !important; /* Increased height for better data visibility */
-      }
-      
-      .no-results {
-        padding: 30px;
-        text-align: center;
-        color: #cccccc;
-        font-style: italic;
-      }
-      
-      /* Trend indicator styles */
-      .trend-positive {
-        color: ${THEME.POSITIVE};
-        font-weight: bold;
-      }
-      
-      .trend-negative {
-        color: ${THEME.NEGATIVE};
-        font-weight: bold;
-      }
-      
-      /* Responsive adjustments */
-      @media (max-width: 768px) {
-        /* Stack top row content vertically on mobile */
-        .top-row {
-          flex-direction: column;
-        }
-        
-        /* Profile takes full width on mobile */
-        .profile-container {
-          max-width: 100%;
-        }
-        
-        /* Dashboard takes full width on mobile */
-        .dashboard-container {
-          margin-top: 24px;
-        }
-        
-        /* Group and Resources stack vertically on mobile */
-        .group-resources-container {
-          flex-direction: column;
-        }
-        
-        /* Make app grid more responsive on mobile */
-        .app-hub {
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        }
-        
-        /* Adjust profile layout for smaller screens */
-        .profile-info {
-          flex-direction: column;
-        }
-        
-        /* Charts take full width on mobile */
-        .chart-wrapper {
-          min-width: 100%;
-        }
-      }
-        /* Chart loading styles */
-    .chart-loading {
-    display: flex;
+     /* Main Container - Staff Theme */
+#staff-homepage {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
+  line-height: 1.4;
+  overflow: hidden; /* Changed from overflow-x to prevent border overflow */
+  border: 3px solid #00e5db;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* Top row layout containing profile and dashboard */
+.top-row {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  margin-bottom: 28px;
+  align-items: stretch; /* Make heights equal */
+}
+
+/* Profile container takes 30% width */
+.profile-container {
+  flex: 1;
+  max-width: 30%;
+  display: flex; /* Added to ensure proper flex behavior */
+  flex-direction: column; /* Added to ensure contents stack properly */
+}
+
+/* Dashboard container takes 70% width */
+.dashboard-container {
+  flex: 2.5;
+}
+
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+  50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.3); }
+  100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+}
+
+/* Sections */
+.vespa-section {
+  background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%);
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  padding: 22px;
+  margin-bottom: 26px;
+  animation: fadeIn 0.5s ease-out forwards;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid #00e5db;
+  backdrop-filter: blur(5px);
+  position: relative;
+  overflow: hidden;
+  height: auto; /* Changed from fixed height to auto */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Create a subtle gradient overlay for sections */
+.vespa-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(to right, #00e5db, #061a54);
+  opacity: 0.7;
+  z-index: 2;
+}
+
+/* Section background pattern overlay */
+.vespa-section::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Section content above pattern */
+.vespa-section > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Different visual styling for each section type */
+.profile-section {
+  border-left: 4px solid #e59437;
+  box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Fill container height */
+  box-sizing: border-box; /* Added to include padding in height calculation */
+  max-height: 100%; /* Added to prevent overflow */
+}
+
+.dashboard-section {
+  border-left: 4px solid #86b4f0;
+  box-shadow: 0 4px 12px rgba(134, 180, 240, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+  height: 100%; /* Fill the container height */
+}
+
+/* Styling for MY GROUP section */
+.group-resources-container section:first-child {
+  border-left: 4px solid #72cb44;
+  box-shadow: 0 4px 12px rgba(114, 203, 68, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Styling for MYRESOURCES section */
+.group-resources-container section:last-child {
+  border-left: 4px solid #7f31a4;
+  box-shadow: 0 4px 12px rgba(127, 49, 164, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Styling for MANAGE ACCOUNT section */
+.vespa-section:last-child:not(.dashboard-section):not(.profile-section):not(.group-resources-container section) {
+  border-left: 4px solid #ff6b6b;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.vespa-section:hover {
+  box-shadow: 0 8px 22px rgba(0, 229, 219, 0.4);
+  transform: translateY(-2px);
+}
+
+.vespa-section:nth-child(1) { animation-delay: 0.1s; }
+.vespa-section:nth-child(2) { animation-delay: 0.2s; }
+.vespa-section:nth-child(3) { animation-delay: 0.3s; }
+
+.vespa-section-title {
+  color: #ffffff !important;  /* Force white color */
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #00e5db;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Profile Section */
+.profile-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  height: 100%;
+  box-sizing: border-box; /* Added to include border in height calculation */
+  overflow: hidden; /* Prevent content from overflowing */
+}
+
+.profile-details {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 20px;
+  background: linear-gradient(135deg, #15348e 0%, #102983 100%);
+  border-radius: 10px;
+  border: 1px solid #00e5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden; /* Added to prevent content overflow */
+  margin-bottom: 0; /* Ensure no bottom margin causing overflow */
+}
+
+.logo-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.school-logo {
+  max-width: 60px;
+  height: auto;
+  margin-bottom: 15px;
+  align-self: center;
+  border-radius: 5px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.logo-controls {
+  margin-top: 8px;
+}
+
+.logo-button {
+  background-color: #00e5db;
+  color: #0a2b8c;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease; /* Smoother transition to prevent flickering */
+  transform: translateZ(0); /* Hardware acceleration */
+  will-change: transform; /* Optimizes animations */
+}
+
+.logo-button:hover {
+  background-color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.profile-name {
+  font-size: 26px;
+  color: #ffffff;
+  margin-bottom: 18px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.profile-item {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.profile-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.profile-label {
+  font-weight: 600;
+  color: #00e5db;
+  margin-right: 8px;
+}
+
+.dashboard-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #00e5db;
+  color: #0a2b8c;
+  padding: 10px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.3s ease; /* Smoother transition to prevent flickering */
+  margin-top: 15px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  transform: translateZ(0); /* Hardware acceleration */
+  will-change: transform; /* Optimizes animations */
+}
+
+.dashboard-button:hover {
+  background-color: rgba(0, 229, 219, 0.8);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 229, 219, 0.3);
+}
+
+.dashboard-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 10px;
+}
+
+/* Group Resources Container for side-by-side layout on desktop */
+.group-resources-container {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.group-resources-container > section {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* App Hubs - Fixed 2x2 grid */
+.app-hub {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 18px;
+}
+
+.app-card {
+  background: linear-gradient(135deg, #15348e 0%, #102983 100%);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smoother transitions */
+  animation: fadeIn 0.5s ease-out forwards;
+  border: 1px solid #00e5db;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  transform: translateZ(0); /* Hardware acceleration */
+  will-change: transform; /* Optimizes animations */
+}
+
+/* Subtle accent in the corners of app cards */
+.app-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle at top right, rgba(0, 229, 219, 0.25), transparent 70%);
+  z-index: 1;
+}
+
+.app-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle at bottom left, rgba(0, 229, 219, 0.18), transparent 70%);
+  z-index: 1;
+}
+
+/* Different card styles for each section type */
+.group-resources-container section:first-child .app-card {
+  border-top: 3px solid #72cb44;
+}
+
+.group-resources-container section:last-child .app-card {
+  border-top: 3px solid #7f31a4;
+}
+
+/* Manage Account section cards */
+.vespa-section:last-child:not(.dashboard-section):not(.profile-section):not(.group-resources-container section) .app-card {
+  border-top: 3px solid #ff6b6b;
+}
+
+.app-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  animation: pulseGlow 2s infinite;
+}
+
+.app-card-header {
+  background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
+  padding: 18px;
+  text-align: center;
+  position: relative;
+  border-bottom: 2px solid #00e5db;
+}
+
+/* Font Awesome Icon styling */
+.app-icon-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.app-icon-fa {
+  font-size: 2.5rem;
+  color: #00e5db;
+  transition: transform 0.3s ease, color 0.3s ease; /* Smoother transition */
+}
+
+.app-card:hover .app-icon-fa {
+  transform: scale(1.15);
+  color: #ffffff;
+}
+
+/* Legacy image icons if needed */
+.app-icon {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  margin-bottom: 10px;
+  transition: transform 0.3s ease; /* Smoother transition */
+}
+
+.app-card:hover .app-icon {
+  transform: scale(1.1);
+}
+
+.app-name {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Info icon for tooltip trigger */
+.app-info-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  background-color: #00e5db;
+  color: #0a2b8c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease; /* Smoother transition */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.app-info-icon:hover {
+  transform: scale(1.2);
+  background-color: white;
+}
+
+/* Tooltips */
+.app-tooltip {
+  position: fixed;
+  background: linear-gradient(135deg, #1c2b5f 0%, #0d1b45 100%);
+  color: #ffffff;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  width: 280px;
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease; /* Smoother transition */
+  border: 2px solid #00e5db;
+  font-size: 14px;
+  text-align: center;
+  backdrop-filter: blur(5px);
+}
+
+.tooltip-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.app-button {
+  display: block;
+  background-color: #00e5db;
+  color: #0a2b8c;
+  text-align: center;
+  padding: 14px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease; /* Smoother transition */
+  margin-top: auto;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+
+.app-button:hover {
+  background-color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* VESPA Dashboard */
+.dashboard-section {
+  margin-top: 0; /* Changed from 30px since it's now in the top row */
+  height: 100%; /* Fill the container height */
+}
+
+.charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chart-wrapper {
+  flex: 1;
+  min-width: 300px;
+  background: linear-gradient(135deg, #15348e 0%, #102983 100%);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid #00e5db;
+}
+
+.chart-title {
+  font-size: 18px;
+  color: #ffffff !important; /* Force white color */
+  margin-bottom: 12px;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.result-count {
+  font-size: 14px;
+  color: #cccccc;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+canvas {
+  width: 100% !important;
+  height: 230px !important; /* Increased height for better data visibility */
+}
+
+.no-results {
+  padding: 30px;
+  text-align: center;
+  color: #cccccc;
+  font-style: italic;
+}
+
+/* Trend indicator styles */
+.trend-positive {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.trend-negative {
+  color: #f87171;
+  font-weight: bold;
+}
+
+/* Chart loading styles */
+.chart-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  color: #cccccc;
+}
+
+.chart-loading-spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+  border: 3px solid rgba(0, 229, 219, 0.3);
+  border-top: 3px solid #00e5db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.chart-error {
+  padding: 30px;
+  text-align: center;
+  color: #f87171;
+  font-style: italic;
+}
+
+/* Cycle Section Styles - MORE COMPACT VERSION */
+.cycle-section-container {
+  margin-top: 16px;
+}
+
+.cycle-section {
+  background: linear-gradient(135deg, #15348e 0%, #102983 100%);
+  border-radius: 10px;
+  padding: 12px; /* Reduced from 20px */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid #00e5db;
+}
+
+.cycle-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px; /* Reduced from 20px */
+}
+
+.cycle-section-title {
+  font-size: 16px; /* Reduced from 18px */
+  color: #ffffff !important;
+  margin: 0;
+  font-weight: 600;
+}
+
+.cycle-actions {
+  display: flex;
+  gap: 8px; /* Reduced from 10px */
+}
+
+.cycle-refresh-button,
+.cycle-admin-button {
+  background-color: #00e5db;
+  color: #0a2b8c;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 10px; /* Reduced from 8px 12px */
+  font-size: 12px; /* Reduced from 14px */
+  cursor: pointer;
+  transition: all 0.3s ease; /* Smoother transition to prevent flickering */
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateZ(0); /* Hardware acceleration */
+  will-change: transform; /* Optimizes animations */
+}
+
+.cycle-refresh-button:hover,
+.cycle-admin-button:hover {
+  background-color: white;
+  transform: translateY(-2px);
+}
+
+.cycle-columns {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px; /* Reduced from 15px */
+}
+
+.cycle-column {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px; /* Reduced from 8px */
+  padding: 8px; /* Reduced from 15px */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease; /* Smoother transition */
+}
+
+.cycle-column:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.current-cycle {
+  border: 2px solid #00e5db;
+  background: rgba(0, 229, 219, 0.1);
+}
+
+.cycle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px; /* Reduced from 12px */
+  position: relative;
+}
+
+.cycle-header h4 {
+  margin: 0;
+  color: white;
+  font-size: 14px; /* Reduced from 16px */
+  font-weight: 600;
+}
+
+.current-badge {
+  background-color: #00e5db;
+  color: #0a2b8c;
+  font-size: 10px; /* Reduced from 12px */
+  padding: 2px 6px; /* Reduced from 3px 8px */
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.cycle-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* Reduced from 8px */
+}
+
+.cycle-date {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px; /* Reduced from 14px */
+}
+
+.date-label {
+  color: #00e5db;
+  font-weight: 500;
+}
+
+.date-value {
+  color: white;
+}
+
+.no-cycles {
+  padding: 12px; /* Reduced from 20px */
+  text-align: center;
+  color: #cccccc;
+  font-style: italic;
+}
+
+/* Modal Styles */
+.vespa-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.vespa-modal-content {
+  background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%);
+  margin: 10% auto;
+  padding: 25px;
+  border: 2px solid #00e5db;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 500px;
+  color: #ffffff;
+  position: relative;
+  animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+  from {opacity: 0; transform: translateY(-20px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+
+.vespa-modal-close {
+  color: #00e5db;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.vespa-modal-close:hover {
+  color: #ffffff;
+}
+
+.vespa-modal input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 5px;
+  border: 1px solid #00e5db;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.logo-preview-container {
+  margin: 15px 0;
+  text-align: center;
+}
+
+#logo-preview {
+  max-width: 100px;
+  max-height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 5px;
+  border-radius: 5px;
+}
+
+.vespa-modal-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.vespa-btn {
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease; /* Smoother transition */
+  border: none;
+}
+
+.vespa-btn-primary {
+  background-color: #00e5db;
+  color: #0a2b8c;
+}
+
+.vespa-btn-primary:hover {
+  background-color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.vespa-btn-secondary {
+  background-color: #ff6b6b;
+  color: #ffffff;
+}
+
+.vespa-btn-neutral {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* Stack top row content vertically on mobile */
+  .top-row {
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 220px;
-    color: #cccccc;
-    }
-    
-    .chart-loading-spinner {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 10px;
-    border: 3px solid rgba(0, 229, 219, 0.3);
-    border-top: 3px solid ${THEME.ACCENT};
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-    }
-    
-    .chart-error {
-    padding: 30px;
-    text-align: center;
-    color: ${THEME.NEGATIVE};
-    font-style: italic;
-    }
-    /* Logo Management Styles */
-      .logo-container {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 15px;
-      }
-      
-      .logo-controls {
-        margin-top: 8px;
-      }
-      
-      .logo-button {
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-        border: none;
-        border-radius: 4px;
-        padding: 6px 10px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      
-      .logo-button:hover {
-        background-color: #ffffff;
-        transform: translateY(-2px);
-      }
-      
-      /* Modal Styles */
-      .vespa-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-      }
-      
-      .vespa-modal-content {
-        background: ${THEME.SECTION_BG};
-        margin: 10% auto;
-        padding: 25px;
-        border: 2px solid ${THEME.ACCENT};
-        border-radius: 10px;
-        width: 80%;
-        max-width: 500px;
-        color: #ffffff;
-        position: relative;
-        animation: modalFadeIn 0.3s;
-      }
-      
-      @keyframes modalFadeIn {
-        from {opacity: 0; transform: translateY(-20px);}
-        to {opacity: 1; transform: translateY(0);}
-      }
-      
-      .vespa-modal-close {
-        color: ${THEME.ACCENT};
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-      }
-      
-      .vespa-modal-close:hover {
-        color: #ffffff;
-      }
-      
-      .vespa-modal input {
-        width: 100%;
-        padding: 10px;
-        margin: 10px 0;
-        border-radius: 5px;
-        border: 1px solid ${THEME.ACCENT};
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #ffffff;
-      }
-      
-      .logo-preview-container {
-        margin: 15px 0;
-        text-align: center;
-      }
-      
-      #logo-preview {
-        max-width: 100px;
-        max-height: 100px;
-        background: rgba(255, 255, 255, 0.1);
-        padding: 5px;
-        border-radius: 5px;
-      }
-      
-      .vespa-modal-buttons {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-      }
-      
-      .vespa-btn {
-        padding: 8px 16px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: all 0.2s;
-        border: none;
-      }
-      
-      .vespa-btn-primary {
-        background-color: ${THEME.ACCENT};
-        color: ${THEME.PRIMARY};
-      }
-      
-      .vespa-btn-primary:hover {
-        background-color: #ffffff;
-        transform: translateY(-2px);
-      }
-      
-      .vespa-btn-secondary {
-        background-color: ${VESPA_COLORS.ATTITUDE};
-        color: #ffffff;
-      }
-      
-      .vespa-btn-neutral {
-        background-color: rgba(255, 255, 255, 0.2);
-        color: #ffffff;
-      }
-    
-    /* Cycle Section Styles - MORE COMPACT VERSION */
-    .cycle-section-container {
-      margin-top: 16px;
-    }
-    
-    .cycle-section {
-      background: ${THEME.CARD_BG};
-      border-radius: 10px;
-      padding: 12px; /* Reduced from 20px */
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      border: 1px solid ${THEME.ACCENT};
-    }
-    
-    .cycle-section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px; /* Reduced from 20px */
-    }
-    
-    .cycle-section-title {
-      font-size: 16px; /* Reduced from 18px */
-      color: #ffffff !important;
-      margin: 0;
-      font-weight: 600;
-    }
-    
-    .cycle-actions {
-      display: flex;
-      gap: 8px; /* Reduced from 10px */
-    }
-    
-    .cycle-refresh-button,
-    .cycle-admin-button {
-      background-color: ${THEME.ACCENT};
-      color: ${THEME.PRIMARY};
-      border: none;
-      border-radius: 5px;
-      padding: 6px 10px; /* Reduced from 8px 12px */
-      font-size: 12px; /* Reduced from 14px */
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-weight: 500;
-      text-decoration: none;
-    }
-    
-    .cycle-refresh-button:hover,
-    .cycle-admin-button:hover {
-      background-color: white;
-      transform: translateY(-2px);
-    }
-    
-    .cycle-columns {
-      display: flex;
-      justify-content: space-between;
-      gap: 6px; /* Reduced from 15px */
-    }
-    
-    .cycle-column {
-      flex: 1;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 6px; /* Reduced from 8px */
-      padding: 8px; /* Reduced from 15px */
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      transition: all 0.2s;
-    }
-    
-    .cycle-column:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-    
-    .current-cycle {
-      border: 2px solid ${THEME.ACCENT};
-      background: rgba(0, 229, 219, 0.1);
-    }
-    
-    .cycle-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px; /* Reduced from 12px */
-      position: relative;
-    }
-    
-    .cycle-header h4 {
-      margin: 0;
-      color: white;
-      font-size: 14px; /* Reduced from 16px */
-      font-weight: 600;
-    }
-    
-    .current-badge {
-      background-color: ${THEME.ACCENT};
-      color: ${THEME.PRIMARY};
-      font-size: 10px; /* Reduced from 12px */
-      padding: 2px 6px; /* Reduced from 3px 8px */
-      border-radius: 10px;
-      font-weight: bold;
-    }
-    
-    .cycle-dates {
-      display: flex;
-      flex-direction: column;
-      gap: 4px; /* Reduced from 8px */
-    }
-    
-    .cycle-date {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px; /* Reduced from 14px */
-    }
-    
-    .date-label {
-      color: ${THEME.ACCENT};
-      font-weight: 500;
-    }
-    
-    .date-value {
-      color: white;
-    }
-    
-    .no-cycles {
-      padding: 12px; /* Reduced from 20px */
-      text-align: center;
-      color: #cccccc;
-      font-style: italic;
-    }
-    
-    /* Responsive adjustments for cycle section */
-    @media (max-width: 768px) {
-      .cycle-section-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
-      
-      .cycle-actions {
-        width: 100%;
-        justify-content: flex-start;
-      }
-      
-      .cycle-columns {
-        flex-direction: column;
-      }
-      
-      .cycle-column {
-        margin-bottom: 8px; /* Reduced from 10px */
-      }
-    }
+  }
+  
+  /* Profile takes full width on mobile */
+  .profile-container {
+    max-width: 100%;
+  }
+  
+  /* Dashboard takes full width on mobile */
+  .dashboard-container {
+    margin-top: 24px;
+  }
+  
+  /* Group and Resources stack vertically on mobile */
+  .group-resources-container {
+    flex-direction: column;
+  }
+  
+  /* Make app grid more responsive on mobile */
+  .app-hub {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  
+  /* Adjust profile layout for smaller screens */
+  .profile-info {
+    flex-direction: column;
+  }
+  
+  /* Charts take full width on mobile */
+  .chart-wrapper {
+    min-width: 100%;
+  }
+  
+  /* Responsive adjustments for cycle section */
+  .cycle-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .cycle-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .cycle-columns {
+    flex-direction: column;
+  }
+  
+  .cycle-column {
+    margin-bottom: 8px; /* Reduced from 10px */
+  }
+}
     
     `;
     }
