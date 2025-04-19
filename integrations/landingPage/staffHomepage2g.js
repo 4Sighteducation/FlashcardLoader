@@ -1,6 +1,5 @@
 // Staff Homepage Integration Script for Knack - v1.0
 
-
 (function() {
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -3455,26 +3454,35 @@ try {
 window.initializeStaffHomepage = function() {
   debugLog("Initializing Staff Homepage...");
   
-  // Check if we're on the login page and skip initialization if we are
-  if (window.location.href.includes('staff-landing-page') || 
-      window.location.href.includes('login') ||
-      document.querySelector('form[id*="login"]') ||
-      document.querySelector('input[type="password"]')) {
-    console.log("[Staff Homepage] Login page detected, skipping full initialization");
-    return; // Don't initialize on login pages
-  }
-  
-  // Verify Knack context and authentication
+  // First verify Knack context is available
   if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-    console.error("Staff Homepage Error: Knack context not available.");
+    console.error("[Staff Homepage] Knack context not available.");
     return;
   }
   
+  // Check if user is authenticated via Knack token
   const userToken = Knack.getUserToken();
   if (!userToken) {
-    console.error("Staff Homepage Error: User is not authenticated (no token).");
+    console.log("[Staff Homepage] User not authenticated (no token), skipping initialization.");
     return;
   }
+  
+  // Additional check: see if we can get the user attributes (which should only be available when logged in)
+  const userAttributes = Knack.getUserAttributes();
+  if (!userAttributes || !userAttributes.id) {
+    console.log("[Staff Homepage] User attributes not available, skipping initialization.");
+    return;
+  }
+  
+  // Check if we're on a page that has our target container
+  const container = document.querySelector(window.STAFFHOMEPAGE_CONFIG?.elementSelector);
+  if (!container) {
+    console.log("[Staff Homepage] Target container not found on this page, skipping initialization.");
+    return;
+  }
+  
+  // At this point, we're confident the user is logged in and we're on the right page
+  console.log("[Staff Homepage] User authenticated and container found. Proceeding with initialization.");
   
   // Track user login in the background
   trackUserLogin().catch(error => {
