@@ -1,4 +1,4 @@
-/// Staff Homepage Integration Script for Knack - v1.0
+// Staff Homepage Integration Script for Knack - v1.0
 
 (function() {
   // --- Constants and Configuration ---
@@ -1896,7 +1896,7 @@ async function getQuestionnaireCycleData(userId, schoolId) {
   
   try {
     // Create a unique cache key for this user's cycle data
-    const cacheKey = `user_cycles_${userId}`;
+    const cacheKey = `user_cycles_${userId}_school_${schoolId}`;
     
     // Try to get from cache first
     const cachedCycles = await CacheManager.get(cacheKey, 'UserCycles');
@@ -1921,9 +1921,11 @@ async function getQuestionnaireCycleData(userId, schoolId) {
     const filters = encodeURIComponent(JSON.stringify({
       match: 'and',
       rules: [
-        { field: 'field_1585', operator: 'contains', value: userId }
+        { field: 'field_1585', operator: 'contains', value: schoolId }
       ]
+      
     }));
+    console.log(`[Staff Homepage] Fetching cycles with filter for schoolId: ${schoolId}`);
     
     // Query object_66 for cycle data
     const response = await retryApiCall(() => {
