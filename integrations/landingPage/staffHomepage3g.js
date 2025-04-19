@@ -3137,16 +3137,33 @@ function getStyleCSS() {
   z-index: 2;
 }
 
-/* Different visual styling for each section type */
+/* Profile section - updated to match cycle section border styling */
 .profile-section {
   border-left: 4px solid #e59437;
   box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  flex: 1;
-  height: 100%; /* Takes full height of container */
+  height: 100%;
   box-sizing: border-box;
-  padding-bottom: 24px; /* Extra padding at bottom */
+  position: relative;
+  padding: 22px;
+  border: 2px solid #00e5db;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Eliminate the background color issues that create the blue rectangle */
+.profile-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(to right, #00e5db, #061a54);
+  opacity: 0.7;
+  z-index: 2;
+  width: 100%;
 }
 
 .dashboard-section {
@@ -3196,16 +3213,16 @@ function getStyleCSS() {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Profile Section */
+/* Profile info container - ensure proper spacing */
 .profile-info {
   display: flex;
   flex: 1;
-  height: 100%;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* Profile details - match the appearance of cycle sections */
 .profile-details {
   flex: 1;
   min-width: 250px;
@@ -3217,8 +3234,7 @@ function getStyleCSS() {
   border: 1px solid #00e5db;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   margin: 0;
-  height: auto;
-  min-height: calc(100% - 40px); /* Account for top/bottom padding */
+  min-height: calc(100% - 40px);
 }
 
 .logo-container {
@@ -3616,10 +3632,11 @@ canvas {
   margin-top: 16px;
 }
 
+/* Match the border styling with cycles */
 .cycle-section {
   background: linear-gradient(135deg, #15348e 0%, #102983 100%);
   border-radius: 10px;
-  padding: 12px; /* Reduced from 20px */
+  padding: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   border: 1px solid #00e5db;
 }
