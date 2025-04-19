@@ -2194,11 +2194,12 @@ function renderProfileSection(profileData, hasAdminRole) {
   // Add admin logo button if user is a staff admin
   let logoControls = '';
   if (hasAdminRole) {
-    logoControls = `
-      <div class="logo-controls">
-        <button id="admin-set-logo-btn" class="logo-button">
-          <i class="fas fa-image"></i> Set School Logo
-        </button>
+    dashboardButton = `
+      <div class="dashboard-button-container">
+        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard/" class="dashboard-button">
+          <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
+          <span>VESPA Dashboard</span>
+        </a>
       </div>
     `;
   }
@@ -3047,14 +3048,13 @@ function getStyleCSS() {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
 }
 
-/* Top row layout containing profile and dashboard - UPDATED for equal heights */
+/* Top row - UPDATED for better height distribution */
 .top-row {
   display: flex;
   flex-direction: row;
   gap: 24px;
   margin-bottom: 28px;
-  align-items: stretch; /* Make heights equal */
-  min-height: 400px; /* Set minimum height to ensure content has room */
+  align-items: stretch;
 }
 
 /* Profile container takes 30% width */
@@ -3136,15 +3136,32 @@ function getStyleCSS() {
   z-index: 2;
 }
 
-/* Different visual styling for each section type */
+/* Profile section - UPDATED for dynamic height matching */
 .profile-section {
   border-left: 4px solid #e59437;
   box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  height: 100%; /* Takes full height of container */
+  height: 100%;
   box-sizing: border-box;
-  padding-bottom: 0; /* Remove bottom padding */
+  position: relative; /* Added for absolute positioned child */
+}
+
+/* Add bottom padding with pseudo-element to ensure border is visible */
+.profile-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 22px; /* Bottom padding */
+  background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%); /* Same as section background */
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  z-index: 1; /* Above content but below border */
+  border-bottom: 2px solid #00e5db; /* Bottom border */
+  border-left: 2px solid #00e5db; /* Left border (except where overridden by the colored accent) */
+  border-right: 2px solid #00e5db; /* Right border */
 }
 
 .dashboard-section {
@@ -3194,28 +3211,32 @@ function getStyleCSS() {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Profile Section */
+/* Profile info container - UPDATED to work with the pseudo-element spacing */
 .profile-info {
   display: flex;
-  flex: 1; /* Important: make it grow to fill space */
-  height: 100%;
-  margin: 0; /* Remove any margins causing gaps */
+  flex: 1;
+  margin: 0;
+  padding-bottom: 22px; /* Match the height of the pseudo-element */
   box-sizing: border-box;
+  position: relative;
+  z-index: 2; /* Above the pseudo-element */
 }
 
+/* Profile details - UPDATED to ensure proper spacing */
 .profile-details {
   flex: 1;
   min-width: 250px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   padding: 20px;
   background: linear-gradient(135deg, #15348e 0%, #102983 100%);
   border-radius: 10px;
   border: 1px solid #00e5db;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  margin: 0; /* Remove any margins */
-  height: auto; /* Let it expand */
-  min-height: 100%; /* Ensure it fills container */
+  margin: 0;
+  /* Allow content to distribute with spacing at bottom */
+  margin-bottom: auto;
 }
 
 .logo-container {
@@ -3265,6 +3286,18 @@ function getStyleCSS() {
   font-weight: 700;
   text-align: center;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Make sure the last profile item has bottom margin to push content up */
+.profile-item:last-child {
+  margin-top: auto; /* Push to bottom if space available */
+  margin-bottom: 0;
+}
+
+/* Custom class for the dashboard button to push it down */
+.dashboard-button-container {
+  margin-top: auto; /* Push to bottom of container */
+  padding-top: 15px;
 }
 
 .profile-item {
