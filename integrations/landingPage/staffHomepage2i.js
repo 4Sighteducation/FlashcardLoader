@@ -3454,6 +3454,25 @@ try {
 window.initializeStaffHomepage = function() {
   debugLog("Initializing Staff Homepage...");
   
+ // Get current user from Knack
+ const currentUser = Knack.getUserAttributes();
+ if (currentUser && currentUser.id) {
+   // Check if this is a different user than last time
+   const previousUserId = localStorage.getItem('staffhomepage_user_id');
+   
+   if (previousUserId && previousUserId !== currentUser.id) {
+     console.log("[Staff Homepage] User changed detected. Refreshing page...");
+     // Store new user ID before refresh
+     localStorage.setItem('staffhomepage_user_id', currentUser.id);
+     // Force page refresh
+     window.location.reload();
+     return; // Stop further execution
+   }
+   
+   // Store current user ID for next time
+   localStorage.setItem('staffhomepage_user_id', currentUser.id);
+ }
+
   // First, explicitly check if we're on the login page by looking for login form elements
   if (document.querySelector('input[type="password"]') && 
       document.querySelector('form') && 
