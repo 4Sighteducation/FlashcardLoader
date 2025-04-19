@@ -564,9 +564,27 @@ async get(cacheKey, type) {
       });
       
       // Special handling for SchoolLogo type
-      if (type === 'SchoolLogo' && cacheRecord.field_3205) {
-        console.log(`[Staff Homepage] Found school logo URL in cache: ${cacheRecord.field_3205}`);
-        return cacheRecord.field_3205; // Return logo URL directly from field_3205
+      if (type === 'SchoolLogo') {
+        // Get the URL from field_3205
+        const logoUrl = cacheRecord.field_3205;
+        
+        // Validate the logo URL is actually a string and looks like a URL
+        if (typeof logoUrl === 'string' && logoUrl.match(/^https?:\/\//i)) {
+          console.log(`[Staff Homepage] Found valid school logo URL in cache: ${logoUrl}`);
+          return logoUrl; // Return logo URL directly from field_3205
+        } else {
+          console.warn(`[Staff Homepage] Invalid logo URL in cache: ${typeof logoUrl}`, logoUrl);
+          // Cache is invalid, mark it as such
+          await $.ajax({
+            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify({
+              field_3194: 'No' // Is Valid = No
+            })
+          });
+          return null; // Return null to trigger a fresh search
+        }
       }
       
       console.log(`[Staff Homepage] Cache hit for ${cacheKey}, returning cached data`);
@@ -1054,61 +1072,31 @@ async function getStaffProfileData() {
     let schoolLogo = null;
     
     if (schoolId) {
+      // Get school record just to get the school name
       schoolRecord = await getSchoolRecord(schoolId);
       
-    if (schoolRecord) {
-      // Log all fields in school record to help debugging
-      debugLog("Full school record fields:", Object.keys(schoolRecord));
-      
-      // Try to extract school logo URL from field_61 first (primary location)
-      schoolLogo = schoolRecord.field_61;
-      
-      // If not found, try some other likely fields that might contain the logo
-      if (!schoolLogo || typeof schoolLogo !== 'string') {
-        console.log("[Staff Homepage] Trying alternative fields for school logo");
-        // Try common image field names
-        const possibleLogoFields = ['field_61', 'field_1', 'field_6', 'field_10', 'field_15', 'logo', 'school_logo'];
-        
-        for (const field of possibleLogoFields) {
-          if (schoolRecord[field] && typeof schoolRecord[field] === 'string' && 
-              (schoolRecord[field].includes('.png') || 
-               schoolRecord[field].includes('.jpg') || 
-               schoolRecord[field].includes('.jpeg') || 
-               schoolRecord[field].includes('.svg') || 
-               schoolRecord[field].includes('/images/') || 
-               schoolRecord[field].includes('/img/'))) {
-            schoolLogo = schoolRecord[field];
-            console.log(`[Staff Homepage] Found potential logo in field ${field}: ${schoolLogo}`);
-            break;
-          }
-        }
-      }
-      
-    // If still no logo found or it's not a valid image URL, try online search
-      if (!schoolLogo || typeof schoolLogo !== 'string' || 
-          !schoolLogo.match(/\.(jpeg|jpg|gif|png|svg|webp)(\?.*)?$/i)) {
-        console.log("[Staff Homepage] No valid logo found in school record fields, trying online search");
-        
-        // Get school name for search - prioritize field_44 (Establishment) over field_2
+      if (schoolRecord) {
+        // Get school name - prioritize field_44 (Establishment) over field_2
         const schoolName = sanitizeField(schoolRecord.field_44 || schoolRecord.field_2 || "VESPA Academy");
+        console.log(`[Staff Homepage] Searching for logo for school: ${schoolName}`);
         
-        // Try to find logo online
+        // Skip looking in school record fields and go straight to AI search
         const onlineLogo = await findSchoolLogoOnline(schoolName, schoolId);
-        if (onlineLogo) {
-          console.log(`[Staff Homepage] Found school logo via online search: ${onlineLogo}`);
+        
+        if (onlineLogo && typeof onlineLogo === 'string' && onlineLogo.startsWith('http')) {
+          console.log(`[Staff Homepage] Found school logo: ${onlineLogo}`);
           schoolLogo = onlineLogo;
         } else {
-          console.warn("[Staff Homepage] Could not find school logo online");
+          console.warn(`[Staff Homepage] Logo search returned invalid result: ${typeof onlineLogo}`, onlineLogo);
+          // Use default VESPA logo as fallback
+          schoolLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
+          console.log(`[Staff Homepage] Using default VESPA logo as fallback`);
         }
-      }
-      
-      if (schoolLogo && typeof schoolLogo === 'string') {
-        debugLog("Found school logo URL:", schoolLogo);
       } else {
-        console.warn("[Staff Homepage] No valid school logo found in school record or online");
-        schoolLogo = null;
+        // If no school record, use default VESPA logo
+        schoolLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
+        console.log(`[Staff Homepage] No school record found, using default VESPA logo`);
       }
-    }
     }
     
     // Extract roles from staff record
@@ -1349,8 +1337,11 @@ async function getSchoolName(schoolId) {
 async function findSchoolLogoOnline(schoolName, schoolId) {
   if (!schoolName) {
     console.error("[Staff Homepage] Cannot search for logo without school name");
-    return null;
+    return "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
   }
+  
+  // Default logo as fallback
+  const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
   
   // Get configuration from the window config
   const config = window.STAFFHOMEPAGE_CONFIG || {};
@@ -1359,7 +1350,7 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
   // Check if logo search is enabled
   if (logoSearchConfig.enabled === false) {
     console.log("[Staff Homepage] School logo search is disabled in configuration");
-    return null;
+    return defaultVespaLogo;
   }
   
   console.log(`[Staff Homepage] Searching for online logo for school: "${schoolName}" (ID: ${schoolId || 'unknown'})`);
@@ -1373,10 +1364,20 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
   const cacheKey = `SchoolLogo_${cacheIdentifier}`;
   
   // Try to get from cache first
-  const cachedLogo = await CacheManager.get(cacheKey, 'SchoolLogo');
-  if (cachedLogo) {
-    console.log(`[Staff Homepage] Using cached logo for "${schoolName}": ${cachedLogo}`);
-    return cachedLogo;
+  try {
+    const cachedLogo = await CacheManager.get(cacheKey, 'SchoolLogo');
+    
+    // Validate that the cached logo is a proper URL string
+    if (cachedLogo && typeof cachedLogo === 'string' && cachedLogo.startsWith('http')) {
+      console.log(`[Staff Homepage] Using cached logo for "${schoolName}": ${cachedLogo}`);
+      return cachedLogo;
+    } else if (cachedLogo) {
+      console.warn(`[Staff Homepage] Invalid cached logo (not a URL string): ${typeof cachedLogo}`, cachedLogo);
+      // Invalidate the bad cache entry
+      await CacheManager.invalidate(cacheKey, 'SchoolLogo');
+    }
+  } catch (cacheError) {
+    console.error(`[Staff Homepage] Error accessing logo cache:`, cacheError);
   }
   
   console.log(`[Staff Homepage] No cached logo found for ${schoolName}, searching online...`);
@@ -1440,13 +1441,16 @@ async function searchLogoWithChatGPT(schoolName, config) {
     return null;
   }
   
+  // Default VESPA logo URL to use as fallback
+  const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
+  
   try {
     console.log(`[Staff Homepage] Searching for ${schoolName} logo using ChatGPT API`);
     
-    // Prepare the prompt
+    // Prepare the prompt - make it very specific about image URLs
     const prompt = config.promptTemplate 
       ? config.promptTemplate.replace('{schoolName}', schoolName)
-      : `Find a direct image URL for the ${schoolName} school logo. Respond with only the URL.`;
+      : `Find a direct image URL for the ${schoolName} school logo. I need the direct image URL only, nothing else. The URL should end with .png, .jpg, .jpeg, .svg, or similar image extensions.`;
     
     // Default API endpoint
     const endpoint = config.endpoint || 'https://api.openai.com/v1/chat/completions';
@@ -1463,7 +1467,7 @@ async function searchLogoWithChatGPT(schoolName, config) {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that finds direct image URLs for school logos. Return only the URL with no additional text.'
+            content: 'You are a helpful assistant that finds direct image URLs for school logos. Return only the image URL with no additional text. The URL must be a direct link to the image file, ending with an image extension like .png, .jpg, .jpeg, .svg, etc.'
           },
           {
             role: 'user',
@@ -1478,40 +1482,63 @@ async function searchLogoWithChatGPT(schoolName, config) {
     if (!response.ok) {
       const error = await response.text();
       console.error(`[Staff Homepage] ChatGPT API error (${response.status}):`, error);
-      return null;
+      return defaultVespaLogo;
     }
     
     // Parse response
     const data = await response.json();
     
+    // Function to validate if a string is a proper image URL
+    const isValidImageUrl = (url) => {
+      if (!url || typeof url !== 'string') return false;
+      if (!url.startsWith('http')) return false;
+      
+      // Check for common image extensions
+      const hasImageExtension = /\.(jpg|jpeg|png|gif|svg|webp|bmp)(\?.*)?$/i.test(url);
+      
+      // Also check for image paths in URLs (might not have extensions in some CDNs)
+      const hasImagePath = url.includes('/image/') || 
+                          url.includes('/logo/') || 
+                          url.includes('/images/') || 
+                          url.includes('/logos/');
+                          
+      return hasImageExtension || hasImagePath;
+    };
+    
     // Extract URL using provided extractor function or default
+    let logoUrl = null;
+    
     if (typeof config.extractUrl === 'function') {
-      return config.extractUrl(data);
+      logoUrl = config.extractUrl(data);
     } else {
       // Default URL extraction logic
       if (data.choices && data.choices.length > 0) {
-        const content = data.choices[0].message.content.trim();
+        let content = data.choices[0].message.content.trim();
         
-        // Check if response is a URL
-        if (content.match(/^https?:\/\//i)) {
-          // Verify it's an image URL
-          if (content.match(/\.(jpg|jpeg|png|gif|svg|webp)(\?.*)?$/i) || 
-              content.includes('/image/') ||
-              content.includes('/logo/')) {
-            return content;
-          } else {
-            console.warn(`[Staff Homepage] ChatGPT returned a URL that doesn't appear to be an image: ${content}`);
+        // Try to extract URL from content if it contains other text
+        if (content.includes('http')) {
+          // Extract the URL using regex
+          const urlMatch = content.match(/(https?:\/\/[^\s"]+\.(jpg|jpeg|png|gif|svg|webp)(\?[^\s"]*)?)/i);
+          if (urlMatch && urlMatch[0]) {
+            content = urlMatch[0];
           }
+        }
+        
+        // Check if content is a valid image URL
+        if (isValidImageUrl(content)) {
+          logoUrl = content;
+          console.log(`[Staff Homepage] Found valid logo URL via ChatGPT: ${logoUrl}`);
         } else {
-          console.warn(`[Staff Homepage] ChatGPT response doesn't look like a URL: ${content.substring(0, 50)}`);
+          console.warn(`[Staff Homepage] ChatGPT returned invalid URL: ${content.substring(0, 100)}`);
         }
       }
     }
     
-    return null;
+    // Return the found URL or default
+    return logoUrl || defaultVespaLogo;
   } catch (error) {
     console.error(`[Staff Homepage] Error searching logo with ChatGPT:`, error);
-    return null;
+    return defaultVespaLogo;
   }
 }
 
