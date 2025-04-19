@@ -674,7 +674,6 @@ async set(cacheKey, data, type, ttlMinutes = this.DEFAULT_TTL) {
       // Prepare the basic record data
       const recordData = {
         field_3187: cacheKey, // Cache Key
-        field_3188: JSON.stringify(data), // Data
         field_3189: user?.email || 'unknown', // User Email
         field_3190: schoolName, // User Organisation (School)
         field_3191: this.getLocalizedDate().toISOString(), // First Login (Created Date)
@@ -686,9 +685,14 @@ async set(cacheKey, data, type, ttlMinutes = this.DEFAULT_TTL) {
         field_3197: type // Cache Type
       };
       
-      // Add type-specific fields if applicable
+      // Handle SchoolLogo type differently
       if (type === 'SchoolLogo') {
+        // For SchoolLogo, store the URL directly in field_3205
         recordData.field_3205 = data; // Logo URL field
+        recordData.field_3188 = JSON.stringify({}); // Empty object in data field to avoid null
+      } else {
+        // For all other types, store the data in the standard data field
+        recordData.field_3188 = JSON.stringify(data); // Data
       }
       
       await retryApiCall(() => {
@@ -1080,13 +1084,13 @@ async function getStaffProfileData() {
         }
       }
       
-      // If still no logo found or it's not a valid image URL, try online search
+    // If still no logo found or it's not a valid image URL, try online search
       if (!schoolLogo || typeof schoolLogo !== 'string' || 
           !schoolLogo.match(/\.(jpeg|jpg|gif|png|svg|webp)(\?.*)?$/i)) {
         console.log("[Staff Homepage] No valid logo found in school record fields, trying online search");
         
-        // Get school name for search
-        const schoolName = sanitizeField(schoolRecord.field_2 || "VESPA Academy");
+        // Get school name for search - prioritize field_44 (Establishment) over field_2
+        const schoolName = sanitizeField(schoolRecord.field_44 || schoolRecord.field_2 || "VESPA Academy");
         
         // Try to find logo online
         const onlineLogo = await findSchoolLogoOnline(schoolName, schoolId);
@@ -1358,18 +1362,20 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
     return null;
   }
   
-  console.log(`[Staff Homepage] Searching for online logo for: ${schoolName}`);
+  console.log(`[Staff Homepage] Searching for online logo for school: "${schoolName}" (ID: ${schoolId || 'unknown'})`);
   
-  // Sanitize school name for use in cache key
+  // Always use schoolId for cache key if available (more stable than name)
+  // If no schoolId, then use sanitized name as fallback
   const sanitizedName = schoolName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  const cacheIdentifier = schoolId || sanitizedName;
   
   // Create a global (shared) cache key - NOT user-specific
-  const cacheKey = CacheManager.createKey('SchoolLogo', schoolId || sanitizedName, false);
+  const cacheKey = `SchoolLogo_${cacheIdentifier}`;
   
   // Try to get from cache first
   const cachedLogo = await CacheManager.get(cacheKey, 'SchoolLogo');
   if (cachedLogo) {
-    console.log(`[Staff Homepage] Using cached logo for ${schoolName}: ${cachedLogo}`);
+    console.log(`[Staff Homepage] Using cached logo for "${schoolName}": ${cachedLogo}`);
     return cachedLogo;
   }
   
@@ -1391,7 +1397,7 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
       }
     }
     
-    // If ChatGPT search failed, try fallback options if configured
+  // If ChatGPT search failed, try fallback options if configured
     if (logoSearchConfig.fallbacks && Array.isArray(logoSearchConfig.fallbacks)) {
       // Try each fallback function
       for (const fallbackFn of logoSearchConfig.fallbacks) {
@@ -1399,7 +1405,7 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
           try {
             const fallbackUrl = fallbackFn(schoolName);
             if (fallbackUrl) {
-              console.log(`[Staff Homepage] Using fallback logo: ${fallbackUrl}`);
+              console.log(`[Staff Homepage] Using fallback function for "${schoolName}" logo: ${fallbackUrl}`);
               
               // Cache the fallback logo URL with a shorter TTL (1 day)
               await CacheManager.set(cacheKey, fallbackUrl, 'SchoolLogo', 1440);
@@ -1413,9 +1419,14 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
       }
     }
     
-    // If all methods failed, return placeholder or null
-    console.warn(`[Staff Homepage] Could not find logo for ${schoolName} with any method`);
-    return null;
+    // If all methods failed, use the official VESPA logo as fallback
+    const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
+    console.log(`[Staff Homepage] Could not find logo for "${schoolName}" with any method, using default VESPA logo`);
+    
+    // Also cache the default logo so we don't keep trying to search for this school
+    await CacheManager.set(cacheKey, defaultVespaLogo, 'SchoolLogo', 10080); // Cache for 1 week
+    
+    return defaultVespaLogo;
   } catch (error) {
     console.error(`[Staff Homepage] Error finding logo for ${schoolName}:`, error);
     return null;
