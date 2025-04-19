@@ -3454,25 +3454,12 @@ try {
 window.initializeStaffHomepage = function() {
   debugLog("Initializing Staff Homepage...");
   
- // Get current user from Knack
- const currentUser = Knack.getUserAttributes();
- if (currentUser && currentUser.id) {
-   // Check if this is a different user than last time
-   const previousUserId = localStorage.getItem('staffhomepage_user_id');
-   
-   if (previousUserId && previousUserId !== currentUser.id) {
-     console.log("[Staff Homepage] User changed detected. Refreshing page...");
-     // Store new user ID before refresh
-     localStorage.setItem('staffhomepage_user_id', currentUser.id);
-     // Force page refresh
-     window.location.reload();
-     return; // Stop further execution
-   }
-   
-   // Store current user ID for next time
-   localStorage.setItem('staffhomepage_user_id', currentUser.id);
- }
-
+  // First verify Knack context is available
+  if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
+    console.error("[Staff Homepage] Knack context not available.");
+    return;
+  }
+  
   // First, explicitly check if we're on the login page by looking for login form elements
   if (document.querySelector('input[type="password"]') && 
       document.querySelector('form') && 
@@ -3482,12 +3469,6 @@ window.initializeStaffHomepage = function() {
        document.querySelector('button').textContent.includes('Sign In'))) {
     console.log("[Staff Homepage] Login form detected, skipping initialization");
     return; // Don't initialize on login pages
-  }
-  
-  // First verify Knack context is available
-  if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-    console.error("[Staff Homepage] Knack context not available.");
-    return;
   }
   
   // Check if user is authenticated via Knack token
@@ -3502,6 +3483,32 @@ window.initializeStaffHomepage = function() {
   if (!userAttributes || !userAttributes.id) {
     console.log("[Staff Homepage] User attributes not available, skipping initialization.");
     return;
+  }
+  
+  // Check for user switching - do this after all authentication checks pass
+  try {
+    const currentUserId = userAttributes.id;
+    // Check if this is a different user than last time
+    const previousUserId = localStorage.getItem('staffhomepage_user_id');
+    
+    if (previousUserId && previousUserId !== currentUserId) {
+      console.log("[Staff Homepage] User change detected!", previousUserId, "→", currentUserId);
+      // Store new user ID before refresh
+      localStorage.setItem('staffhomepage_user_id', currentUserId);
+      // Force page refresh
+      console.log("[Staff Homepage] Forcing page refresh...");
+      setTimeout(function() {
+        window.location.reload(true); // Force cache refresh with true parameter
+      }, 100); // Small delay to ensure localStorage is saved
+      return; // Stop further execution
+    }
+    
+    // Store current user ID for next time
+    localStorage.setItem('staffhomepage_user_id', currentUserId);
+    console.log("[Staff Homepage] Current user ID stored:", currentUserId);
+  } catch (e) {
+    console.error("[Staff Homepage] Error in user detection:", e);
+    // Continue with initialization even if user detection fails
   }
   
   // Check if we're on a page that has our target container
