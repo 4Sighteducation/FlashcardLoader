@@ -1,5 +1,5 @@
 // Staff Homepage Integration Script for Knack - v1.0
-// This script enables an enhanced homepage with staff profile and app hubs
+
 
 (function() {
   // --- Constants and Configuration ---
@@ -1313,16 +1313,45 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
     // First, check if the school has a custom logo URL saved in field_3206
     const schoolRecord = await getSchoolRecord(schoolId);
     
+    // Debug the school record to see what we're getting
+    console.log("[Staff Homepage] School record for logo:", JSON.stringify({
+      id: schoolRecord?.id,
+      field_3206: typeof schoolRecord?.field_3206 === 'object' ? 'OBJECT_DATA' : schoolRecord?.field_3206,
+      field_44: schoolRecord?.field_44
+    }));
+    
     if (schoolRecord && schoolRecord.field_3206) {
       const customLogoUrl = schoolRecord.field_3206;
-      if (typeof customLogoUrl === 'string' && customLogoUrl.trim() !== '' && customLogoUrl.startsWith('http')) {
-        console.log(`[Staff Homepage] Found custom logo URL in field_3206: ${customLogoUrl}`);
-        return customLogoUrl;
+      console.log(`[Staff Homepage] Found field_3206 content type: ${typeof customLogoUrl}`);
+      
+      // If it's an object, try to extract URL from it
+      if (typeof customLogoUrl === 'object' && customLogoUrl !== null) {
+        console.log(`[Staff Homepage] field_3206 contains an object:`, JSON.stringify(customLogoUrl));
+        // Try to find a URL property in the object
+        const possibleUrl = customLogoUrl.url || customLogoUrl.src || customLogoUrl.href || null;
+        if (possibleUrl && typeof possibleUrl === 'string' && possibleUrl.startsWith('http')) {
+          console.log(`[Staff Homepage] Extracted URL from object in field_3206: ${possibleUrl}`);
+          return possibleUrl;
+        }
       }
+      // If it's a string, verify it's a valid URL
+      else if (typeof customLogoUrl === 'string' && customLogoUrl.trim() !== '') {
+        // Check if it's a valid URL
+        if (customLogoUrl.startsWith('http')) {
+          console.log(`[Staff Homepage] Using custom logo URL from field_3206: ${customLogoUrl}`);
+          return customLogoUrl;
+        } else {
+          console.log(`[Staff Homepage] URL in field_3206 is not valid (doesn't start with http): ${customLogoUrl}`);
+        }
+      } else {
+        console.log(`[Staff Homepage] Invalid logo URL in field_3206: ${typeof customLogoUrl}`, customLogoUrl);
+      }
+    } else {
+      console.log(`[Staff Homepage] No custom logo URL found in field_3206 for school ${schoolId}`);
     }
     
     // If no custom logo found, use the default VESPA logo
-    console.log(`[Staff Homepage] No custom logo found for "${schoolName}", using default VESPA logo`);
+    console.log(`[Staff Homepage] Using default VESPA logo for "${schoolName}"`);
     return defaultVespaLogo;
     
   } catch (error) {
@@ -2391,9 +2420,21 @@ function setupLogoControls(schoolId) {
       // Get current logo URL from school record
       try {
         const schoolRecord = await getSchoolRecord(schoolId);
+        console.log('[Staff Homepage] Setting up logo modal with school record:', JSON.stringify({
+          id: schoolRecord?.id,
+          field_3206: schoolRecord?.field_3206
+        }));
+        
         if (schoolRecord && schoolRecord.field_3206) {
-          logoInput.value = schoolRecord.field_3206;
-          logoPreview.src = schoolRecord.field_3206;
+          // Make sure we're getting a string, not an object
+          const logoUrlValue = typeof schoolRecord.field_3206 === 'string' 
+            ? schoolRecord.field_3206 
+            : '';
+          
+          console.log('[Staff Homepage] Current logo URL from field_3206:', logoUrlValue);
+          
+          logoInput.value = logoUrlValue;
+          logoPreview.src = logoUrlValue || defaultVespaLogo;
         } else {
           logoInput.value = '';
           logoPreview.src = defaultVespaLogo;
@@ -2447,7 +2488,15 @@ function setupLogoControls(schoolId) {
         
         // Close modal and refresh page
         modal.style.display = 'none';
-        location.reload();
+        
+        // Log change for debugging
+        console.log('[Staff Homepage] Logo reset to default. Reloading page for changes to take effect.');
+        
+        // Clear preview as visual feedback before reload 
+        logoPreview.src = defaultVespaLogo;
+        
+        // Give time for console message to be shown, then reload
+        setTimeout(() => location.reload(), 500);
       } catch (error) {
         console.error('[Staff Homepage] Error resetting logo:', error);
         alert('Error resetting logo. Please try again.');
@@ -2482,7 +2531,12 @@ function setupLogoControls(schoolId) {
         
         // Close modal and refresh page
         modal.style.display = 'none';
-        location.reload();
+        
+        // Log change for debugging
+        console.log('[Staff Homepage] Logo updated to: ' + url + '. Reloading page for changes to take effect.');
+        
+        // Give time for console message to be shown, then reload
+        setTimeout(() => location.reload(), 500);
       } catch (error) {
         console.error('[Staff Homepage] Error saving logo:', error);
         alert('Error saving logo. Please try again.');
@@ -2536,6 +2590,12 @@ async function updateSchoolLogo(schoolId, logoUrl) {
     // Invalidate any cached logos for this school
     const cacheKey = `SchoolLogo_${schoolId}`;
     await CacheManager.invalidate(cacheKey, 'SchoolLogo');
+    
+    // Also invalidate general school record cache if it exists
+    await CacheManager.invalidate(`school_${schoolId}`, 'SchoolRecord');
+    
+    // Force reload to ensure all cached data is refreshed
+    console.log('[Staff Homepage] Cache invalidated, changes will appear on page reload');
     
     return response;
   } catch (error) {
@@ -2719,7 +2779,7 @@ return `
   }
   
   .school-logo {
-    max-width: 100px;
+    max-width: 60px;
     height: auto;
     margin-bottom: 15px;
     align-self: center;
@@ -3192,8 +3252,8 @@ font-style: italic;
   }
   
   #logo-preview {
-    max-width: 150px;
-    max-height: 150px;
+    max-width: 100px;
+    max-height: 100px;
     background: rgba(255, 255, 255, 0.1);
     padding: 5px;
     border-radius: 5px;
