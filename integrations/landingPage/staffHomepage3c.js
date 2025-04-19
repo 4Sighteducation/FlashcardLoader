@@ -3032,7 +3032,7 @@ async function updateSchoolLogo(schoolId, logoUrl) {
 // Get CSS styles for the homepage with improved UI
 function getStyleCSS() {
     return `
-     /* Main Container - Staff Theme */
+  /* Main Container - Staff Theme */
 #staff-homepage {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   max-width: 1200px;
@@ -3888,7 +3888,6 @@ canvas {
     margin-bottom: 8px; /* Reduced from 10px */
   }
 }
-    
     `;
     }
 // Render the main homepage UI
