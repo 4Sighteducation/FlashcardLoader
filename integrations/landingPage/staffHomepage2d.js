@@ -1,42 +1,6 @@
 // Staff Homepage Integration Script for Knack - v1.0
 // This script enables an enhanced homepage with staff profile and app hubs
 
-/* CONFIGURATION INSTRUCTIONS
- * To enable the online school logo search functionality, make sure to add this configuration
- * to your Knack app before loading this script:
- 
-window.STAFFHOMEPAGE_CONFIG = {
-  elementSelector: '#staff-homepage-container', // Where to render the homepage
-  knackAppId: 'your-knack-app-id', // Optional: Your Knack app ID, otherwise uses Knack.application_id
-  knackApiKey: 'your-knack-api-key', // Optional: Your Knack API key
-  
-  // School Logo Search Configuration
-  logoSearch: {
-    enabled: true, // Set to false to disable online logo search
-    cacheTTLMinutes: 10080, // How long to cache logos (default: 1 week)
-    
-    // ChatGPT API Configuration (required for logo search)
-    chatgpt: {
-      apiKey: 'your-openai-api-key', // Required for ChatGPT search
-      model: 'gpt-4-turbo-preview', // Optional: model to use
-      endpoint: 'https://api.openai.com/v1/chat/completions', // Optional: API endpoint
-      promptTemplate: 'Find a direct image URL for the {schoolName} school logo. Respond with only the URL.',
-      maxTokens: 100,
-      temperature: 0.2
-    },
-    
-    // Optional: Fallback search methods if ChatGPT fails
-    fallbacks: [
-      // Example fallback function: construct a Google logo URL
-      function(schoolName) {
-        const formattedName = schoolName.replace(/\s+/g, '+').toLowerCase();
-        return `https://logo.clearbit.com/${formattedName.replace(/\W/g, '')}.com`;
-      }
-    ]
-  }
-};
-*/
-
 (function() {
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -1333,215 +1297,39 @@ async function getSchoolName(schoolId) {
   }
 }
 
-// Find school logo online using ChatGPT API
+// Find school logo - simplified version
 async function findSchoolLogoOnline(schoolName, schoolId) {
-  if (!schoolName) {
-    console.error("[Staff Homepage] Cannot search for logo without school name");
+  if (!schoolName || !schoolId) {
+    console.error("[Staff Homepage] Cannot search for logo without school name or ID");
     return "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
   }
   
   // Default logo as fallback
   const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
   
-  // Get configuration from the window config
-  const config = window.STAFFHOMEPAGE_CONFIG || {};
-  const logoSearchConfig = config.logoSearch || {};
+  console.log(`[Staff Homepage] Getting logo for school: "${schoolName}" (ID: ${schoolId})`);
   
-  // Check if logo search is enabled
-  if (logoSearchConfig.enabled === false) {
-    console.log("[Staff Homepage] School logo search is disabled in configuration");
-    return defaultVespaLogo;
-  }
-  
-  console.log(`[Staff Homepage] Searching for online logo for school: "${schoolName}" (ID: ${schoolId || 'unknown'})`);
-  
-  // Always use schoolId for cache key if available (more stable than name)
-  // If no schoolId, then use sanitized name as fallback
-  const sanitizedName = schoolName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-  const cacheIdentifier = schoolId || sanitizedName;
-  
-  // Create a global (shared) cache key - NOT user-specific
-  const cacheKey = `SchoolLogo_${cacheIdentifier}`;
-  
-  // Try to get from cache first
   try {
-    const cachedLogo = await CacheManager.get(cacheKey, 'SchoolLogo');
+    // First, check if the school has a custom logo URL saved in field_3206
+    const schoolRecord = await getSchoolRecord(schoolId);
     
-    // Validate that the cached logo is a proper URL string
-    if (cachedLogo && typeof cachedLogo === 'string' && cachedLogo.startsWith('http')) {
-      console.log(`[Staff Homepage] Using cached logo for "${schoolName}": ${cachedLogo}`);
-      return cachedLogo;
-    } else if (cachedLogo) {
-      console.warn(`[Staff Homepage] Invalid cached logo (not a URL string): ${typeof cachedLogo}`, cachedLogo);
-      // Invalidate the bad cache entry
-      await CacheManager.invalidate(cacheKey, 'SchoolLogo');
-    }
-  } catch (cacheError) {
-    console.error(`[Staff Homepage] Error accessing logo cache:`, cacheError);
-  }
-  
-  console.log(`[Staff Homepage] No cached logo found for ${schoolName}, searching online...`);
-  
-  try {
-    // Try the ChatGPT API if configured
-    if (logoSearchConfig.chatgpt && logoSearchConfig.chatgpt.apiKey) {
-      const logoUrl = await searchLogoWithChatGPT(schoolName, logoSearchConfig.chatgpt);
-      
-      if (logoUrl) {
-        console.log(`[Staff Homepage] Found logo via ChatGPT: ${logoUrl}`);
-        
-        // Cache the logo URL with a long TTL (default 1 week = 10080 minutes or from config)
-        const cacheTTL = logoSearchConfig.cacheTTLMinutes || 10080;
-        await CacheManager.set(cacheKey, logoUrl, 'SchoolLogo', cacheTTL);
-        
-        return logoUrl;
+    if (schoolRecord && schoolRecord.field_3206) {
+      const customLogoUrl = schoolRecord.field_3206;
+      if (typeof customLogoUrl === 'string' && customLogoUrl.trim() !== '' && customLogoUrl.startsWith('http')) {
+        console.log(`[Staff Homepage] Found custom logo URL in field_3206: ${customLogoUrl}`);
+        return customLogoUrl;
       }
     }
     
-  // If ChatGPT search failed, try fallback options if configured
-    if (logoSearchConfig.fallbacks && Array.isArray(logoSearchConfig.fallbacks)) {
-      // Try each fallback function
-      for (const fallbackFn of logoSearchConfig.fallbacks) {
-        if (typeof fallbackFn === 'function') {
-          try {
-            const fallbackUrl = fallbackFn(schoolName);
-            if (fallbackUrl) {
-              console.log(`[Staff Homepage] Using fallback function for "${schoolName}" logo: ${fallbackUrl}`);
-              
-              // Cache the fallback logo URL with a shorter TTL (1 day)
-              await CacheManager.set(cacheKey, fallbackUrl, 'SchoolLogo', 1440);
-              
-              return fallbackUrl;
-            }
-          } catch (fallbackError) {
-            console.warn(`[Staff Homepage] Fallback logo search failed:`, fallbackError);
-          }
-        }
-      }
-    }
-    
-    // If all methods failed, use the official VESPA logo as fallback
-    const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
-    console.log(`[Staff Homepage] Could not find logo for "${schoolName}" with any method, using default VESPA logo`);
-    
-    // Also cache the default logo so we don't keep trying to search for this school
-    await CacheManager.set(cacheKey, defaultVespaLogo, 'SchoolLogo', 10080); // Cache for 1 week
-    
+    // If no custom logo found, use the default VESPA logo
+    console.log(`[Staff Homepage] No custom logo found for "${schoolName}", using default VESPA logo`);
     return defaultVespaLogo;
+    
   } catch (error) {
     console.error(`[Staff Homepage] Error finding logo for ${schoolName}:`, error);
-    return null;
-  }
-}
-
-// Search for a school logo using ChatGPT API
-async function searchLogoWithChatGPT(schoolName, config) {
-  if (!config || !config.apiKey) {
-    console.warn("[Staff Homepage] ChatGPT API not properly configured");
-    return null;
-  }
-  
-  // Default VESPA logo URL to use as fallback
-  const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
-  
-  try {
-    console.log(`[Staff Homepage] Searching for ${schoolName} logo using ChatGPT API`);
-    
-    // Prepare the prompt - make it very specific about image URLs
-    const prompt = config.promptTemplate 
-      ? config.promptTemplate.replace('{schoolName}', schoolName)
-      : `Find a direct image URL for the ${schoolName} school logo. I need the direct image URL only, nothing else. The URL should end with .png, .jpg, .jpeg, .svg, or similar image extensions.`;
-    
-    // Default API endpoint
-    const endpoint = config.endpoint || 'https://api.openai.com/v1/chat/completions';
-    
-    // Make the API request
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`
-      },
-      body: JSON.stringify({
-        model: config.model || 'gpt-4-turbo-preview',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that finds direct image URLs for school logos. Return only the image URL with no additional text. The URL must be a direct link to the image file, ending with an image extension like .png, .jpg, .jpeg, .svg, etc.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: config.maxTokens || 100,
-        temperature: config.temperature || 0.2
-      })
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      console.error(`[Staff Homepage] ChatGPT API error (${response.status}):`, error);
-      return defaultVespaLogo;
-    }
-    
-    // Parse response
-    const data = await response.json();
-    
-    // Function to validate if a string is a proper image URL
-    const isValidImageUrl = (url) => {
-      if (!url || typeof url !== 'string') return false;
-      if (!url.startsWith('http')) return false;
-      
-      // Check for common image extensions
-      const hasImageExtension = /\.(jpg|jpeg|png|gif|svg|webp|bmp)(\?.*)?$/i.test(url);
-      
-      // Also check for image paths in URLs (might not have extensions in some CDNs)
-      const hasImagePath = url.includes('/image/') || 
-                          url.includes('/logo/') || 
-                          url.includes('/images/') || 
-                          url.includes('/logos/');
-                          
-      return hasImageExtension || hasImagePath;
-    };
-    
-    // Extract URL using provided extractor function or default
-    let logoUrl = null;
-    
-    if (typeof config.extractUrl === 'function') {
-      logoUrl = config.extractUrl(data);
-    } else {
-      // Default URL extraction logic
-      if (data.choices && data.choices.length > 0) {
-        let content = data.choices[0].message.content.trim();
-        
-        // Try to extract URL from content if it contains other text
-        if (content.includes('http')) {
-          // Extract the URL using regex
-          const urlMatch = content.match(/(https?:\/\/[^\s"]+\.(jpg|jpeg|png|gif|svg|webp)(\?[^\s"]*)?)/i);
-          if (urlMatch && urlMatch[0]) {
-            content = urlMatch[0];
-          }
-        }
-        
-        // Check if content is a valid image URL
-        if (isValidImageUrl(content)) {
-          logoUrl = content;
-          console.log(`[Staff Homepage] Found valid logo URL via ChatGPT: ${logoUrl}`);
-        } else {
-          console.warn(`[Staff Homepage] ChatGPT returned invalid URL: ${content.substring(0, 100)}`);
-        }
-      }
-    }
-    
-    // Return the found URL or default
-    return logoUrl || defaultVespaLogo;
-  } catch (error) {
-    console.error(`[Staff Homepage] Error searching logo with ChatGPT:`, error);
     return defaultVespaLogo;
   }
 }
-
 // --- VESPA Results Data Management ---
 // Get VESPA results for the school
 async function getSchoolVESPAResults(schoolId) {
@@ -2074,6 +1862,18 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
 // --- UI Rendering ---
 
 function renderProfileSection(profileData, hasAdminRole) {
+  // Add admin logo button if user is a staff admin
+  let logoControls = '';
+  if (hasAdminRole) {
+    logoControls = `
+      <div class="logo-controls">
+        <button id="admin-set-logo-btn" class="logo-button">
+          <i class="fas fa-image"></i> Set School Logo
+        </button>
+      </div>
+    `;
+  }
+  
   let dashboardButton = '';
   if (hasAdminRole) {
     dashboardButton = `
@@ -2091,7 +1891,10 @@ function renderProfileSection(profileData, hasAdminRole) {
       <h2 class="vespa-section-title">Staff Profile</h2>
       <div class="profile-info">
         <div class="profile-details">
-          ${profileData.schoolLogo ? `<img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">` : ''}
+          <div class="logo-container">
+            ${profileData.schoolLogo ? `<img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">` : ''}
+            ${logoControls}
+          </div>
           <div class="profile-name">${sanitizeField(profileData.name)}</div>
           
           <div class="profile-item">
@@ -2566,6 +2369,182 @@ function setupTooltips() {
     });
   });
 }
+
+// Set up logo controls for admin users
+function setupLogoControls(schoolId) {
+  // Get modal elements
+  const modal = document.getElementById('logo-modal');
+  const closeBtn = document.querySelector('.vespa-modal-close');
+  const logoInput = document.getElementById('logo-url-input');
+  const logoPreview = document.getElementById('logo-preview');
+  const saveBtn = document.getElementById('logo-save-btn');
+  const resetBtn = document.getElementById('logo-reset-btn');
+  const cancelBtn = document.getElementById('logo-cancel-btn');
+  const setLogoBtn = document.getElementById('admin-set-logo-btn');
+  
+  // Default VESPA logo
+  const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
+  
+  // Show modal when Set Logo button is clicked
+  if (setLogoBtn) {
+    setLogoBtn.addEventListener('click', async function() {
+      // Get current logo URL from school record
+      try {
+        const schoolRecord = await getSchoolRecord(schoolId);
+        if (schoolRecord && schoolRecord.field_3206) {
+          logoInput.value = schoolRecord.field_3206;
+          logoPreview.src = schoolRecord.field_3206;
+        } else {
+          logoInput.value = '';
+          logoPreview.src = defaultVespaLogo;
+        }
+      } catch (error) {
+        console.error('[Staff Homepage] Error getting current logo:', error);
+        logoInput.value = '';
+        logoPreview.src = defaultVespaLogo;
+      }
+      
+      // Show modal
+      modal.style.display = 'block';
+    });
+  }
+  
+  // Close modal when X is clicked
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+  }
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', function(event) {
+    if (event.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+  
+  // Update preview when URL is entered
+  if (logoInput) {
+    logoInput.addEventListener('input', function() {
+      const url = logoInput.value.trim();
+      if (url && isValidImageUrl(url)) {
+        logoPreview.src = url;
+      } else {
+        logoPreview.src = defaultVespaLogo;
+      }
+    });
+  }
+  
+  // Reset to default logo
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async function() {
+      try {
+        // Update school record with empty logo URL
+        await updateSchoolLogo(schoolId, '');
+        
+        // Show success message
+        alert('School logo has been reset to default VESPA logo.');
+        
+        // Close modal and refresh page
+        modal.style.display = 'none';
+        location.reload();
+      } catch (error) {
+        console.error('[Staff Homepage] Error resetting logo:', error);
+        alert('Error resetting logo. Please try again.');
+      }
+    });
+  }
+  
+  // Cancel button closes modal without saving
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+  }
+  
+  // Save new logo URL
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async function() {
+      const url = logoInput.value.trim();
+      
+      // Validate URL
+      if (!url || !isValidImageUrl(url)) {
+        alert('Please enter a valid image URL (must start with http:// or https:// and end with an image extension like .jpg, .png, .gif, etc.)');
+        return;
+      }
+      
+      // Save URL to school record
+      try {
+        await updateSchoolLogo(schoolId, url);
+        
+        // Show success message
+        alert('School logo has been updated successfully.');
+        
+        // Close modal and refresh page
+        modal.style.display = 'none';
+        location.reload();
+      } catch (error) {
+        console.error('[Staff Homepage] Error saving logo:', error);
+        alert('Error saving logo. Please try again.');
+      }
+    });
+  }
+}
+
+// Validate if URL is a valid image URL
+function isValidImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  if (!url.startsWith('http')) return false;
+  
+  // Check for common image extensions
+  const hasImageExtension = /\.(jpg|jpeg|png|gif|svg|webp|bmp)(\?.*)?$/i.test(url);
+  
+  // Also check for image paths in URLs (might not have extensions in some CDNs)
+  const hasImagePath = url.includes('/image/') || 
+                       url.includes('/logo/') || 
+                       url.includes('/images/') || 
+                       url.includes('/logos/');
+                       
+  return hasImageExtension || hasImagePath;
+}
+
+// Update school logo URL in Knack
+async function updateSchoolLogo(schoolId, logoUrl) {
+  if (!schoolId) {
+    throw new Error('School ID is required to update logo');
+  }
+  
+  try {
+    // Update the school record field_3206 with the new logo URL
+    const response = await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify({
+            field_3206: logoUrl
+          }),
+          success: resolve,
+          error: reject
+        });
+      });
+    });
+    
+    console.log('[Staff Homepage] Successfully updated school logo:', response);
+    
+    // Invalidate any cached logos for this school
+    const cacheKey = `SchoolLogo_${schoolId}`;
+    await CacheManager.invalidate(cacheKey, 'SchoolLogo');
+    
+    return response;
+  } catch (error) {
+    console.error('[Staff Homepage] Error updating school logo:', error);
+    throw error;
+  }
+}
+
+
 
 // Get CSS styles for the homepage with improved UI
 function getStyleCSS() {
@@ -3126,6 +3105,135 @@ text-align: center;
 color: ${THEME.NEGATIVE};
 font-style: italic;
 }
+/* Logo Management Styles */
+  .logo-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .logo-controls {
+    margin-top: 8px;
+  }
+  
+  .logo-button {
+    background-color: ${THEME.ACCENT};
+    color: ${THEME.PRIMARY};
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .logo-button:hover {
+    background-color: #ffffff;
+    transform: translateY(-2px);
+  }
+  
+  /* Modal Styles */
+  .vespa-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  
+  .vespa-modal-content {
+    background: ${THEME.SECTION_BG};
+    margin: 10% auto;
+    padding: 25px;
+    border: 2px solid ${THEME.ACCENT};
+    border-radius: 10px;
+    width: 80%;
+    max-width: 500px;
+    color: #ffffff;
+    position: relative;
+    animation: modalFadeIn 0.3s;
+  }
+  
+  @keyframes modalFadeIn {
+    from {opacity: 0; transform: translateY(-20px);}
+    to {opacity: 1; transform: translateY(0);}
+  }
+  
+  .vespa-modal-close {
+    color: ${THEME.ACCENT};
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .vespa-modal-close:hover {
+    color: #ffffff;
+  }
+  
+  .vespa-modal input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 1px solid ${THEME.ACCENT};
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+  }
+  
+  .logo-preview-container {
+    margin: 15px 0;
+    text-align: center;
+  }
+  
+  #logo-preview {
+    max-width: 150px;
+    max-height: 150px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px;
+    border-radius: 5px;
+  }
+  
+  .vespa-modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+  
+  .vespa-btn {
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+    border: none;
+  }
+  
+  .vespa-btn-primary {
+    background-color: ${THEME.ACCENT};
+    color: ${THEME.PRIMARY};
+  }
+  
+  .vespa-btn-primary:hover {
+    background-color: #ffffff;
+    transform: translateY(-2px);
+  }
+  
+  .vespa-btn-secondary {
+    background-color: ${VESPA_COLORS.ATTITUDE};
+    color: #ffffff;
+  }
+  
+  .vespa-btn-neutral {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+
 `;
 }
 // Render the main homepage UI
@@ -3239,7 +3347,36 @@ try {
   
   // Track page view
   trackPageView('VESPA Dashboard').catch(err => console.warn('[Staff Homepage] Dashboard view tracking failed:', err));
-  
+  // Setup logo controls for admin users
+  if (hasAdminRole) {
+    // Define default logo
+    const defaultVespaLogo = "https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png";
+    // Add modal HTML to body
+    const modalHtml = `
+      <div id="logo-modal" class="vespa-modal">
+        <div class="vespa-modal-content">
+          <span class="vespa-modal-close">&times;</span>
+          <h3>Update School Logo</h3>
+          <p>Enter the URL of your school logo image:</p>
+          <input type="text" id="logo-url-input" placeholder="https://example.com/school-logo.png">
+          <div class="logo-preview-container">
+            <p>Preview:</p>
+            <img id="logo-preview" src="${defaultVespaLogo}" alt="Logo Preview">
+          </div>
+          <div class="vespa-modal-buttons">
+            <button id="logo-save-btn" class="vespa-btn vespa-btn-primary">Save</button>
+            <button id="logo-reset-btn" class="vespa-btn vespa-btn-secondary">Reset to Default</button>
+            <button id="logo-cancel-btn" class="vespa-btn vespa-btn-neutral">Cancel</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Add event listeners after modal is added
+    setupLogoControls(profileData.schoolId);
+  }
   debugLog("Staff homepage rendered successfully");
 } catch (error) {
   console.error("Error rendering staff homepage:", error);
@@ -3280,3 +3417,4 @@ window.initializeStaffHomepage = function() {
 }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
+
