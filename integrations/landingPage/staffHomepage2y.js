@@ -2043,38 +2043,80 @@ if (response) {
       cycle3: { number: 3, start: "No date set", end: "No date set" }
     };
     
-    // Helper function to format dates from Knack format (MM/DD/YYYY) to DD/MM/YYYY
-    const formatDate = (knackDate) => {
-      if (!knackDate) return "No date set";
-      
-      // Check if it's already in the correct format
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(knackDate)) {
-        const parts = knackDate.split('/');
-        // If it's MM/DD/YYYY, convert to DD/MM/YYYY
-        if (parts.length === 3) {
-          return `${parts[1]}/${parts[0]}/${parts[2]}`;
-        }
-      }
-      
-      // If any issues, return the original or default
-      return knackDate || "No date set";
-    };
-    
-    // Map records to cycle data structure
-    for (const record of response.records) {
-      const cycleNumber = parseInt(record.field_1584 || '0'); // Cycle number field
-      const startDate = formatDate(record.field_1678 || null); // Start date field
-      const endDate = formatDate(record.field_1580 || null); // End date field
-      
-      // Assign to the appropriate cycle object
-      if (cycleNumber === 1) {
-        cycles.cycle1 = { number: 1, start: startDate, end: endDate };
-      } else if (cycleNumber === 2) {
-        cycles.cycle2 = { number: 2, start: startDate, end: endDate };
-      } else if (cycleNumber === 3) {
-        cycles.cycle3 = { number: 3, start: startDate, end: endDate };
+    // Updated helper function to handle complex date objects
+const formatDate = (dateObj) => {
+  if (!dateObj) return "No date set";
+  
+  // If it's an object with a date_formatted property (in DD/MM/YYYY format)
+  if (typeof dateObj === 'object' && dateObj.date_formatted) {
+    return dateObj.date_formatted;
+  }
+  
+  // If it's a string, use the original logic
+  if (typeof dateObj === 'string') {
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateObj)) {
+      const parts = dateObj.split('/');
+      if (parts.length === 3) {
+        return `${parts[1]}/${parts[0]}/${parts[2]}`;
       }
     }
+    return dateObj;
+  }
+  
+  return "No date set";
+};
+
+// First pass: Look for records with valid cycle numbers in field_1579
+let assignedCycles = new Set();
+let unassignedRecords = [];
+
+for (const record of response.records) {
+  // Try to get cycle number from field_1579
+  const cycleNumber = parseInt(record.field_1579 || '0');
+  
+  // Handle complex date objects properly
+  const startDate = formatDate(record.field_1678);
+  const endDate = formatDate(record.field_1580);
+  
+  // If we have a valid cycle number (1-3), use it directly
+  if (cycleNumber >= 1 && cycleNumber <= 3) {
+    cycles[`cycle${cycleNumber}`] = { number: cycleNumber, start: startDate, end: endDate };
+    assignedCycles.add(cycleNumber);
+  } else {
+    // Save for second pass if no valid cycle number
+    unassignedRecords.push({ record, startDate, endDate });
+  }
+}
+
+// Second pass: For records without cycle numbers, sort by date and fill in gaps
+if (unassignedRecords.length > 0) {
+  // Sort unassigned records by start date (earliest first)
+  unassignedRecords.sort((a, b) => {
+    if (a.startDate === "No date set") return 1;  // Push records without dates to the end
+    if (b.startDate === "No date set") return -1; // Push records without dates to the end
+    
+    // Parse DD/MM/YYYY format to Date objects
+    const parseDate = (dateStr) => {
+      const parts = dateStr.split('/');
+      return new Date(parts[2], parts[1] - 1, parts[0]); // Year, Month (0-11), Day
+    };
+    
+    return parseDate(a.startDate) - parseDate(b.startDate);
+  });
+  
+  // Find next available cycle slots and assign
+  for (const { startDate, endDate } of unassignedRecords) {
+    // Find the next available cycle slot (1, 2, or 3)
+    for (let i = 1; i <= 3; i++) {
+      if (!assignedCycles.has(i)) {
+        cycles[`cycle${i}`] = { number: i, start: startDate, end: endDate };
+        assignedCycles.add(i);
+        break;
+      }
+    }
+  }
+}
+    
     
     // Determine the current cycle
     cycles.currentCycle = determineCurrentCycle(cycles);
