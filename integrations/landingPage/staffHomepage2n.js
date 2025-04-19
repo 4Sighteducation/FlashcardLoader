@@ -3454,94 +3454,73 @@ try {
 window.initializeStaffHomepage = function() {
   debugLog("Initializing Staff Homepage...");
   
+ // Get current user from Knack
+ const currentUser = Knack.getUserAttributes();
+ if (currentUser && currentUser.id) {
+   // Check if this is a different user than last time
+   const previousUserId = localStorage.getItem('staffhomepage_user_id');
+   
+   if (previousUserId && previousUserId !== currentUser.id) {
+     console.log("[Staff Homepage] User changed detected. Refreshing page...");
+     // Store new user ID before refresh
+     localStorage.setItem('staffhomepage_user_id', currentUser.id);
+     // Force page refresh
+     window.location.reload();
+     return; // Stop further execution
+   }
+   
+   // Store current user ID for next time
+   localStorage.setItem('staffhomepage_user_id', currentUser.id);
+ }
+
+  // First, explicitly check if we're on the login page by looking for login form elements
+  if (document.querySelector('input[type="password"]') && 
+      document.querySelector('form') && 
+      (document.querySelector('button[type="submit"]') || 
+       document.querySelector('input[type="submit"]') ||
+       document.querySelector('button:contains("Sign In")') ||
+       document.querySelector('button').textContent.includes('Sign In'))) {
+    console.log("[Staff Homepage] Login form detected, skipping initialization");
+    return; // Don't initialize on login pages
+  }
+  
   // First verify Knack context is available
   if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
     console.error("[Staff Homepage] Knack context not available.");
     return;
   }
   
-  // Basic login page detection (simple and reliable)
-  const isLoginPage = (
-    document.querySelector('input[type="password"]') || 
-    document.querySelector('.kn-login-form') ||
-    document.querySelector('.kn-authentication')
-  );
-  
-  if (isLoginPage) {
-    console.log("[Staff Homepage] Login page detected, skipping initialization");
+  // Check if user is authenticated via Knack token
+  const userToken = Knack.getUserToken();
+  if (!userToken) {
+    console.log("[Staff Homepage] User not authenticated (no token), skipping initialization.");
     return;
   }
   
-  // Short delay to let Knack finish basic rendering
-  setTimeout(function() {
-    continueInitialization();
-  }, 500);
-  
-  function continueInitialization() {
-    // Check if user is authenticated via Knack token
-    const userToken = Knack.getUserToken();
-    if (!userToken) {
-      console.log("[Staff Homepage] User not authenticated (no token), skipping initialization.");
-      return;
-    }
-    
-    // Additional check: see if we can get the user attributes
-    const userAttributes = Knack.getUserAttributes();
-    if (!userAttributes || !userAttributes.id) {
-      console.log("[Staff Homepage] User attributes not available, skipping initialization.");
-      return;
-    }
-    
-    // Check if we're on a page that has our target container
-    const container = document.querySelector(window.STAFFHOMEPAGE_CONFIG?.elementSelector);
-    if (!container) {
-      console.log("[Staff Homepage] Target container not found on this page, skipping initialization.");
-      return;
-    }
-    
-    // Simple check for empty container
-    if (!container.innerHTML.trim()) {
-      console.log("[Staff Homepage] Container is empty, skipping initialization.");
-      return;
-    }
-    
-    // Check for user switching - do this after all authentication checks pass
-    try {
-      const currentUserId = userAttributes.id;
-      // Check if this is a different user than last time
-      const previousUserId = localStorage.getItem('staffhomepage_user_id');
-      
-      if (previousUserId && previousUserId !== currentUserId) {
-        console.log("[Staff Homepage] User change detected!", previousUserId, "→", currentUserId);
-        // Store new user ID before refresh
-        localStorage.setItem('staffhomepage_user_id', currentUserId);
-        // Force page refresh
-        console.log("[Staff Homepage] Forcing page refresh...");
-        setTimeout(function() {
-          window.location.reload(true);
-        }, 100);
-        return;
-      }
-      
-      // Store current user ID for next time
-      localStorage.setItem('staffhomepage_user_id', currentUserId);
-      console.log("[Staff Homepage] Current user ID stored:", currentUserId);
-    } catch (e) {
-      console.error("[Staff Homepage] Error in user detection:", e);
-    }
-    
-    console.log("[Staff Homepage] User authenticated and container found. Proceeding with initialization.");
-    
-    // Track user login in the background
-    trackUserLogin().catch(error => {
-      console.warn("[Staff Homepage] Error tracking login:", error);
-    });
-    
-    // Render the homepage
-    renderHomepage();
+  // Additional check: see if we can get the user attributes (which should only be available when logged in)
+  const userAttributes = Knack.getUserAttributes();
+  if (!userAttributes || !userAttributes.id) {
+    console.log("[Staff Homepage] User attributes not available, skipping initialization.");
+    return;
   }
+  
+  // Check if we're on a page that has our target container
+  const container = document.querySelector(window.STAFFHOMEPAGE_CONFIG?.elementSelector);
+  if (!container) {
+    console.log("[Staff Homepage] Target container not found on this page, skipping initialization.");
+    return;
+  }
+  
+  // At this point, we're confident the user is logged in and we're on the right page
+  console.log("[Staff Homepage] User authenticated and container found. Proceeding with initialization.");
+  
+  // Track user login in the background
+  trackUserLogin().catch(error => {
+    console.warn("[Staff Homepage] Error tracking login:", error);
+  });
+  
+  // Render the homepage
+  renderHomepage();
 }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
-
-
