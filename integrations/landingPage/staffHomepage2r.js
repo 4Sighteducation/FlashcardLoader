@@ -966,6 +966,83 @@ try {
 }
 }
 
+// Function to refresh dashboard data
+async function refreshDashboardData() {
+  const refreshBtn = document.getElementById('refresh-data-btn');
+  
+  // Add spinning animation
+  if (refreshBtn) {
+    refreshBtn.classList.add('refreshing');
+    refreshBtn.disabled = true;
+  }
+  
+  try {
+    // Get current user and school ID
+    const user = Knack.getUserAttributes();
+    const userEmail = user?.email || 'anonymous';
+    
+    // Get staff record to extract school ID
+    const staffRecord = await findStaffRecord(userEmail);
+    if (!staffRecord) {
+      console.error("[Staff Homepage] Cannot refresh: Staff record not found");
+      return;
+    }
+    
+    const schoolId = extractValidRecordId(staffRecord[FIELD_MAPPING.schoolConnection]);
+    if (!schoolId) {
+      console.error("[Staff Homepage] Cannot refresh: School ID not found");
+      return;
+    }
+    
+    console.log(`[Staff Homepage] Refreshing data for school ${schoolId} and user ${userEmail}`);
+    
+    // Invalidate caches
+    await CacheManager.invalidate(`school_vespa_${schoolId}_${userEmail}`, 'SchoolResults');
+    await CacheManager.invalidate(`staff_students_vespa_${schoolId}_${userEmail}`, 'StaffResults');
+    await CacheManager.invalidate(`school_questionnaire_cycles_${schoolId}_${userEmail}`, 'QuestionnaireCycles');
+    
+    // Check if user has admin role
+    const hasAdminRole = isStaffAdmin(Knack.getUserRoles() || []);
+    
+    // Reload data
+    const [schoolResults, staffResults, cycleDates] = await Promise.all([
+      getSchoolVESPAResults(schoolId),
+      userEmail ? getStaffVESPAResults(userEmail, schoolId, Knack.getUserRoles()) : null,
+      getQuestionnaireCycleDates(schoolId)
+    ]);
+
+    // Determine current cycle
+    const currentCycle = determineCurrentCycle(cycleDates);
+    
+    // Update the UI
+    const dashboardContainer = document.querySelector('.dashboard-container');
+    if (dashboardContainer) {
+      dashboardContainer.innerHTML = renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleDates, currentCycle);
+      
+      // Initialize charts with the new data
+      lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole);
+      
+      // Set up click handlers for editable dates
+      setupEditableDates(schoolId);
+      
+      // Re-add refresh button click handler
+      const newRefreshBtn = document.getElementById('refresh-data-btn');
+      if (newRefreshBtn) {
+        newRefreshBtn.addEventListener('click', refreshDashboardData);
+      }
+    }
+    
+    console.log("[Staff Homepage] Dashboard refreshed successfully");
+  } catch (error) {
+    console.error("[Staff Homepage] Error refreshing dashboard:", error);
+  } finally {
+    // Remove spinning animation
+    if (refreshBtn) {
+      refreshBtn.classList.remove('refreshing');
+      refreshBtn.disabled = false;
+    }
+  }
+}
 
 // Helper function to check if user has a Staff Admin role
 function isStaffAdmin(roles) {
@@ -1975,12 +2052,55 @@ function determineCurrentCycle(cycleDates) {
   const today = new Date();
   console.log(`[Staff Homepage] Determining current cycle for date: ${today.toDateString()}`);
   
+  // Helper function to parse dates in various formats
+  function parseDate(dateString) {
+    if (!dateString) return null;
+    
+    try {
+      // Try to parse as ISO date first (YYYY-MM-DD)
+      let date = new Date(dateString);
+      
+      // If that fails, try DD/MM/YYYY format
+      if (isNaN(date.getTime())) {
+        const parts = dateString.split('/');
+        if (parts.length === 3) {
+          // Parts in DD/MM/YYYY format
+          date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        }
+      }
+      
+      // Return null if still invalid
+      return isNaN(date.getTime()) ? null : date;
+    } catch (e) {
+      console.error(`[Staff Homepage] Error parsing date ${dateString}:`, e);
+      return null;
+    }
+  }
+  
   // Sort cycles by start date
-  const sortedCycles = [...cycleDates].sort((a, b) => 
-    new Date(a.startDate) - new Date(b.startDate));
+  const sortedCycles = [...cycleDates].sort((a, b) => {
+    const dateA = parseDate(a.startDate);
+    const dateB = parseDate(b.startDate);
+    
+    // If either date is invalid, push it to the end
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    
+    return dateA - dateB;
+  });
+  
+  // Log sorted cycles
+  sortedCycles.forEach(cycle => {
+    const startDate = parseDate(cycle.startDate);
+    const cutoffDate = parseDate(cycle.cutoffDate);
+    console.log(`[Staff Homepage] Cycle ${cycle.cycle}: ${startDate?.toDateString() || 'Invalid'} to ${cutoffDate?.toDateString() || 'Invalid'}`);
+  });
   
   // If today is before first cycle starts, default to 1
-  if (today < new Date(sortedCycles[0].startDate)) {
+  const firstCycle = sortedCycles[0];
+  const firstStartDate = parseDate(firstCycle.startDate);
+  
+  if (firstStartDate && today < firstStartDate) {
     console.log("[Staff Homepage] Current date is before first cycle starts");
     return 1;
   }
@@ -1988,10 +2108,11 @@ function determineCurrentCycle(cycleDates) {
   // Check each cycle to see if today falls within it
   for (let i = 0; i < sortedCycles.length; i++) {
     const cycle = sortedCycles[i];
-    const startDate = new Date(cycle.startDate);
-    const cutoffDate = new Date(cycle.cutoffDate);
+    const startDate = parseDate(cycle.startDate);
+    const cutoffDate = parseDate(cycle.cutoffDate);
     
-    console.log(`[Staff Homepage] Checking cycle ${cycle.cycle}: ${startDate.toDateString()} to ${cutoffDate.toDateString()}`);
+    // Skip invalid dates
+    if (!startDate || !cutoffDate) continue;
     
     // If today is between start and cutoff, this is the current cycle
     if (today >= startDate && today <= cutoffDate) {
@@ -2002,7 +2123,10 @@ function determineCurrentCycle(cycleDates) {
     // If this isn't the last cycle, check if we're between two cycles
     if (i < sortedCycles.length - 1) {
       const nextCycle = sortedCycles[i + 1];
-      const nextStartDate = new Date(nextCycle.startDate);
+      const nextStartDate = parseDate(nextCycle.startDate);
+      
+      // Skip if next start date is invalid
+      if (!nextStartDate) continue;
       
       // If today is after this cycle's cutoff but before next cycle starts,
       // use the previous cycle number
@@ -2258,7 +2382,6 @@ trackPageView(featureName).catch(err =>
 };
 
 // Render the VESPA dashboard
-// Render the VESPA dashboard
 function renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleDates, currentCycle) {
   if (!schoolResults) {
     return `
@@ -2292,7 +2415,12 @@ function renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleDa
       <h2 class="vespa-section-title">VESPA Dashboard</h2>
       <div class="charts-container">
         <div class="chart-wrapper">
-          <h3 class="chart-title">${chartTitle}</h3>
+          <h3 class="chart-title">
+            ${chartTitle}
+            <button id="refresh-data-btn" class="vespa-btn vespa-btn-small refresh-btn" title="Refresh data">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </h3>
           <div class="result-count">${countDisplay}</div>
           ${cycleIndicator}
           <canvas id="vespaChart"></canvas>
@@ -2304,75 +2432,71 @@ function renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleDa
   `;
 }
 
-// Render the questionnaire cycles section
+// Render the questionnaire cycles section with new card layout
 function renderQuestionnaireCycles(cycleDates, hasAdminRole, currentCycle) {
-  // No data case
-  if (!cycleDates || cycleDates.length === 0) {
-    return `
-      <div class="questionnaire-cycles-section">
-        <h3 class="section-title">Questionnaire Cycle Dates</h3>
-        <div class="no-cycles-message">
-          <p>No questionnaire cycles are currently set for your school.</p>
-          ${hasAdminRole ? `
-            <button id="add-cycle-btn" class="vespa-btn vespa-btn-primary">
-              <i class="fas fa-plus-circle"></i> Add Cycle
-            </button>
-          ` : `
-            <p class="contact-admin-note">Please contact your Staff Admin to set up questionnaire cycles.</p>
-          `}
+  // No data case - still show placeholder cards
+  const emptyCycles = !cycleDates || cycleDates.length === 0;
+  
+  // Create a card for each cycle (1-3)
+  const cycleCards = [];
+  
+  for (let cycleNum = 1; cycleNum <= 3; cycleNum++) {
+    // Find data for this cycle number if it exists
+    const cycleData = emptyCycles ? null : cycleDates.find(c => parseInt(c.cycle) === cycleNum);
+    const isCurrentCycle = cycleNum === currentCycle;
+    
+    // Format dates for display
+    const startDate = cycleData ? formatDateForDisplay(cycleData.startDate) : 'Not set';
+    const cutoffDate = cycleData ? formatDateForDisplay(cycleData.cutoffDate) : 'Not set';
+    
+    // Create card HTML
+    cycleCards.push(`
+      <div class="cycle-card ${isCurrentCycle ? 'current-cycle-card' : ''}">
+        <div class="cycle-card-header">
+          <h4 class="cycle-number">Cycle ${cycleNum}</h4>
+          ${isCurrentCycle ? '<span class="current-badge">Current</span>' : ''}
+        </div>
+        <div class="cycle-dates">
+          <div class="cycle-date-item">
+            <label>Start Date:</label>
+            <div class="date-value ${hasAdminRole ? 'editable' : ''}" 
+                 data-cycle="${cycleNum}" 
+                 data-field="startDate" 
+                 data-value="${startDate}"
+                 ${hasAdminRole ? 'data-cycle-id="' + (cycleData?.id || '') + '"' : ''}>
+              ${startDate}
+            </div>
+          </div>
+          <div class="cycle-date-item">
+            <label>Cutoff Date:</label>
+            <div class="date-value ${hasAdminRole ? 'editable' : ''}" 
+                 data-cycle="${cycleNum}" 
+                 data-field="cutoffDate" 
+                 data-value="${cutoffDate}"
+                 ${hasAdminRole ? 'data-cycle-id="' + (cycleData?.id || '') + '"' : ''}>
+              ${cutoffDate}
+            </div>
+          </div>
         </div>
       </div>
-    `;
+    `);
   }
   
-  // Build table rows for cycles
-  let cycleRows = '';
-  for (let i = 0; i < cycleDates.length; i++) {
-    const cycle = cycleDates[i];
-    const isCurrentCycle = (cycle.cycle === currentCycle);
-    
-    cycleRows += `
-      <tr class="${isCurrentCycle ? 'current-cycle' : ''}">
-        <td class="cycle-number-cell">${cycle.cycle}</td>
-        <td>${formatDateForDisplay(cycle.startDate)}</td>
-        <td>${formatDateForDisplay(cycle.cutoffDate)}</td>
-        ${hasAdminRole ? `
-          <td class="cycle-actions">
-            <button class="cycle-edit-btn vespa-btn vespa-btn-small" data-cycle-id="${cycle.id}">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="cycle-delete-btn vespa-btn vespa-btn-small vespa-btn-danger" data-cycle-id="${cycle.id}">
-              <i class="fas fa-trash-alt"></i>
-            </button>
-          </td>
-        ` : ''}
-      </tr>
-    `;
-  }
-  
-  // Return full table with admin controls if appropriate
+  // Return the complete section
   return `
     <div class="questionnaire-cycles-section">
       <h3 class="section-title">Questionnaire Cycle Dates</h3>
-      <table class="cycles-table">
-        <thead>
-          <tr>
-            <th>Cycle</th>
-            <th>Start Date</th>
-            <th>Cutoff Date</th>
-            ${hasAdminRole ? '<th>Actions</th>' : ''}
-          </tr>
-        </thead>
-        <tbody>
-          ${cycleRows}
-        </tbody>
-      </table>
+      <div class="cycle-cards-container">
+        ${cycleCards.join('')}
+      </div>
       
       ${hasAdminRole ? `
-        <div class="cycle-admin-controls">
-          <button id="add-cycle-btn" class="vespa-btn vespa-btn-primary">
-            <i class="fas fa-plus-circle"></i> Add Cycle
-          </button>
+        <div class="cycle-admin-note">
+          <i class="fas fa-info-circle"></i> Click on any date to edit
+        </div>
+      ` : emptyCycles ? `
+        <div class="cycle-user-note">
+          <i class="fas fa-info-circle"></i> No questionnaire cycles have been set up yet. Please contact your Staff Admin.
         </div>
       ` : ''}
     </div>
@@ -2741,6 +2865,127 @@ function setupTooltips() {
       setTimeout(() => {
         tooltip.classList.add('tooltip-active');
       }, 10);
+    });
+  });
+}
+
+// Set up click handlers for editable date values
+function setupEditableDates(schoolId) {
+  // Find all editable date elements
+  const editableDates = document.querySelectorAll('.date-value.editable');
+  
+  // Add click handler to each
+  editableDates.forEach(element => {
+    element.addEventListener('click', function() {
+      // Get data attributes
+      const cycleNumber = this.getAttribute('data-cycle');
+      const fieldName = this.getAttribute('data-field');
+      const currentValue = this.getAttribute('data-value');
+      const cycleId = this.getAttribute('data-cycle-id');
+      
+      // Create input for editing
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = currentValue;
+      input.className = 'date-edit-input';
+      input.placeholder = 'DD/MM/YYYY';
+      
+      // Replace text with input
+      const originalText = this.innerHTML;
+      this.innerHTML = '';
+      this.appendChild(input);
+      
+      // Focus input
+      input.focus();
+      
+      // Function to restore original text
+      const restoreText = () => {
+        this.innerHTML = originalText;
+      };
+      
+      // Handle blur (clicking outside)
+      input.addEventListener('blur', restoreText);
+      
+      // Handle enter key and save
+      input.addEventListener('keydown', async function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          
+          const newValue = this.value.trim();
+          
+          // Validate date format
+          if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(newValue)) {
+            alert('Please enter date in DD/MM/YYYY format');
+            this.focus();
+            return;
+          }
+          
+          // Prepare data for saving
+          const cycleData = {
+            id: cycleId || null,
+            cycle: parseInt(cycleNumber),
+            [fieldName]: newValue
+          };
+          
+          // If we're editing just one field, need to get the other field's value
+          if (!cycleId) {
+            // New cycle - set both dates
+            if (fieldName === 'startDate') {
+              // Need to set a default cutoff date (30 days later)
+              const [day, month, year] = newValue.split('/');
+              const startDate = new Date(`${year}-${month}-${day}`);
+              const cutoffDate = new Date(startDate);
+              cutoffDate.setDate(cutoffDate.getDate() + 30);
+              
+              // Format as DD/MM/YYYY
+              const cutoffDay = cutoffDate.getDate().toString().padStart(2, '0');
+              const cutoffMonth = (cutoffDate.getMonth() + 1).toString().padStart(2, '0');
+              const cutoffYear = cutoffDate.getFullYear();
+              
+              cycleData.cutoffDate = `${cutoffDay}/${cutoffMonth}/${cutoffYear}`;
+            } else {
+              // Need a default start date (30 days before)
+              const [day, month, year] = newValue.split('/');
+              const cutoffDate = new Date(`${year}-${month}-${day}`);
+              const startDate = new Date(cutoffDate);
+              startDate.setDate(startDate.getDate() - 30);
+              
+              // Format as DD/MM/YYYY
+              const startDay = startDate.getDate().toString().padStart(2, '0');
+              const startMonth = (startDate.getMonth() + 1).toString().padStart(2, '0');
+              const startYear = startDate.getFullYear();
+              
+              cycleData.startDate = `${startDay}/${startMonth}/${startYear}`;
+            }
+          } else {
+            // Existing cycle - get other date from DOM
+            const otherField = fieldName === 'startDate' ? 'cutoffDate' : 'startDate';
+            const otherElement = document.querySelector(`.date-value[data-cycle="${cycleNumber}"][data-field="${otherField}"]`);
+            
+            if (otherElement) {
+              cycleData[otherField] = otherElement.getAttribute('data-value');
+            }
+          }
+          
+          try {
+            // Save the cycle data
+            await saveCycle(schoolId, cycleData);
+            
+            // Show success message
+            alert(`Cycle ${cycleNumber} ${fieldName.replace('Date', ' date')} updated successfully.`);
+            
+            // Refresh data to show changes
+            refreshDashboardData();
+          } catch (error) {
+            console.error('[Staff Homepage] Error saving cycle date:', error);
+            alert('Error saving date. Please try again.');
+            restoreText();
+          }
+        } else if (e.key === 'Escape') {
+          // Cancel on escape
+          restoreText();
+        }
+      });
     });
   });
 }
@@ -3917,6 +4162,194 @@ font-style: italic;
 .vespa-btn-danger:hover {
   background-color: #ef4444;
 }
+  /* Refresh button styles */
+.refresh-btn {
+  margin-left: 10px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  text-align: center;
+  line-height: 28px;
+  transition: transform 0.3s ease;
+}
+
+.refresh-btn:hover {
+  background-color: ${THEME.ACCENT};
+  transform: rotate(180deg);
+}
+
+.refresh-btn i {
+  font-size: 14px;
+}
+
+.refreshing {
+  animation: spin 1s linear infinite;
+}
+
+/* Questionnaire Cycle Cards Styles */
+.questionnaire-cycles-section {
+  margin-top: 25px;
+  background: ${THEME.CARD_BG};
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid ${THEME.ACCENT};
+}
+
+.section-title {
+  font-size: 18px;
+  color: #ffffff !important;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 10px;
+  font-weight: 600;
+}
+
+.cycle-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.cycle-card {
+  flex: 1;
+  min-width: 200px;
+  background-color: rgba(10, 27, 80, 0.7);
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.cycle-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+}
+
+.current-cycle-card {
+  border-left: 3px solid ${THEME.ACCENT};
+  box-shadow: 0 4px 12px rgba(0, 229, 219, 0.2);
+}
+
+.cycle-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.cycle-number {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+}
+
+.current-badge {
+  background-color: ${THEME.ACCENT};
+  color: ${THEME.PRIMARY};
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.cycle-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cycle-date-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cycle-date-item label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.date-value {
+  font-size: 15px;
+  padding: 5px 8px;
+  border-radius: 4px;
+}
+
+.editable {
+  cursor: pointer;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.editable:hover {
+  background-color: rgba(0, 229, 219, 0.1);
+  border-color: ${THEME.ACCENT};
+}
+
+.date-edit-input {
+  width: 100%;
+  padding: 5px 8px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #333;
+  border: 1px solid ${THEME.ACCENT};
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.cycle-admin-note {
+  margin-top: 15px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+.cycle-user-note {
+  margin-top: 15px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+/* Current cycle indicator styling */
+.current-cycle-indicator {
+  display: inline-block;
+  background-color: rgba(0, 229, 219, 0.15);
+  border-radius: 5px;
+  padding: 5px 10px;
+  margin: 0 0 15px 0;
+  border-left: 3px solid ${THEME.ACCENT};
+}
+
+.cycle-label {
+  font-weight: 600;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.cycle-number {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cycle-cards-container {
+    flex-direction: column;
+  }
+  
+  .cycle-card {
+    width: 100%;
+  }
+}
 `;
 }
 // Render the main homepage UI
@@ -4034,6 +4467,15 @@ console.log(`[Staff Homepage] Current cycle determined to be: ${currentCycle}`);
   // Initialize tooltips
   setupTooltips();
   
+// Set up refresh button listener
+const refreshBtn = document.getElementById('refresh-data-btn');
+if (refreshBtn) {
+  refreshBtn.addEventListener('click', refreshDashboardData);
+}
+
+// Set up editable dates
+setupEditableDates(profileData.schoolId);
+
   // Track page view
   trackPageView('VESPA Dashboard').catch(err => console.warn('[Staff Homepage] Dashboard view tracking failed:', err));
   // Setup logo controls for admin users
