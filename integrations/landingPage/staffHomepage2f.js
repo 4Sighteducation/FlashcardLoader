@@ -3455,6 +3455,15 @@ try {
 window.initializeStaffHomepage = function() {
   debugLog("Initializing Staff Homepage...");
   
+  // Check if we're on the login page and skip initialization if we are
+  if (window.location.href.includes('staff-landing-page') || 
+      window.location.href.includes('login') ||
+      document.querySelector('form[id*="login"]') ||
+      document.querySelector('input[type="password"]')) {
+    console.log("[Staff Homepage] Login page detected, skipping full initialization");
+    return; // Don't initialize on login pages
+  }
+  
   // Verify Knack context and authentication
   if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
     console.error("Staff Homepage Error: Knack context not available.");
