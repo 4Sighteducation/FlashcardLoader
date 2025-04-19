@@ -2191,6 +2191,17 @@ function determineCurrentCycle(cycles) {
 // --- UI Rendering ---
 
 function renderProfileSection(profileData, hasAdminRole) {
+  let dashboardButton = '';
+  if (hasAdminRole) {
+    dashboardButton = `
+      <div class="profile-item">
+        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard/" class="dashboard-button">
+          <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
+          <span>VESPA Dashboard</span>
+        </a>
+      </div>
+    `;
+  }
   // Add admin logo button if user is a staff admin
   let logoControls = '';
   if (hasAdminRole) {
@@ -2204,17 +2215,7 @@ function renderProfileSection(profileData, hasAdminRole) {
     `;
   }
   
-  let dashboardButton = '';
-  if (hasAdminRole) {
-    dashboardButton = `
-      <div class="profile-item">
-        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard/" class="dashboard-button">
-          <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
-          <span>VESPA Dashboard</span>
-        </a>
-      </div>
-    `;
-  }
+  
   
   return `
     <section class="vespa-section profile-section">
@@ -3048,13 +3049,14 @@ function getStyleCSS() {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
 }
 
-/* Top row - UPDATED for better height distribution */
+/* Top row layout containing profile and dashboard */
 .top-row {
   display: flex;
   flex-direction: row;
   gap: 24px;
   margin-bottom: 28px;
-  align-items: stretch;
+  align-items: stretch; /* Make heights equal */
+  min-height: 400px; /* Set minimum height to ensure content has room */
 }
 
 /* Profile container takes 30% width */
@@ -3063,7 +3065,6 @@ function getStyleCSS() {
   max-width: 30%;
   display: flex;
   flex-direction: column;
-  height: 100%; /* Ensure it takes full height */
 }
 
 /* Dashboard container takes 70% width */
@@ -3103,7 +3104,7 @@ function getStyleCSS() {
   flex-direction: column;
 }
 
-/* Create a subtle gradient overlay for sections */
+/* Create a subtle gradient overlay for top section edge */
 .vespa-section::before {
   content: '';
   position: absolute;
@@ -3136,32 +3137,16 @@ function getStyleCSS() {
   z-index: 2;
 }
 
-/* Profile section - UPDATED for dynamic height matching */
+/* Different visual styling for each section type */
 .profile-section {
   border-left: 4px solid #e59437;
   box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  height: 100%; /* Takes full height of container */
   box-sizing: border-box;
-  position: relative; /* Added for absolute positioned child */
-}
-
-/* Add bottom padding with pseudo-element to ensure border is visible */
-.profile-section::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 22px; /* Bottom padding */
-  background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%); /* Same as section background */
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-  z-index: 1; /* Above content but below border */
-  border-bottom: 2px solid #00e5db; /* Bottom border */
-  border-left: 2px solid #00e5db; /* Left border (except where overridden by the colored accent) */
-  border-right: 2px solid #00e5db; /* Right border */
+  padding-bottom: 24px; /* Extra padding at bottom */
 }
 
 .dashboard-section {
@@ -3211,32 +3196,29 @@ function getStyleCSS() {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Profile info container - UPDATED to work with the pseudo-element spacing */
+/* Profile Section */
 .profile-info {
   display: flex;
   flex: 1;
+  height: 100%;
   margin: 0;
-  padding-bottom: 22px; /* Match the height of the pseudo-element */
+  padding: 0;
   box-sizing: border-box;
-  position: relative;
-  z-index: 2; /* Above the pseudo-element */
 }
 
-/* Profile details - UPDATED to ensure proper spacing */
 .profile-details {
   flex: 1;
   min-width: 250px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   padding: 20px;
   background: linear-gradient(135deg, #15348e 0%, #102983 100%);
   border-radius: 10px;
   border: 1px solid #00e5db;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   margin: 0;
-  /* Allow content to distribute with spacing at bottom */
-  margin-bottom: auto;
+  height: auto;
+  min-height: calc(100% - 40px); /* Account for top/bottom padding */
 }
 
 .logo-container {
@@ -3288,18 +3270,6 @@ function getStyleCSS() {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Make sure the last profile item has bottom margin to push content up */
-.profile-item:last-child {
-  margin-top: auto; /* Push to bottom if space available */
-  margin-bottom: 0;
-}
-
-/* Custom class for the dashboard button to push it down */
-.dashboard-button-container {
-  margin-top: auto; /* Push to bottom of container */
-  padding-top: 15px;
-}
-
 .profile-item {
   margin-bottom: 12px;
   padding: 10px;
@@ -3309,6 +3279,12 @@ function getStyleCSS() {
 
 .profile-item:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Dashboard button styling */
+.profile-item:last-child {
+  margin-top: auto;
+  margin-bottom: 0;
 }
 
 .profile-label {
@@ -3327,7 +3303,6 @@ function getStyleCSS() {
   border-radius: 6px;
   text-decoration: none;
   transition: all 0.3s ease; /* Smoother transition to prevent flickering */
-  margin-top: 15px;
   font-weight: bold;
   letter-spacing: 0.5px;
   transform: translateZ(0); /* Hardware acceleration */
