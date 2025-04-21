@@ -26,6 +26,129 @@ const THEME = {
   NEGATIVE: '#f87171'    // Red for negative trends
 };
 
+// --- API Queue for Rate Limiting ---
+const KnackAPIQueue = (function() {
+  // Private members
+  const queue = [];
+  const maxRequestsPerSecond = 6;  // Conservative limit (below Knack's 10/s)
+  let processing = false;
+  let requestsThisSecond = 0;
+  let resetTime = Date.now() + 1000;
+
+  // Process the next request in the queue
+  function processNextRequest() {
+    if (queue.length === 0) {
+      processing = false;
+      return;
+    }
+
+    const now = Date.now();
+    
+    // Reset counter if we're in a new second
+    if (now > resetTime) {
+      requestsThisSecond = 0;
+      resetTime = now + 1000;
+    }
+
+    // Check if we've hit the rate limit
+    if (requestsThisSecond >= maxRequestsPerSecond) {
+      // Wait until the next second
+      const delay = resetTime - now;
+      setTimeout(processNextRequest, delay + 50); // Add 50ms buffer
+      return;
+    }
+
+    // Process the next request in the queue
+    const request = queue.shift();
+    requestsThisSecond++;
+    KnackAPIQueue.updateLoadingIndicator();
+    
+    $.ajax({
+      url: request.url,
+      type: request.type,
+      headers: request.headers,
+      data: request.data,
+      success: function(response) {
+        request.resolve(response);
+        // Continue processing the queue
+        processNextRequest();
+        KnackAPIQueue.updateLoadingIndicator();
+      },
+      error: function(error) {
+        // If it's a rate limit error (429), requeue with backoff
+        if (error.status === 429) {
+          console.log('[Staff Homepage] Rate limit hit, requeueing request with backoff');
+          // Add to front of queue with exponential backoff
+          setTimeout(() => {
+            queue.unshift(request);
+            processNextRequest();
+            KnackAPIQueue.updateLoadingIndicator();
+          }, 1000); // Wait at least 1 second
+        } else {
+          request.reject(error);
+          // Continue processing the queue
+          processNextRequest();
+        }
+      }
+    });
+  }
+
+
+  
+  return {
+    // Add a request to the queue
+    addRequest: function(options) {
+      return new Promise((resolve, reject) => {
+        queue.push({
+          url: options.url,
+          type: options.type || 'GET',
+          headers: options.headers || {},
+          data: options.data || null,
+          resolve: resolve,
+          reject: reject
+        });
+        
+        // Update loading indicator after adding to queue
+        this.updateLoadingIndicator();
+  
+        // Start processing if not already
+        if (!processing) {
+          processing = true;
+          processNextRequest();
+        }
+      });
+    },
+    
+    // Get current queue stats
+    getStats: function() {
+      return {
+        queueLength: queue.length,
+        requestsThisSecond,
+        secondResetIn: resetTime - Date.now()
+      };
+    },
+    
+    // Update the loading indicator based on queue state
+    updateLoadingIndicator: function() {
+      const indicator = document.getElementById('api-loading-indicator');
+      if (!indicator) return;
+      
+      const queueLength = queue.length;
+      
+      if (queueLength > 0 || requestsThisSecond > 0) {
+        indicator.style.display = 'flex';
+        const countElement = indicator.querySelector('.queue-count');
+        if (countElement) {
+          countElement.textContent = queueLength > 0 ? `(${queueLength} in queue)` : '';
+        }
+      } else {
+        indicator.style.display = 'none';
+      }
+    }
+  };
+})();
+
+
   // Staff profile field mappings
   const FIELD_MAPPING = {
     // Staff user fields
@@ -356,7 +479,7 @@ function getCurrentSchoolName() {
 }
 
 
-// Generic retry function for API calls
+// Generic retry function for API calls - updated to use queue
 function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
   return new Promise((resolve, reject) => {
     const attempt = (retryCount) => {
@@ -364,14 +487,14 @@ function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
         .then(resolve)
         .catch((error) => {
           const attemptsMade = retryCount + 1;
-          console.warn(`API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
+          console.warn(`[Staff Homepage] API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
 
           if (retryCount < maxRetries - 1) {
             const retryDelay = delay * Math.pow(2, retryCount);
-            console.log(`Retrying API call in ${retryDelay}ms...`);
+            console.log(`[Staff Homepage] Retrying API call in ${retryDelay}ms...`);
             setTimeout(() => attempt(retryCount + 1), retryDelay);
           } else {
-            console.error(`API call failed after ${maxRetries} attempts.`);
+            console.error(`[Staff Homepage] API call failed after ${maxRetries} attempts.`);
             reject(error);
           }
         });
@@ -436,15 +559,11 @@ async function getAllRecordsWithPagination(url, filters, maxPages = 10) {
       const fullUrl = `${url}${filters ? `?filters=${filters}&${paginationParams}` : `?${paginationParams}`}`;
       
       const response = await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: fullUrl,
-            type: 'GET',
-            headers: getKnackHeaders(),
-            data: { format: 'raw' },
-            success: resolve,
-            error: reject
-          });
+        return KnackAPIQueue.addRequest({
+          url: fullUrl,
+          type: 'GET',
+          headers: getKnackHeaders(),
+          data: { format: 'raw' }
         });
       });
       
@@ -508,7 +627,7 @@ getLocalizedDate() {
   return now;
 },
 
-// Retrieve cache from Knack
+  // Retrieve cache from Knack
 async get(cacheKey, type) {
   try {
     console.log(`[Staff Homepage] Checking cache for: ${cacheKey} (${type})`);
@@ -525,15 +644,11 @@ async get(cacheKey, type) {
     
     // Query the cache object
     const response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' },
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
       });
     });
     
@@ -545,29 +660,29 @@ async get(cacheKey, type) {
       if (expiryDate < new Date()) {
         console.log(`[Staff Homepage] Cache expired for ${cacheKey}`);
         
-        // Mark cache as invalid
-        await $.ajax({
-          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
-          type: 'PUT',
-          headers: getKnackHeaders(),
-          data: JSON.stringify({
-            field_3194: 'No' // Is Valid = No
-          })
-        });
-        
-        return null;
-      }
-      
-      // Update access count and last accessed date
-      await $.ajax({
+      // Mark cache as invalid
+      await KnackAPIQueue.addRequest({
         url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
         type: 'PUT',
         headers: getKnackHeaders(),
         data: JSON.stringify({
-          field_3193: (parseInt(cacheRecord.field_3193) || 0) + 1, // Access Count + 1
-          field_3192: new Date().toISOString() // Last Accessed
+          field_3194: 'No' // Is Valid = No
         })
       });
+      
+      return null;
+    }
+    
+    // Update access count and last accessed date
+    await KnackAPIQueue.addRequest({
+      url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+      type: 'PUT',
+      headers: getKnackHeaders(),
+      data: JSON.stringify({
+        field_3193: (parseInt(cacheRecord.field_3193) || 0) + 1, // Access Count + 1
+        field_3192: new Date().toISOString() // Last Accessed
+      })
+    });
       
       // Special handling for SchoolLogo type
       if (type === 'SchoolLogo') {
@@ -580,15 +695,15 @@ async get(cacheKey, type) {
           return logoUrl; // Return logo URL directly from field_3205
         } else {
           console.warn(`[Staff Homepage] Invalid logo URL in cache: ${typeof logoUrl}`, logoUrl);
-          // Cache is invalid, mark it as such
-          await $.ajax({
-            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
-            type: 'PUT',
-            headers: getKnackHeaders(),
-            data: JSON.stringify({
-              field_3194: 'No' // Is Valid = No
-            })
-          });
+        // Cache is invalid, mark it as such
+        await KnackAPIQueue.addRequest({
+          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify({
+            field_3194: 'No' // Is Valid = No
+          })
+        });
           return null; // Return null to trigger a fresh search
         }
       }
@@ -627,15 +742,11 @@ async set(cacheKey, data, type, ttlMinutes = this.DEFAULT_TTL) {
     }));
     
     const response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' },
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
       });
     });
     
@@ -679,15 +790,11 @@ async set(cacheKey, data, type, ttlMinutes = this.DEFAULT_TTL) {
       }
       
       await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
-            type: 'PUT',
-            headers: getKnackHeaders(),
-            data: JSON.stringify(updateData),
-            success: resolve,
-            error: reject
-          });
+        return KnackAPIQueue.addRequest({
+          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify(updateData)
         });
       });
     } 
@@ -720,15 +827,11 @@ async set(cacheKey, data, type, ttlMinutes = this.DEFAULT_TTL) {
       }
       
       await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records`,
-            type: 'POST',
-            headers: getKnackHeaders(),
-            data: JSON.stringify(recordData),
-            success: resolve,
-            error: reject
-          });
+        return KnackAPIQueue.addRequest({
+          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records`,
+          type: 'POST',
+          headers: getKnackHeaders(),
+          data: JSON.stringify(recordData)
         });
       });
     }
@@ -754,15 +857,11 @@ async invalidate(cacheKey, type) {
     }));
     
     const response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' },
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
       });
     });
     
@@ -770,17 +869,13 @@ async invalidate(cacheKey, type) {
       const cacheRecord = response.records[0];
       
       await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
-            type: 'PUT',
-            headers: getKnackHeaders(),
-            data: JSON.stringify({
-              field_3194: 'No' // Is Valid = No
-            }),
-            success: resolve,
-            error: reject
-          });
+        return KnackAPIQueue.addRequest({
+          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${cacheRecord.id}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify({
+            field_3194: 'No' // Is Valid = No
+          })
         });
       });
       
@@ -812,15 +907,11 @@ async cleanupExpiredCache() {
     
     // Get expired/invalid records
     const response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' },
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
       });
     });
     
@@ -833,14 +924,10 @@ async cleanupExpiredCache() {
         const batch = response.records.slice(i, i + batchSize);
         await Promise.all(batch.map(record => {
           return retryApiCall(() => {
-            return new Promise((resolve, reject) => {
-              $.ajax({
-                url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${record.id}`,
-                type: 'DELETE',
-                headers: getKnackHeaders(),
-                success: resolve,
-                error: reject
-              });
+            return KnackAPIQueue.addRequest({
+              url: `${KNACK_API_URL}/objects/${this.CACHE_OBJECT}/records/${record.id}`,
+              type: 'DELETE',
+              headers: getKnackHeaders()
             });
           });
         }));
@@ -885,15 +972,11 @@ try {
   }));
   
   const response = await retryApiCall(() => {
-    return new Promise((resolve, reject) => {
-      $.ajax({
-        url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
-        type: 'GET',
-        headers: getKnackHeaders(),
-        data: { format: 'raw' },
-        success: resolve,
-        error: reject
-      });
+    return KnackAPIQueue.addRequest({
+      url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+      type: 'GET',
+      headers: getKnackHeaders(),
+      data: { format: 'raw' }
     });
   });
   
@@ -902,20 +985,16 @@ try {
     
     // Update user record with login information
     await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
-          type: 'PUT',
-          headers: getKnackHeaders(),
-          data: JSON.stringify({
-            field_3198: new Date().toISOString(), // Login Date
-            field_3201: 0, // Page Views (reset on login) - CORRECTED FIELD
-            field_3203: deviceType, // Device Type
-            field_3204: browser.substring(0, 100) // Browser (truncated if too long)
-          }),
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+        type: 'PUT',
+        headers: getKnackHeaders(),
+        data: JSON.stringify({
+          field_3198: new Date().toISOString(), // Login Date
+          field_3201: 0, // Page Views (reset on login) - CORRECTED FIELD
+          field_3203: deviceType, // Device Type
+          field_3204: browser.substring(0, 100) // Browser (truncated if too long)
+        })
       });
     });
     
@@ -948,15 +1027,11 @@ try {
   }));
   
   const response = await retryApiCall(() => {
-    return new Promise((resolve, reject) => {
-      $.ajax({
-        url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
-        type: 'GET',
-        headers: getKnackHeaders(),
-        data: { format: 'raw' },
-        success: resolve,
-        error: reject
-      });
+    return KnackAPIQueue.addRequest({
+      url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+      type: 'GET',
+      headers: getKnackHeaders(),
+      data: { format: 'raw' }
     });
   });
   
@@ -986,15 +1061,11 @@ try {
     
     // Update user record
     await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
-          type: 'PUT',
-          headers: getKnackHeaders(),
-          data: JSON.stringify(updateData),
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+        type: 'PUT',
+        headers: getKnackHeaders(),
+        data: JSON.stringify(updateData)
       });
     });
     
@@ -1214,15 +1285,11 @@ async function findStaffRecord(email) {
   
   try {
     const response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' },
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
       });
     });
     
@@ -1246,15 +1313,11 @@ async function getSchoolRecord(schoolId) {
   try {
     // First try by direct ID
     let response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' },
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
       });
     }).catch(error => {
       console.warn('[Staff Homepage] Error getting school record by ID:', error);
@@ -1284,15 +1347,11 @@ async function getSchoolRecord(schoolId) {
           }));
           
           const searchResponse = await retryApiCall(() => {
-            return new Promise((resolve, reject) => {
-              $.ajax({
-                url: `${KNACK_API_URL}/objects/object_2/records?filters=${filters}`,
-                type: 'GET',
-                headers: getKnackHeaders(),
-                data: { format: 'raw' },
-                success: resolve,
-                error: reject
-              });
+            return KnackAPIQueue.addRequest({
+              url: `${KNACK_API_URL}/objects/object_2/records?filters=${filters}`,
+              type: 'GET',
+              headers: getKnackHeaders(),
+              data: { format: 'raw' }
             });
           }).catch(error => {
             console.warn('[Staff Homepage] Error searching for school by name:', error);
@@ -1990,15 +2049,11 @@ console.log(`[Staff Homepage] Using expanded filters to find cycles: ${decodeURI
     
     // Query object_66 for cycle data
     const response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/object_66/records?filters=${filters}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' },
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_66/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
       });
     });
     
@@ -2191,7 +2246,10 @@ function determineCurrentCycle(cycles) {
 // --- UI Rendering ---
 
 function renderProfileSection(profileData, hasAdminRole) {
+  // Initialize variables first to avoid the "Cannot access before initialization" error
   let dashboardButton = '';
+  let logoControls = '';
+  
   if (hasAdminRole) {
     dashboardButton = `
       <div class="profile-item">
@@ -2201,21 +2259,14 @@ function renderProfileSection(profileData, hasAdminRole) {
         </a>
       </div>
     `;
-  }
-  // Add admin logo button if user is a staff admin
-  let logoControls = '';
-  if (hasAdminRole) {
-    dashboardButton = `
-      <div class="dashboard-button-container">
-        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard/" class="dashboard-button">
-          <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
-          <span>VESPA Dashboard</span>
-        </a>
+    
+    // Add logo controls for admin users
+    logoControls = `
+      <div class="logo-controls">
+        <button id="admin-set-logo-btn" class="logo-button">Change Logo</button>
       </div>
     `;
   }
-  
-  
   
   return `
     <section class="vespa-section profile-section">
@@ -2996,17 +3047,13 @@ async function updateSchoolLogo(schoolId, logoUrl) {
   try {
     // Update the school record field_3206 with the new logo URL
     const response = await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
-          type: 'PUT',
-          headers: getKnackHeaders(),
-          data: JSON.stringify({
-            field_3206: logoUrl
-          }),
-          success: resolve,
-          error: reject
-        });
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
+        type: 'PUT',
+        headers: getKnackHeaders(),
+        data: JSON.stringify({
+          field_3206: logoUrl
+        })
       });
     });
     
@@ -3918,6 +3965,118 @@ canvas {
     margin-bottom: 8px; /* Reduced from 10px */
   }
 }
+
+/* Global API Loading Indicator */
+.api-loading-indicator {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 40, 100, 0.9);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: 1px solid #00e5db;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  display: none;
+  align-items: center;
+  z-index: 10000;
+  font-size: 14px;
+  transition: opacity 0.3s;
+}
+
+.api-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 229, 219, 0.3);
+  border-top: 2px solid #00e5db;
+  border-radius: 50%;
+  margin-right: 10px;
+  animation: spin 1s linear infinite;
+}
+
+/* Welcome Banner Styles */
+.welcome-banner {
+  background: linear-gradient(135deg, #15348e 0%, #102983 100%);
+  color: white;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  position: relative;
+  border: 2px solid #00e5db;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.banner-content {
+  padding-right: 30px;
+}
+
+.banner-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #00e5db;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Feedback Button & Form */
+.feedback-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #00e5db;
+  color: #0a2b8c;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  transition: all 0.3s ease;
+}
+
+.feedback-button i {
+  margin-right: 8px;
+}
+
+.feedback-button:hover {
+  background: white;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
     `;
     }
 // Render the main homepage UI
@@ -3927,6 +4086,63 @@ if (!container) {
   console.error('[Staff Homepage] Container element not found.');
   return;
 }
+
+// Add loading indicator HTML to the document
+const loadingIndicator = `
+<div id="api-loading-indicator" class="api-loading-indicator">
+  <div class="api-loading-spinner"></div>
+  <div class="api-loading-text">
+    <span class="requests-text">Processing requests...</span>
+    <span class="queue-count"></span>
+  </div>
+</div>`;
+
+// Welcome banner HTML
+const welcomeBanner = `
+<div id="welcome-banner" class="welcome-banner">
+  <div class="banner-content">
+    <h3>Welcome to our brand new home page!</h3>
+    <p>If you are seeing this you have been selected at random to test this. 
+    All the VESPA Portal pages can be accessed at the click of a button below.</p>
+    <p>Please let us have any feedback or any issues you face using the form below. 
+    If you would like to return to the old login page please let us know.</p>
+  </div>
+  <button class="banner-close" aria-label="Close banner">×</button>
+</div>`;
+
+// Feedback button and modal HTML
+const feedbackSystem = `
+<button id="feedback-button" class="feedback-button">
+  <i class="fas fa-comment-alt"></i>
+  Feedback
+</button>
+
+<div id="feedback-modal" class="vespa-modal">
+  <div class="vespa-modal-content">
+    <span class="vespa-modal-close" id="feedback-modal-close">&times;</span>
+    <h3>Send Us Your Feedback</h3>
+    <form id="feedback-form">
+      <div class="form-group">
+        <label for="feedback-name">Your Name</label>
+        <input type="text" id="feedback-name" required>
+      </div>
+      <div class="form-group">
+        <label for="feedback-email">Your Email</label>
+        <input type="email" id="feedback-email" required>
+      </div>
+      <div class="form-group">
+        <label for="feedback-message">Feedback</label>
+        <textarea id="feedback-message" rows="5" required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="vespa-btn vespa-btn-primary">Send Feedback</button>
+      </div>
+    </form>
+    <div id="feedback-success" style="display:none;">
+      <p>Thank you for your feedback! We appreciate your input.</p>
+    </div>
+  </div>
+</div>`;
 
 // Add Font Awesome for professional icons
 const fontAwesomeLink = document.createElement('link');
@@ -3984,7 +4200,9 @@ try {
   // Build the homepage HTML with updated layout
   const homepageHTML = `
     <div id="staff-homepage">
-      <div class="top-row">
+    ${welcomeBanner}
+    <div>
+    <div class="top-row">
         <div class="profile-container">
           ${renderProfileSection(profileData, hasAdminRole)}
         </div>
@@ -3999,6 +4217,10 @@ try {
       ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
     </div>
   `;
+
+  // Add loading indicator and feedback button to the body
+document.body.insertAdjacentHTML('beforeend', loadingIndicator);
+document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   
   // Add the CSS
   const styleElement = document.createElement('style');
@@ -4065,6 +4287,89 @@ try {
 if (profileData && profileData.userId) {
   setupCycleRefresh(profileData.userId, profileData.schoolId);
 }
+
+// Setup welcome banner close button
+const bannerCloseBtn = document.querySelector('.banner-close');
+if (bannerCloseBtn) {
+  bannerCloseBtn.addEventListener('click', function() {
+    const banner = document.getElementById('welcome-banner');
+    if (banner) {
+      banner.style.display = 'none';
+      localStorage.setItem('welcome_banner_closed', 'true');
+    }
+  });
+  
+  // Check if we should hide banner based on localStorage
+  if (localStorage.getItem('welcome_banner_closed') === 'true') {
+    const banner = document.getElementById('welcome-banner');
+    if (banner) banner.style.display = 'none';
+  }
+}
+
+// Setup feedback button
+const feedbackBtn = document.getElementById('feedback-button');
+const feedbackModal = document.getElementById('feedback-modal');
+const feedbackCloseBtn = document.getElementById('feedback-modal-close');
+const feedbackForm = document.getElementById('feedback-form');
+
+if (feedbackBtn && feedbackModal) {
+  // Show modal when clicking feedback button
+  feedbackBtn.addEventListener('click', function() {
+    feedbackModal.style.display = 'block';
+  });
+  
+  // Close modal when clicking X
+  if (feedbackCloseBtn) {
+    feedbackCloseBtn.addEventListener('click', function() {
+      feedbackModal.style.display = 'none';
+    });
+  }
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', function(e) {
+    if (e.target === feedbackModal) {
+      feedbackModal.style.display = 'none';
+    }
+  });
+  
+  // Handle form submission
+  if (feedbackForm) {
+    feedbackForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('feedback-name').value;
+      const email = document.getElementById('feedback-email').value;
+      const message = document.getElementById('feedback-message').value;
+      
+      // Send email to admin@vespaacademy.knack.com with feedback
+      const emailSubject = `Feedback from ${name}`;
+      const emailBody = `Name: ${name}\nEmail: ${email}\n\nFeedback:\n${message}`;
+      
+      console.log('[Staff Homepage] Feedback submitted:', {
+        to: 'admin@vespaacademy.knack.com',
+        subject: emailSubject,
+        body: emailBody
+      });
+      
+      // In production, you would send this via AJAX to a backend endpoint
+      // For now, we'll just show success message
+      feedbackForm.style.display = 'none';
+      document.getElementById('feedback-success').style.display = 'block';
+      
+      // Close modal after 3 seconds
+      setTimeout(function() {
+        feedbackModal.style.display = 'none';
+        // Reset form for next time
+        setTimeout(function() {
+          feedbackForm.reset();
+          feedbackForm.style.display = 'block';
+          document.getElementById('feedback-success').style.display = 'none';
+        }, 500);
+      }, 3000);
+    });
+  }
+}
+
 
   debugLog("Staff homepage rendered successfully");
 } catch (error) {
@@ -4154,3 +4459,4 @@ window.initializeStaffHomepage = function() {
 }; // Close initializeStaffHomepage function properly
 
 })(); // Close IIFE properly
+
