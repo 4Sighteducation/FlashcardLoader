@@ -4124,27 +4124,7 @@ canvas {
   color: #ffffff;
   position: relative;
   animation: modalFadeIn 0.3s;
-  max-height: 80vh; /* Limit height to 80% of viewport */
-  overflow-y: auto; /* Enable scrolling */
-  margin: 5% auto; /* Adjust margin to position higher */
 }
-
-/* For mobile devices */
-@media (max-width: 768px) {
-    .vespa-modal-content {
-        width: 95%;
-        max-height: 85vh;
-        margin: 3% auto;
-    }
-    
-    /* Make buttons more accessible on mobile */
-    .form-actions {
-        position: sticky;
-        bottom: 0;
-        background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%);
-        padding: 10px 0;
-        margin-bottom: 0;
-    }
 
 @keyframes modalFadeIn {
   from {opacity: 0; transform: translateY(-20px);}
@@ -4467,7 +4447,7 @@ const feedbackSystem = `
 <div id="feedback-modal" class="vespa-modal">
   <div class="vespa-modal-content">
     <span class="vespa-modal-close" id="feedback-modal-close">&times;</span>
-    <h3>VESPA Academy Support / Contact Us</h3>
+    <h3>VESPA Academy Support</h3>
     <form id="feedback-form">
       <div class="form-group">
         <label for="feedback-name">Your Name</label>
@@ -4718,53 +4698,26 @@ if (feedbackBtn && feedbackModal) {
   });
   
   // Handle form submission
-if (feedbackForm) {
-  feedbackForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    // Show loading state
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = 'Submitting...';
-    
-    try {
-      // Collect all form data
+  if (feedbackForm) {
+    feedbackForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
       const name = document.getElementById('feedback-name').value;
       const email = document.getElementById('feedback-email').value;
-      const type = document.getElementById('feedback-type').value;
-      const priority = document.getElementById('feedback-priority').value;
-      const category = document.getElementById('feedback-category').value;
       const message = document.getElementById('feedback-message').value;
-      const context = document.getElementById('feedback-context').value;
       
-      // Create feedback request object
-      const feedbackRequest = {
-        timestamp: new Date().toISOString(),
-        submittedBy: {
-          name: name,
-          email: email
-        },
-        requestType: type,
-        priority: priority,
-        category: category,
-        description: message,
-        additionalContext: context || 'None provided',
-        status: 'New'
-      };
+      // Send email to admin@vespaacademy.knack.com with feedback
+      const emailSubject = `Feedback from ${name}`;
+      const emailBody = `Name: ${name}\nEmail: ${email}\n\nFeedback:\n${message}`;
       
-      // First store in Knack
-      const storedInKnack = await storeFeedbackInKnack(feedbackRequest);
-      
-      // Then try to send email
-      const emailSent = await sendFeedbackEmail(feedbackRequest);
-      
-      console.log('[VESPA Support] Feedback processed:', { 
-        storedInKnack, 
-        emailSent 
+      console.log('[Staff Homepage] Feedback submitted:', {
+        to: 'admin@vespaacademy.knack.com',
+        subject: emailSubject,
+        body: emailBody
       });
       
-      // Show success message
+      // In production, you would send this via AJAX to a backend endpoint
+      // For now, we'll just show success message
       feedbackForm.style.display = 'none';
       document.getElementById('feedback-success').style.display = 'block';
       
@@ -4776,18 +4729,10 @@ if (feedbackForm) {
           feedbackForm.reset();
           feedbackForm.style.display = 'block';
           document.getElementById('feedback-success').style.display = 'none';
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = originalBtnText;
         }, 500);
       }, 3000);
-    } catch (error) {
-      console.error('[VESPA Support] Error processing feedback:', error);
-      alert('There was an error submitting your request. Please try again later.');
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalBtnText;
-    }
-  });
-}
+    });
+  }
 }
 
 
@@ -5143,13 +5088,20 @@ async function storeFeedbackInKnack(feedbackRequest) {
   }
 }
 
+// Send feedback email via SendGrid
 async function sendFeedbackEmail(feedbackRequest) {
   try {
-    console.log('[VESPA Support] Sending feedback email via proxy service');
+    console.log('[VESPA Support] Sending feedback email via SendGrid');
     
     // Get SendGrid config from MultiApploader via shared config
     const config = window.STAFFHOMEPAGE_CONFIG || {};
     const sendGridConfig = config.sendGrid || {};
+    
+    // Check if SendGrid API key is configured
+    if (!sendGridConfig.apiKey) {
+      console.error('[VESPA Support] SendGrid API key not configured');
+      return false;
+    }
     
     // Format timestamp for display
     const formattedTimestamp = new Date(feedbackRequest.timestamp).toLocaleString('en-GB', {
@@ -5181,26 +5133,22 @@ async function sendFeedbackEmail(feedbackRequest) {
         email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
         name: sendGridConfig.fromName || "VESPA Academy"
       },
-      template_id: sendGridConfig.templateId || "YOUR_TEMPLATE_ID"
+      template_id: sendGridConfig.templateId || "YOUR_TEMPLATE_ID" // Should come from config
     };
     
-    // Send to your proxy service instead of directly to SendGrid
-const response = await fetch(sendGridConfig.proxyUrl, {
-  method: 'POST',
-  headers: {
-      'Content-Type': 'application/json'
-  },
-  body: JSON.stringify(emailData)
-});
+    // Update API call to only use the config value, without a fallback
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sendGridConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(emailData)
+    });
     
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to send email');
-    }
-    
-    console.log('[VESPA Support] Email sent successfully via proxy');
+    console.log('[VESPA Support] Email sent successfully');
     return true;
+    
   } catch (error) {
     console.error('[VESPA Support] Error sending feedback email:', error);
     // Continue even if email fails - we've saved to Knack already
