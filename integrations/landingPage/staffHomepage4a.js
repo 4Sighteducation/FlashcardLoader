@@ -4412,6 +4412,48 @@ canvas {
 #feedback-priority option[value="Critical"] {
   background-color: #d43f3a;
 }
+
+/* Screenshot upload styling */
+#screenshot-preview {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+#screenshot-image {
+  max-width: 100%;
+  max-height: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+#remove-screenshot {
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#remove-screenshot:hover {
+  background-color: #ff5252;
+}
+
+/* File input styling */
+#feedback-screenshot {
+  background: rgba(255, 255, 255, 0.1);
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
     `;
     }
 // Render the main homepage UI
@@ -4506,6 +4548,14 @@ const feedbackSystem = `
         <label for="feedback-context">Additional Context (optional)</label>
         <textarea id="feedback-context" rows="3" placeholder="Browser details, steps to reproduce, etc."></textarea>
       </div>
+      <div class="form-group">
+  <label for="feedback-screenshot">Screenshot (optional)</label>
+  <input type="file" id="feedback-screenshot" accept="image/*">
+  <div id="screenshot-preview" style="display:none; margin-top:10px;">
+    <img id="screenshot-image" style="max-width:100%; max-height:200px; border:1px solid #ccc;">
+    <button type="button" id="remove-screenshot" class="vespa-btn vespa-btn-secondary" style="margin-top:5px;">Remove</button>
+  </div>
+</div>
       <div class="form-actions">
         <button type="submit" class="vespa-btn vespa-btn-primary">Submit Request</button>
       </div>
@@ -4726,6 +4776,24 @@ if (feedbackForm) {
       const message = document.getElementById('feedback-message').value;
       const context = document.getElementById('feedback-context').value;
       
+      // Get screenshot if available
+      let screenshotData = null;
+      const screenshotInput = document.getElementById('feedback-screenshot');
+      if (screenshotInput && screenshotInput.files && screenshotInput.files[0]) {
+      try {
+      // Get the screenshot as data URL
+      screenshotData = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = e => reject(e);
+      reader.readAsDataURL(screenshotInput.files[0]);
+    });
+  } catch (err) {
+    console.error('[VESPA Support] Error reading screenshot:', err);
+    // Continue without screenshot if there's an error
+  }
+}
+
       // Create feedback request object
       const feedbackRequest = {
         timestamp: new Date().toISOString(),
@@ -4738,6 +4806,7 @@ if (feedbackForm) {
         category: category,
         description: message,
         additionalContext: context || 'None provided',
+        screenshot: screenshotData, // Add screenshot data
         status: 'New'
       };
       
@@ -4775,6 +4844,51 @@ if (feedbackForm) {
       submitBtn.innerHTML = originalBtnText;
     }
   });
+  // Setup screenshot upload preview
+const setupScreenshotUpload = function() {
+  const screenshotInput = document.getElementById('feedback-screenshot');
+  const screenshotPreview = document.getElementById('screenshot-preview');
+  const screenshotImage = document.getElementById('screenshot-image');
+  const removeScreenshotBtn = document.getElementById('remove-screenshot');
+  
+  if (!screenshotInput || !screenshotPreview || !screenshotImage || !removeScreenshotBtn) return;
+  
+  // Show preview when image is selected
+  screenshotInput.addEventListener('change', function(e) {
+    if (this.files && this.files[0]) {
+      const file = this.files[0];
+      
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Screenshot too large. Please select an image smaller than 5MB.');
+        this.value = '';
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        screenshotImage.src = e.target.result;
+        screenshotPreview.style.display = 'block';
+      }
+      reader.readAsDataURL(file);
+    }
+  });
+  
+  // Remove button functionality
+  removeScreenshotBtn.addEventListener('click', function() {
+    screenshotInput.value = '';
+    screenshotPreview.style.display = 'none';
+    screenshotImage.src = '';
+  });
+};
+
+// Call setup function after modal is displayed
+feedbackBtn.addEventListener('click', function() {
+  // Existing code to show modal
+  feedbackModal.style.display = 'block';
+  // Setup screenshot handling after modal is shown
+  setTimeout(setupScreenshotUpload, 100); 
+});
 }
 }
 
@@ -5155,10 +5269,11 @@ async function sendFeedbackEmail(feedbackRequest) {
       minute: '2-digit'
     });
     
-    // Prepare email data including BOTH emails - one to admin and one to the user
-    const emailData = {
+    // Send two separate emails: one to admin and one as confirmation to user
+    
+    // 1. Admin notification email
+    const adminEmailData = {
       personalizations: [
-        // Admin notification email
         {
           to: [{ email: 'admin@vespa.academy' }],
           dynamic_template_data: {
@@ -5170,10 +5285,19 @@ async function sendFeedbackEmail(feedbackRequest) {
             description: feedbackRequest.description,
             additionalContext: feedbackRequest.additionalContext,
             timestamp: formattedTimestamp
-          },
-          template_id: sendGridConfig.templateId
-        },
-        // User confirmation email
+          }
+        }
+      ],
+      from: {
+        email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
+        name: sendGridConfig.fromName || "VESPA Academy"
+      },
+      template_id: sendGridConfig.templateId
+    };
+    
+    // 2. User confirmation email
+    const userEmailData = {
+      personalizations: [
         {
           to: [{ email: feedbackRequest.submittedBy.email }],
           dynamic_template_data: {
@@ -5183,30 +5307,67 @@ async function sendFeedbackEmail(feedbackRequest) {
             category: feedbackRequest.category,
             description: feedbackRequest.description,
             timestamp: formattedTimestamp
-          },
-          template_id: sendGridConfig.confirmationtemplateId
+          }
         }
       ],
       from: {
         email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
         name: sendGridConfig.fromName || "VESPA Academy"
-      }
+      },
+      template_id: sendGridConfig.confirmationtemplateId
     };
     
-    // Send to the proxy
-    const response = await fetch(sendGridConfig.proxyUrl, {
+// Add screenshot attachment if available
+if (feedbackRequest.screenshot) {
+  // Extract base64 data from the data URL
+  const base64Data = feedbackRequest.screenshot.split(',')[1];
+  
+  adminEmailData.attachments = [
+    {
+      content: base64Data,
+      filename: 'screenshot.png',
+      type: 'image/png',
+      disposition: 'attachment'
+    }
+  ];
+  
+  // Include a reference in the dynamic template data
+  adminEmailData.personalizations[0].dynamic_template_data.hasScreenshot = true;
+} else {
+  adminEmailData.personalizations[0].dynamic_template_data.hasScreenshot = false;
+}
+
+    // Send admin email
+    const adminResponse = await fetch(sendGridConfig.proxyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(emailData)
+      body: JSON.stringify(adminEmailData)
     });
     
-    // Check if the request was successful
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[VESPA Support] Proxy API error:', errorData);
+    // Check if admin email was successful
+    if (!adminResponse.ok) {
+      const errorData = await adminResponse.json();
+      console.error('[VESPA Support] Proxy API error (admin email):', errorData);
       return false;
+    }
+    
+    // Send user confirmation email
+    const userResponse = await fetch(sendGridConfig.proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(userEmailData)
+    });
+    
+    // Check if user email was successful
+    if (!userResponse.ok) {
+      const errorData = await userResponse.json();
+      console.error('[VESPA Support] Proxy API error (user email):', errorData);
+      // Still return true if admin email worked but user email failed
+      return true;
     }
     
     console.log('[VESPA Support] Emails sent successfully via proxy');
