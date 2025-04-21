@@ -4583,29 +4583,32 @@ try {
   ]);
   
   // Build the homepage HTML with updated layout
-  const homepageHTML = `
-    <div id="staff-homepage">
-    ${welcomeBanner}
-    <div>
+const homepageHTML = `
+<div id="staff-homepage">
+  ${welcomeBanner}
+  <div>
     <div class="top-row">
-        <div class="profile-container">
-          ${renderProfileSection(profileData, hasAdminRole)}
-        </div>
-        <div class="dashboard-container">
-          ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleData)}
-        </div>
+      <div class="profile-container">
+        ${renderProfileSection(profileData, hasAdminRole)}
       </div>
-      <div class="group-resources-container">
-        ${renderGroupSection()}
-        ${renderResourcesSection()}
+      <div class="dashboard-container">
+        ${renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleData)}
       </div>
-      ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
     </div>
-  `;
+    <div class="group-resources-container">
+      ${renderGroupSection()}
+      ${renderResourcesSection()}
+    </div>
+    ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
+  </div>
+</div>
 
-  // Add loading indicator and feedback button to the body
+<!-- Integrate feedback system directly into main structure -->
+${feedbackSystem}
+`;
+
+// Only add loading indicator to the body
 document.body.insertAdjacentHTML('beforeend', loadingIndicator);
-document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   
   // Add the CSS
   const styleElement = document.createElement('style');
@@ -4691,104 +4694,8 @@ if (bannerCloseBtn) {
   }
 }
 
-// Setup feedback button
-const feedbackBtn = document.getElementById('feedback-button');
-const feedbackModal = document.getElementById('feedback-modal');
-const feedbackCloseBtn = document.getElementById('feedback-modal-close');
-const feedbackForm = document.getElementById('feedback-form');
-
-if (feedbackBtn && feedbackModal) {
-  // Show modal when clicking feedback button
-  feedbackBtn.addEventListener('click', function() {
-    feedbackModal.style.display = 'block';
-  });
-  
-  // Close modal when clicking X
-  if (feedbackCloseBtn) {
-    feedbackCloseBtn.addEventListener('click', function() {
-      feedbackModal.style.display = 'none';
-    });
-  }
-  
-  // Close modal when clicking outside
-  window.addEventListener('click', function(e) {
-    if (e.target === feedbackModal) {
-      feedbackModal.style.display = 'none';
-    }
-  });
-  
-  // Handle form submission
-if (feedbackForm) {
-  feedbackForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    // Show loading state
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = 'Submitting...';
-    
-    try {
-      // Collect all form data
-      const name = document.getElementById('feedback-name').value;
-      const email = document.getElementById('feedback-email').value;
-      const type = document.getElementById('feedback-type').value;
-      const priority = document.getElementById('feedback-priority').value;
-      const category = document.getElementById('feedback-category').value;
-      const message = document.getElementById('feedback-message').value;
-      const context = document.getElementById('feedback-context').value;
-      
-      // Create feedback request object
-      const feedbackRequest = {
-        timestamp: new Date().toISOString(),
-        submittedBy: {
-          name: name,
-          email: email
-        },
-        requestType: type,
-        priority: priority,
-        category: category,
-        description: message,
-        additionalContext: context || 'None provided',
-        status: 'New'
-      };
-      
-      // First store in Knack
-      const storedInKnack = await storeFeedbackInKnack(feedbackRequest);
-      
-      // Then try to send email
-      const emailSent = await sendFeedbackEmail(feedbackRequest);
-      
-      console.log('[VESPA Support] Feedback processed:', { 
-        storedInKnack, 
-        emailSent 
-      });
-      
-      // Show success message
-      feedbackForm.style.display = 'none';
-      document.getElementById('feedback-success').style.display = 'block';
-      
-      // Close modal after 3 seconds
-      setTimeout(function() {
-        feedbackModal.style.display = 'none';
-        // Reset form for next time
-        setTimeout(function() {
-          feedbackForm.reset();
-          feedbackForm.style.display = 'block';
-          document.getElementById('feedback-success').style.display = 'none';
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = originalBtnText;
-        }, 500);
-      }, 3000);
-    } catch (error) {
-      console.error('[VESPA Support] Error processing feedback:', error);
-      alert('There was an error submitting your request. Please try again later.');
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalBtnText;
-    }
-  });
-}
-}
+// Set up the feedback system
+setupFeedbackSystem();
 
 
   debugLog("Staff homepage rendered successfully");
@@ -4990,6 +4897,183 @@ window.cleanupStaffHomepageCompletely = function() {
     if (feedbackButton) document.body.appendChild(feedbackButton);
     if (feedbackModal) document.body.appendChild(feedbackModal);
     console.log('[Staff Homepage] Restored feedback system after cleanup');
+  } else {
+    // Add this block to re-add the feedback system if it wasn't found
+    console.log('[Staff Homepage] Feedback system not found, re-creating it');
+    
+    // Re-create the feedback HTML
+    const feedbackSystem = `
+    <button id="feedback-button" class="feedback-button">
+      <i class="fas fa-comment-alt"></i>
+      Support & Feedback
+    </button>
+
+    <div id="feedback-modal" class="vespa-modal">
+      <div class="vespa-modal-content">
+        <span class="vespa-modal-close" id="feedback-modal-close">&times;</span>
+        <h3>VESPA Academy Support / Contact Us</h3>
+        <form id="feedback-form">
+          <div class="form-group">
+            <label for="feedback-name">Your Name</label>
+            <input type="text" id="feedback-name" required>
+          </div>
+          <div class="form-group">
+            <label for="feedback-email">Your Email</label>
+            <input type="email" id="feedback-email" required>
+          </div>
+          <div class="form-group">
+            <label for="feedback-type">Request Type</label>
+            <select id="feedback-type" required>
+              <option value="">Please select...</option>
+              <option value="Support Request">Support Request</option>
+              <option value="Feature Request">Feature Request</option>
+              <option value="Bug Report">Bug Report</option>
+              <option value="General Feedback">General Feedback</option>
+              <option value="Question">Question</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="feedback-priority">Priority Level</label>
+            <select id="feedback-priority" required>
+              <option value="">Please select...</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="feedback-category">Category</label>
+            <select id="feedback-category" required>
+              <option value="">Please select...</option>
+              <option value="User Interface">User Interface</option>
+              <option value="Data/Results">Data/Results</option>
+              <option value="Performance">Performance</option>
+              <option value="Account Access">Account Access</option>
+              <option value="Documentation">Documentation</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="feedback-message">Description</label>
+            <textarea id="feedback-message" rows="5" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="feedback-context">Additional Context (optional)</label>
+            <textarea id="feedback-context" rows="3" placeholder="Browser details, steps to reproduce, etc."></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="vespa-btn vespa-btn-primary">Submit Request</button>
+          </div>
+        </form>
+        <div id="feedback-success" style="display:none;">
+          <p>Thank you for your feedback! Your request has been submitted successfully.</p>
+          <p>A confirmation has been sent to your email address.</p>
+        </div>
+      </div>
+    </div>`;
+    
+    // Add the feedback system to the body
+    document.body.insertAdjacentHTML('beforeend', feedbackSystem);
+    
+    // Re-initialize event listeners for the feedback system
+    const feedbackBtn = document.getElementById('feedback-button');
+    const feedbackModal = document.getElementById('feedback-modal');
+    const feedbackCloseBtn = document.getElementById('feedback-modal-close');
+    const feedbackForm = document.getElementById('feedback-form');
+    
+    if (feedbackBtn && feedbackModal) {
+      // Show modal when clicking feedback button
+      feedbackBtn.addEventListener('click', function() {
+        feedbackModal.style.display = 'block';
+      });
+      
+      // Close modal when clicking X
+      if (feedbackCloseBtn) {
+        feedbackCloseBtn.addEventListener('click', function() {
+          feedbackModal.style.display = 'none';
+        });
+      }
+      
+      // Close modal when clicking outside
+      window.addEventListener('click', function(e) {
+        if (e.target === feedbackModal) {
+          feedbackModal.style.display = 'none';
+        }
+      });
+      
+      // Re-add form submission handler if the form exists
+      if (feedbackForm) {
+        feedbackForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          // Show loading state
+          const submitBtn = this.querySelector('button[type="submit"]');
+          const originalBtnText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = 'Submitting...';
+          
+          try {
+            // Collect all form data
+            const name = document.getElementById('feedback-name').value;
+            const email = document.getElementById('feedback-email').value;
+            const type = document.getElementById('feedback-type').value;
+            const priority = document.getElementById('feedback-priority').value;
+            const category = document.getElementById('feedback-category').value;
+            const message = document.getElementById('feedback-message').value;
+            const context = document.getElementById('feedback-context').value;
+            
+            // Create feedback request object
+            const feedbackRequest = {
+              timestamp: new Date().toISOString(),
+              submittedBy: {
+                name: name,
+                email: email
+              },
+              requestType: type,
+              priority: priority,
+              category: category,
+              description: message,
+              additionalContext: context || 'None provided',
+              status: 'New'
+            };
+            
+            // First store in Knack
+            const storedInKnack = await storeFeedbackInKnack(feedbackRequest);
+            
+            // Then try to send email
+            const emailSent = await sendFeedbackEmail(feedbackRequest);
+            
+            console.log('[VESPA Support] Feedback processed:', { 
+              storedInKnack, 
+              emailSent 
+            });
+            
+            // Show success message
+            feedbackForm.style.display = 'none';
+            document.getElementById('feedback-success').style.display = 'block';
+            
+            // Close modal after 3 seconds
+            setTimeout(function() {
+              feedbackModal.style.display = 'none';
+              // Reset form for next time
+              setTimeout(function() {
+                feedbackForm.reset();
+                feedbackForm.style.display = 'block';
+                document.getElementById('feedback-success').style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+              }, 500);
+            }, 3000);
+          } catch (error) {
+            console.error('[VESPA Support] Error processing feedback:', error);
+            alert('There was an error submitting your request. Please try again later.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+          }
+        });
+      }
+    }
   }
   
   // Set global state flag
@@ -4997,42 +5081,6 @@ window.cleanupStaffHomepageCompletely = function() {
   
   console.log('[Staff Homepage] Cleanup completed - all elements removed');
 };
-  
-  // Get the target container ID from config
-  const targetElementSelector = window.STAFFHOMEPAGE_CONFIG?.elementSelector || '#view_3024';
-  
-  // Track view/scene from config
-  const homepageSceneKey = window.STAFFHOMEPAGE_CONFIG?.sceneKey || 'scene_1215';
-  const homepageViewKey = window.STAFFHOMEPAGE_CONFIG?.viewKey || 'view_3024';
-  
-  // Create MutationObserver to detect DOM changes
-const observer = new MutationObserver(function(mutations) {
-  // Skip during initialization phase
-  if (isInitializing) return;
-  
-  // Check if we're currently on the homepage
-  const targetElement = document.querySelector(targetElementSelector);
-  const wasOnHomepage = onStaffHomepage;
-  
-  // Update current state
-  onStaffHomepage = !!targetElement && targetElement.children.length > 0;
-  
-  // If we've navigated away from the homepage, clean up
-  if (wasOnHomepage && !onStaffHomepage) {
-    console.log('[Staff Homepage] Detected navigation away from staff homepage');
-    window.cleanupStaffHomepageCompletely();
-  }
-  
-  // MODIFIED: Only check body classes if element is missing AND we're sure we were on homepage
-  if (wasOnHomepage && !onStaffHomepage) {
-    const bodyHasHomepageClass = document.body.classList.contains('homepage-view') || 
-                               document.body.id === 'knack-body_' + homepageViewKey;
-    if (!bodyHasHomepageClass) {
-      console.log('[Staff Homepage] Body classes changed, confirming navigation away from homepage');
-      window.cleanupStaffHomepageCompletely();
-    }
-  }
-});
 
 // Observe the entire document for changes
 observer.observe(document.body, {
@@ -5225,7 +5273,106 @@ const response = await fetch(sendGridConfig.proxyUrl, {
     return false;
   }
 }
+// Helper function to set up the feedback system
+function setupFeedbackSystem() {
+  const feedbackBtn = document.getElementById('feedback-button');
+  const feedbackModal = document.getElementById('feedback-modal');
+  const feedbackCloseBtn = document.getElementById('feedback-modal-close');
+  const feedbackForm = document.getElementById('feedback-form');
 
+  if (feedbackBtn && feedbackModal) {
+    // Show modal when clicking feedback button
+    feedbackBtn.addEventListener('click', function() {
+      feedbackModal.style.display = 'block';
+    });
+    
+    // Close modal when clicking X
+    if (feedbackCloseBtn) {
+      feedbackCloseBtn.addEventListener('click', function() {
+        feedbackModal.style.display = 'none';
+      });
+    }
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(e) {
+      if (e.target === feedbackModal) {
+        feedbackModal.style.display = 'none';
+      }
+    });
+    
+    // Handle form submission
+    if (feedbackForm) {
+      feedbackForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Submitting...';
+        
+        try {
+          // Collect all form data
+          const name = document.getElementById('feedback-name').value;
+          const email = document.getElementById('feedback-email').value;
+          const type = document.getElementById('feedback-type').value;
+          const priority = document.getElementById('feedback-priority').value;
+          const category = document.getElementById('feedback-category').value;
+          const message = document.getElementById('feedback-message').value;
+          const context = document.getElementById('feedback-context').value;
+          
+          // Create feedback request object
+          const feedbackRequest = {
+            timestamp: new Date().toISOString(),
+            submittedBy: {
+              name: name,
+              email: email
+            },
+            requestType: type,
+            priority: priority,
+            category: category,
+            description: message,
+            additionalContext: context || 'None provided',
+            status: 'New'
+          };
+          
+          // First store in Knack
+          const storedInKnack = await storeFeedbackInKnack(feedbackRequest);
+          
+          // Then try to send email
+          const emailSent = await sendFeedbackEmail(feedbackRequest);
+          
+          console.log('[VESPA Support] Feedback processed:', { 
+            storedInKnack, 
+            emailSent 
+          });
+          
+          // Show success message
+          feedbackForm.style.display = 'none';
+          document.getElementById('feedback-success').style.display = 'block';
+          
+          // Close modal after 3 seconds
+          setTimeout(function() {
+            feedbackModal.style.display = 'none';
+            // Reset form for next time
+            setTimeout(function() {
+              feedbackForm.reset();
+              feedbackForm.style.display = 'block';
+              document.getElementById('feedback-success').style.display = 'none';
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalBtnText;
+            }, 500);
+          }, 3000);
+        } catch (error) {
+          console.error('[VESPA Support] Error processing feedback:', error);
+          alert('There was an error submitting your request. Please try again later.');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+        }
+      });
+    }
+  }
+}
 })(); // Close IIFE properly
 
 
