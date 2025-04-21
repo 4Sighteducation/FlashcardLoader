@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = true; //Enable debug mode
+  const DEBUG_MODE = true; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
@@ -207,11 +207,30 @@ const KnackAPIQueue = (function() {
   let processing = false;
   let requestsThisSecond = 0;
   let resetTime = Date.now() + 1000;
+  // Add a timer ID for improved management
+  let resetTimerId = null;
+
+  // Add a function to properly reset the counter
+  function resetRequestCounter() {
+    requestsThisSecond = 0;
+    resetTime = Date.now() + 1000;
+    // Schedule the next reset
+    clearTimeout(resetTimerId);
+    resetTimerId = setTimeout(resetRequestCounter, 1000);
+    // Update the indicator after resetting
+    KnackAPIQueue.updateLoadingIndicator();
+    console.log("[Staff Homepage] Request counter reset to 0");
+  }
+
+  // Start the reset timer immediately
+  resetTimerId = setTimeout(resetRequestCounter, 1000);
 
   // Process the next request in the queue
   function processNextRequest() {
     if (queue.length === 0) {
       processing = false;
+      // Additional check to force indicator update when queue is empty
+      KnackAPIQueue.updateLoadingIndicator();
       return;
     }
 
@@ -221,6 +240,9 @@ const KnackAPIQueue = (function() {
     if (now > resetTime) {
       requestsThisSecond = 0;
       resetTime = now + 1000;
+      // Reset our timer to stay in sync
+      clearTimeout(resetTimerId);
+      resetTimerId = setTimeout(resetRequestCounter, 1000);
     }
 
     // Check if we've hit the rate limit
@@ -262,14 +284,18 @@ const KnackAPIQueue = (function() {
           // Continue processing the queue
           processNextRequest();
         }
+      },
+      // Add a complete handler that always runs
+      complete: function() {
+        // Update loading indicator status in all cases
+        KnackAPIQueue.updateLoadingIndicator();
       }
     });
   }
 
-
   
   return {
-    // Add a request to the queue
+    // Add request to the queue
     addRequest: function(options) {
       return new Promise((resolve, reject) => {
         queue.push({
@@ -307,6 +333,10 @@ const KnackAPIQueue = (function() {
       if (!indicator) return;
       
       const queueLength = queue.length;
+      const stats = this.getStats();
+      
+      // Log current state for debugging
+      console.log(`[Staff Homepage] Queue status: ${queueLength} in queue, ${requestsThisSecond} requests this second`);
       
       if (queueLength > 0 || requestsThisSecond > 0) {
         indicator.style.display = 'flex';
@@ -315,8 +345,19 @@ const KnackAPIQueue = (function() {
           countElement.textContent = queueLength > 0 ? `(${queueLength} in queue)` : '';
         }
       } else {
+        // Ensure the indicator is hidden when no requests are active
         indicator.style.display = 'none';
+        console.log('[Staff Homepage] Hiding loading indicator - no active requests');
       }
+    },
+    
+    // Add a method to manually reset the counter if needed
+    forceReset: function() {
+      requestsThisSecond = 0;
+      clearTimeout(resetTimerId);
+      resetTimerId = setTimeout(resetRequestCounter, 1000);
+      this.updateLoadingIndicator();
+      console.log('[Staff Homepage] Force reset request counter');
     }
   };
 })();
@@ -4739,6 +4780,10 @@ window.cleanupStaffHomepage = function() {
   // Remove any other elements added by the script
   const welcomeBanner = document.getElementById('welcome-banner');
   if (welcomeBanner) welcomeBanner.remove();
+
+  if (KnackAPIQueue && typeof KnackAPIQueue.forceReset === 'function') {
+    KnackAPIQueue.forceReset();
+  }
   
   console.log('[Staff Homepage] Cleanup completed');
 };
