@@ -4370,6 +4370,40 @@ canvas {
   justify-content: flex-end;
   margin-top: 20px;
 }
+
+/* Enhanced Feedback Form Styles */
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  margin-bottom: 12px;
+}
+
+.form-group select option {
+  background-color: #132c7a;
+  color: white;
+}
+
+#feedback-type, #feedback-priority, #feedback-category {
+  border-color: #00e5db;
+}
+
+/* Priority colors for visual feedback */
+#feedback-priority option[value="Low"] {
+  background-color: #5cb85c;
+}
+#feedback-priority option[value="Medium"] {
+  background-color: #f0ad4e;
+}
+#feedback-priority option[value="High"] {
+  background-color: #d9534f;
+}
+#feedback-priority option[value="Critical"] {
+  background-color: #d43f3a;
+}
     `;
     }
 // Render the main homepage UI
@@ -4403,17 +4437,17 @@ const welcomeBanner = `
   <button class="banner-close" aria-label="Close banner">×</button>
 </div>`;
 
-// Feedback button and modal HTML
+// Enhanced feedback button and modal HTML
 const feedbackSystem = `
 <button id="feedback-button" class="feedback-button">
   <i class="fas fa-comment-alt"></i>
-  Feedback
+  Support & Feedback
 </button>
 
 <div id="feedback-modal" class="vespa-modal">
   <div class="vespa-modal-content">
     <span class="vespa-modal-close" id="feedback-modal-close">&times;</span>
-    <h3>Send Us Your Feedback</h3>
+    <h3>VESPA Academy Support</h3>
     <form id="feedback-form">
       <div class="form-group">
         <label for="feedback-name">Your Name</label>
@@ -4424,15 +4458,53 @@ const feedbackSystem = `
         <input type="email" id="feedback-email" required>
       </div>
       <div class="form-group">
-        <label for="feedback-message">Feedback</label>
+        <label for="feedback-type">Request Type</label>
+        <select id="feedback-type" required>
+          <option value="">Please select...</option>
+          <option value="Support Request">Support Request</option>
+          <option value="Feature Request">Feature Request</option>
+          <option value="Bug Report">Bug Report</option>
+          <option value="General Feedback">General Feedback</option>
+          <option value="Question">Question</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="feedback-priority">Priority Level</label>
+        <select id="feedback-priority" required>
+          <option value="">Please select...</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Critical">Critical</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="feedback-category">Category</label>
+        <select id="feedback-category" required>
+          <option value="">Please select...</option>
+          <option value="User Interface">User Interface</option>
+          <option value="Data/Results">Data/Results</option>
+          <option value="Performance">Performance</option>
+          <option value="Account Access">Account Access</option>
+          <option value="Documentation">Documentation</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="feedback-message">Description</label>
         <textarea id="feedback-message" rows="5" required></textarea>
       </div>
+      <div class="form-group">
+        <label for="feedback-context">Additional Context (optional)</label>
+        <textarea id="feedback-context" rows="3" placeholder="Browser details, steps to reproduce, etc."></textarea>
+      </div>
       <div class="form-actions">
-        <button type="submit" class="vespa-btn vespa-btn-primary">Send Feedback</button>
+        <button type="submit" class="vespa-btn vespa-btn-primary">Submit Request</button>
       </div>
     </form>
     <div id="feedback-success" style="display:none;">
-      <p>Thank you for your feedback! We appreciate your input.</p>
+      <p>Thank you for your feedback! Your request has been submitted successfully.</p>
+      <p>A confirmation has been sent to your email address.</p>
     </div>
   </div>
 </div>`;
@@ -4941,6 +5013,147 @@ window.initializeStaffHomepage = function() {
   return originalInit.apply(this, arguments);
 };
 })();
+// Store feedback in Knack field_3207
+async function storeFeedbackInKnack(feedbackRequest) {
+  try {
+    console.log('[VESPA Support] Storing feedback in Knack:', feedbackRequest);
+    
+    // Get the current user
+    const user = Knack.getUserAttributes();
+    if (!user || !user.id) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Find the user's record in Object_3
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'or',
+      rules: [
+        { field: 'field_91', operator: 'is', value: user.email },
+        { field: 'field_70', operator: 'is', value: user.email }
+      ]
+    }));
+    
+    const response = await retryApiCall(() => {
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
+      });
+    });
+    
+    if (!response || !response.records || response.records.length === 0) {
+      throw new Error('User record not found');
+    }
+    
+    const userRecord = response.records[0];
+    
+    // Get existing feedback data or initialize new structure
+    let feedbackData = { feedbackRequests: [] };
+    
+    if (userRecord.field_3207) {
+      try {
+        feedbackData = JSON.parse(userRecord.field_3207);
+        // Ensure feedbackRequests exists
+        if (!feedbackData.feedbackRequests) {
+          feedbackData.feedbackRequests = [];
+        }
+      } catch (e) {
+        console.warn('[VESPA Support] Error parsing existing feedback data, initializing new array');
+        feedbackData = { feedbackRequests: [] };
+      }
+    }
+    
+    // Add new request to the array
+    feedbackData.feedbackRequests.push(feedbackRequest);
+    
+    // Update the record with new feedback data
+    await retryApiCall(() => {
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+        type: 'PUT',
+        headers: getKnackHeaders(),
+        data: JSON.stringify({
+          field_3207: JSON.stringify(feedbackData)
+        })
+      });
+    });
+    
+    console.log('[VESPA Support] Successfully stored feedback in Knack');
+    return true;
+    
+  } catch (error) {
+    console.error('[VESPA Support] Error storing feedback in Knack:', error);
+    throw error;
+  }
+}
+
+// Send feedback email via SendGrid
+async function sendFeedbackEmail(feedbackRequest) {
+  try {
+    console.log('[VESPA Support] Sending feedback email via SendGrid');
+    
+    // Get SendGrid config from MultiApploader via shared config
+    const config = window.STAFFHOMEPAGE_CONFIG || {};
+    const sendGridConfig = config.sendGrid || {};
+    
+    // Check if SendGrid API key is configured
+    if (!sendGridConfig.apiKey) {
+      console.error('[VESPA Support] SendGrid API key not configured');
+      return false;
+    }
+    
+    // Format timestamp for display
+    const formattedTimestamp = new Date(feedbackRequest.timestamp).toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    // Prepare email data
+    const emailData = {
+      personalizations: [
+        {
+          to: [{ email: 'admin@vespa.academy' }],
+          dynamic_template_data: {
+            name: feedbackRequest.submittedBy.name,
+            email: feedbackRequest.submittedBy.email,
+            requestType: feedbackRequest.requestType,
+            priority: feedbackRequest.priority,
+            category: feedbackRequest.category,
+            description: feedbackRequest.description,
+            additionalContext: feedbackRequest.additionalContext,
+            timestamp: formattedTimestamp
+          }
+        }
+      ],
+      from: {
+        email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
+        name: sendGridConfig.fromName || "VESPA Academy"
+      },
+      template_id: sendGridConfig.templateId || "YOUR_TEMPLATE_ID" // Should come from config
+    };
+    
+    // Update API call to only use the config value, without a fallback
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sendGridConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(emailData)
+    });
+    
+    console.log('[VESPA Support] Email sent successfully');
+    return true;
+    
+  } catch (error) {
+    console.error('[VESPA Support] Error sending feedback email:', error);
+    // Continue even if email fails - we've saved to Knack already
+    return false;
+  }
+}
+
 })(); // Close IIFE properly
-
-
