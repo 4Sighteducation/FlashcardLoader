@@ -4935,50 +4935,68 @@ document.addEventListener('knack-scene-render.any', function(event) {
   // Add initialization delay flag to prevent premature cleanup
   let isInitializing = true;
   
-  // Create a more aggressive cleanup function
-  window.cleanupStaffHomepageCompletely = function() {
-    console.log('[Staff Homepage] Running complete cleanup');
-    
-    // Remove all modals and popups
-    const elementsToRemove = [
-      'api-loading-indicator',
-      'feedback-button',
-      'feedback-modal',
-      'logo-modal',
-      'welcome-banner',
-      'staff-homepage' // Main container
-    ];
-    
-    // Remove each element if it exists
-    elementsToRemove.forEach(id => {
-      const element = document.getElementById(id);
-      if (element) {
-        console.log(`[Staff Homepage] Removing element: ${id}`);
-        element.remove();
-      }
-    });
-    
-    // Also try to find elements by class
-    const classesToRemove = [
-      'app-tooltip',
-      'vespa-modal',
-      'feedback-button',
-      'api-loading-indicator'
-    ];
-    
-    classesToRemove.forEach(className => {
-      const elements = document.getElementsByClassName(className);
-      while (elements.length > 0) {
-        console.log(`[Staff Homepage] Removing element with class: ${className}`);
-        elements[0].remove();
-      }
-    });
-    
-    // Set global state flag
-    window.STAFFHOMEPAGE_ACTIVE = false;
-    
-    console.log('[Staff Homepage] Cleanup completed - all elements removed');
-  };
+// Create a more aggressive cleanup function
+window.cleanupStaffHomepageCompletely = function() {
+  console.log('[Staff Homepage] Running complete cleanup');
+  
+  // Add this new flag to check if feedback system is already present
+  const feedbackExists = document.getElementById('feedback-button') !== null;
+  
+  // Temporarily save references to feedback elements if they exist
+  let feedbackButton = null;
+  let feedbackModal = null;
+  if (feedbackExists) {
+    feedbackButton = document.getElementById('feedback-button');
+    feedbackModal = document.getElementById('feedback-modal');
+    // Detach them from DOM temporarily (without destroying)
+    if (feedbackButton && feedbackButton.parentNode) feedbackButton.parentNode.removeChild(feedbackButton);
+    if (feedbackModal && feedbackModal.parentNode) feedbackModal.parentNode.removeChild(feedbackModal);
+    console.log('[Staff Homepage] Temporarily preserved feedback elements');
+  }
+  
+  // Remove all modals and popups
+  const elementsToRemove = [
+    'api-loading-indicator',
+    'logo-modal',
+    'welcome-banner',
+    'staff-homepage' // Main container
+  ];
+  
+  // Remove each element if it exists
+  elementsToRemove.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      console.log(`[Staff Homepage] Removing element: ${id}`);
+      element.remove();
+    }
+  });
+  
+  // Also try to find elements by class
+  const classesToRemove = [
+    'app-tooltip',
+    'api-loading-indicator'
+  ];
+  
+  classesToRemove.forEach(className => {
+    const elements = document.getElementsByClassName(className);
+    while (elements.length > 0) {
+      console.log(`[Staff Homepage] Removing element with class: ${className}`);
+      elements[0].remove();
+    }
+  });
+  
+  // Add the feedback elements back to the DOM if they existed
+  if (feedbackExists) {
+    if (feedbackButton) document.body.appendChild(feedbackButton);
+    if (feedbackModal) document.body.appendChild(feedbackModal);
+    console.log('[Staff Homepage] Restored feedback system after cleanup');
+  }
+  
+  // Set global state flag
+  window.STAFFHOMEPAGE_ACTIVE = false;
+  
+  console.log('[Staff Homepage] Cleanup completed - all elements removed');
+};
   
   // Get the target container ID from config
   const targetElementSelector = window.STAFFHOMEPAGE_CONFIG?.elementSelector || '#view_3024';
@@ -5209,4 +5227,5 @@ const response = await fetch(sendGridConfig.proxyUrl, {
 }
 
 })(); // Close IIFE properly
+
 
