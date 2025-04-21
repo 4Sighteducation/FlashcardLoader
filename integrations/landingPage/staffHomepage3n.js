@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = false; //Enable debug mode
+  const DEBUG_MODE = true; //Enable debug mode
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
