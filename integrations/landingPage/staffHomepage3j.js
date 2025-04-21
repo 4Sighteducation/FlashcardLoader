@@ -1,6 +1,7 @@
 // Staff Homepage Integration Script for Knack - v1.0
 
 (function() {
+  window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const DEBUG_MODE = true; // Enable console logging
@@ -4393,7 +4394,7 @@ window.initializeStaffHomepage = function() {
   if (window.cleanupStaffHomepage) {
     window.cleanupStaffHomepage();
   }
-  
+
  // Get current user from Knack
  const currentUser = Knack.getUserAttributes();
  if (currentUser && currentUser.id) {
@@ -4504,5 +4505,117 @@ document.addEventListener('knack-scene-render.any', function(event) {
     }
   }
 });
+// More robust cleanup mechanism
+(function() {
+  // Flag to check if we're on the staff homepage
+  let onStaffHomepage = false;
+  
+  // Create a more aggressive cleanup function
+  window.cleanupStaffHomepageCompletely = function() {
+    console.log('[Staff Homepage] Running complete cleanup');
+    
+    // Remove all modals and popups
+    const elementsToRemove = [
+      'api-loading-indicator',
+      'feedback-button',
+      'feedback-modal',
+      'logo-modal',
+      'welcome-banner',
+      'staff-homepage' // Main container
+    ];
+    
+    // Remove each element if it exists
+    elementsToRemove.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        console.log(`[Staff Homepage] Removing element: ${id}`);
+        element.remove();
+      }
+    });
+    
+    // Also try to find elements by class
+    const classesToRemove = [
+      'app-tooltip',
+      'vespa-modal',
+      'feedback-button',
+      'api-loading-indicator'
+    ];
+    
+    classesToRemove.forEach(className => {
+      const elements = document.getElementsByClassName(className);
+      while (elements.length > 0) {
+        console.log(`[Staff Homepage] Removing element with class: ${className}`);
+        elements[0].remove();
+      }
+    });
+    
+    // Set global state flag
+    window.STAFFHOMEPAGE_ACTIVE = false;
+    
+    console.log('[Staff Homepage] Cleanup completed - all elements removed');
+  };
+  
+  // Get the target container ID from config
+  const targetElementSelector = window.STAFFHOMEPAGE_CONFIG?.elementSelector || '#view_3024';
+  
+  // Track view/scene from config
+  const homepageSceneKey = window.STAFFHOMEPAGE_CONFIG?.sceneKey || 'scene_1215';
+  const homepageViewKey = window.STAFFHOMEPAGE_CONFIG?.viewKey || 'view_3024';
+  
+  // Create MutationObserver to detect DOM changes
+  const observer = new MutationObserver(function(mutations) {
+    // Check if we're currently on the homepage
+    const targetElement = document.querySelector(targetElementSelector);
+    const wasOnHomepage = onStaffHomepage;
+    
+    // Update current state
+    onStaffHomepage = !!targetElement && targetElement.children.length > 0;
+    
+    // If we've navigated away from the homepage, clean up
+    if (wasOnHomepage && !onStaffHomepage) {
+      console.log('[Staff Homepage] Detected navigation away from staff homepage');
+      window.cleanupStaffHomepageCompletely();
+    }
+    
+    // Additional check - see if body classes changed in a way that indicates page change
+    const bodyHasHomepageClass = document.body.classList.contains('homepage-view') || 
+                                 document.body.id === 'knack-body_' + homepageViewKey;
+    if (wasOnHomepage && !bodyHasHomepageClass) {
+      console.log('[Staff Homepage] Body classes changed, no longer on homepage');
+      window.cleanupStaffHomepageCompletely();
+    }
+  });
+  
+  // Observe the entire document for changes
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  // Also listen to Knack's navigation events as backup
+  document.addEventListener('knack-scene-render.any', function(event) {
+    // If new scene is not the homepage scene, clean up
+    if (event.detail && event.detail.scene && 
+        event.detail.scene.key !== homepageSceneKey) {
+      console.log('[Staff Homepage] Scene changed to non-homepage scene, cleaning up');
+      window.cleanupStaffHomepageCompletely();
+    }
+  });
+  
+  // Modify initialization function to set active flag
+  const originalInit = window.initializeStaffHomepage;
+  window.initializeStaffHomepage = function() {
+    // Clean up first
+    if (window.cleanupStaffHomepageCompletely) {
+      window.cleanupStaffHomepageCompletely();
+    }
+    
+    // Set active flag
+    window.STAFFHOMEPAGE_ACTIVE = true;
+    
+    // Call original initialization
+    return originalInit.apply(this, arguments);
+  };
+})();
 })(); // Close IIFE properly
 
