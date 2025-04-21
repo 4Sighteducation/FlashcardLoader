@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = true; // Enable console logging
+  const DEBUG_MODE = false; //Enable debug mode
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
@@ -25,8 +25,180 @@ const THEME = {
   BORDER: '#00e5db',     // Keep border color
   POSITIVE: '#4ade80',   // Green for positive trends
   NEGATIVE: '#f87171'    // Red for negative trends
-};
 
+};
+// Add more sophisticated logging system with levels
+const LOG_LEVELS = {
+  NONE: 0,
+  ERROR: 1, 
+  WARN: 2,
+  INFO: 3,
+  DEBUG: 4
+};
+// Automatically detect if we're in a development environment
+const IS_DEVELOPMENT = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.hostname.includes('dev') ||
+                     window.location.hostname.includes('staging');
+const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
+
+(function() {
+  // Save original console methods
+  const originalConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error,
+    info: console.info,
+    debug: console.debug
+  };
+  
+  // Common patterns for sensitive data
+  const sensitivePatterns = [
+    /token/i, /key/i, /api[-_]?key/i, /auth/i, /password/i, /secret/i,
+    /email/i, /field_[0-9]+/i, /X-Knack/i
+  ];
+  
+  // Function to check if a string contains sensitive data
+  function containsSensitiveData(str) {
+    if (typeof str !== 'string') return false;
+    return sensitivePatterns.some(pattern => pattern.test(str));
+  }
+  
+  // Function to sanitize arguments
+  function sanitizeArgs(args) {
+    return Array.from(args).map(arg => {
+      // Skip sanitization for simple strings without sensitive data
+      if (typeof arg === 'string' && !containsSensitiveData(arg)) {
+        return arg;
+      }
+      
+      // Skip sanitization for simple numbers, booleans
+      if (typeof arg !== 'object' || arg === null) {
+        return arg;
+      }
+      
+      // For objects, try to sanitize
+      try {
+        // Clone the object to avoid modifying the original
+        const clone = JSON.parse(JSON.stringify(arg));
+        
+        // Recursively sanitize the object
+        const sanitize = (obj) => {
+          if (!obj || typeof obj !== 'object') return obj;
+          
+          Object.keys(obj).forEach(key => {
+            // Check if key contains sensitive patterns
+            if (sensitivePatterns.some(pattern => pattern.test(key))) {
+              // Mask the value
+              if (typeof obj[key] === 'string') {
+                const val = obj[key];
+                obj[key] = val.length > 6 ? 
+                  `${val.substring(0, 3)}...${val.substring(val.length - 3)}` : 
+                  '***MASKED***';
+              } else {
+                obj[key] = '***MASKED***';
+              }
+            } 
+            // Recurse into nested objects
+            else if (typeof obj[key] === 'object' && obj[key] !== null) {
+              obj[key] = sanitize(obj[key]);
+            }
+          });
+          
+          return obj;
+        };
+        
+        return sanitize(clone);
+      } catch (e) {
+        // If sanitization fails, return a safe placeholder
+        return "[Complex Object]";
+      }
+    });
+  }
+
+  // Override console methods
+  if (!DEBUG_MODE && CURRENT_LOG_LEVEL < LOG_LEVELS.DEBUG) {
+    // In production, override all console methods except error
+    console.log = function() {
+      // Only allow Staff Homepage logs in production
+      const firstArg = arguments[0];
+      if (typeof firstArg === 'string' && firstArg.includes('[Staff Homepage]') && 
+          CURRENT_LOG_LEVEL >= LOG_LEVELS.INFO) {
+        originalConsole.log.apply(console, sanitizeArgs(arguments));
+      }
+    };
+    
+    console.warn = function() {
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.WARN) {
+        originalConsole.warn.apply(console, sanitizeArgs(arguments));
+      }
+    };
+    
+    console.info = function() {
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.INFO) {
+        originalConsole.info.apply(console, sanitizeArgs(arguments));
+      }
+    };
+    
+    console.debug = function() {
+      // Suppress debug logs in production
+    };
+    
+    // Keep error logging for troubleshooting
+    console.error = function() {
+      originalConsole.error.apply(console, sanitizeArgs(arguments));
+    };
+  }
+})();
+
+// Add data sanitization function for logging
+function sanitizeDataForLogging(data) {
+  if (!data) return data;
+  
+  // Don't modify the original data
+  let result;
+  try {
+    result = JSON.parse(JSON.stringify(data));
+  } catch (e) {
+    // If can't deep clone, create a new object with basic properties
+    return typeof data === 'object' ? {} : data;
+  }
+  
+  // Define sensitive fields to mask
+  const sensitiveFields = [
+    'Authorization', 'X-Knack-REST-API-Key', 'X-Knack-Application-Id', 
+    'token', 'email', 'password', 'knackApiKey', 'field_91', 'field_70'
+  ];
+  
+  // Helper function to recursively sanitize an object
+  function sanitizeObject(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    
+    Object.keys(obj).forEach(key => {
+      // Check if this is a sensitive field
+      if (sensitiveFields.includes(key) || key.toLowerCase().includes('token') || 
+          key.toLowerCase().includes('key') || key.toLowerCase().includes('auth')) {
+        // Mask the value based on type
+        if (typeof obj[key] === 'string') {
+          const val = obj[key];
+          obj[key] = val.length > 8 ? 
+            `${val.substring(0, 3)}...${val.substring(val.length - 3)}` : 
+            '***MASKED***';
+        } else {
+          obj[key] = '***MASKED***';
+        }
+      } 
+      // Recursively process nested objects
+      else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        obj[key] = sanitizeObject(obj[key]);
+      }
+    });
+    
+    return obj;
+  }
+  
+  return sanitizeObject(result);
+}
 // --- API Queue for Rate Limiting ---
 const KnackAPIQueue = (function() {
   // Private members
@@ -284,16 +456,25 @@ const ICON_MAPPING = {
 
 // --- Helper Functions ---
 // Debug logging helper
-function debugLog(title, data) {
-  if (!DEBUG_MODE) return;
+function debugLog(title, data, level = LOG_LEVELS.DEBUG) {
+  if (level > CURRENT_LOG_LEVEL) return;
   
+  // Only log title for INFO level and below
+  if (level <= LOG_LEVELS.INFO) {
+    console.log(`%c[Staff Homepage] ${title}`, 'color: #7f31a4; font-weight: bold; font-size: 12px;');
+    return data;
+  }
+  
+  // Full data logging for DEBUG level
   console.log(`%c[Staff Homepage] ${title}`, 'color: #7f31a4; font-weight: bold; font-size: 12px;');
   try {
     if (data !== undefined) {
-      console.log(JSON.parse(JSON.stringify(data, null, 2)));
+      // Sanitize sensitive data before logging
+      const sanitizedData = sanitizeDataForLogging(data);
+      console.log(sanitizedData);
     }
   } catch (e) {
-    console.log("Data could not be fully serialized for logging:", data);
+    console.log("Data could not be fully serialized for logging");
   }
   return data;
 }
@@ -328,51 +509,70 @@ function isValidKnackId(id) {
   return typeof id === 'string' && /^[0-9a-f]{24}$/i.test(id);
 }
 
-// Extract a valid record ID from various formats - improved version with array handling
+// Extract a valid record ID from various formats
 function extractValidRecordId(value) {
   if (!value) return null;
   
-  console.log('[Staff Homepage] Extracting valid record ID from value type:', typeof value, value);
+  if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+    console.log('[Staff Homepage] Extracting valid record ID from value type:', typeof value);
+  }
 
   // Handle objects (most common case in Knack connections)
   if (typeof value === 'object' && value !== null) {
     // Check for direct ID property
     if (value.id && isValidKnackId(value.id)) {
-      console.log('[Staff Homepage] Found valid ID in object.id:', value.id);
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+        console.log('[Staff Homepage] Found valid ID in object.id');
+      }
       return value.id;
     }
     
     // Check for identifier property
     if (value.identifier && isValidKnackId(value.identifier)) {
-      console.log('[Staff Homepage] Found valid ID in object.identifier:', value.identifier);
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+        console.log('[Staff Homepage] Found valid ID in object.identifier');
+      }
       return value.identifier;
     }
     
     // Handle arrays from connection fields
     if (Array.isArray(value)) {
-      console.log('[Staff Homepage] Value is an array with length:', value.length);
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+        console.log('[Staff Homepage] Value is an array with length:', value.length);
+      }
       
       // Handle single item array
       if (value.length === 1) {
         if (typeof value[0] === 'object' && value[0].id) {
-          console.log('[Staff Homepage] Found valid ID in array[0].id:', value[0].id);
+          if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+            console.log('[Staff Homepage] Found valid ID in array[0].id');
+          }
           return isValidKnackId(value[0].id) ? value[0].id : null;
         }
         if (typeof value[0] === 'string' && isValidKnackId(value[0])) {
-          console.log('[Staff Homepage] Found valid ID as string in array[0]:', value[0]);
+          if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+            console.log('[Staff Homepage] Found valid ID as string in array[0]');
+          }
           return value[0];
         }
       }
       
-      // IMPORTANT: Handle arrays with multiple items
+      // Handle arrays with multiple items
       if (value.length > 1) {
-        console.log('[Staff Homepage] Processing multi-item array with length:', value.length);
+        if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+          console.log('[Staff Homepage] Processing multi-item array with length:', value.length);
+        }
+        
+        // Process array logic - this stays the same but remove the detailed logging
+        // of sensitive IDs
         
         // First try to find an object with an ID property
         for (let i = 0; i < value.length; i++) {
           const item = value[i];
           if (typeof item === 'object' && item !== null && item.id && isValidKnackId(item.id)) {
-            console.log(`[Staff Homepage] Found valid ID in array[${i}].id:`, item.id);
+            if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+              console.log(`[Staff Homepage] Found valid ID in array[${i}].id`);
+            }
             return item.id;
           }
         }
@@ -381,7 +581,9 @@ function extractValidRecordId(value) {
         for (let i = 0; i < value.length; i++) {
           const item = value[i];
           if (typeof item === 'string' && isValidKnackId(item)) {
-            console.log(`[Staff Homepage] Found valid ID as string in array[${i}]:`, item);
+            if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+              console.log(`[Staff Homepage] Found valid ID as string in array[${i}]`);
+            }
             return item;
           }
         }
@@ -390,19 +592,24 @@ function extractValidRecordId(value) {
         for (let i = 0; i < value.length; i++) {
           const item = value[i];
           if (typeof item === 'object' && item !== null && item.identifier && isValidKnackId(item.identifier)) {
-            console.log(`[Staff Homepage] Found valid ID in array[${i}].identifier:`, item.identifier);
+            if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+              console.log(`[Staff Homepage] Found valid ID in array[${i}].identifier`);
+            }
             return item.identifier;
           }
         }
         
-        // Log that we couldn't find a valid ID in the array
-        console.log('[Staff Homepage] No valid IDs found in multi-item array');
+        if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+          console.log('[Staff Homepage] No valid IDs found in multi-item array');
+        }
       }
     }
     
     // Check for '_id' property which is sometimes used
     if (value._id && isValidKnackId(value._id)) {
-      console.log('[Staff Homepage] Found valid ID in object._id:', value._id);
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+        console.log('[Staff Homepage] Found valid ID in object._id');
+      }
       return value._id;
     }
   }
@@ -410,14 +617,20 @@ function extractValidRecordId(value) {
   // If it's a direct string ID
   if (typeof value === 'string') {
     if (isValidKnackId(value)) {
-      console.log('[Staff Homepage] Value is a valid ID string:', value);
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+        console.log('[Staff Homepage] Value is a valid ID string');
+      }
       return value;
     } else {
-      console.log('[Staff Homepage] String is not a valid Knack ID:', value);
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+        console.log('[Staff Homepage] String is not a valid Knack ID');
+      }
     }
   }
 
-  console.log('[Staff Homepage] No valid record ID found in value');
+  if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+    console.log('[Staff Homepage] No valid record ID found in value');
+  }
   return null;
 }
 
@@ -480,7 +693,7 @@ function getCurrentSchoolName() {
 }
 
 
-// Generic retry function for API calls - updated to use queue
+// Generic retry function for API calls
 function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
   return new Promise((resolve, reject) => {
     const attempt = (retryCount) => {
@@ -488,7 +701,15 @@ function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
         .then(resolve)
         .catch((error) => {
           const attemptsMade = retryCount + 1;
-          console.warn(`[Staff Homepage] API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
+          
+          // Only log limited error info, not full details that might contain sensitive data
+          const safeError = {
+            status: error.status,
+            statusText: error.statusText,
+            // Don't log responseText which might contain sensitive data
+          };
+          
+          console.warn(`[Staff Homepage] API call failed (Attempt ${attemptsMade}/${maxRetries}):`, safeError);
 
           if (retryCount < maxRetries - 1) {
             const retryDelay = delay * Math.pow(2, retryCount);
@@ -509,14 +730,19 @@ function getKnackHeaders() {
   // Reading knackAppId and knackApiKey from config
   const config = window.STAFFHOMEPAGE_CONFIG;
   
-  console.log("[Staff Homepage] Config for headers:", JSON.stringify(config));
+  // Only log config availability, not contents
+  if (CURRENT_LOG_LEVEL >= LOG_LEVELS.INFO) {
+    console.log("[Staff Homepage] Config available:", !!config);
+  }
   
   // Fallback to using Knack's global application ID if not in config
   const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
-  // Use our known API key if not in config
-  const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '8f733aa5-dd35-4464-8348-64824d1f5f0d';
+  // Use config API key if not in config
+  const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '';
   
-  console.log(`[Staff Homepage] Using AppID: ${knackAppId}`);
+  if (CURRENT_LOG_LEVEL >= LOG_LEVELS.INFO) {
+    console.log(`[Staff Homepage] Using AppID: ${knackAppId ? (knackAppId.substring(0, 4) + '...') : 'undefined'}`);
+  }
   
   if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
     console.error("[Staff Homepage] Knack object or getUserToken function not available.");
@@ -535,7 +761,16 @@ function getKnackHeaders() {
     'Content-Type': 'application/json'
   };
   
-  console.log("[Staff Homepage] Headers being used:", JSON.stringify(headers));
+  // Only log non-sensitive parts of headers in debug mode
+  if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+    const safeHeaders = {
+      'X-Knack-Application-Id': knackAppId ? (knackAppId.substring(0, 4) + '...') : 'missing',
+      'X-Knack-REST-API-Key': knackApiKey ? '***MASKED***' : 'missing',
+      'Authorization': token ? '***TOKEN***' : 'missing',
+      'Content-Type': headers['Content-Type']
+    };
+    console.log("[Staff Homepage] Headers prepared:", safeHeaders);
+  }
   
   return headers;
 }
@@ -949,9 +1184,17 @@ async cleanupExpiredCache() {
 // --- User Activity Tracking Functions ---
 // Track user login activity
 async function trackUserLogin() {
-try {
-  const user = Knack.getUserAttributes();
-  if (!user || !user.id) return;
+  try {
+    const user = Knack.getUserAttributes();
+    if (!user || !user.id) return;
+    
+    if (CURRENT_LOG_LEVEL >= LOG_LEVELS.INFO) {
+      // Log masked email
+      const maskedEmail = user.email ? 
+        user.email.substring(0, 3) + "..." + user.email.substring(user.email.indexOf('@')) :
+        "[no email]";
+      console.log(`[Staff Homepage] Tracking login for user: ${maskedEmail}`);
+    }
   
   console.log(`[Staff Homepage] Tracking login for user: ${user.email}`);
   
@@ -1276,6 +1519,9 @@ async function getStaffProfileData() {
 async function findStaffRecord(email) {
   if (!email) return null;
   
+  // Don't expose actual email in filter logs
+  const maskedEmail = email.substring(0, 3) + "..." + email.substring(email.indexOf('@'));
+  
   const filters = encodeURIComponent(JSON.stringify({
     match: 'or',
     rules: [
@@ -1296,7 +1542,12 @@ async function findStaffRecord(email) {
     
     if (response && response.records && response.records.length > 0) {
       const staffRecord = response.records[0];
-      debugLog("Found staff record:", staffRecord);
+      // Only log minimal info in production
+      if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+        debugLog("Found staff record:", staffRecord, LOG_LEVELS.DEBUG);
+      } else if (CURRENT_LOG_LEVEL >= LOG_LEVELS.INFO) {
+        console.log(`[Staff Homepage] Found staff record with ID: ${staffRecord.id}`);
+      }
       return staffRecord;
     }
     
