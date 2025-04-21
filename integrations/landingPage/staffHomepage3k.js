@@ -4509,6 +4509,8 @@ document.addEventListener('knack-scene-render.any', function(event) {
 (function() {
   // Flag to check if we're on the staff homepage
   let onStaffHomepage = false;
+  // Add initialization delay flag to prevent premature cleanup
+  let isInitializing = true;
   
   // Create a more aggressive cleanup function
   window.cleanupStaffHomepageCompletely = function() {
@@ -4563,28 +4565,45 @@ document.addEventListener('knack-scene-render.any', function(event) {
   const homepageViewKey = window.STAFFHOMEPAGE_CONFIG?.viewKey || 'view_3024';
   
   // Create MutationObserver to detect DOM changes
-  const observer = new MutationObserver(function(mutations) {
-    // Check if we're currently on the homepage
-    const targetElement = document.querySelector(targetElementSelector);
-    const wasOnHomepage = onStaffHomepage;
-    
-    // Update current state
-    onStaffHomepage = !!targetElement && targetElement.children.length > 0;
-    
-    // If we've navigated away from the homepage, clean up
-    if (wasOnHomepage && !onStaffHomepage) {
-      console.log('[Staff Homepage] Detected navigation away from staff homepage');
-      window.cleanupStaffHomepageCompletely();
-    }
-    
-    // Additional check - see if body classes changed in a way that indicates page change
+const observer = new MutationObserver(function(mutations) {
+  // Skip during initialization phase
+  if (isInitializing) return;
+  
+  // Check if we're currently on the homepage
+  const targetElement = document.querySelector(targetElementSelector);
+  const wasOnHomepage = onStaffHomepage;
+  
+  // Update current state
+  onStaffHomepage = !!targetElement && targetElement.children.length > 0;
+  
+  // If we've navigated away from the homepage, clean up
+  if (wasOnHomepage && !onStaffHomepage) {
+    console.log('[Staff Homepage] Detected navigation away from staff homepage');
+    window.cleanupStaffHomepageCompletely();
+  }
+  
+  // MODIFIED: Only check body classes if element is missing AND we're sure we were on homepage
+  if (wasOnHomepage && !onStaffHomepage) {
     const bodyHasHomepageClass = document.body.classList.contains('homepage-view') || 
-                                 document.body.id === 'knack-body_' + homepageViewKey;
-    if (wasOnHomepage && !bodyHasHomepageClass) {
-      console.log('[Staff Homepage] Body classes changed, no longer on homepage');
+                               document.body.id === 'knack-body_' + homepageViewKey;
+    if (!bodyHasHomepageClass) {
+      console.log('[Staff Homepage] Body classes changed, confirming navigation away from homepage');
       window.cleanupStaffHomepageCompletely();
     }
-  });
+  }
+});
+
+// Observe the entire document for changes
+observer.observe(document.body, {
+  childList: true,
+  subtree: true
+});
+
+// Set a timeout to finish initialization and allow monitoring
+setTimeout(function() {
+  isInitializing = false;
+  console.log('[Staff Homepage] Initialization complete, monitoring for navigation changes');
+}, 1000); // 1 second delay
   
   // Observe the entire document for changes
   observer.observe(document.body, {
@@ -4603,19 +4622,29 @@ document.addEventListener('knack-scene-render.any', function(event) {
   });
   
   // Modify initialization function to set active flag
-  const originalInit = window.initializeStaffHomepage;
-  window.initializeStaffHomepage = function() {
-    // Clean up first
-    if (window.cleanupStaffHomepageCompletely) {
-      window.cleanupStaffHomepageCompletely();
-    }
-    
-    // Set active flag
-    window.STAFFHOMEPAGE_ACTIVE = true;
-    
-    // Call original initialization
-    return originalInit.apply(this, arguments);
-  };
+const originalInit = window.initializeStaffHomepage;
+window.initializeStaffHomepage = function() {
+  // Clean up first
+  if (window.cleanupStaffHomepageCompletely) {
+    window.cleanupStaffHomepageCompletely();
+  }
+  
+  // Reset initialization flag
+  isInitializing = true;
+  
+  // Set active flag
+  window.STAFFHOMEPAGE_ACTIVE = true;
+  onStaffHomepage = true;
+  
+  // Reset initialization flag after a delay
+  setTimeout(function() {
+    isInitializing = false;
+  }, 1000);
+  
+  // Call original initialization
+  return originalInit.apply(this, arguments);
+};
 })();
 })(); // Close IIFE properly
+
 
