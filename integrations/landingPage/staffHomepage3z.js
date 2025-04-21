@@ -4115,8 +4115,8 @@ canvas {
 
 .vespa-modal-content {
   background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%);
-  margin: 10% auto;
-  padding: 25px;
+  margin: 5% auto; /* Reduced from 10% to show more content */
+  padding: 25px 25px 60px 25px; /* Increased bottom padding */
   border: 2px solid #00e5db;
   border-radius: 10px;
   width: 80%;
@@ -4124,7 +4124,10 @@ canvas {
   color: #ffffff;
   position: relative;
   animation: modalFadeIn 0.3s;
+  max-height: 80vh; /* Maximum height */
+  overflow-y: auto; /* Enable scrolling */
 }
+
 
 @keyframes modalFadeIn {
   from {opacity: 0; transform: translateY(-20px);}
@@ -4177,8 +4180,9 @@ canvas {
   border-radius: 5px;
   cursor: pointer;
   font-weight: bold;
-  transition: all 0.3s ease; /* Smoother transition */
+  transition: all 0.3s ease;
   border: none;
+  margin-bottom: 5px; /* Add some bottom margin */
 }
 
 .vespa-btn-primary {
@@ -4369,6 +4373,10 @@ canvas {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+  position: sticky; /* Makes button stay visible */
+  bottom: 15px; /* Distance from bottom */
+  background: inherit; /* Inherit parent's background */
+  padding: 10px 0;
 }
 
 /* Enhanced Feedback Form Styles */
@@ -5147,9 +5155,10 @@ async function sendFeedbackEmail(feedbackRequest) {
       minute: '2-digit'
     });
     
-    // Prepare email data in SendGrid format
+    // Prepare email data including BOTH emails - one to admin and one to the user
     const emailData = {
       personalizations: [
+        // Admin notification email
         {
           to: [{ email: 'admin@vespa.academy' }],
           dynamic_template_data: {
@@ -5161,17 +5170,30 @@ async function sendFeedbackEmail(feedbackRequest) {
             description: feedbackRequest.description,
             additionalContext: feedbackRequest.additionalContext,
             timestamp: formattedTimestamp
-          }
+          },
+          template_id: sendGridConfig.templateId
+        },
+        // User confirmation email
+        {
+          to: [{ email: feedbackRequest.submittedBy.email }],
+          dynamic_template_data: {
+            name: feedbackRequest.submittedBy.name,
+            requestType: feedbackRequest.requestType,
+            priority: feedbackRequest.priority,
+            category: feedbackRequest.category,
+            description: feedbackRequest.description,
+            timestamp: formattedTimestamp
+          },
+          template_id: sendGridConfig.confirmationtemplateId
         }
       ],
       from: {
         email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
         name: sendGridConfig.fromName || "VESPA Academy"
-      },
-      template_id: sendGridConfig.templateId || "d-6a6ac61c9bab43e28706dbb3da4acdcf"
+      }
     };
     
-    // Send to the proxy instead of directly to SendGrid
+    // Send to the proxy
     const response = await fetch(sendGridConfig.proxyUrl, {
       method: 'POST',
       headers: {
@@ -5187,7 +5209,7 @@ async function sendFeedbackEmail(feedbackRequest) {
       return false;
     }
     
-    console.log('[VESPA Support] Email sent successfully via proxy');
+    console.log('[VESPA Support] Emails sent successfully via proxy');
     return true;
     
   } catch (error) {
