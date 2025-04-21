@@ -5123,18 +5123,18 @@ async function storeFeedbackInKnack(feedbackRequest) {
   }
 }
 
-// Send feedback email via SendGrid
+// Send feedback email via SendGrid Proxy
 async function sendFeedbackEmail(feedbackRequest) {
   try {
-    console.log('[VESPA Support] Sending feedback email via SendGrid');
+    console.log('[VESPA Support] Sending feedback email via SendGrid Proxy');
     
-    // Get SendGrid config from MultiApploader via shared config
+    // Get SendGrid config from the STAFFHOMEPAGE_CONFIG
     const config = window.STAFFHOMEPAGE_CONFIG || {};
     const sendGridConfig = config.sendGrid || {};
     
-    // Check if SendGrid API key is configured
-    if (!sendGridConfig.apiKey) {
-      console.error('[VESPA Support] SendGrid API key not configured');
+    // Check if proxy URL is configured
+    if (!sendGridConfig.proxyUrl) {
+      console.error('[VESPA Support] SendGrid proxy URL not configured');
       return false;
     }
     
@@ -5147,7 +5147,7 @@ async function sendFeedbackEmail(feedbackRequest) {
       minute: '2-digit'
     });
     
-    // Prepare email data
+    // Prepare email data in SendGrid format
     const emailData = {
       personalizations: [
         {
@@ -5168,20 +5168,26 @@ async function sendFeedbackEmail(feedbackRequest) {
         email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
         name: sendGridConfig.fromName || "VESPA Academy"
       },
-      template_id: sendGridConfig.templateId || "YOUR_TEMPLATE_ID" // Should come from config
+      template_id: sendGridConfig.templateId || "d-6a6ac61c9bab43e28706dbb3da4acdcf"
     };
     
-    // Update API call to only use the config value, without a fallback
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    // Send to the proxy instead of directly to SendGrid
+    const response = await fetch(sendGridConfig.proxyUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${sendGridConfig.apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(emailData)
     });
     
-    console.log('[VESPA Support] Email sent successfully');
+    // Check if the request was successful
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[VESPA Support] Proxy API error:', errorData);
+      return false;
+    }
+    
+    console.log('[VESPA Support] Email sent successfully via proxy');
     return true;
     
   } catch (error) {
@@ -5192,4 +5198,3 @@ async function sendFeedbackEmail(feedbackRequest) {
 }
 
 })(); // Close IIFE properly
-
