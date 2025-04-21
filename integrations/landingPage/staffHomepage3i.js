@@ -4389,6 +4389,11 @@ if (feedbackBtn && feedbackModal) {
 window.initializeStaffHomepage = function() {
   debugLog("Initializing Staff Homepage...");
   
+  // Run cleanup first in case any previous elements exist
+  if (window.cleanupStaffHomepage) {
+    window.cleanupStaffHomepage();
+  }
+  
  // Get current user from Knack
  const currentUser = Knack.getUserAttributes();
  if (currentUser && currentUser.id) {
@@ -4457,6 +4462,47 @@ window.initializeStaffHomepage = function() {
   // Render the homepage
   renderHomepage();
 }; // Close initializeStaffHomepage function properly
+// Add cleanup function to window object
+window.cleanupStaffHomepage = function() {
+  // Remove loading indicator
+  const loadingIndicator = document.getElementById('api-loading-indicator');
+  if (loadingIndicator) loadingIndicator.remove();
+  
+  // Remove feedback button & modal
+  const feedbackBtn = document.getElementById('feedback-button');
+  if (feedbackBtn) feedbackBtn.remove();
+  const feedbackModal = document.getElementById('feedback-modal');
+  if (feedbackModal) feedbackModal.remove();
+  
+  // Remove logo modal
+  const logoModal = document.getElementById('logo-modal');
+  if (logoModal) logoModal.remove();
+  
+  // Clear any event listeners that might have been attached
+  const bannerCloseBtn = document.querySelector('.banner-close');
+  if (bannerCloseBtn) {
+    bannerCloseBtn.removeEventListener('click', null);
+  }
+  
+  // Remove any other elements added by the script
+  const welcomeBanner = document.getElementById('welcome-banner');
+  if (welcomeBanner) welcomeBanner.remove();
+  
+  console.log('[Staff Homepage] Cleanup completed');
+};
 
+// Add listener for Knack scene change
+document.addEventListener('knack-scene-render.any', function(event) {
+  const currentSceneKey = event.detail.scene.key;
+  const previousSceneKey = window.STAFFHOMEPAGE_CONFIG?.sceneKey;
+  
+  // Only clean up if we are navigating away from the staff homepage scene
+  if (previousSceneKey && currentSceneKey !== previousSceneKey) {
+    console.log('[Staff Homepage] Scene change detected, cleaning up...');
+    if (window.cleanupStaffHomepage) {
+      window.cleanupStaffHomepage();
+    }
+  }
+});
 })(); // Close IIFE properly
 
