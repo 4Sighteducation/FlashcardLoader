@@ -4447,7 +4447,7 @@ const feedbackSystem = `
 <div id="feedback-modal" class="vespa-modal">
   <div class="vespa-modal-content">
     <span class="vespa-modal-close" id="feedback-modal-close">&times;</span>
-    <h3>VESPA Academy Support</h3>
+    <h3>VESPA Academy Support / Contact Us</h3>
     <form id="feedback-form">
       <div class="form-group">
         <label for="feedback-name">Your Name</label>
@@ -4698,26 +4698,53 @@ if (feedbackBtn && feedbackModal) {
   });
   
   // Handle form submission
-  if (feedbackForm) {
-    feedbackForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
+if (feedbackForm) {
+  feedbackForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Submitting...';
+    
+    try {
+      // Collect all form data
       const name = document.getElementById('feedback-name').value;
       const email = document.getElementById('feedback-email').value;
+      const type = document.getElementById('feedback-type').value;
+      const priority = document.getElementById('feedback-priority').value;
+      const category = document.getElementById('feedback-category').value;
       const message = document.getElementById('feedback-message').value;
+      const context = document.getElementById('feedback-context').value;
       
-      // Send email to admin@vespaacademy.knack.com with feedback
-      const emailSubject = `Feedback from ${name}`;
-      const emailBody = `Name: ${name}\nEmail: ${email}\n\nFeedback:\n${message}`;
+      // Create feedback request object
+      const feedbackRequest = {
+        timestamp: new Date().toISOString(),
+        submittedBy: {
+          name: name,
+          email: email
+        },
+        requestType: type,
+        priority: priority,
+        category: category,
+        description: message,
+        additionalContext: context || 'None provided',
+        status: 'New'
+      };
       
-      console.log('[Staff Homepage] Feedback submitted:', {
-        to: 'admin@vespaacademy.knack.com',
-        subject: emailSubject,
-        body: emailBody
+      // First store in Knack
+      const storedInKnack = await storeFeedbackInKnack(feedbackRequest);
+      
+      // Then try to send email
+      const emailSent = await sendFeedbackEmail(feedbackRequest);
+      
+      console.log('[VESPA Support] Feedback processed:', { 
+        storedInKnack, 
+        emailSent 
       });
       
-      // In production, you would send this via AJAX to a backend endpoint
-      // For now, we'll just show success message
+      // Show success message
       feedbackForm.style.display = 'none';
       document.getElementById('feedback-success').style.display = 'block';
       
@@ -4729,10 +4756,18 @@ if (feedbackBtn && feedbackModal) {
           feedbackForm.reset();
           feedbackForm.style.display = 'block';
           document.getElementById('feedback-success').style.display = 'none';
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
         }, 500);
       }, 3000);
-    });
-  }
+    } catch (error) {
+      console.error('[VESPA Support] Error processing feedback:', error);
+      alert('There was an error submitting your request. Please try again later.');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
+  });
+}
 }
 
 
@@ -5157,3 +5192,4 @@ async function sendFeedbackEmail(feedbackRequest) {
 }
 
 })(); // Close IIFE properly
+
