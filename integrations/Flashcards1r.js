@@ -990,9 +990,14 @@
          case 'REQUEST_RECORD_ID':
              handleRecordIdRequest(data, iframeWindow); // Pass iframeWindow
              break;
-        case 'KNACK_REQUEST':
-            handleKnackRequest(data, iframeWindow);
-            break;
+             case 'KNACK_REQUEST':
+                // Reconstruct the full message structure that handleKnackRequest expects
+                handleKnackRequest({
+                  action: data.action,
+                  data: data.data,
+                  requestId: data.requestId
+                }, iframeWindow);
+                break;
         // Add other cases for messages from React app as needed
         default:
           console.warn(`[Knack Script] Unhandled message type: ${type}`);
