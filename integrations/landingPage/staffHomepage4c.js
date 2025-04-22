@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = false; // Set to true for development/testing
+  const DEBUG_MODE = true; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
@@ -2728,7 +2728,7 @@ function renderCycleSection(cycleData, hasAdminRole) {
   
   // Admin button HTML - only shown for staff admin users
   const adminButton = hasAdminRole ? `
-    <a href="https://vespaacademy.knack.com/vespa-academy#manage/manage-questionnaire/manage-questionnaire-cycles/" 
+    <a href="https://vespaacademy.knack.com/vespa-academy#manage-cycles/" 
        class="cycle-admin-button" 
        target="_blank">
       <i class="fas fa-cog"></i> Update Cycles
