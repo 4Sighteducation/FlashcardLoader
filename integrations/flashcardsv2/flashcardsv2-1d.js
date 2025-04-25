@@ -2025,6 +2025,9 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
             appUrl: this.config.appUrl
         });
         
+        // Reset initialization state
+        this.initialized = false;
+        
         // Validate configuration
         if (!this.validateConfig()) {
             return; // Validation failed
@@ -2046,6 +2049,13 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
                 }
                 
                 this.currentUser = window.currentKnackUser;
+                
+                // Clean up any previous initialization attempt
+                if (this.container) {
+                    console.log('[App] Cleaning up previous initialization attempt');
+                    this.container.innerHTML = '';
+                }
+                
                 await this.setupApp();
                 this.initialized = true;
                 console.log('[App] Initialization completed successfully');
@@ -2058,7 +2068,6 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
             this.showError('Failed to initialize the application: ' + (error.message || 'Unknown error'));
         }
     };
-
     /**
      * Validate required configuration values
      * @returns {boolean} - Whether configuration is valid
@@ -3162,13 +3171,26 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
     var Init = window.VESPA.Flashcards.init = {};
 
     /**
-     * Provides the main entry point for the application,
-     * will be called by Knack's Multi-App loader
-     */
-    window.initializeFlashcardApp = function() {
-        console.log("VESPA Flashcards V2: initializeFlashcardApp called from Knack loader");
+ * Provides the main entry point for the application,
+ * will be called by Knack's Multi-App loader
+ */
+window.initializeFlashcardApp = function() {
+    console.log("VESPA Flashcards V2: initializeFlashcardApp called from Knack loader");
+    
+    // Mark that we're being initialized by the loader
+    window.VESPA.Flashcards.hasAutoInitialized = true;
+    
+    // Check if app has valid credentials now
+    const config = window.VESPA_CONFIG || {};
+    const hasCredentials = Boolean(config.knackAppId) && Boolean(config.knackApiKey);
+    
+    if (hasCredentials) {
+        console.log("VESPA Flashcards V2: Valid credentials found, starting initialization");
         Init.startInitializationSequence();
-    };
+    } else {
+        console.error("VESPA Flashcards V2: initializeFlashcardApp called without valid credentials!");
+    }
+};
 
     /**
      * Start the initialization sequence
@@ -3289,41 +3311,42 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
         }
     };
 
-    /**
- * Auto-start if script was added directly (not through loader)
+/**
+ * Completely disable auto-initialization to avoid conflicts
  */
-// Better detection of multi-app loader environment
-const isInKnackBuilderEnv = 
-window.VESPA_CONFIG || // Config already exists
-window.MULTI_APP_LOADER || // Explicit flag 
-(typeof $ !== 'undefined' && $(document).data('knack-builder-loader')) || // Try jQuery data
-typeof tryLoadApp === 'function' || // Loader function exists
-typeof findAppToLoad === 'function'; // Another loader function
+window.VESPA_FLASHCARDS_DISABLE_AUTO_INIT = true;
 
-if (!isInKnackBuilderEnv) {
-console.log("VESPA Flashcards V2: No loader detected, auto-starting...");
-
-// When the DOM is ready
-$(function() {
-    // Don't overwrite existing configuration
-    if (!window.VESPA_CONFIG) {
-        window.VESPA_CONFIG = {
-            knackAppId: '', // Must be filled for direct embed
-            knackApiKey: '', // Must be filled for direct embed
-            appUrl: 'https://vespa-flashcards-v2-a99afb99c276.herokuapp.com/',
-            elementSelector: '.kn-rich-text',
-            debug: false
-        };
-    }
+/**
+ * Provides the main entry point for the application,
+ * will be called by Knack's Multi-App loader
+ */
+window.initializeFlashcardApp = function() {
+    console.log("VESPA Flashcards V2: initializeFlashcardApp called from Knack loader");
     
-    // Start initialization
-    Init.startInitializationSequence();
-});
-} else {
-console.log("VESPA Flashcards V2: Detected multi-app loader environment, waiting for explicit initialization");
-// Set a flag that we can check later
-window.VESPA.Flashcards.inMultiAppLoaderEnvironment = true;
+    // Give the loader time to fully set up credentials before accessing them
+    setTimeout(function() {
+        // Get the latest credentials directly from window.VESPA_CONFIG
+        const config = window.VESPA_CONFIG || {};
+        
+        // Log credentials state for debugging
+        console.log("VESPA Flashcards V2: Starting initialization with credentials:", {
+            appId: Boolean(config.knackAppId),
+            apiKey: Boolean(config.knackApiKey),
+            appUrl: config.appUrl
+        });
+        
+        // Start initialization sequence
+        Init.startInitializationSequence();
+    }, 100); // Small delay to ensure credentials are set
+};
+
+// --- Auto-start mechanism ---
+// Check if auto-initialization is completely disabled
+if (!window.VESPA_FLASHCARDS_DISABLE_AUTO_INIT) {
+    // This section is completely disabled
+    console.log("VESPA Flashcards V2: Auto-initialization disabled");
 }
     // Log module loaded
     console.log("VESPA Flashcards: Initialization module loaded");
 })();
+
