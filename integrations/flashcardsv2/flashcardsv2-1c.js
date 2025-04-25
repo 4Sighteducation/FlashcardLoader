@@ -3290,29 +3290,40 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
     };
 
     /**
-     * Auto-start if script was added directly (not through loader)
-     */
-    if (!window.VESPA_CONFIG && !window.MULTI_APP_LOADER) {
-        console.log("VESPA Flashcards V2: No loader detected, auto-starting...");
-        
-        // When the DOM is ready
-        $(function() {
-            // Set default config
-            window.VESPA_CONFIG = {
-                knackAppId: '', // Must be filled for direct embed
-                knackApiKey: '', // Must be filled for direct embed
-                appUrl: 'https://vespa-flashcards-v2-a99afb99c276.herokuapp.com/',
-                elementSelector: '.kn-rich-text',
-                debug: false
-            };
-            
-            // Start initialization
-            Init.startInitializationSequence();
-        });
-    } else {
-        console.log("VESPA Flashcards V2: Waiting for loader to call initializeFlashcardApp()");
-    }
+ * Auto-start if script was added directly (not through loader)
+ */
+// Better detection of multi-app loader environment
+const isInKnackBuilderEnv = 
+window.VESPA_CONFIG || // Config already exists
+window.MULTI_APP_LOADER || // Explicit flag 
+(typeof $ !== 'undefined' && $(document).data('knack-builder-loader')) || // Try jQuery data
+typeof tryLoadApp === 'function' || // Loader function exists
+typeof findAppToLoad === 'function'; // Another loader function
 
+if (!isInKnackBuilderEnv) {
+console.log("VESPA Flashcards V2: No loader detected, auto-starting...");
+
+// When the DOM is ready
+$(function() {
+    // Don't overwrite existing configuration
+    if (!window.VESPA_CONFIG) {
+        window.VESPA_CONFIG = {
+            knackAppId: '', // Must be filled for direct embed
+            knackApiKey: '', // Must be filled for direct embed
+            appUrl: 'https://vespa-flashcards-v2-a99afb99c276.herokuapp.com/',
+            elementSelector: '.kn-rich-text',
+            debug: false
+        };
+    }
+    
+    // Start initialization
+    Init.startInitializationSequence();
+});
+} else {
+console.log("VESPA Flashcards V2: Detected multi-app loader environment, waiting for explicit initialization");
+// Set a flag that we can check later
+window.VESPA.Flashcards.inMultiAppLoaderEnvironment = true;
+}
     // Log module loaded
     console.log("VESPA Flashcards: Initialization module loaded");
 })();
