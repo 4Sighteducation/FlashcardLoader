@@ -149,7 +149,23 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
      * @returns {Object} - API headers object
      */
     Utils.getKnackHeaders = function() {
-        const config = window.VESPA_CONFIG || {};
+        // Try multiple configuration sources in order of priority
+        const directConfig = window.VESPA_CONFIG || {};
+        const runtimeConfig = window.VESPA.Flashcards.config.RUNTIME || {};
+        const instanceConfig = window.VESPA.Flashcards.app.instance?.config || {};
+        
+        // Use the first valid credentials found from any source
+        const knackAppId = directConfig.knackAppId || runtimeConfig.knackAppId || instanceConfig.knackAppId || '';
+        const knackApiKey = directConfig.knackApiKey || runtimeConfig.knackApiKey || instanceConfig.knackApiKey || '';
+        
+        // Add debug logging to help troubleshoot
+        if (!knackAppId || !knackApiKey) {
+            console.warn("[Utils] Missing Knack credentials in configuration.", { 
+                directConfig: Boolean(directConfig.knackAppId), 
+                runtimeConfig: Boolean(runtimeConfig.knackAppId),
+                instanceConfig: Boolean(instanceConfig.knackAppId)
+            });
+        }
         
         // Ensure Knack and getUserToken are available
         if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
@@ -163,8 +179,8 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
         }
         
         return {
-            'X-Knack-Application-Id': config.knackAppId,
-            'X-Knack-REST-API-Key': config.knackApiKey,
+            'X-Knack-Application-Id': knackAppId,
+            'X-Knack-REST-API-Key': knackApiKey,
             'Authorization': token || '', // Send empty string if token is null
             'Content-Type': 'application/json'
         };
@@ -1991,11 +2007,23 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
     FlashcardApp.prototype.initialize = async function() {
         console.log('[App] Initializing Flashcard application...');
         
-        // Store and validate configuration
+        // Enhanced configuration access - check multiple sources
+        const directConfig = window.VESPA_CONFIG || {};
+        const runtimeConfig = window.VESPA.Flashcards.config.RUNTIME || {};
+        
+        // Store and validate configuration with priority to direct config
         this.config = { 
             ...Config.DEFAULT_APP_CONFIG,
-            ...(window.VESPA_CONFIG || {})
+            ...runtimeConfig,
+            ...directConfig
         };
+        
+        // Debug output of config sources and credentials
+        console.log('[App] Using credentials:', { 
+            appId: Boolean(this.config.knackAppId), 
+            apiKey: Boolean(this.config.knackApiKey),
+            appUrl: this.config.appUrl
+        });
         
         // Validate configuration
         if (!this.validateConfig()) {
@@ -3188,8 +3216,12 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
             ...loaderConfig
         };
         
-        // Log the merged configuration
+        // DEBUG: Log the config and credentials
         console.log(`VESPA Flashcards V2: Configuration merged from VESPA_CONFIG:`, loaderConfig);
+        console.log(`VESPA Flashcards V2: Credentials present:`, {
+            knackAppId: Boolean(loaderConfig.knackAppId),
+            knackApiKey: Boolean(loaderConfig.knackApiKey)
+        });
         
         // Start the application
         Init.startApp();
@@ -3284,4 +3316,3 @@ window.VESPA.Flashcards = window.VESPA.Flashcards || {};
     // Log module loaded
     console.log("VESPA Flashcards: Initialization module loaded");
 })();
-
