@@ -29,107 +29,37 @@
   
     // --- Helper Functions (Copied/Adapted from 5w) ---
   
-// Base64 encode a string with safe error handling
-function safeBase64Encode(str) {
-    try {
-      // For browsers
-      return btoa(encodeURIComponent(str));
-    } catch (e) {
-      console.error('Error in base64 encoding:', e);
-      // Return a fallback that's at least somewhat encoded
-      return str;
-    }
-  }
-  
-  // Base64 decode a string with safe error handling
-  function safeBase64Decode(str) {
-    if (!str) return '';
-    try {
-      // For browsers
-      return decodeURIComponent(atob(str));
-    } catch (e) {
-      console.error('Error in base64 decoding:', e);
-      return str;
-    }
-  }
-
-    // Add this helper function near the top of the file or in an appropriate place
-function parseField(fieldValue, fieldName = 'Unknown field') {
-    if (!fieldValue) return '';
-    
-    try {
-      // First try standard decoding
-      return safeDecodeURIComponent(fieldValue);
-    } catch (decodeError) {
-      console.error(`Error decoding ${fieldName}:`, decodeError);
-      
-      // Check if this might be base64 encoded
-      if (/^[A-Za-z0-9+/=]+$/.test(fieldValue)) {
+    // Safe URI component decoding function
+    function safeDecodeURIComponent(str) {
+      if (!str) return str;
+      // Check if it looks like it needs decoding
+      if (typeof str === 'string' && !str.includes('%')) return str;
+      try {
+         // Handle plus signs as spaces which sometimes occur
+        return decodeURIComponent(str.replace(/\+/g, ' '));
+      } catch (error) {
+        console.error("Flashcard app: Error decoding URI component:", error, "String:", String(str).substring(0, 100));
         try {
-          return safeBase64Decode(fieldValue);
-        } catch (base64Error) {
-          console.error(`Base64 decode failed for ${fieldName}:`, base64Error);
+          // Attempt to fix potentially invalid % sequences
+          const cleaned = String(str).replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
+          return decodeURIComponent(cleaned.replace(/\+/g, ' '));
+        } catch (secondError) {
+          console.error("Flashcard app: Second attempt to decode failed:", secondError);
+          return String(str); // Return original string if all fails
         }
       }
-      
-      // If all else fails, return original value
-      console.warn(`Using raw value for ${fieldName} due to decode errors`);
-      return fieldValue;
     }
-  }
-
+  
+  
     // Safely encode URI component
-function safeEncodeURIComponent(str) {
-    try {
-      // For complex, long strings, use Base64 encoding
-      if (typeof str === 'string' && (str.length > 4000 || /[^\u0000-\u007f]/.test(str))) {
-        return 'B64:' + safeBase64Encode(str);
-      }
-      return encodeURIComponent(String(str));
-    } catch (e) {
-      console.error("Error encoding URI component:", e, "Input:", str);
-      // Try Base64 as a fallback
+    function safeEncodeURIComponent(str) {
       try {
-        return 'B64:' + safeBase64Encode(String(str));
-      } catch (e2) {
-        console.error("Base64 encoding fallback failed:", e2);
+        return encodeURIComponent(String(str));
+      } catch (e) {
+        console.error("Error encoding URI component:", e, "Input:", str);
         return String(str);
       }
     }
-  }
-  
-  
-    // Safe URI component decoding function
-function safeDecodeURIComponent(str) {
-  if (!str) return str;
-  
-  // Check if it's Base64 encoded
-  if (typeof str === 'string' && str.startsWith('B64:')) {
-    try {
-      return safeBase64Decode(str.substring(4)); // Skip "B64:" prefix
-    } catch (e) {
-      console.error("Failed to decode B64-encoded string:", e);
-      // Fall through to standard decoding as a fallback
-    }
-  }
-  
-  // Check if it looks like it needs decoding
-  if (typeof str === 'string' && !str.includes('%')) return str;
-  try {
-    // Handle plus signs as spaces which sometimes occur
-    return decodeURIComponent(str.replace(/\+/g, ' '));
-  } catch (error) {
-    console.error("Flashcard app: Error decoding URI component:", error, "String:", String(str).substring(0, 100));
-    try {
-      // Attempt to fix potentially invalid % sequences
-      const cleaned = String(str).replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
-      return decodeURIComponent(cleaned.replace(/\+/g, ' '));
-    } catch (secondError) {
-      console.error("Flashcard app: Second attempt to decode failed:", secondError);
-      return String(str); // Return original string if all fails
-    }
-  }
-}
   
     // Safe JSON parsing function
     function safeParseJSON(jsonString, defaultVal = null) {
@@ -1151,16 +1081,20 @@ function safeDecodeURIComponent(str) {
            const finalBankData = [...existingTopicShells, ...existingCards, ...cardsToAdd];
            console.log(`[Knack Script] Merged ${cardsToAdd.length} new cards with ${existingCards.length} existing cards and ${existingTopicShells.length} shells.`);
   
-          // Update how box1 data is parsed
-let box1Data = [];
-if (existingData && existingData[FIELD_MAPPING.box1Data]) {
-   try {
-       box1Data = parseField(existingData[FIELD_MAPPING.box1Data], 'box1Data') || [];
-   } catch(parseError) {
-      console.error("[Knack Script] Error parsing Box 1 data:", parseError);
-      box1Data = [];
-   }
-}
+           // --- Prepare Box 1 Update ---
+            let box1Data = [];
+            if (existingData && existingData[FIELD_MAPPING.box1Data]) {
+               try {
+                   let box1String = existingData[FIELD_MAPPING.box1Data];
+                   if (typeof box1String === 'string' && box1String.includes('%')) {
+                       box1String = safeDecodeURIComponent(box1String);
+                   }
+                   box1Data = safeParseJSON(box1String, []); // Default to empty array
+               } catch(parseError) {
+                  console.error("[Knack Script] Error parsing Box 1 data:", parseError);
+                  box1Data = [];
+               }
+            }
   
             const now = new Date().toISOString();
             const existingBox1Map = new Map(box1Data.map(entry => [entry.cardId, true]));
@@ -1426,31 +1360,44 @@ if (existingData && existingData[FIELD_MAPPING.box1Data]) {
                // --- Assemble userData from record fields safely ---
                let userData = { recordId: record.id };
                try {
-                // Use the better parseField function added at the top of the file
-                // that handles base64 encoding and better error recovery
-                userData.cards = parseField(record[FIELD_MAPPING.cardBankData], 'cards') || [];
-                userData.cards = migrateTypeToQuestionType(userData.cards); // Migrate legacy types
-                userData.cards = standardizeCards(userData.cards); // Standardize structure
-                console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
+                   // Helper to parse potentially encoded fields
+                   const parseField = (fieldName) => {
+                      const rawValue = record[fieldName];
+                      if (rawValue === undefined || rawValue === null) return null;
+                      // Decode only if it's a string and contains '%'
+                      const decodedValue = (typeof rawValue === 'string' && rawValue.includes('%'))
+                           ? safeDecodeURIComponent(rawValue)
+                           : rawValue;
+                      // Parse if it's potentially JSON (string starting with { or [)
+                       if (typeof decodedValue === 'string' && (decodedValue.startsWith('{') || decodedValue.startsWith('['))) {
+                           return safeParseJSON(decodedValue);
+                       }
+                       // Return decoded value otherwise (might be plain string, number etc.)
+                       return decodedValue;
+                   };
   
-                userData.spacedRepetition = {};
-                for (let i = 1; i <= 5; i++) {
-                    const fieldKey = FIELD_MAPPING[`box${i}Data`];
-                    userData.spacedRepetition[`box${i}`] = parseField(record[fieldKey], `box${i}Data`) || [];
+  
+                   userData.cards = parseField(FIELD_MAPPING.cardBankData) || [];
+                   userData.cards = migrateTypeToQuestionType(userData.cards); // Migrate legacy types
+                   userData.cards = standardizeCards(userData.cards); // Standardize structure
+                   console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
+  
+                   userData.spacedRepetition = {};
+                   for (let i = 1; i <= 5; i++) {
+                       const fieldKey = FIELD_MAPPING[`box${i}Data`];
+                       userData.spacedRepetition[`box${i}`] = parseField(fieldKey) || [];
                    }
                    console.log(`[Knack Script] Loaded spaced repetition data.`);
   
-                   // Update topicLists field parsing
-                    userData.topicLists = parseField(record[FIELD_MAPPING.topicLists], 'topicLists') || [];
-                    console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists.`);
+                   userData.topicLists = parseField(FIELD_MAPPING.topicLists) || [];
+                   console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists.`);
   
-                   // Update colorMapping field parsing
-                    userData.colorMapping = parseField(record[FIELD_MAPPING.colorMapping], 'colorMapping') || {};
-                    console.log(`[Knack Script] Loaded color mapping.`);
-
-                    // Update topicMetadata field parsing
-                    userData.topicMetadata = parseField(record[FIELD_MAPPING.topicMetadata], 'topicMetadata') || [];
-                    console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
+                   userData.colorMapping = parseField(FIELD_MAPPING.colorMapping) || {};
+                   console.log(`[Knack Script] Loaded color mapping.`);
+  
+                   userData.topicMetadata = parseField(FIELD_MAPPING.topicMetadata) || [];
+                   console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
+  
                    // Add lastSaved timestamp if needed
                    userData.lastSaved = record[FIELD_MAPPING.lastSaved];
   
@@ -1801,20 +1748,29 @@ if (existingData && existingData[FIELD_MAPPING.box1Data]) {
               let existingTopicMetadata = [];
               let existingItems = []; // From cardBankData
   
-              // Update how colors are parsed
-try {
-    subjectColors = parseField(existingData[FIELD_MAPPING.colorMapping], 'colorMapping') || {}; 
-} catch (e) { console.error("Error parsing existing subject colors:", e); subjectColors = {}; }
-
-// Update how topic metadata is parsed
-try {
-    existingTopicMetadata = parseField(existingData[FIELD_MAPPING.topicMetadata], 'topicMetadata') || [];
-} catch (e) { console.error("Error parsing existing topic metadata:", e); existingTopicMetadata = [];}
-
-// Update how card bank data is parsed
-try {
-    existingItems = parseField(existingData[FIELD_MAPPING.cardBankData], 'cardBankData') || [];
-} catch(e) { console.error("Error parsing existing card bank data:", e); existingItems = [];}
+              try {
+                  let colorDataStr = existingData[FIELD_MAPPING.colorMapping];
+                  if (typeof colorDataStr === 'string' && colorDataStr.includes('%')) {
+                     colorDataStr = safeDecodeURIComponent(colorDataStr);
+                  }
+                  subjectColors = safeParseJSON(colorDataStr, {}); // Default to empty object
+              } catch (e) { console.error("Error parsing existing subject colors:", e); subjectColors = {}; }
+  
+             try {
+                 let metaDataStr = existingData[FIELD_MAPPING.topicMetadata];
+                 if (typeof metaDataStr === 'string' && metaDataStr.includes('%')) {
+                     metaDataStr = safeDecodeURIComponent(metaDataStr);
+                 }
+                 existingTopicMetadata = safeParseJSON(metaDataStr, []); // Default to empty array
+              } catch (e) { console.error("Error parsing existing topic metadata:", e); existingTopicMetadata = [];}
+  
+             try {
+                 let bankDataStr = existingData[FIELD_MAPPING.cardBankData];
+                 if (typeof bankDataStr === 'string' && bankDataStr.includes('%')) {
+                     bankDataStr = safeDecodeURIComponent(bankDataStr);
+                 }
+                 existingItems = safeParseJSON(bankDataStr, []); // Default to empty array
+              } catch(e) { console.error("Error parsing existing card bank data:", e); existingItems = [];}
   
              // Split existing items from card bank
              const { topics: existingTopicShells, cards: existingCards } = splitByType(existingItems);
