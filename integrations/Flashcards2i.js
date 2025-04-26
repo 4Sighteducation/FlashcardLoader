@@ -41,56 +41,26 @@
 
     // --- Helper Functions (Copied/Adapted from 5w) ---
   
-// Enhanced URI component decoding function with better error handling
-function safeDecodeURIComponent(str) {
-  if (!str) return str;
-  // Check if it looks like it needs decoding
-  if (typeof str === 'string' && !str.includes('%')) return str;
-  
-  try {
-    // Handle plus signs as spaces which sometimes occur
-    return decodeURIComponent(str.replace(/\+/g, ' '));
-  } catch (error) {
-    console.error("Flashcard app: Error decoding URI component:", error, "String:", String(str).substring(0, 100));
-    
-    try {
-      // First attempt to fix potentially invalid % sequences
-      const cleaned = String(str).replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
-      return decodeURIComponent(cleaned.replace(/\+/g, ' '));
-    } catch (secondError) {
-      console.error("Flashcard app: Second attempt to decode failed:", secondError);
-      
+    // Safe URI component decoding function
+    function safeDecodeURIComponent(str) {
+      if (!str) return str;
+      // Check if it looks like it needs decoding
+      if (typeof str === 'string' && !str.includes('%')) return str;
       try {
-        // Third attempt: Try more aggressive cleaning - handle truncated URIs by removing trailing %
-        const aggressiveCleaned = String(str)
-          .replace(/%(?![0-9A-Fa-f]{2})/g, '%25')  // Fix invalid % sequences
-          .replace(/%[0-9A-Fa-f]$/g, '%25')        // Fix truncated % at end
-          .replace(/%[0-9A-Fa-f](?![0-9A-Fa-f])/g, '%25'); // Fix single-digit % sequences
-        
-        return decodeURIComponent(aggressiveCleaned.replace(/\+/g, ' '));
-      } catch (thirdError) {
-        console.error("Flashcard app: Third attempt to decode failed:", thirdError);
-        
-        // Last resort - try to extract any valid JSON
+         // Handle plus signs as spaces which sometimes occur
+        return decodeURIComponent(str.replace(/\+/g, ' '));
+      } catch (error) {
+        console.error("Flashcard app: Error decoding URI component:", error, "String:", String(str).substring(0, 100));
         try {
-          // Look for valid JSON patterns and try to extract them
-          const jsonPattern = /\[(.*)\]|\{(.*)\}/;
-          const match = String(str).match(jsonPattern);
-          if (match) {
-            console.warn("Flashcard app: Attempting JSON extraction from corrupted URI");
-            const extracted = match[0];
-            return extracted;
-          }
-        } catch (e) {
-          console.error("Flashcard app: JSON extraction attempt failed");
+          // Attempt to fix potentially invalid % sequences
+          const cleaned = String(str).replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
+          return decodeURIComponent(cleaned.replace(/\+/g, ' '));
+        } catch (secondError) {
+          console.error("Flashcard app: Second attempt to decode failed:", secondError);
+          return String(str); // Return original string if all fails
         }
-        
-        // Give up and return the original string
-        return String(str);
       }
     }
-  }
-}
   
   
     // Safely encode URI component
@@ -103,69 +73,34 @@ function safeDecodeURIComponent(str) {
       }
     }
   
-// Enhanced JSON parsing function with better recovery
-function safeParseJSON(jsonString, defaultVal = null) {
-    if (!jsonString) return defaultVal;
-    try {
-        // If it's already an object (e.g., from Knack raw format), return it directly
-        if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
-        // Attempt standard parsing
-        return JSON.parse(jsonString);
-    } catch (error) {
-        console.warn("Flashcard app: Initial JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
-        
-        // Attempt recovery for common issues
+    // Safe JSON parsing function
+    function safeParseJSON(jsonString, defaultVal = null) {
+        if (!jsonString) return defaultVal;
         try {
-            // Remove potential leading/trailing whitespace or BOM
-            const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
-            // Try common fixes like escaped quotes, trailing commas
-            const recovered = cleanedString
-                .replace(/\\"/g, '"') // Fix incorrectly escaped quotes
-                .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
-                .replace(/\n/g, ' ') // Remove newlines
-                .replace(/\r/g, ' ') // Remove carriage returns
-                .replace(/\t/g, ' '); // Remove tabs
-            
-            const result = JSON.parse(recovered);
-            console.log("Flashcard app: JSON recovery successful.");
-            return result;
-        } catch (secondError) {
-            console.error("Flashcard app: JSON recovery failed:", secondError);
-            
-            // More aggressive approach - try to extract anything that looks like JSON
+            // If it's already an object (e.g., from Knack raw format), return it directly
+            if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
+            // Attempt standard parsing
+            return JSON.parse(jsonString);
+        } catch (error) {
+            console.warn("Flashcard app: Initial JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
+            // Attempt recovery for common issues
             try {
-                console.warn("Flashcard app: Attempting aggressive JSON extraction");
-                
-                // Try to extract array or object pattern
-                let extractedJson = null;
-                const jsonString = String(jsonString);
-                
-                // Look for array pattern [...]
-                if (jsonString.includes('[') && jsonString.includes(']')) {
-                    const arrayMatch = jsonString.match(/\[[\s\S]*\]/);
-                    if (arrayMatch) extractedJson = arrayMatch[0];
-                }
-                // Look for object pattern {...}
-                else if (jsonString.includes('{') && jsonString.includes('}')) {
-                    const objectMatch = jsonString.match(/\{[\s\S]*\}/);
-                    if (objectMatch) extractedJson = objectMatch[0];
-                }
-                
-                if (extractedJson) {
-                    // Try parsing the extracted pattern
-                    const result = JSON.parse(extractedJson);
-                    console.log("Flashcard app: Aggressive JSON recovery successful");
-                    return result;
-                }
-            } catch (thirdError) {
-                console.error("Flashcard app: Aggressive JSON recovery failed:", thirdError);
+                // Remove potential leading/trailing whitespace or BOM
+                const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
+                // Try common fixes like escaped quotes, trailing commas
+                const recovered = cleanedString
+                    .replace(/\\"/g, '"') // Fix incorrectly escaped quotes
+                    .replace(/,\s*([}\]])/g, '$1'); // Remove trailing commas
+                const result = JSON.parse(recovered);
+                 console.log("Flashcard app: JSON recovery successful.");
+                return result;
+            } catch (secondError) {
+                console.error("Flashcard app: JSON recovery failed:", secondError);
+                // Return the default value if all parsing fails
+                return defaultVal;
             }
-            
-            // Return the default value if all parsing fails
-            return defaultVal;
         }
     }
-}
   
   
     // Check if a string is a valid Knack record ID
@@ -382,15 +317,9 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
         try {
           const updateData = await this.prepareSaveData(operation);
-          // --- DEBUG: Log prepared data before save attempt ---
-          console.log(`[SaveQueue DEBUG] Data prepared for API PUT (Record ${operation.recordId}):`, JSON.stringify(updateData));
-          debugLog("[SaveQueue] Prepared update data (Detailed)", updateData); // Keep detailed log too
-          // --- END DEBUG ---
+          debugLog("[SaveQueue] Prepared update data", updateData);
           const response = await this.performSave(updateData, operation.recordId);
-          // --- DEBUG: Log API response on success --- 
-          console.log(`[SaveQueue DEBUG] API PUT success response (Record ${operation.recordId}):`, JSON.stringify(response));
-          debugLog("[SaveQueue] API Save successful (Detailed)", response); // Keep detailed log
-          // --- END DEBUG ---
+          debugLog("[SaveQueue] API Save successful", response);
           this.handleSaveSuccess(operation);
         } catch (error) {
            // Error should be the original error object from performSave or prepareSaveData
@@ -408,15 +337,13 @@ function safeParseJSON(jsonString, defaultVal = null) {
        // Prepares the final data payload for the Knack API PUT request
        async prepareSaveData(operation) {
            const { type, data, recordId, preserveFields } = operation;
-           // 'data' here is the object received from postMessage, containing raw JS objects/arrays
            console.log(`[SaveQueue] Preparing save data for type: ${type}, record: ${recordId}, preserveFields: ${preserveFields}`);
-           debugLog("[SaveQueue] Raw data received by prepareSaveData:", data);
-
+  
            // Start with the mandatory lastSaved field
            const updateData = {
                [FIELD_MAPPING.lastSaved]: new Date().toISOString()
            };
-
+  
            try {
                 // Fetch existing data ONLY if preserving fields
                let existingData = null;
@@ -438,61 +365,36 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
                // Add data based on operation type
                switch (type) {
-                   // --- REVISED: Stringify data *here* before assigning to updateData ---
-                   case 'cards': // Assuming this type might still be used elsewhere? If not, remove.
+                   case 'cards': // Only updates cardBankData
+                       // IMPORTANT: This assumes 'cards' type means REPLACE cardBankData.
+                       // If it means ADD/MERGE, the logic needs to be in the caller or here.
+                       // For ADD_TO_BANK, the caller (handleAddToBankRequest) now prepares the full merged list.
                        updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(
-                           this.ensureSerializable(data.cards || []) // data.cards should be the raw array
+                           this.ensureSerializable(data || []) // data should be the full card array
                        );
-                       console.log("[SaveQueue] Stringified cardBankData for 'cards' save.");
+                        console.log("[SaveQueue] Prepared cardBankData for 'cards' save.");
                        break;
-                   case 'colors': // Assuming this type might still be used elsewhere?
+                   case 'colors': // Only updates colorMapping
                        updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(
-                           this.ensureSerializable(data.colorMapping || {}) // data.colorMapping should be the raw object
+                           this.ensureSerializable(data || {})
                        );
-                       console.log("[SaveQueue] Stringified colorMapping for 'colors' save.");
+                       console.log("[SaveQueue] Prepared colorMapping for 'colors' save.");
                        break;
-                   // REMOVED 'topics' case as topicLists are no longer saved separately
-                   /* case 'topics': 
+                   case 'topics': // Only updates topicLists
                        updateData[FIELD_MAPPING.topicLists] = JSON.stringify(
-                           this.ensureSerializable(data.topicLists || [])
+                           this.ensureSerializable(data || [])
                        );
-                       console.log("[SaveQueue] Stringified topicLists for 'topics' save.");
-                       break; */
-                   case 'full': // This is the primary case used now
-                       console.log("[SaveQueue] Preparing 'full' save data by stringifying fields.");
-                       // 'data' contains the raw JS objects/arrays (cards, colorMapping, etc.)
-                       // Stringify each relevant piece before adding to updateData
-                       if (data.cards !== undefined) {
-                           updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(this.ensureSerializable(data.cards || []));
-                       }
-                       if (data.colorMapping !== undefined) {
-                           updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(this.ensureSerializable(data.colorMapping || {}));
-                       }
-                       if (data.spacedRepetition !== undefined) {
-                           // Assuming spacedRepetition is an object { box1: [], ... }
-                           // We need to stringify the *whole object* if the bridge expects one field,
-                           // OR stringify each box individually if separate fields are expected.
-                           // --> Assuming ONE field for now based on SaveQueueService mapping
-                           // updateData[FIELD_MAPPING.spacedRepetition] = JSON.stringify(this.ensureSerializable(data.spacedRepetition || {}));
-                           // --> OR if separate fields are needed:
-                           const srData = data.spacedRepetition || {};
-                           if (srData.box1 !== undefined) updateData[FIELD_MAPPING.box1Data] = JSON.stringify(this.ensureSerializable(srData.box1 || []));
-                           if (srData.box2 !== undefined) updateData[FIELD_MAPPING.box2Data] = JSON.stringify(this.ensureSerializable(srData.box2 || []));
-                           if (srData.box3 !== undefined) updateData[FIELD_MAPPING.box3Data] = JSON.stringify(this.ensureSerializable(srData.box3 || []));
-                           if (srData.box4 !== undefined) updateData[FIELD_MAPPING.box4Data] = JSON.stringify(this.ensureSerializable(srData.box4 || []));
-                           if (srData.box5 !== undefined) updateData[FIELD_MAPPING.box5Data] = JSON.stringify(this.ensureSerializable(srData.box5 || []));
-                       }
-                       if (data.topicMetadata !== undefined) {
-                           updateData[FIELD_MAPPING.topicMetadata] = JSON.stringify(this.ensureSerializable(data.topicMetadata || []));
-                       }
-                       // Removed prepareFullSaveData helper as logic is now inline
-                       // Object.assign(updateData, this.prepareFullSaveData(data || {})); 
+                        console.log("[SaveQueue] Prepared topicLists for 'topics' save.");
+                       break;
+                   case 'full': // Includes all provided fields from the 'data' object
+                        console.log("[SaveQueue] Preparing 'full' save data.");
+                       // 'data' in a 'full' save should contain the keys like 'cards', 'colorMapping', etc.
+                       Object.assign(updateData, this.prepareFullSaveData(data || {})); // Pass the data object itself
                        break;
                    default:
-                       console.error(`[SaveQueue] Unknown save operation type: ${type}`);
+                        console.error(`[SaveQueue] Unknown save operation type: ${type}`);
                        throw new Error(`Unknown save operation type: ${type}`);
                }
-               // --- END REVISION ---
   
                // If preserving fields and we successfully fetched existing data, merge
                if (preserveFields && existingData) {
@@ -567,12 +469,62 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
   
       // Prepares the payload specifically for a 'full' save operation based on the input 'data' object
-       // --- REMOVING prepareFullSaveData helper as logic is now in prepareSaveData case 'full' --- 
-       /*
        prepareFullSaveData(data) {
-           // ... existing implementation ...
+           // 'data' should contain keys like 'cards', 'colorMapping', 'spacedRepetition', etc.
+           const updatePayload = {};
+           console.log("[SaveQueue] Preparing full save data from data object:", Object.keys(data));
+  
+           // Standardize and include card bank data if present in 'data'
+           if (data.cards !== undefined) {
+               console.log("[SaveQueue] Processing 'cards' for full save");
+               let cardsToSave = data.cards || []; // Default to empty array if null/undefined
+               cardsToSave = migrateTypeToQuestionType(cardsToSave); // Migrate legacy types
+               cardsToSave = standardizeCards(cardsToSave); // Ensure standard structure
+               updatePayload[FIELD_MAPPING.cardBankData] = JSON.stringify(
+                   this.ensureSerializable(cardsToSave)
+               );
+               console.log(`[SaveQueue] Included ${cardsToSave.length} cards in full save payload.`);
+           } else {
+                console.log("[SaveQueue] 'cards' field missing in full save data object.");
+           }
+  
+           if (data.colorMapping !== undefined) {
+                console.log("[SaveQueue] Processing 'colorMapping' for full save");
+               updatePayload[FIELD_MAPPING.colorMapping] = JSON.stringify(
+                   this.ensureSerializable(data.colorMapping || {})
+               );
+           }
+  
+           if (data.topicLists !== undefined) {
+                console.log("[SaveQueue] Processing 'topicLists' for full save");
+               updatePayload[FIELD_MAPPING.topicLists] = JSON.stringify(
+                   this.ensureSerializable(data.topicLists || [])
+               );
+           }
+  
+           // Include spaced repetition data if present in 'data'
+           if (data.spacedRepetition !== undefined) {
+                console.log("[SaveQueue] Processing 'spacedRepetition' for full save");
+               const { box1, box2, box3, box4, box5 } = data.spacedRepetition || {}; // Default to empty object
+               // Ensure boxes are arrays before stringifying
+               if (box1 !== undefined) updatePayload[FIELD_MAPPING.box1Data] = JSON.stringify(this.ensureSerializable(box1 || []));
+               if (box2 !== undefined) updatePayload[FIELD_MAPPING.box2Data] = JSON.stringify(this.ensureSerializable(box2 || []));
+               if (box3 !== undefined) updatePayload[FIELD_MAPPING.box3Data] = JSON.stringify(this.ensureSerializable(box3 || []));
+               if (box4 !== undefined) updatePayload[FIELD_MAPPING.box4Data] = JSON.stringify(this.ensureSerializable(box4 || []));
+               if (box5 !== undefined) updatePayload[FIELD_MAPPING.box5Data] = JSON.stringify(this.ensureSerializable(box5 || []));
+           }
+  
+            // Include topic metadata if present in 'data'
+            if (data.topicMetadata !== undefined) {
+                 console.log("[SaveQueue] Processing 'topicMetadata' for full save");
+                updatePayload[FIELD_MAPPING.topicMetadata] = JSON.stringify(
+                    this.ensureSerializable(data.topicMetadata || [])
+                );
+            }
+  
+  
+           return updatePayload; // Return only the fields provided in the 'data' object
        }
-       */
   
   
       // Performs the actual Knack API PUT request
@@ -595,16 +547,10 @@ function safeParseJSON(jsonString, defaultVal = null) {
                    headers: this.getKnackHeaders(), // Use headers method
                    data: JSON.stringify(updateData), // Send prepared data
                    success: function(response) {
-                      // --- DEBUG: Log success directly --- 
-                      console.log(`[SaveQueue DEBUG] AJAX PUT success for record ${recordId}`);
-                      // --- END DEBUG ---
                       console.log(`[SaveQueue] API PUT successful for record ${recordId}`);
                       resolve(response);
                    },
                    error: function(jqXHR, textStatus, errorThrown) {
-                       // --- DEBUG: Log error directly --- 
-                       console.error(`[SaveQueue DEBUG] AJAX PUT failed for record ${recordId}. Status: ${jqXHR.status}, Error: ${errorThrown}`);
-                       // --- END DEBUG ---
                        // Log more detailed error info
                       console.error(`[SaveQueue] API PUT failed for record ${recordId}: Status ${jqXHR.status} - ${errorThrown}`, jqXHR.responseText);
                        // Create a more informative error object
@@ -916,24 +862,6 @@ function safeParseJSON(jsonString, defaultVal = null) {
          // window.removeEventListener('message', window.flashcardMessageHandler); // Remove old if exists
   
           const messageHandler = function(event) {
-              // --- DEBUG: Log raw event and data --- 
-              console.log("[Knack Script] Raw Message Event Received:", event); 
-              try {
-                  // Attempt to log event.data safely, handling potential circular refs
-                  const dataString = JSON.stringify(event.data, (key, value) => {
-                      if (typeof value === 'object' && value !== null) {
-                          // Basic cycle detection (not foolproof)
-                          if (key === 'source' || key === 'target' || key === 'currentTarget') return '[Window]'; // Avoid logging window objects
-                      }
-                      return value;
-                  }, 2); 
-                  console.log("[Knack Script] Raw event.data:", dataString);
-              } catch (e) {
-                  console.error("[Knack Script] Error stringifying event.data:", e);
-                  console.log("[Knack Script] Raw event.data (logging directly):", event.data);
-              }
-              // --- END DEBUG ---
-
               // IMPORTANT: Check origin for security if appUrl is known and consistent
               // const expectedOrigin = new URL(config.appUrl).origin;
               // if (event.origin !== expectedOrigin) {
@@ -947,20 +875,22 @@ function safeParseJSON(jsonString, defaultVal = null) {
                   return;
               }
   
-              // --- REVISED: Get type and the full data object correctly ---
-              const messageType = event.data?.type; // Get the type safely
-              const messageData = event.data; // Get the whole data object
-              // const { type, data } = event.data; // REMOVE incorrect destructuring
-              // --- END REVISION ---
-
+              if (!event.data || !event.data.type) {
+                console.warn("[Knack Script] Ignoring message with invalid format:", event.data);
+                return;
+              }
+  
+              const { type, data } = event.data;
+              const iframeWindow = iframe.contentWindow; // Reference to the iframe's window
+  
               // Log message receipt
-              if (messageType !== 'PING') { // Use messageType
-                  console.log(`[Knack Script] Received message type: ${messageType}`);
+              if (type !== 'PING') { // Avoid flooding logs with pings
+                  console.log(`[Knack Script] Received message type: ${type}`);
                   // debugLog("[Knack Script] Message data:", data); // Optional: Log data for debugging
               }
   
               // Handle APP_READY separately to send initial data
-               if (messageType === 'APP_READY') { // Use messageType
+               if (type === 'APP_READY') {
                    console.log("Flashcard app: React app reported APP_READY.");
                     // Double check if user object is ready
                     if (!window.currentKnackUser || !window.currentKnackUser.id) {
@@ -972,7 +902,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
                    loadFlashcardUserData(window.currentKnackUser.id, function(userData) {
                         // Ensure iframeWindow is still valid
-                       if (iframe && iframe.contentWindow) { 
+                       if (iframeWindow && iframe.contentWindow === iframeWindow) { // Check if iframe still exists
                            const initialData = {
                                type: 'KNACK_USER_INFO',
                                data: {
@@ -991,9 +921,8 @@ function safeParseJSON(jsonString, defaultVal = null) {
                                }
                            };
                            debugLog("--> Sending KNACK_USER_INFO to React App", initialData.data);
-                           // --- FIX: Use iframe.contentWindow --- 
-                           iframe.contentWindow.postMessage(initialData, '*'); 
-
+                           iframeWindow.postMessage(initialData, '*'); // Target specific iframe window
+  
                            // Show iframe after sending initial data
                            loadingDiv.style.display = 'none';
                            iframe.style.display = 'block';
@@ -1004,9 +933,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
                    });
                } else {
                   // Delegate other messages to the central handler, passing iframeWindow
-                  // --- REVISED: Pass the correct variables --- 
-                  handleMessageRouter(messageType, messageData, iframeWindow); // Pass messageType and the full messageData object
-                  // --- END REVISION ---
+                  handleMessageRouter(type, data, iframeWindow);
                }
          };
   
@@ -1019,7 +946,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
     // --- Central Message Router ---
     // Routes messages received from the React app iframe to specific handlers
-    function handleMessageRouter(type, data, iframeWindow) { // 'data' here IS the full messageData object
+    function handleMessageRouter(type, data, iframeWindow) { // Renamed from handleMessage to avoid conflict
       // Basic validation
       if (!type) {
           console.warn("[Knack Script] Received message without type.");
@@ -1035,7 +962,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
       switch (type) {
         case 'SAVE_DATA':
-          handleSaveDataRequest(data, iframeWindow); // Pass the full messageData object
+          handleSaveDataRequest(data, iframeWindow); // Pass iframeWindow
           break;
         case 'ADD_TO_BANK':
           handleAddToBankRequest(data, iframeWindow); // Pass iframeWindow
@@ -1084,40 +1011,32 @@ function safeParseJSON(jsonString, defaultVal = null) {
     // --- Specific Message Handlers (Using Save Queue & Correct PostMessage Target) ---
   
     // Handles 'SAVE_DATA' request from React app
-    // --- RENAMED PARAMETER from 'data' to 'saveDataMessage' ---
-    async function handleSaveDataRequest(saveDataMessage, iframeWindow) { 
+    async function handleSaveDataRequest(data, iframeWindow) {
       console.log("[Knack Script] Handling SAVE_DATA request");
-      // --- Added Detailed Logging ---
-      // This should now log the actual object received
-      console.log("[Knack Script] Received SAVE_DATA payload:", JSON.stringify(saveDataMessage, null, 2)); 
-      // --- End Added Logging ---
-      // --- Use RENAMED PARAMETER --- 
-      if (!saveDataMessage || !saveDataMessage.recordId) { 
+      if (!data || !data.recordId) {
           console.error("[Knack Script] SAVE_DATA request missing recordId.");
            // CORRECTION: Target iframeWindow for response
           if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: false, error: "Missing recordId" }, '*');
           return;
       }
-      // --- Use RENAMED PARAMETER --- 
-      debugLog("[Knack Script] Data received for SAVE_DATA:", saveDataMessage);
+      debugLog("[Knack Script] Data received for SAVE_DATA:", data);
   
       try {
         // Add the 'full' save operation to the queue
         await saveQueue.addToQueue({
           type: 'full',
-          // --- Use RENAMED PARAMETER --- 
-          data: saveDataMessage, // Pass the whole data object received
-          recordId: saveDataMessage.recordId,
-          preserveFields: saveDataMessage.preserveFields || false // Default preserveFields to false if not provided
+          data: data, // Pass the whole data object received
+          recordId: data.recordId,
+          preserveFields: data.preserveFields || false // Default preserveFields to false if not provided
         });
   
-        console.log(`[Knack Script] SAVE_DATA for record ${saveDataMessage.recordId} completed successfully.`);
+        console.log(`[Knack Script] SAVE_DATA for record ${data.recordId} completed successfully.`);
         // CORRECTION: Target iframeWindow for response
         if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: true, timestamp: new Date().toISOString() }, '*');
   
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[Knack Script] SAVE_DATA failed for record ${saveDataMessage.recordId}:`, errorMessage);
+        console.error(`[Knack Script] SAVE_DATA failed for record ${data.recordId}:`, errorMessage);
         // CORRECTION: Target iframeWindow for response
         if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: false, error: errorMessage || 'Unknown save error' }, '*');
       }
@@ -1603,233 +1522,115 @@ async function handleKnackRequest(data, iframeWindow) {
           });
     }
   
-     // Load user's flashcard data (Object_102) - Enhanced for multi-subject support
-function loadFlashcardUserData(userId, callback) {
-  console.log(`[Knack Script] Loading flashcard user data for user ID: ${userId}`);
-  const findRecordApiCall = () => new Promise((resolve, reject) => {
-      $.ajax({
-          url: `${KNACK_API_URL}/objects/${FLASHCARD_OBJECT}/records`,
-          type: 'GET',
-          headers: saveQueue.getKnackHeaders(), // Use headers from queue instance
-          data: {
-              format: 'raw', // Important: Use raw format
-              filters: JSON.stringify({
-                  match: 'and',
-                  rules: [{ field: FIELD_MAPPING.userId, operator: 'is', value: userId }]
-              })
-          },
-          success: resolve,
-          error: reject // Let retry handle failures
-      });
-  });
-
-  retryApiCall(findRecordApiCall)
-    .then((response) => {
-      debugLog("[Knack Script] Flashcard User data search response:", response);
-      if (response && response.records && response.records.length > 0) {
-        const record = response.records[0];
-        console.log(`[Knack Script] Found existing flashcard record: ${record.id}`);
-        
-        try {
-            // Use enhanced data processing from MultiSubjectBridge
-            const userData = {
-                recordId: record.id,
-                cards: [],
-                spacedRepetition: { box1: [], box2: [], box3: [], box4: [], box5: [] },
-                topicLists: [],
-                colorMapping: {},
-                topicMetadata: [],
-                lastSaved: record[FIELD_MAPPING.lastSaved] || null
-            };
-            
-            // Enhanced parsing for cards with better error handling
-            const rawCardData = record[FIELD_MAPPING.cardBankData];
-            if (rawCardData) {
-                try {
-                    // First try to decode if needed
-                    let decodedData = rawCardData;
-                    if (typeof rawCardData === 'string' && rawCardData.includes('%')) {
-                        try {
-                            decodedData = safeDecodeURIComponent(rawCardData);
-                        } catch (decodeError) {
-                            console.error('[Knack Script] Error with primary decode, trying backup method:', decodeError);
-                            // Try handling broken encodings
-                            decodedData = String(rawCardData)
-                                .replace(/%(?![0-9A-Fa-f]{2})/g, '%25'); // Fix invalid % sequences
-                            try {
-                                decodedData = decodeURIComponent(decodedData);
-                            } catch (secondError) {
-                                console.error('[Knack Script] Advanced URI decode failed, using original:', secondError);
-                            }
-                        }
-                    }
-                    
-                    // Parse the JSON safely
-                    userData.cards = safeParseJSON(decodedData, []);
-                    userData.cards = migrateTypeToQuestionType(userData.cards); // Migrate legacy types
-                    userData.cards = standardizeCards(userData.cards); // Standardize structure
-                } catch (cardError) {
-                    console.error('[Knack Script] Fatal error processing cards:', cardError);
-                    userData.cards = []; // Reset to empty array
-                }
-            }
-            console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
-            
-            // Enhanced parsing for spaced repetition
-            for (let i = 1; i <= 5; i++) {
-                const fieldKey = FIELD_MAPPING[`box${i}Data`];
-                const boxData = record[fieldKey];
-                try {
-                    if (boxData) {
-                        let decodedBox = boxData;
-                        if (typeof boxData === 'string' && boxData.includes('%')) {
-                            try {
-                                decodedBox = safeDecodeURIComponent(boxData);
-                            } catch (e) {
-                                console.error(`[Knack Script] Error decoding box${i} data:`, e);
-                            }
-                        }
-                        userData.spacedRepetition[`box${i}`] = safeParseJSON(decodedBox, []);
-                    } else {
-                        userData.spacedRepetition[`box${i}`] = [];
-                    }
-                } catch (boxError) {
-                    console.error(`[Knack Script] Error processing box${i}:`, boxError);
-                    userData.spacedRepetition[`box${i}`] = [];
-                }
-            }
-            console.log(`[Knack Script] Loaded spaced repetition data.`);
-            
-            // Enhanced parsing for topic lists - CRITICAL for multi-subject
-            const rawTopicLists = record[FIELD_MAPPING.topicLists];
-            try {
-                if (rawTopicLists) {
-                    let decodedLists = rawTopicLists;
-                    if (typeof rawTopicLists === 'string' && rawTopicLists.includes('%')) {
-                        try {
-                            decodedLists = safeDecodeURIComponent(rawTopicLists);
-                        } catch (decodeError) {
-                            console.error('[Knack Script] Topic lists decode error, trying backup:', decodeError);
-                            // Try to recover with pattern matching
-                            const jsonPattern = /\[\s*\{.*\}\s*\]/s;
-                            const match = String(rawTopicLists).match(jsonPattern);
-                            if (match) {
-                                console.log('[Knack Script] Found JSON pattern in topic lists');
-                                decodedLists = match[0];
-                            }
-                        }
-                    }
-                    
-                    const parsedLists = safeParseJSON(decodedLists, []);
-                    
-                    // Ensure topic lists have minimal valid structure
-                    userData.topicLists = Array.isArray(parsedLists) ? parsedLists.map(list => {
-                        // Basic validation
-                        if (!list || typeof list !== 'object') return null;
-                        
-                        // Clean up potentially malformed lists
-                        return {
-                            subject: list.subject || "General",
-                            topics: Array.isArray(list.topics) ? list.topics.filter(Boolean) : [],
-                            color: list.color || "#808080"
-                        };
-                    }).filter(Boolean) : [];
-                }
-            } catch (listError) {
-                console.error('[Knack Script] Error processing topic lists:', listError);
-                userData.topicLists = [];
-            }
-            console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists.`);
-            
-            // Enhanced parsing for color mapping
-            const rawColorData = record[FIELD_MAPPING.colorMapping];
-            try {
-                if (rawColorData) {
-                    let decodedColor = rawColorData;
-                    if (typeof rawColorData === 'string' && rawColorData.includes('%')) {
-                        try {
-                            decodedColor = safeDecodeURIComponent(rawColorData);
-                        } catch (e) {
-                            console.error('[Knack Script] Error decoding color mapping:', e);
-                        }
-                    }
-                    userData.colorMapping = safeParseJSON(decodedColor, {});
-                    // Ensure it's an object
-                    if (typeof userData.colorMapping !== 'object' || userData.colorMapping === null) {
-                        userData.colorMapping = {};
-                    }
-                }
-            } catch (colorError) {
-                console.error('[Knack Script] Error processing color mapping:', colorError);
-                userData.colorMapping = {};
-            }
-            console.log(`[Knack Script] Loaded color mapping.`);
-            
-            // Enhanced parsing for topic metadata
-            const rawMetaData = record[FIELD_MAPPING.topicMetadata];
-            try {
-                if (rawMetaData) {
-                    let decodedMeta = rawMetaData;
-                    if (typeof rawMetaData === 'string' && rawMetaData.includes('%')) {
-                        try {
-                            decodedMeta = safeDecodeURIComponent(rawMetaData);
-                        } catch (e) {
-                            console.error('[Knack Script] Error decoding topic metadata:', e);
-                        }
-                    }
-                    userData.topicMetadata = safeParseJSON(decodedMeta, []);
-                    // Ensure it's an array
-                    if (!Array.isArray(userData.topicMetadata)) {
-                        userData.topicMetadata = [];
-                    }
-                }
-            } catch (metaError) {
-                console.error('[Knack Script] Error processing topic metadata:', metaError);
-                userData.topicMetadata = [];
-            }
-            console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
-
-            debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
-            callback(userData);
-        } catch (e) {
-            console.error("[Knack Script] Error processing user data fields:", e);
-            // Return partially assembled data or fallback
-            callback({ 
-                recordId: record.id,
-                cards: [],
-                topicLists: [],
-                colorMapping: {},
-                spacedRepetition: { box1: [], box2: [], box3: [], box4: [], box5: [] }
-            });
-        }
-
-      } else {
-        // No existing data, create a new record
-        console.log(`[Knack Script] No existing flashcard record found for user ${userId}, creating new one...`);
-        createFlashcardUserRecord(userId, function(success, newRecordId) {
-          if (success && newRecordId) {
-             console.log(`[Knack Script] New record created with ID: ${newRecordId}`);
-            // Return the default empty structure with the new record ID
-            callback({
-              recordId: newRecordId,
-              cards: [],
-              spacedRepetition: { box1: [], box2: [], box3: [], box4: [], box5: [] },
-              topicLists: [],
-              topicMetadata: [],
-              colorMapping: {}
-            });
-          } else {
-              console.error(`[Knack Script] Failed to create new flashcard record for user ${userId}.`);
-              callback(null); // Indicate failure to load/create data
-          }
-        });
-      }
-    })
-    .catch((error) => {
-      console.error("[Knack Script] Error loading flashcard user data after retries:", error);
-      callback(null); // Indicate failure
-    });
-}
+     // Load user's flashcard data (Object_102)
+     function loadFlashcardUserData(userId, callback) {
+         console.log(`[Knack Script] Loading flashcard user data for user ID: ${userId}`);
+         const findRecordApiCall = () => new Promise((resolve, reject) => {
+             $.ajax({
+                 url: `${KNACK_API_URL}/objects/${FLASHCARD_OBJECT}/records`,
+                 type: 'GET',
+                 headers: saveQueue.getKnackHeaders(), // Use headers from queue instance
+                 data: {
+                     format: 'raw', // Important: Use raw format
+                     filters: JSON.stringify({
+                         match: 'and',
+                         rules: [{ field: FIELD_MAPPING.userId, operator: 'is', value: userId }]
+                     })
+                 },
+                 success: resolve,
+                 error: reject // Let retry handle failures
+             });
+         });
+  
+         retryApiCall(findRecordApiCall)
+           .then((response) => {
+             debugLog("[Knack Script] Flashcard User data search response:", response);
+             if (response && response.records && response.records.length > 0) {
+               const record = response.records[0];
+               console.log(`[Knack Script] Found existing flashcard record: ${record.id}`);
+               // debugLog("[Knack Script] RAW flashcard record data:", record);
+  
+               // --- Assemble userData from record fields safely ---
+               let userData = { recordId: record.id };
+               try {
+                   // Helper to parse potentially encoded fields
+                   const parseField = (fieldName) => {
+                      const rawValue = record[fieldName];
+                      if (rawValue === undefined || rawValue === null) return null;
+                      // Decode only if it's a string and contains '%'
+                      const decodedValue = (typeof rawValue === 'string' && rawValue.includes('%'))
+                           ? safeDecodeURIComponent(rawValue)
+                           : rawValue;
+                      // Parse if it's potentially JSON (string starting with { or [)
+                       if (typeof decodedValue === 'string' && (decodedValue.startsWith('{') || decodedValue.startsWith('['))) {
+                           return safeParseJSON(decodedValue);
+                       }
+                       // Return decoded value otherwise (might be plain string, number etc.)
+                       return decodedValue;
+                   };
+  
+  
+                   userData.cards = parseField(FIELD_MAPPING.cardBankData) || [];
+                   userData.cards = migrateTypeToQuestionType(userData.cards); // Migrate legacy types
+                   userData.cards = standardizeCards(userData.cards); // Standardize structure
+                   console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
+  
+                   userData.spacedRepetition = {};
+                   for (let i = 1; i <= 5; i++) {
+                       const fieldKey = FIELD_MAPPING[`box${i}Data`];
+                       userData.spacedRepetition[`box${i}`] = parseField(fieldKey) || [];
+                   }
+                   console.log(`[Knack Script] Loaded spaced repetition data.`);
+  
+                   userData.topicLists = parseField(FIELD_MAPPING.topicLists) || [];
+                   console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists.`);
+  
+                   userData.colorMapping = parseField(FIELD_MAPPING.colorMapping) || {};
+                   console.log(`[Knack Script] Loaded color mapping.`);
+  
+                   userData.topicMetadata = parseField(FIELD_MAPPING.topicMetadata) || [];
+                   console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
+  
+                   // Add lastSaved timestamp if needed
+                   userData.lastSaved = record[FIELD_MAPPING.lastSaved];
+  
+  
+                   debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
+                   callback(userData);
+  
+               } catch (e) {
+                 console.error("[Knack Script] Error parsing loaded user data fields:", e);
+                 // Return partially assembled data or fallback
+                 callback(userData); // Return whatever was parsed successfully before the error
+               }
+  
+             } else {
+               // No existing data, create a new record
+               console.log(`[Knack Script] No existing flashcard record found for user ${userId}, creating new one...`);
+               createFlashcardUserRecord(userId, function(success, newRecordId) {
+                 if (success && newRecordId) {
+                    console.log(`[Knack Script] New record created with ID: ${newRecordId}`);
+                   // Return the default empty structure with the new record ID
+                   callback({
+                     recordId: newRecordId,
+                     cards: [],
+                     spacedRepetition: { box1: [], box2: [], box3: [], box4: [], box5: [] },
+                     topicLists: [],
+                     topicMetadata: [],
+                     colorMapping: {}
+                   });
+                 } else {
+                     console.error(`[Knack Script] Failed to create new flashcard record for user ${userId}.`);
+                   callback(null); // Indicate failure to load/create data
+                 }
+               });
+             }
+           })
+           .catch((error) => {
+             console.error("[Knack Script] Error loading flashcard user data after retries:", error);
+             callback(null); // Indicate failure
+           });
+     }
   
      // Create a new flashcard user record in Object_102
      function createFlashcardUserRecord(userId, callback) {
@@ -2482,6 +2283,5 @@ function loadFlashcardUserData(userId, callback) {
   
    // --- Self-Executing Function Closure ---
  }());
-
 
 
