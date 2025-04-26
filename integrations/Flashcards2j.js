@@ -991,9 +991,6 @@
              handleRecordIdRequest(data, iframeWindow); // Pass iframeWindow
              break;
              case 'KNACK_REQUEST':
-                // Log the request for debugging
-                console.log(`[Knack Script] Received KNACK_REQUEST:`, data);
-                
                 // Reconstruct the full message structure that handleKnackRequest expects
                 handleKnackRequest({
                   action: data.action,
@@ -2282,6 +2279,5 @@ async function handleKnackRequest(data, iframeWindow) {
      // message routing structure (handleMessageRouter -> specific handlers -> saveQueue).
   
    // --- Self-Executing Function Closure ---
- }());
-
+ }()); 
 
