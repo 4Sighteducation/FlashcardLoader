@@ -958,22 +958,20 @@ function safeParseJSON(jsonString, defaultVal = null) {
                   return;
               }
   
-              if (!event.data || !event.data.type) {
-                console.warn("[Knack Script] Ignoring message with invalid format:", event.data);
-                return;
-              }
-  
-              const { type, data } = event.data;
-              const iframeWindow = iframe.contentWindow; // Reference to the iframe's window
-  
+              // --- REVISED: Get type and the full data object correctly ---
+              const messageType = event.data?.type; // Get the type safely
+              const messageData = event.data; // Get the whole data object
+              // const { type, data } = event.data; // REMOVE incorrect destructuring
+              // --- END REVISION ---
+
               // Log message receipt
-              if (type !== 'PING') { // Avoid flooding logs with pings
-                  console.log(`[Knack Script] Received message type: ${type}`);
+              if (messageType !== 'PING') { // Use messageType
+                  console.log(`[Knack Script] Received message type: ${messageType}`);
                   // debugLog("[Knack Script] Message data:", data); // Optional: Log data for debugging
               }
   
               // Handle APP_READY separately to send initial data
-               if (type === 'APP_READY') {
+               if (messageType === 'APP_READY') { // Use messageType
                    console.log("Flashcard app: React app reported APP_READY.");
                     // Double check if user object is ready
                     if (!window.currentKnackUser || !window.currentKnackUser.id) {
@@ -1016,7 +1014,9 @@ function safeParseJSON(jsonString, defaultVal = null) {
                    });
                } else {
                   // Delegate other messages to the central handler, passing iframeWindow
-                  handleMessageRouter(type, data, iframeWindow);
+                  // --- REVISED: Pass the correct variables --- 
+                  handleMessageRouter(messageType, messageData, iframeWindow); // Pass messageType and the full messageData object
+                  // --- END REVISION ---
                }
          };
   
@@ -1029,7 +1029,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
     // --- Central Message Router ---
     // Routes messages received from the React app iframe to specific handlers
-    function handleMessageRouter(type, data, iframeWindow) { // Renamed from handleMessage to avoid conflict
+    function handleMessageRouter(type, data, iframeWindow) { // 'data' here IS the full messageData object
       // Basic validation
       if (!type) {
           console.warn("[Knack Script] Received message without type.");
@@ -1045,7 +1045,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
       switch (type) {
         case 'SAVE_DATA':
-          handleSaveDataRequest(data, iframeWindow); // Pass iframeWindow
+          handleSaveDataRequest(data, iframeWindow); // Pass the full messageData object
           break;
         case 'ADD_TO_BANK':
           handleAddToBankRequest(data, iframeWindow); // Pass iframeWindow
@@ -1094,35 +1094,40 @@ function safeParseJSON(jsonString, defaultVal = null) {
     // --- Specific Message Handlers (Using Save Queue & Correct PostMessage Target) ---
   
     // Handles 'SAVE_DATA' request from React app
-    async function handleSaveDataRequest(data, iframeWindow) {
+    // --- RENAMED PARAMETER from 'data' to 'saveDataMessage' ---
+    async function handleSaveDataRequest(saveDataMessage, iframeWindow) { 
       console.log("[Knack Script] Handling SAVE_DATA request");
       // --- Added Detailed Logging ---
-      console.log("[Knack Script] Received SAVE_DATA payload:", JSON.stringify(data, null, 2));
+      // This should now log the actual object received
+      console.log("[Knack Script] Received SAVE_DATA payload:", JSON.stringify(saveDataMessage, null, 2)); 
       // --- End Added Logging ---
-      if (!data || !data.recordId) {
+      // --- Use RENAMED PARAMETER --- 
+      if (!saveDataMessage || !saveDataMessage.recordId) { 
           console.error("[Knack Script] SAVE_DATA request missing recordId.");
            // CORRECTION: Target iframeWindow for response
           if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: false, error: "Missing recordId" }, '*');
           return;
       }
-      debugLog("[Knack Script] Data received for SAVE_DATA:", data);
+      // --- Use RENAMED PARAMETER --- 
+      debugLog("[Knack Script] Data received for SAVE_DATA:", saveDataMessage);
   
       try {
         // Add the 'full' save operation to the queue
         await saveQueue.addToQueue({
           type: 'full',
-          data: data, // Pass the whole data object received
-          recordId: data.recordId,
-          preserveFields: data.preserveFields || false // Default preserveFields to false if not provided
+          // --- Use RENAMED PARAMETER --- 
+          data: saveDataMessage, // Pass the whole data object received
+          recordId: saveDataMessage.recordId,
+          preserveFields: saveDataMessage.preserveFields || false // Default preserveFields to false if not provided
         });
   
-        console.log(`[Knack Script] SAVE_DATA for record ${data.recordId} completed successfully.`);
+        console.log(`[Knack Script] SAVE_DATA for record ${saveDataMessage.recordId} completed successfully.`);
         // CORRECTION: Target iframeWindow for response
         if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: true, timestamp: new Date().toISOString() }, '*');
   
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[Knack Script] SAVE_DATA failed for record ${data.recordId}:`, errorMessage);
+        console.error(`[Knack Script] SAVE_DATA failed for record ${saveDataMessage.recordId}:`, errorMessage);
         // CORRECTION: Target iframeWindow for response
         if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: false, error: errorMessage || 'Unknown save error' }, '*');
       }
