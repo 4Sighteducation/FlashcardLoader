@@ -983,7 +983,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
                    loadFlashcardUserData(window.currentKnackUser.id, function(userData) {
                         // Ensure iframeWindow is still valid
-                       if (iframeWindow && iframe.contentWindow === iframeWindow) { // Check if iframe still exists
+                       if (iframe && iframe.contentWindow) { 
                            const initialData = {
                                type: 'KNACK_USER_INFO',
                                data: {
@@ -1002,8 +1002,9 @@ function safeParseJSON(jsonString, defaultVal = null) {
                                }
                            };
                            debugLog("--> Sending KNACK_USER_INFO to React App", initialData.data);
-                           iframeWindow.postMessage(initialData, '*'); // Target specific iframe window
-  
+                           // --- FIX: Use iframe.contentWindow --- 
+                           iframe.contentWindow.postMessage(initialData, '*'); 
+
                            // Show iframe after sending initial data
                            loadingDiv.style.display = 'none';
                            iframe.style.display = 'block';
