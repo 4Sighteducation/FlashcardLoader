@@ -382,9 +382,15 @@ function safeParseJSON(jsonString, defaultVal = null) {
   
         try {
           const updateData = await this.prepareSaveData(operation);
-          debugLog("[SaveQueue] Prepared update data", updateData);
+          // --- DEBUG: Log prepared data before save attempt ---
+          console.log(`[SaveQueue DEBUG] Data prepared for API PUT (Record ${operation.recordId}):`, JSON.stringify(updateData));
+          debugLog("[SaveQueue] Prepared update data (Detailed)", updateData); // Keep detailed log too
+          // --- END DEBUG ---
           const response = await this.performSave(updateData, operation.recordId);
-          debugLog("[SaveQueue] API Save successful", response);
+          // --- DEBUG: Log API response on success --- 
+          console.log(`[SaveQueue DEBUG] API PUT success response (Record ${operation.recordId}):`, JSON.stringify(response));
+          debugLog("[SaveQueue] API Save successful (Detailed)", response); // Keep detailed log
+          // --- END DEBUG ---
           this.handleSaveSuccess(operation);
         } catch (error) {
            // Error should be the original error object from performSave or prepareSaveData
@@ -612,10 +618,16 @@ function safeParseJSON(jsonString, defaultVal = null) {
                    headers: this.getKnackHeaders(), // Use headers method
                    data: JSON.stringify(updateData), // Send prepared data
                    success: function(response) {
+                      // --- DEBUG: Log success directly --- 
+                      console.log(`[SaveQueue DEBUG] AJAX PUT success for record ${recordId}`);
+                      // --- END DEBUG ---
                       console.log(`[SaveQueue] API PUT successful for record ${recordId}`);
                       resolve(response);
                    },
                    error: function(jqXHR, textStatus, errorThrown) {
+                       // --- DEBUG: Log error directly --- 
+                       console.error(`[SaveQueue DEBUG] AJAX PUT failed for record ${recordId}. Status: ${jqXHR.status}, Error: ${errorThrown}`);
+                       // --- END DEBUG ---
                        // Log more detailed error info
                       console.error(`[SaveQueue] API PUT failed for record ${recordId}: Status ${jqXHR.status} - ${errorThrown}`, jqXHR.responseText);
                        // Create a more informative error object
@@ -2493,4 +2505,5 @@ function loadFlashcardUserData(userId, callback) {
   
    // --- Self-Executing Function Closure ---
  }());
+
 
