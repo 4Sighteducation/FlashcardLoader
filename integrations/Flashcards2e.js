@@ -1830,7 +1830,7 @@ function loadFlashcardUserData(userId, callback) {
             });
           } else {
               console.error(`[Knack Script] Failed to create new flashcard record for user ${userId}.`);
-            callback(null); // Indicate failure to load/create data
+              callback(null); // Indicate failure to load/create data
           }
         });
       }
