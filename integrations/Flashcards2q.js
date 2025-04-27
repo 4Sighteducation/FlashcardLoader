@@ -1000,9 +1000,9 @@ function safeParseJSON(jsonString, defaultVal = null) {
                    });
                } else {
                   // Delegate other messages to the central handler, passing iframeWindow
-                  // --- REVISED: Pass the correct variables --- 
-                  handleMessageRouter(messageType, messageData, iframeWindow); // Pass messageType and the full messageData object
-                  // --- END REVISION ---
+                  // --- CORRECTED: Pass iframe.contentWindow --- 
+                  handleMessageRouter(messageType, messageData, iframe.contentWindow); 
+                  // --- END CORRECTION ---
                }
          };
   
