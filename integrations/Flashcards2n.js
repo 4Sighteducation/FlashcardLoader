@@ -1605,6 +1605,9 @@ async function handleKnackRequest(data, iframeWindow) {
 function loadFlashcardUserData(userId, callback) {
   console.log(`[Knack Script] Loading flashcard user data for user ID: ${userId}`);
   const findRecordApiCall = () => new Promise((resolve, reject) => {
+      // --- DEBUG: Log API call details ---
+      console.log(`[loadFlashcardUserData DEBUG] Making GET request to ${KNACK_API_URL}/objects/${FLASHCARD_OBJECT}/records with filter for userId: ${userId}`);
+      // --- END DEBUG ---
       $.ajax({
           url: `${KNACK_API_URL}/objects/${FLASHCARD_OBJECT}/records`,
           type: 'GET',
@@ -1616,14 +1619,30 @@ function loadFlashcardUserData(userId, callback) {
                   rules: [{ field: FIELD_MAPPING.userId, operator: 'is', value: userId }]
               })
           },
-          success: resolve,
-          error: reject // Let retry handle failures
+          success: (response) => { // Changed to arrow function for consistent logging context
+              // --- DEBUG: Log success --- 
+              console.log(`[loadFlashcardUserData DEBUG] GET request succeeded. Response records count: ${response?.records?.length || 0}`);
+              // --- END DEBUG ---
+              resolve(response);
+          },
+          error: (jqXHR, textStatus, errorThrown) => { // Changed to arrow function
+             // --- DEBUG: Log failure --- 
+             console.error(`[loadFlashcardUserData DEBUG] GET request failed. Status: ${jqXHR.status}, Error: ${errorThrown}`);
+             // --- END DEBUG ---
+             const error = new Error(`Failed find record for user ${userId}: ${jqXHR.status} ${errorThrown}`);
+             error.status = jqXHR.status;
+             error.responseText = jqXHR.responseText;
+             reject(error);
+          }
       });
   });
 
   retryApiCall(findRecordApiCall)
     .then((response) => {
-      debugLog("[Knack Script] Flashcard User data search response:", response);
+      // --- DEBUG: Log the response received after retries --- 
+      console.log("[loadFlashcardUserData DEBUG] Response object AFTER retryApiCall:", response); 
+      debugLog("[loadFlashcardUserData DEBUG] Flashcard User data search response (Detailed):", response);
+      // --- END DEBUG ---
       if (response && response.records && response.records.length > 0) {
         const record = response.records[0];
         console.log(`[Knack Script] Found existing flashcard record: ${record.id}`);
@@ -1803,6 +1822,9 @@ function loadFlashcardUserData(userId, callback) {
 
       } else {
         // No existing data, create a new record
+        // --- DEBUG: Log decision to create --- 
+        console.log(`[loadFlashcardUserData DEBUG] No existing record found (or response invalid/empty), proceeding to create new record for user ${userId}.`);
+        // --- END DEBUG ---
         console.log(`[Knack Script] No existing flashcard record found for user ${userId}, creating new one...`);
         createFlashcardUserRecord(userId, function(success, newRecordId) {
           if (success && newRecordId) {
@@ -1824,7 +1846,10 @@ function loadFlashcardUserData(userId, callback) {
       }
     })
     .catch((error) => {
-      console.error("[Knack Script] Error loading flashcard user data after retries:", error);
+      // --- DEBUG: Log the overall error after retries failed --- 
+      console.error("[loadFlashcardUserData DEBUG] Overall error after findRecordApiCall retries failed:", error);
+      // --- END DEBUG ---
+      console.error("[Knack Script] Error loading flashcard user data after retries:", error.status, error.responseText || error.message);
       callback(null); // Indicate failure
     });
 }
@@ -2480,3 +2505,4 @@ function loadFlashcardUserData(userId, callback) {
   
    // --- Self-Executing Function Closure ---
  }());
+
