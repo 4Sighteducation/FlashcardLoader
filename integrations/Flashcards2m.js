@@ -461,18 +461,15 @@ function safeParseJSON(jsonString, defaultVal = null) {
                    case 'full': // This is the primary case used now
                        console.log("[SaveQueue] Preparing 'full' save data by stringifying fields.");
                        // 'data' contains the raw JS objects/arrays (cards, colorMapping, etc.)
+                       // Stringify each relevant piece before adding to updateData
                        
-                       // --- DEBUGGING: Force minimal card data --- 
-                       const dummyCard = [{ id: "test_card_123", type: "card", subject: "Test", question: "Minimal Save Test", answer: "Success?" }];
+                       // --- DEBUGGING: Force minimal card data AGAIN, keep others --- 
+                       const dummyCard = [{ id: "test_card_456", type: "card", subject: "Test", question: "Minimal Save Test v2", answer: "Still Success?" }];
                        updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(dummyCard);
-                       console.warn("[SaveQueue DEBUG] OVERRIDING card data with minimal test payload.");
+                       console.warn("[SaveQueue DEBUG] OVERRIDING card data with minimal test payload (v2).");
                        // --- END DEBUGGING --- 
 
-                       // --- Temporarily comment out processing of actual data ---
-                       /*
-                       if (data.cards !== undefined) {
-                           updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(this.ensureSerializable(data.cards || []));
-                       }
+                       // --- Process other fields normally --- 
                        if (data.colorMapping !== undefined) {
                            updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(this.ensureSerializable(data.colorMapping || {}));
                        }
@@ -487,8 +484,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
                        if (data.topicMetadata !== undefined) {
                            updateData[FIELD_MAPPING.topicMetadata] = JSON.stringify(this.ensureSerializable(data.topicMetadata || []));
                        }
-                       */
-                       // --- End commenting out ---
+                       // --- End processing other fields --- 
                        break;
                    default:
                        console.error(`[SaveQueue] Unknown save operation type: ${type}`);
@@ -2484,4 +2480,3 @@ function loadFlashcardUserData(userId, callback) {
   
    // --- Self-Executing Function Closure ---
  }());
-
