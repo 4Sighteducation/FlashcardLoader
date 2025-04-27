@@ -999,8 +999,8 @@ function safeParseJSON(jsonString, defaultVal = null) {
                        }
                    });
                } else {
-                  // Delegate other messages to the central handler, passing iframeWindow
-                  // --- CORRECTED: Pass iframe.contentWindow --- 
+                  // Delegate other messages to the central handler
+                  // --- CORRECTED: Pass iframe.contentWindow to handleMessageRouter --- 
                   handleMessageRouter(messageType, messageData, iframe.contentWindow); 
                   // --- END CORRECTION ---
                }
