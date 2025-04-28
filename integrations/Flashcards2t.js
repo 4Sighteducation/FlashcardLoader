@@ -1098,6 +1098,12 @@ function safeParseJSON(jsonString, defaultVal = null) {
       debugLog("[Knack Script] Data received for SAVE_DATA:", saveDataMessage);
   
       try {
+        // Validate and structure colorMapping before saving
+        if (saveDataMessage.colorMapping) {
+          console.log("[Knack Script] Validating color mapping structure before save");
+          saveDataMessage.colorMapping = ensureValidColorMapping(saveDataMessage.colorMapping);
+        }
+        
         // Add the 'full' save operation to the queue
         await saveQueue.addToQueue({
           type: 'full',
@@ -1106,7 +1112,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
           recordId: saveDataMessage.recordId,
           preserveFields: saveDataMessage.preserveFields || false // Default preserveFields to false if not provided
         });
-  
+
         console.log(`[Knack Script] SAVE_DATA for record ${saveDataMessage.recordId} completed successfully.`);
         // --- FIX: Re-get iframe reference before sending result back --- 
         const iframeEl = document.getElementById('flashcard-app-iframe');
@@ -1912,6 +1918,35 @@ function loadFlashcardUserData(userId, callback) {
           }
   
   
+         // Initialize an empty color mapping structure
+         const initialColorMapping = {};
+         
+         // Predefined colors for subjects
+         const subjectPalette = [
+             '#4363d8', // Blue
+             '#3cb44b', // Green 
+             '#e6194B', // Red
+             '#ffe119', // Yellow
+             '#911eb4', // Purple
+             '#f58231', // Orange
+             '#42d4f4', // Light Blue
+             '#469990', // Teal
+             '#9A6324', // Brown
+             '#800000'  // Maroon
+         ];
+         
+         // If there's any subject info in the user object, pre-populate the mapping with distinct colors
+         if (user.subjects && Array.isArray(user.subjects)) {
+             user.subjects.forEach((subject, index) => {
+                 if (subject && typeof subject === 'string') {
+                     initialColorMapping[subject] = {
+                         base: subjectPalette[index % subjectPalette.length],
+                         topics: {}
+                     };
+                 }
+             });
+         }
+  
          // Basic data structure for a new record
          const data = {
              [FIELD_MAPPING.userId]: userId, // Link to the user ID (text field)
@@ -1925,7 +1960,7 @@ function loadFlashcardUserData(userId, callback) {
              [FIELD_MAPPING.box3Data]: JSON.stringify([]),
              [FIELD_MAPPING.box4Data]: JSON.stringify([]),
              [FIELD_MAPPING.box5Data]: JSON.stringify([]),
-             [FIELD_MAPPING.colorMapping]: JSON.stringify({}),
+             [FIELD_MAPPING.colorMapping]: JSON.stringify(initialColorMapping), // Initialize with proper structure
              [FIELD_MAPPING.topicLists]: JSON.stringify([]),
              [FIELD_MAPPING.topicMetadata]: JSON.stringify([])
          };
@@ -2293,61 +2328,77 @@ function loadFlashcardUserData(userId, callback) {
           const newShells = [];
           // Create copies to avoid modifying originals directly until the end
           const updatedMetadata = JSON.parse(JSON.stringify(currentTopicMetadata || []));
-          const updatedColors = JSON.parse(JSON.stringify(currentSubjectColors || {}));
+          let updatedColors = ensureValidColorMapping(currentSubjectColors || {});
   
           const idMap = new Map(); // Track processed shell IDs in this run to avoid intra-list duplicates
           const uniqueSubjects = new Set(topicLists.map(list => list.subject || "General"));
   
-          // --- Assign base colors if needed ---
-          const baseColors = ['#3cb44b','#4363d8','#e6194B','#911eb4','#f58231','#42d4f4','#f032e6','#469990','#9A6324','#800000','#808000','#000075','#e6beff','#aaffc3','#ffd8b1','#808080', '#fabebe', '#008080', '#e6beff', '#aa6e28', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075']; // Extended palette
-          let colorIndexOffset = Object.keys(updatedColors).length; // Start assigning after existing colors
+          // Always create a structured colorMapping for all subjects with predefined colors
+          const subjectPalette = [
+              '#4363d8', // Blue
+              '#3cb44b', // Green 
+              '#e6194B', // Red
+              '#ffe119', // Yellow
+              '#911eb4', // Purple
+              '#f58231', // Orange
+              '#42d4f4', // Light Blue
+              '#469990', // Teal
+              '#9A6324', // Brown
+              '#800000'  // Maroon
+          ];
           
-          // Initialize proper color structure for all subjects
-          uniqueSubjects.forEach((subject, index) => {
+          // Assign colors to subjects not already having a color
+          let colorIndex = 0;
+          uniqueSubjects.forEach(subject => {
               if (!updatedColors[subject]) {
-                  // Create a structured colorMapping entry for this subject
+                  // Create a new subject entry with a color from the palette
                   updatedColors[subject] = {
-                      base: "#f0f0f0", // Start with neutral light gray
-                      topics: {} // Initialize empty topics map
+                      base: subjectPalette[colorIndex % subjectPalette.length],
+                      topics: {}
                   };
+                  colorIndex++;
               } else if (typeof updatedColors[subject] === 'string') {
-                  // Convert old format to new structure if needed (backward compatibility)
+                  // Convert string format to structured format
                   const baseColor = updatedColors[subject];
                   updatedColors[subject] = {
                       base: baseColor,
                       topics: {}
                   };
+              } else if (updatedColors[subject]?.base === '#f0f0f0') {
+                  // Replace neutral color with a color from the palette
+                  updatedColors[subject].base = subjectPalette[colorIndex % subjectPalette.length];
+                  colorIndex++;
               }
           });
-
+  
           debugLog("[Shell Gen] Updated subject colors (structured):", updatedColors);
-
+  
           const now = new Date().toISOString();
-
+  
           // --- Process Lists ---
           topicLists.forEach(list => {
               if (!list || !Array.isArray(list.topics)) {
                    console.warn("[Shell Gen] Skipping invalid topic list:", list);
                   return;
               }
-
+  
               const subject = sanitizeField(list.subject || "General");
               const examBoard = sanitizeField(list.examBoard || "General"); // Use General if empty
               const examType = sanitizeField(list.examType || "Course"); // Use Course if empty
               
               // Get subject's base color from the structured object
               const subjectColor = updatedColors[subject]?.base || "#f0f0f0";
-
-              // Generate shades for topics
-              const topicColors = generateShadeVariations(subjectColor, list.topics.length);
-
+  
+              // Generate shades for topics - more variations for visual interest
+              const topicColors = generateShadeVariations(subjectColor, Math.max(10, list.topics.length));
+  
               list.topics.forEach((topic, index) => {
                   // Basic validation for topic object
                   if (!topic || (typeof topic !== 'object' && typeof topic !== 'string') || (!topic.id && !topic.name && !topic.topic && typeof topic !== 'string')) {
                        console.warn("[Shell Gen] Skipping invalid topic item:", topic);
                       return;
                   }
-
+  
                   // Handle case where topic might just be a string name
                    const isStringTopic = typeof topic === 'string';
                    const topicName = sanitizeField(isStringTopic ? topic : (topic.name || topic.topic || "Unknown Topic"));
@@ -2355,12 +2406,12 @@ function loadFlashcardUserData(userId, callback) {
                    const topicId = isStringTopic
                        ? `topic_${subject}_${topicName.replace(/[^a-zA-Z0-9]/g, '_')}` // Generate ID from subject/name
                        : (topic.id || `topic_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
-
+  
                   if (idMap.has(topicId)) {
                        console.log(`[Shell Gen] Skipping duplicate topic ID in this run: ${topicId}`);
                       return; // Skip duplicates within this generation run
                   }
-
+  
                   // Get or assign a topic color
                   const topicColor = topicColors[index % topicColors.length];
                   
@@ -2369,7 +2420,7 @@ function loadFlashcardUserData(userId, callback) {
                       updatedColors[subject].topics = {};
                   }
                   updatedColors[subject].topics[topicName] = topicColor;
-
+  
                    // Create the shell using standardizeCards for consistency
                     const shellData = {
                        id: topicId,
@@ -2386,14 +2437,14 @@ function loadFlashcardUserData(userId, callback) {
                        createdAt: now, // Add creation timestamp
                        updatedAt: now
                    };
-
+  
                    const standardizedShellArray = standardizeCards([shellData]); // Standardize the single shell
                    const shell = standardizedShellArray.length > 0 ? standardizedShellArray[0] : null;
-
+  
                   if(shell) { // Ensure standardization didn't fail
                       newShells.push(shell);
                       idMap.set(topicId, true); // Mark ID as processed for this run
-
+  
                       // --- Update Topic Metadata ---
                       const metadataIndex = updatedMetadata.findIndex(m => m.topicId === topicId);
                       const newMetadataEntry = {
@@ -2419,7 +2470,7 @@ function loadFlashcardUserData(userId, callback) {
            debugLog("[Shell Gen] Generated Shells:", newShells);
            debugLog("[Shell Gen] Final Color Mapping:", updatedColors);
            debugLog("[Shell Gen] Final Metadata:", updatedMetadata);
-
+  
           return { newShells, updatedColors, updatedMetadata };
       }
   
@@ -2576,3 +2627,95 @@ function loadFlashcardUserData(userId, callback) {
   
    // --- Self-Executing Function Closure ---
  }());
+
+// Add/replace the assignSubjectColorPalette function with this updated version:
+
+// Generate color palette assignment for subjects and topics
+function assignSubjectColorPalette(subject, colorMapping) {
+    // Fixed palette of distinct colors for subjects
+    const subjectPalette = [
+        '#4363d8', // Blue
+        '#3cb44b', // Green 
+        '#e6194B', // Red
+        '#ffe119', // Yellow
+        '#911eb4', // Purple
+        '#f58231', // Orange
+        '#42d4f4', // Light Blue
+        '#469990', // Teal
+        '#9A6324', // Brown
+        '#800000'  // Maroon
+    ];
+    
+    const mapping = ensureValidColorMapping(colorMapping);
+    
+    // Get existing subjects to determine position for new subjects
+    const existingSubjects = Object.keys(mapping).filter(s => s !== subject);
+    const subjectIndex = existingSubjects.length; // Use count of other subjects for index
+    
+    // Create/update subject entry if needed
+    if (!mapping[subject] || !mapping[subject].base === '#f0f0f0') {
+        // Assign a color from the palette using count as index
+        const baseColor = subjectPalette[subjectIndex % subjectPalette.length];
+        
+        if (!mapping[subject]) {
+            mapping[subject] = {
+                base: baseColor,
+                topics: {}
+            };
+        } else {
+            mapping[subject].base = baseColor;
+            if (!mapping[subject].topics) {
+                mapping[subject].topics = {};
+            }
+        }
+        console.log(`[Knack Script] Assigned color ${baseColor} to subject: ${subject}`);
+    }
+    
+    return mapping;
+}
+
+// Helper to ensure colorMapping has the correct structure
+function ensureValidColorMapping(colorMapping) {
+    if (!colorMapping || typeof colorMapping !== 'object') {
+        console.log("[Knack Script] Creating new colorMapping object.");
+        return {}; // Return empty object if invalid
+    }
+    
+    // Create a copy to avoid modifying the input directly
+    const updatedMapping = JSON.parse(JSON.stringify(colorMapping));
+    
+    // Check each subject entry
+    Object.keys(updatedMapping).forEach(subject => {
+        const subjectData = updatedMapping[subject];
+        
+        // Convert string values to proper structure
+        if (typeof subjectData === 'string') {
+            console.log(`[Knack Script] Converting string color value for ${subject} to proper structure.`);
+            updatedMapping[subject] = {
+                base: subjectData,
+                topics: {}
+            };
+        } 
+        // Ensure each subject has 'base' and 'topics' properties
+        else if (typeof subjectData === 'object' && subjectData !== null) {
+            if (!subjectData.base) {
+                console.log(`[Knack Script] Adding default base color for ${subject}.`);
+                subjectData.base = '#f0f0f0'; // Default base color
+            }
+            if (!subjectData.topics || typeof subjectData.topics !== 'object') {
+                console.log(`[Knack Script] Creating topics object for ${subject}.`);
+                subjectData.topics = {};
+            }
+        }
+        // Replace invalid values with proper structure
+        else {
+            console.log(`[Knack Script] Replacing invalid value for ${subject} with proper structure.`);
+            updatedMapping[subject] = {
+                base: '#f0f0f0', // Default base color
+                topics: {}
+            };
+        }
+    });
+    
+    return updatedMapping;
+}
