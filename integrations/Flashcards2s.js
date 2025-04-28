@@ -1995,8 +1995,9 @@ function loadFlashcardUserData(userId, callback) {
                    keyPoints: Array.isArray(cleanCard.keyPoints) ? cleanCard.keyPoints.map(kp => sanitizeField(kp)) : [],
                    detailedAnswer: sanitizeField(cleanCard.detailedAnswer || ''),
                    additionalInfo: sanitizeField(cleanCard.additionalInfo || cleanCard.notes || ''),
-                   cardColor: cleanCard.cardColor || cleanCard.color || '#cccccc', // Default grey
-                   subjectColor: cleanCard.subjectColor || '', // Add subjectColor field
+                   cardColor: cleanCard.cardColor || cleanCard.color || '#f0f0f0', // Updated default to neutral light gray
+                   subjectColor: cleanCard.subjectColor || '#f0f0f0', // Updated default to neutral light gray
+                   topicColor: cleanCard.topicColor || null, // Store topic-specific color
                    textColor: cleanCard.textColor || '',
                    boxNum: cleanCard.boxNum ? parseInt(cleanCard.boxNum, 10) : 1, // Ensure number, default 1
                    lastReviewed: cleanCard.lastReviewed || null, // Keep null if not set
@@ -2300,38 +2301,53 @@ function loadFlashcardUserData(userId, callback) {
           // --- Assign base colors if needed ---
           const baseColors = ['#3cb44b','#4363d8','#e6194B','#911eb4','#f58231','#42d4f4','#f032e6','#469990','#9A6324','#800000','#808000','#000075','#e6beff','#aaffc3','#ffd8b1','#808080', '#fabebe', '#008080', '#e6beff', '#aa6e28', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075']; // Extended palette
           let colorIndexOffset = Object.keys(updatedColors).length; // Start assigning after existing colors
+          
+          // Initialize proper color structure for all subjects
           uniqueSubjects.forEach((subject, index) => {
               if (!updatedColors[subject]) {
-                  updatedColors[subject] = baseColors[(colorIndexOffset + index) % baseColors.length];
+                  // Create a structured colorMapping entry for this subject
+                  updatedColors[subject] = {
+                      base: "#f0f0f0", // Start with neutral light gray
+                      topics: {} // Initialize empty topics map
+                  };
+              } else if (typeof updatedColors[subject] === 'string') {
+                  // Convert old format to new structure if needed (backward compatibility)
+                  const baseColor = updatedColors[subject];
+                  updatedColors[subject] = {
+                      base: baseColor,
+                      topics: {}
+                  };
               }
           });
-           debugLog("[Shell Gen] Updated subject colors:", updatedColors);
-  
-  
+
+          debugLog("[Shell Gen] Updated subject colors (structured):", updatedColors);
+
           const now = new Date().toISOString();
-  
+
           // --- Process Lists ---
           topicLists.forEach(list => {
               if (!list || !Array.isArray(list.topics)) {
                    console.warn("[Shell Gen] Skipping invalid topic list:", list);
                   return;
               }
-  
+
               const subject = sanitizeField(list.subject || "General");
               const examBoard = sanitizeField(list.examBoard || "General"); // Use General if empty
               const examType = sanitizeField(list.examType || "Course"); // Use Course if empty
-              const subjectColor = updatedColors[subject]; // Get assigned color
-  
-              // Generate shades (implementation needed)
+              
+              // Get subject's base color from the structured object
+              const subjectColor = updatedColors[subject]?.base || "#f0f0f0";
+
+              // Generate shades for topics
               const topicColors = generateShadeVariations(subjectColor, list.topics.length);
-  
+
               list.topics.forEach((topic, index) => {
                   // Basic validation for topic object
                   if (!topic || (typeof topic !== 'object' && typeof topic !== 'string') || (!topic.id && !topic.name && !topic.topic && typeof topic !== 'string')) {
                        console.warn("[Shell Gen] Skipping invalid topic item:", topic);
                       return;
                   }
-  
+
                   // Handle case where topic might just be a string name
                    const isStringTopic = typeof topic === 'string';
                    const topicName = sanitizeField(isStringTopic ? topic : (topic.name || topic.topic || "Unknown Topic"));
@@ -2339,13 +2355,21 @@ function loadFlashcardUserData(userId, callback) {
                    const topicId = isStringTopic
                        ? `topic_${subject}_${topicName.replace(/[^a-zA-Z0-9]/g, '_')}` // Generate ID from subject/name
                        : (topic.id || `topic_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
-  
-  
+
                   if (idMap.has(topicId)) {
                        console.log(`[Shell Gen] Skipping duplicate topic ID in this run: ${topicId}`);
                       return; // Skip duplicates within this generation run
                   }
-  
+
+                  // Get or assign a topic color
+                  const topicColor = topicColors[index % topicColors.length];
+                  
+                  // Store the topic color in the color mapping for persistence
+                  if (!updatedColors[subject].topics) {
+                      updatedColors[subject].topics = {};
+                  }
+                  updatedColors[subject].topics[topicName] = topicColor;
+
                    // Create the shell using standardizeCards for consistency
                     const shellData = {
                        id: topicId,
@@ -2355,21 +2379,21 @@ function loadFlashcardUserData(userId, callback) {
                        subject: subject,
                        examBoard: examBoard,
                        examType: examType,
-                       cardColor: topicColors[index % topicColors.length], // Assign topic color variation
+                       cardColor: topicColor, // Assign topic color variation
                        subjectColor: subjectColor, // Assign base subject color
+                       topicColor: topicColor, // Store topic-specific color explicitly
                        isShell: true,
                        createdAt: now, // Add creation timestamp
                        updatedAt: now
                    };
-  
+
                    const standardizedShellArray = standardizeCards([shellData]); // Standardize the single shell
                    const shell = standardizedShellArray.length > 0 ? standardizedShellArray[0] : null;
-  
-  
-                   if(shell) { // Ensure standardization didn't fail
+
+                  if(shell) { // Ensure standardization didn't fail
                       newShells.push(shell);
                       idMap.set(topicId, true); // Mark ID as processed for this run
-  
+
                       // --- Update Topic Metadata ---
                       const metadataIndex = updatedMetadata.findIndex(m => m.topicId === topicId);
                       const newMetadataEntry = {
@@ -2387,14 +2411,15 @@ function loadFlashcardUserData(userId, callback) {
                           // Add new metadata entry
                           updatedMetadata.push(newMetadataEntry);
                       }
-                   } else {
+                  } else {
                         console.warn(`[Shell Gen] Failed to standardize shell for topic:`, topic);
-                   }
+                  }
               });
           });
            debugLog("[Shell Gen] Generated Shells:", newShells);
-            debugLog("[Shell Gen] Final Metadata:", updatedMetadata);
-  
+           debugLog("[Shell Gen] Final Color Mapping:", updatedColors);
+           debugLog("[Shell Gen] Final Metadata:", updatedMetadata);
+
           return { newShells, updatedColors, updatedMetadata };
       }
   
@@ -2402,7 +2427,7 @@ function loadFlashcardUserData(userId, callback) {
         function generateShadeVariations(baseColorHex, count) {
             if (!baseColorHex || typeof baseColorHex !== 'string' || !baseColorHex.startsWith('#')) {
                 console.warn("Invalid baseColorHex for generateShadeVariations:", baseColorHex);
-                return Array(count).fill('#cccccc'); // Default grey
+                return Array(count).fill('#f0f0f0'); // Updated default to neutral light gray
             }
              if (count <= 0) return [];
              if (count === 1) return [baseColorHex]; // Return base if only one needed
@@ -2551,4 +2576,3 @@ function loadFlashcardUserData(userId, callback) {
   
    // --- Self-Executing Function Closure ---
  }());
-
