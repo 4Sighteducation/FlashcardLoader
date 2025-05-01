@@ -1768,6 +1768,10 @@ retryApiCall(findRecordApiCall)
           const rawCardData = record[FIELD_MAPPING.cardBankData];
           if (rawCardData) {
               try {
+                  // --- Log raw card data ---
+                  console.log(`[loadFlashcardUserData DEBUG] Raw cardBankData string (length: ${String(rawCardData).length}):`, String(rawCardData).substring(0, 500)); 
+                  // --- End log ---
+                  
                   // First try to decode if needed
                   let decodedData = rawCardData;
                   if (typeof rawCardData === 'string' && rawCardData.includes('%')) {
@@ -1786,10 +1790,23 @@ retryApiCall(findRecordApiCall)
                       }
                   }
                   
+                  // --- Log decoded data ---
+                  console.log(`[loadFlashcardUserData DEBUG] Decoded card data string (length: ${String(decodedData).length}):`, String(decodedData).substring(0, 500)); 
+                  // --- End log ---
+                  
                   // Parse the JSON safely
                   userData.cards = safeParseJSON(decodedData, []);
                   userData.cards = migrateTypeToQuestionType(userData.cards); // Migrate legacy types
                   userData.cards = standardizeCards(userData.cards); // Standardize structure
+                  
+                  // --- Log parsed cards with options ---
+                  console.log(`[loadFlashcardUserData DEBUG] Parsed userData.cards count: ${userData.cards.length}`);
+                  userData.cards.slice(0, 5).forEach((card, index) => {
+                      if (card.questionType === 'multiple_choice' || (Array.isArray(card.options) && card.options.length > 0)) {
+                          console.log(`[loadFlashcardUserData DEBUG] Card ${index} (ID: ${card.id}) options:`, JSON.stringify(card.options));
+                      }
+                  });
+                  // --- End log ---
               } catch (cardError) {
                   console.error('[Knack Script] Fatal error processing cards:', cardError);
                   userData.cards = []; // Reset to empty array
