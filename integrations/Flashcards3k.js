@@ -2224,9 +2224,10 @@ retryApiCall(findRecordApiCall)
      console.log(`[isMultipleChoiceCard Check] Card ID: ${card.id}, Checking questionType: '${card.questionType}', Type: ${typeof card.questionType}`); // Log value being checked
 
      // Explicit type check first - THIS IS THE MOST RELIABLE CHECK
-     // Convert to lowercase for case-insensitive comparison
-     if (card.questionType && card.questionType.toLowerCase() === 'multiple_choice') {
-       console.log(`[isMultipleChoiceCard] Identified card ${card.id} as MC based on questionType.`);
+     // Clean the string and convert to lowercase for case-insensitive comparison
+     const cleanedQuestionType = card.questionType ? String(card.questionType).replace(/\s+/g, ' ').trim().toLowerCase() : null;
+     if (cleanedQuestionType === 'multiple_choice') {
+       console.log(`[isMultipleChoiceCard] Identified card ${card.id} as MC based on cleaned questionType.`);
        return true; 
      }
 
