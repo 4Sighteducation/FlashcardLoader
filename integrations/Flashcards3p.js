@@ -2230,7 +2230,7 @@ retryApiCall(findRecordApiCall)
      if (!card || typeof card !== 'object' || card.type !== 'card') return false;
 
      const typeToCheck = card.questionType ? String(card.questionType).toLowerCase() : null;
-     const targetLiteral = 'multiple_choice'; // Define literal for comparison
+     const targetLiteral = 'multiple choice'; // <-- CORRECTED: Use space instead of underscore
 
      console.log(`[isMC Check] ID: ${card.id}, Original Type: '${card.questionType}', Lowercase Type: '${typeToCheck}'`);
 
@@ -2239,7 +2239,7 @@ retryApiCall(findRecordApiCall)
      const targetLiteralCodes = Array.from(targetLiteral).map(c => c.charCodeAt(0));
      console.log(`[isMC Check Codes] ID: ${card.id}, typeToCheck: [${typeToCheckCodes}], targetLiteral: [${targetLiteralCodes}]`);
 
-     if (typeToCheck === targetLiteral) { // Use variable for literal
+     if (typeToCheck === targetLiteral) { // Compare against the literal with a space
        console.log(`[isMC Check] ID: ${card.id} - MATCHED '${targetLiteral}'`);
        return true; 
      }
