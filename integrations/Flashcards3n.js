@@ -2218,40 +2218,19 @@ retryApiCall(findRecordApiCall)
 
    // Detect if a card should be multiple choice
    function isMultipleChoiceCard(card) {
-     // Check object exists and is a card
      if (!card || typeof card !== 'object' || card.type !== 'card') return false;
 
-     console.log(`[isMultipleChoiceCard Check] Card ID: ${card.id}, Checking questionType: '${card.questionType}', Type: ${typeof card.questionType}`); // Log value being checked
+     // Simplify check: Only use toLowerCase()
+     const typeToCheck = card.questionType ? String(card.questionType).toLowerCase() : null;
+     console.log(`[isMC Check] ID: ${card.id}, Original Type: '${card.questionType}', Lowercase Type: '${typeToCheck}'`);
 
-     // Explicit type check first - THIS IS THE MOST RELIABLE CHECK
-     // Clean the string and convert to lowercase for case-insensitive comparison
-     const cleanedQuestionType = card.questionType ? String(card.questionType).replace(/\s+/g, ' ').trim().toLowerCase() : null;
-     if (cleanedQuestionType === 'multiple_choice') {
-       console.log(`[isMultipleChoiceCard] Identified card ${card.id} as MC based on cleaned questionType.`);
+     if (typeToCheck === 'multiple_choice') {
+       console.log(`[isMC Check] ID: ${card.id} - MATCHED 'multiple_choice'`);
        return true; 
      }
 
-     // --- REMOVE Redundant/Problematic checks below --- 
-     /*
-     // Presence of valid options array (at least one option)
-     if (Array.isArray(card.options) && card.options.length > 0) {
-        // Optional: Check if options have the expected structure (text, isCorrect)
-         if (card.options.some(opt => opt && typeof opt.text === 'string' && typeof opt.isCorrect === 'boolean')) {
-              console.log(`[isMultipleChoiceCard] Identified card ${card.id} as MC based on options array content.`);
-             return true;
-         }
-     }
-      // Presence of valid savedOptions array (as backup check)
-      if (Array.isArray(card.savedOptions) && card.savedOptions.length > 0) {
-           if (card.savedOptions.some(opt => opt && typeof opt.text === 'string' && typeof opt.isCorrect === 'boolean')) {
-               console.log(`[isMultipleChoiceCard] Identified card ${card.id} as MC based on savedOptions array content.`);
-              return true;
-          }
-      }
-     */
-
-     // If questionType wasn't set, it's not considered MC by this function
-     console.log(`[isMultipleChoiceCard] Card ${card.id} is NOT MC (questionType is '${card.questionType}').`);
+     // Logs if the match failed
+     console.log(`[isMC Check] ID: ${card.id} - DID NOT MATCH 'multiple_choice'`); 
      return false; // Default to false
    }
 
