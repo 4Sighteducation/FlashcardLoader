@@ -2152,7 +2152,9 @@ retryApiCall(findRecordApiCall)
 
                // Multiple Choice Handling (after type is determined)
                 if (standardCard.type === 'card') { // Only apply MC logic to cards
+                    console.log(`[Standardize PreCheck] Card ID: ${standardCard.id}, questionType: ${standardCard.questionType}, Type: ${typeof standardCard.questionType}`); // Log before call
                     const isMC = isMultipleChoiceCard(standardCard);
+                    console.log(`[Standardize PostCheck] Card ID: ${standardCard.id}, isMultipleChoiceCard result: ${isMC}`); // Log result of call
                     if (isMC) {
                         standardCard.questionType = 'multiple_choice';
                         
@@ -2195,6 +2197,7 @@ retryApiCall(findRecordApiCall)
                         // --- END MODIFIED LOGIC ---
 
                     } else { // If not MC, ensure questionType is appropriate
+                       console.log(`[Standardize Else Block] Card ID: ${standardCard.id} determined NOT MC. Options BEFORE clearing:`, JSON.stringify(standardCard.options)); // Log options before clearing
                        standardCard.questionType = standardCard.questionType === 'multiple_choice' ? 'short_answer' : standardCard.questionType; // Reset if wrongly marked MC
                         // Clear options if it's not an MC card
                         standardCard.options = [];
@@ -2217,6 +2220,8 @@ retryApiCall(findRecordApiCall)
    function isMultipleChoiceCard(card) {
      // Check object exists and is a card
      if (!card || typeof card !== 'object' || card.type !== 'card') return false;
+
+     console.log(`[isMultipleChoiceCard Check] Card ID: ${card.id}, Checking questionType: '${card.questionType}', Type: ${typeof card.questionType}`); // Log value being checked
 
      // Explicit type check first - THIS IS THE MOST RELIABLE CHECK
      if (card.questionType === 'multiple_choice') {
