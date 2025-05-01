@@ -689,14 +689,18 @@ function safeParseJSON(jsonString, defaultVal = null) {
     // Helper to ensure data is serializable (prevents circular references)
     ensureSerializable(data) {
       try {
+        // *** NEW LOG: Log input data ***
+        console.log(`[ensureSerializable] Input data:`, JSON.stringify(data));
         // Test serialization
         JSON.stringify(data);
+        // *** NEW LOG: Log output data (if no error) ***
+        console.log(`[ensureSerializable] Output data (no change):`, JSON.stringify(data));
         return data;
       } catch (e) {
         console.warn('[SaveQueue] Data contains circular references or non-serializable values. Stripping them.', e);
         const cache = new Set();
         try {
-           return JSON.parse(JSON.stringify(data, (key, value) => {
+           const strippedData = JSON.parse(JSON.stringify(data, (key, value) => {
              if (typeof value === 'object' && value !== null) {
                if (cache.has(value)) {
                  // Circular reference found, return undefined to omit key
@@ -707,8 +711,13 @@ function safeParseJSON(jsonString, defaultVal = null) {
              }
              return value;
            }));
+           // *** NEW LOG: Log stripped data ***
+           console.log(`[ensureSerializable] Output data (stripped):`, JSON.stringify(strippedData));
+           return strippedData;
         } catch (parseError) {
            console.error("[SaveQueue] Failed to serialize data even after attempting to strip circular references:", parseError);
+           // *** NEW LOG: Log original data on final failure ***
+           console.log(`[ensureSerializable] Output data (error, returning original):`, JSON.stringify(data));
            return data; // Return original data as a last resort
         }
       }
@@ -2220,17 +2229,22 @@ retryApiCall(findRecordApiCall)
    function isMultipleChoiceCard(card) {
      if (!card || typeof card !== 'object' || card.type !== 'card') return false;
 
-     // Simplify check: Only use toLowerCase()
      const typeToCheck = card.questionType ? String(card.questionType).toLowerCase() : null;
+     const targetLiteral = 'multiple_choice'; // Define literal for comparison
+
      console.log(`[isMC Check] ID: ${card.id}, Original Type: '${card.questionType}', Lowercase Type: '${typeToCheck}'`);
 
-     if (typeToCheck === 'multiple_choice') {
-       console.log(`[isMC Check] ID: ${card.id} - MATCHED 'multiple_choice'`);
+     // Log character codes for detailed comparison
+     const typeToCheckCodes = typeToCheck ? Array.from(typeToCheck).map(c => c.charCodeAt(0)) : null;
+     const targetLiteralCodes = Array.from(targetLiteral).map(c => c.charCodeAt(0));
+     console.log(`[isMC Check Codes] ID: ${card.id}, typeToCheck: [${typeToCheckCodes}], targetLiteral: [${targetLiteralCodes}]`);
+
+     if (typeToCheck === targetLiteral) { // Use variable for literal
+       console.log(`[isMC Check] ID: ${card.id} - MATCHED '${targetLiteral}'`);
        return true; 
      }
 
-     // Logs if the match failed
-     console.log(`[isMC Check] ID: ${card.id} - DID NOT MATCH 'multiple_choice'`); 
+     console.log(`[isMC Check] ID: ${card.id} - DID NOT MATCH '${targetLiteral}'`); 
      return false; // Default to false
    }
 
