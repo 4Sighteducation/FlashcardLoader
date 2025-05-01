@@ -2155,34 +2155,45 @@ function loadFlashcardUserData(userId, callback) {
                       const isMC = isMultipleChoiceCard(standardCard);
                       if (isMC) {
                           standardCard.questionType = 'multiple_choice';
-                          // Restore or create options if missing
-                          if (!standardCard.options || standardCard.options.length === 0) {
-                              if (standardCard.savedOptions && standardCard.savedOptions.length > 0) {
-                                   console.log(`[Standardize] Restoring options from savedOptions for card ${standardCard.id}`);
-                                  standardCard.options = [...standardCard.savedOptions];
-                              }
-                              // Optionally add logic here to extract from answer if needed as ultimate fallback
-                          }
-                          // Backup options if they exist and differ from savedOptions
+                          
+                          // --- MODIFIED LOGIC: Only format if options are already objects ---
                           if (standardCard.options && standardCard.options.length > 0) {
-                              // Basic check to avoid redundant saving if they are identical
-                               try {
-                                   if (JSON.stringify(standardCard.options) !== JSON.stringify(standardCard.savedOptions)) {
-                                        console.log(`[Standardize] Backing up options to savedOptions for card ${standardCard.id}`);
-                                       standardCard.savedOptions = [...standardCard.options];
-                                   }
-                               } catch (e) {
-                                    console.warn(`[Standardize] Error comparing options for backup on card ${standardCard.id}`, e);
-                                   // Save anyway if comparison fails
-                                   standardCard.savedOptions = [...standardCard.options];
-                               }
+                            // Check if the FIRST option is an object (heuristic)
+                            if (typeof standardCard.options[0] === 'object' && standardCard.options[0] !== null) {
+                               // Format existing options objects
+                               console.log(`[Standardize] Formatting object-based options for card ${standardCard.id}`);
+                               standardCard.options = standardCard.options.map(opt => ({
+                                   text: sanitizeField(opt?.text || ''), 
+                                   isCorrect: Boolean(opt?.isCorrect)  
+                               }));
+                            } else {
+                               // Options are likely strings, keep them as is for now
+                               console.log(`[Standardize] Keeping string-based options for card ${standardCard.id}`);
+                               // Ensure it's an array of strings (basic check)
+                               standardCard.options = standardCard.options.map(opt => String(opt || ''));
+                            }
+                            
+                            // Backup logic remains the same: backup whatever format options are in now
+                            try {
+                                if (JSON.stringify(standardCard.options) !== JSON.stringify(standardCard.savedOptions)) {
+                                    console.log(`[Standardize] Backing up options to savedOptions for card ${standardCard.id}`);
+                                    standardCard.savedOptions = [...standardCard.options];
+                                }
+                            } catch (e) {
+                                console.warn(`[Standardize] Error comparing options for backup on card ${standardCard.id}`, e);
+                                standardCard.savedOptions = [...standardCard.options];
+                            }
+                          } else if (standardCard.savedOptions && standardCard.savedOptions.length > 0) {
+                              // If options were empty, but savedOptions exist, restore from savedOptions
+                              console.log(`[Standardize] Restoring options from savedOptions for card ${standardCard.id}`);
+                              standardCard.options = [...standardCard.savedOptions]; 
+                              // Re-run the backup check just in case
+                              if (!standardCard.savedOptions || standardCard.savedOptions.length === 0) {
+                                standardCard.savedOptions = [...standardCard.options];
+                              }
                           }
-                           // Ensure options have required structure (e.g., { text: '...', isCorrect: Boolean(...) })
-                           standardCard.options = standardCard.options.map(opt => ({
-                               text: sanitizeField(opt.text || ''), // Sanitize option text
-                               isCorrect: Boolean(opt.isCorrect)   // Ensure boolean
-                           }));
-  
+                          // --- END MODIFIED LOGIC ---
+
                       } else { // If not MC, ensure questionType is appropriate
                          standardCard.questionType = standardCard.questionType === 'multiple_choice' ? 'short_answer' : standardCard.questionType; // Reset if wrongly marked MC
                           // Clear options if it's not an MC card
