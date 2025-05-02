@@ -3115,10 +3115,23 @@ function ensureValidColorMapping(colorMapping) {
   }
   
   // Create a copy to avoid modifying the input directly
-  const updatedMapping = JSON.parse(JSON.stringify(colorMapping));
+  let updatedMapping;
+  try {
+      updatedMapping = JSON.parse(JSON.stringify(colorMapping));
+  } catch (err) {
+      console.error("[Knack Script] Error cloning colorMapping, creating new object:", err);
+      updatedMapping = {};
+  }
   
   // Check each subject entry
   Object.keys(updatedMapping).forEach(subject => {
+      // Skip invalid subject keys that might cause issues
+      if (!subject || typeof subject !== 'string') {
+          console.warn("[Knack Script] Removing invalid subject key from colorMapping");
+          delete updatedMapping[subject];
+          return;
+      }
+      
       const subjectData = updatedMapping[subject];
       
       // Convert string values to proper structure
@@ -3138,6 +3151,28 @@ function ensureValidColorMapping(colorMapping) {
           if (!subjectData.topics || typeof subjectData.topics !== 'object') {
               console.log(`[Knack Script] Creating topics object for ${subject}.`);
               subjectData.topics = {};
+          } else {
+              // Sanitize topic keys to prevent problematic strings
+              const sanitizedTopics = {};
+              Object.keys(subjectData.topics).forEach(topicKey => {
+                  // Skip null/undefined keys
+                  if (!topicKey) return;
+                  
+                  // Create a sanitized key that's safe for JSON and storage
+                  const sanitizedKey = String(topicKey)
+                      .replace(/[\n\r\t]/g, ' ')           // Replace newlines/tabs with spaces
+                      .replace(/\s+/g, ' ')                // Normalize multiple spaces
+                      .replace(/["\\]/g, '')               // Remove quotes and backslashes
+                      .substring(0, 100)                   // Limit length
+                      .trim();                             // Trim whitespace
+                  
+                  if (sanitizedKey) {
+                      sanitizedTopics[sanitizedKey] = subjectData.topics[topicKey];
+                  }
+              });
+              
+              // Replace with sanitized topics
+              subjectData.topics = sanitizedTopics;
           }
       }
       // Replace invalid values with proper structure
@@ -3149,6 +3184,16 @@ function ensureValidColorMapping(colorMapping) {
           };
       }
   });
+  
+  // Check if the mapping has at least one subject - if not, it's likely a corrupted mapping
+  if (Object.keys(updatedMapping).length === 0) {
+      console.warn("[Knack Script] Empty color mapping detected, creating default mapping");
+      // Create a default entry to prevent empty mappings
+      updatedMapping["General"] = {
+          base: "#4363d8", // Default blue
+          topics: {}
+      };
+  }
   
   return updatedMapping;
 }
