@@ -467,7 +467,10 @@ function safeParseJSON(jsonString, defaultVal = null) {
                          updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(this.ensureSerializable(data.cards || []));
                      }
                      if (data.colorMapping !== undefined) {
-                         updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(this.ensureSerializable(data.colorMapping || {}));
+                         // ** Encode topic keys before stringifying **
+                         const safeColorMapping = this.ensureSerializable(data.colorMapping || {});
+                         const encodedColorMapping = this.encodeTopicKeys(safeColorMapping);
+                         updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(encodedColorMapping);
                      }
                      if (data.spacedRepetition !== undefined) {
                          const srData = data.spacedRepetition || {};
@@ -721,6 +724,52 @@ function safeParseJSON(jsonString, defaultVal = null) {
            return data; // Return original data as a last resort
         }
       }
+    }
+
+    // ** NEW Helper: Encode topic keys for safe JSON storage **
+    encodeTopicKeys(colorMapping) {
+      if (!colorMapping || typeof colorMapping !== 'object') return colorMapping;
+      const encodedMapping = { ...colorMapping };
+      Object.keys(encodedMapping).forEach(subject => {
+        if (encodedMapping[subject] && typeof encodedMapping[subject] === 'object' && encodedMapping[subject].topics) {
+          const originalTopics = encodedMapping[subject].topics;
+          const encodedTopics = {};
+          Object.keys(originalTopics).forEach(topicKey => {
+            // Replace potentially problematic characters
+            const encodedKey = topicKey
+              .replace(/:/g, '__COLON__')
+              .replace(/&/g, '__AMP__')
+              .replace(/\./g, '__DOT__') // Replace dots as well
+              .replace(/\//g, '__SLASH__'); // Replace slashes
+            encodedTopics[encodedKey] = originalTopics[topicKey];
+          });
+          encodedMapping[subject].topics = encodedTopics;
+        }
+      });
+      return encodedMapping;
+    }
+
+    // ** NEW Helper: Decode topic keys after loading from JSON **
+    decodeTopicKeys(colorMapping) {
+      if (!colorMapping || typeof colorMapping !== 'object') return colorMapping;
+      const decodedMapping = { ...colorMapping };
+      Object.keys(decodedMapping).forEach(subject => {
+        if (decodedMapping[subject] && typeof decodedMapping[subject] === 'object' && decodedMapping[subject].topics) {
+          const encodedTopics = decodedMapping[subject].topics;
+          const decodedTopics = {};
+          Object.keys(encodedTopics).forEach(encodedKey => {
+            // Reverse the replacements
+            const decodedKey = encodedKey
+              .replace(/__COLON__/g, ':')
+              .replace(/__AMP__/g, '&')
+              .replace(/__DOT__/g, '.')
+              .replace(/__SLASH__/g, '/');
+            decodedTopics[decodedKey] = encodedTopics[encodedKey];
+          });
+          decodedMapping[subject].topics = decodedTopics;
+        }
+      });
+      return decodedMapping;
     }
   }
 
@@ -1881,55 +1930,75 @@ retryApiCall(findRecordApiCall)
           console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists.`);
           
           // Enhanced parsing for color mapping
-          const rawColorData = record[FIELD_MAPPING.colorMapping];
-          try {
-              if (rawColorData) {
-                  let decodedColor = rawColorData;
-                  if (typeof rawColorData === 'string' && rawColorData.includes('%')) {
-                      try {
-                          decodedColor = safeDecodeURIComponent(rawColorData);
-                      } catch (e) {
-                          console.error('[Knack Script] Error decoding color mapping:', e);
-                      }
-                  }
-                  userData.colorMapping = safeParseJSON(decodedColor, {});
-                  // Ensure it's an object
-                  if (typeof userData.colorMapping !== 'object' || userData.colorMapping === null) {
-                      userData.colorMapping = {};
-                  }
-              }
-          } catch (colorError) {
-              console.error('[Knack Script] Error processing color mapping:', colorError);
-              userData.colorMapping = {};
-          }
-          console.log(`[Knack Script] Loaded color mapping.`);
-          
-          // Enhanced parsing for topic metadata
-          const rawMetaData = record[FIELD_MAPPING.topicMetadata];
-          try {
-              if (rawMetaData) {
-                  let decodedMeta = rawMetaData;
-                  if (typeof rawMetaData === 'string' && rawMetaData.includes('%')) {
-                      try {
-                          decodedMeta = safeDecodeURIComponent(rawMetaData);
-                      } catch (e) {
-                          console.error('[Knack Script] Error decoding topic metadata:', e);
-                      }
-                  }
-                  userData.topicMetadata = safeParseJSON(decodedMeta, []);
-                  // Ensure it's an array
-                  if (!Array.isArray(userData.topicMetadata)) {
-                      userData.topicMetadata = [];
-                  }
-              }
-          } catch (metaError) {
-              console.error('[Knack Script] Error processing topic metadata:', metaError);
-              userData.topicMetadata = [];
-          }
-          console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
+           const rawColorData = record[FIELD_MAPPING.colorMapping];
+           let parsedColorMapping = {};
+           try { // Outer try block for overall color processing
+               if (rawColorData) {
+                   let decodedColor = rawColorData;
+                   // Attempt decoding only if it looks like it needs it
+                   if (typeof rawColorData === 'string' && rawColorData.includes('%')) {
+                       try {
+                           decodedColor = safeDecodeURIComponent(rawColorData);
+                       } catch (e) {
+                           console.error('[Knack Script] Error decoding color mapping:', e);
+                           // Keep decodedColor as the original rawColorData if decoding fails
+                       }
+                   }
+                   
+                   // Parse the potentially decoded JSON
+                   let tempParsedMapping = safeParseJSON(decodedColor, {});
+                   
+                   // Decode topic keys after parsing
+                   if (typeof tempParsedMapping === 'object' && tempParsedMapping !== null) {
+                       // Ensure saveQueue and decodeTopicKeys are accessible here
+                       // Assuming saveQueue is the instance created earlier in the script
+                       if (saveQueue && typeof saveQueue.decodeTopicKeys === 'function') {
+                           parsedColorMapping = saveQueue.decodeTopicKeys(tempParsedMapping); 
+                       } else {
+                            console.error("[Knack Script] Error: saveQueue or decodeTopicKeys not available for color mapping.");
+                            parsedColorMapping = tempParsedMapping; // Use as is if decoder unavailable
+                       }
+                   } else {
+                       // Ensure it's an object if parsing failed or returned non-object
+                       parsedColorMapping = {};
+                   }
+               } else {
+                  // If rawColorData is null or empty, initialize as empty object
+                  parsedColorMapping = {};
+               }
+           } catch (colorError) { // Catch errors during the entire color processing block
+               console.error('[Knack Script] Error processing color mapping:', colorError);
+               parsedColorMapping = {}; // Reset on any error during processing
+           } // End outer try-catch
+           userData.colorMapping = parsedColorMapping; // Assign final mapping to userData
+           console.log(`[Knack Script] Loaded color mapping.`);
+           
+           // Enhanced parsing for topic metadata
+           const rawMetaData = record[FIELD_MAPPING.topicMetadata];
+           try {
+               if (rawMetaData) {
+                   let decodedMeta = rawMetaData;
+                   if (typeof rawMetaData === 'string' && rawMetaData.includes('%')) {
+                       try {
+                           decodedMeta = safeDecodeURIComponent(rawMetaData);
+                       } catch (e) {
+                           console.error('[Knack Script] Error decoding topic metadata:', e);
+                       }
+                   }
+                   userData.topicMetadata = safeParseJSON(decodedMeta, []);
+                   // Ensure it's an array
+                   if (!Array.isArray(userData.topicMetadata)) {
+                       userData.topicMetadata = [];
+                   }
+               }
+           } catch (metaError) {
+               console.error('[Knack Script] Error processing topic metadata:', metaError);
+               userData.topicMetadata = [];
+           }
+           console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
 
-          debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
-          callback(userData);
+           debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
+           callback(userData);
       } catch (e) {
           console.error("[Knack Script] Error processing user data fields:", e);
           // Return partially assembled data or fallback
