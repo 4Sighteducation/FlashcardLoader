@@ -467,15 +467,14 @@ function safeParseJSON(jsonString, defaultVal = null) {
                      
                      // --- Restoring processing of actual data --- 
                      if (data.cards !== undefined) {
-                         // --- Log stringified cardBankData during preparation ---
-+                        /* // --- TEMPORARILY COMMENTED OUT FOR TESTING ---
-                         const cardsToSerialize = this.ensureSerializable(data.cards || []);
-                         const stringifiedCardBankData = JSON.stringify(cardsToSerialize);
-                         console.log(`[SaveQueue prepareSaveData DEBUG] Stringified cardBankData being prepared (length: ${stringifiedCardBankData.length}):`, stringifiedCardBankData.substring(0, 500) + '...');
-                         updateData[FIELD_MAPPING.cardBankData] = stringifiedCardBankData;
-+                        */ // --- End log ---
-+                        console.log("[SaveQueue prepareSaveData DEBUG] Skipping cardBankData update for testing.");
-                     }
+                      // --- Ensure cardBankData is always set, defaulting to empty array ---
+                      const cardsToSave = data.cards !== undefined ? data.cards : []; // Use provided cards or empty array
+                      const serializableCards = this.ensureSerializable(cardsToSave || []);
+                      const stringifiedCardBankData = JSON.stringify(serializableCards);
+                      console.log(`[SaveQueue prepareSaveData DEBUG] Stringified cardBankData being prepared (length: ${stringifiedCardBankData.length}):`, stringifiedCardBankData.substring(0, 500) + '...');
+                      updateData[FIELD_MAPPING.cardBankData] = stringifiedCardBankData;
+                      // --- End cardBankData handling ---
+                  }
                      if (data.colorMapping !== undefined) {
                          // ** Encode topic keys before stringifying **
                          const safeColorMapping = this.ensureSerializable(data.colorMapping || {});
@@ -554,12 +553,17 @@ function safeParseJSON(jsonString, defaultVal = null) {
         console.log(`[SaveQueue] Preserving fields for record. Fields in updateData: ${Object.keys(updateData).join(', ')}`);
        // Define all fields managed by the app that could be preserved
        const allAppFieldIds = [
--          FIELD_MAPPING.cardBankData, FIELD_MAPPING.colorMapping, FIELD_MAPPING.topicLists,
-+          /* FIELD_MAPPING.cardBankData, */ // Temporarily exclude cardBankData from preservation for testing
-+           FIELD_MAPPING.colorMapping, FIELD_MAPPING.topicLists,
-           FIELD_MAPPING.topicMetadata, FIELD_MAPPING.box1Data, FIELD_MAPPING.box2Data,
-           FIELD_MAPPING.box3Data, FIELD_MAPPING.box4Data, FIELD_MAPPING.box5Data
-           // Add other fields here if the app manages them directly
+-          /* FIELD_MAPPING.cardBankData, */ // Temporarily exclude cardBankData from preservation for testing
+-            FIELD_MAPPING.cardBankData,
+FIELD_MAPPING.colorMapping,
+FIELD_MAPPING.topicLists,
+FIELD_MAPPING.topicMetadata,
+FIELD_MAPPING.box1Data,
+FIELD_MAPPING.box2Data,
+FIELD_MAPPING.box3Data,
+FIELD_MAPPING.box4Data,
+FIELD_MAPPING.box5Data
+            // Add other fields here if the app manages them directly
        ];
 
        allAppFieldIds.forEach(fieldId => {
@@ -1825,7 +1829,7 @@ retryApiCall(findRecordApiCall)
           };
           
              // Enhanced parsing for cards with better error handling
-     /*   
+     
     const rawCardData = record[FIELD_MAPPING.cardBankData];
 
     if (rawCardData) {
@@ -1867,7 +1871,7 @@ retryApiCall(findRecordApiCall)
             userData.cards = []; // Reset to empty array
         }
     }
-    */
+  
           console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
           
           // Enhanced parsing for spaced repetition
