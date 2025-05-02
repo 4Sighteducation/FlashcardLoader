@@ -1953,7 +1953,8 @@ retryApiCall(findRecordApiCall)
                        // Ensure saveQueue and decodeTopicKeys are accessible here
                        // Assuming saveQueue is the instance created earlier in the script
                        if (saveQueue && typeof saveQueue.decodeTopicKeys === 'function') {
-                           parsedColorMapping = saveQueue.decodeTopicKeys(tempParsedMapping); 
+                           // REMOVED DECODING STEP AS WE USE IDs NOW: parsedColorMapping = saveQueue.decodeTopicKeys(tempParsedMapping); 
+                           parsedColorMapping = tempParsedMapping; // Use parsed mapping directly
                        } else {
                             console.error("[Knack Script] Error: saveQueue or decodeTopicKeys not available for color mapping.");
                             parsedColorMapping = tempParsedMapping; // Use as is if decoder unavailable
@@ -1970,7 +1971,9 @@ retryApiCall(findRecordApiCall)
                console.error('[Knack Script] Error processing color mapping:', colorError);
                parsedColorMapping = {}; // Reset on any error during processing
            } // End outer try-catch
-           userData.colorMapping = parsedColorMapping; // Assign final mapping to userData
+           // --- ADDED CALL TO ENSURE STRUCTURE ---
+           userData.colorMapping = ensureValidColorMapping(parsedColorMapping); // Assign final mapping to userData
+           // --- END ADDED CALL ---
            console.log(`[Knack Script] Loaded color mapping.`);
            
            // Enhanced parsing for topic metadata
@@ -2948,12 +2951,14 @@ try {
 async function handleDeleteTopicRequest(data, iframeWindow) {
 console.log("[Knack Script] Handling DELETE_TOPIC request", data);
 
-if (!data || !data.recordId || !data.subject || !data.topic) {
-    console.error("[Knack Script] DELETE_TOPIC request missing recordId, subject name, or topic name");
+// --- UPDATED CHECK: Expect topicId ---
+if (!data || !data.recordId || !data.subject || !data.topicId) { 
+    console.error("[Knack Script] DELETE_TOPIC request missing recordId, subject name, or topicId");
     if (iframeWindow) iframeWindow.postMessage({ 
         type: 'DELETE_TOPIC_RESULT', 
         success: false, 
-        error: "Missing recordId, subject name, or topic name" 
+        // --- UPDATED ERROR MESSAGE ---
+        error: "Missing recordId, subject name, or topicId" 
     }, '*');
     return;
 }
@@ -3035,7 +3040,9 @@ try {
             typeof colorMapping === 'object' && 
             colorMapping[data.subject] && 
             colorMapping[data.subject].topics) {
-            delete colorMapping[data.subject].topics[data.topic];
+            // --- USE topicId TO DELETE ---
+            delete colorMapping[data.subject].topics[data.topicId];
+            // ---------------------------
         }
     } catch (e) {
         console.error("[Knack Script] Error processing color mapping during topic deletion:", e);
