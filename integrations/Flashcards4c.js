@@ -554,10 +554,12 @@ function safeParseJSON(jsonString, defaultVal = null) {
         console.log(`[SaveQueue] Preserving fields for record. Fields in updateData: ${Object.keys(updateData).join(', ')}`);
        // Define all fields managed by the app that could be preserved
        const allAppFieldIds = [
-          FIELD_MAPPING.cardBankData, FIELD_MAPPING.colorMapping, FIELD_MAPPING.topicLists,
-          FIELD_MAPPING.topicMetadata, FIELD_MAPPING.box1Data, FIELD_MAPPING.box2Data,
-          FIELD_MAPPING.box3Data, FIELD_MAPPING.box4Data, FIELD_MAPPING.box5Data
-          // Add other fields here if the app manages them directly
+-          FIELD_MAPPING.cardBankData, FIELD_MAPPING.colorMapping, FIELD_MAPPING.topicLists,
++          /* FIELD_MAPPING.cardBankData, */ // Temporarily exclude cardBankData from preservation for testing
++           FIELD_MAPPING.colorMapping, FIELD_MAPPING.topicLists,
+           FIELD_MAPPING.topicMetadata, FIELD_MAPPING.box1Data, FIELD_MAPPING.box2Data,
+           FIELD_MAPPING.box3Data, FIELD_MAPPING.box4Data, FIELD_MAPPING.box5Data
+           // Add other fields here if the app manages them directly
        ];
 
        allAppFieldIds.forEach(fieldId => {
