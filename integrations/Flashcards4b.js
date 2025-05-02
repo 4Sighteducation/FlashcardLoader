@@ -468,11 +468,13 @@ function safeParseJSON(jsonString, defaultVal = null) {
                      // --- Restoring processing of actual data --- 
                      if (data.cards !== undefined) {
                          // --- Log stringified cardBankData during preparation ---
-    const cardsToSerialize = this.ensureSerializable(data.cards || []);
-    const stringifiedCardBankData = JSON.stringify(cardsToSerialize);
-    console.log(`[SaveQueue prepareSaveData DEBUG] Stringified cardBankData being prepared (length: ${stringifiedCardBankData.length}):`, stringifiedCardBankData.substring(0, 500) + '...');
-    updateData[FIELD_MAPPING.cardBankData] = stringifiedCardBankData;
-    // --- End log ---
++                        /* // --- TEMPORARILY COMMENTED OUT FOR TESTING ---
+                         const cardsToSerialize = this.ensureSerializable(data.cards || []);
+                         const stringifiedCardBankData = JSON.stringify(cardsToSerialize);
+                         console.log(`[SaveQueue prepareSaveData DEBUG] Stringified cardBankData being prepared (length: ${stringifiedCardBankData.length}):`, stringifiedCardBankData.substring(0, 500) + '...');
+                         updateData[FIELD_MAPPING.cardBankData] = stringifiedCardBankData;
++                        */ // --- End log ---
++                        console.log("[SaveQueue prepareSaveData DEBUG] Skipping cardBankData update for testing.");
                      }
                      if (data.colorMapping !== undefined) {
                          // ** Encode topic keys before stringifying **
@@ -1821,7 +1823,9 @@ retryApiCall(findRecordApiCall)
           };
           
              // Enhanced parsing for cards with better error handling
+     /*   
     const rawCardData = record[FIELD_MAPPING.cardBankData];
+
     if (rawCardData) {
         try {
             // --- Log raw card data ---
@@ -1861,6 +1865,7 @@ retryApiCall(findRecordApiCall)
             userData.cards = []; // Reset to empty array
         }
     }
+    */
           console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
           
           // Enhanced parsing for spaced repetition
