@@ -61,12 +61,15 @@ try {
     console.error("Flashcard app: Second attempt to decode failed:", secondError);
     
     try {
-      // Third attempt: Try more aggressive cleaning - handle truncated URIs by removing trailing %
-      const aggressiveCleaned = String(str)
-        .replace(/%(?![0-9A-Fa-f]{2})/g, '%25')  // Fix invalid % sequences
-        .replace(/%[0-9A-Fa-f]$/g, '%25')        // Fix truncated % at end
-        .replace(/%[0-9A-Fa-f](?![0-9A-Fa-f])/g, '%25'); // Fix single-digit % sequences
-      
+       // --- ADDED MORE AGGRESSIVE CLEANING ---
+    const aggressiveCleaned = String(str)
+    .replace(/%u([0-9a-fA-F]{4})/g, (match, grp) => String.fromCharCode(parseInt(grp, 16))) // Handle %uXXXX sequences
+    .replace(/%(?![0-9A-Fa-f]{2})/g, '%25')  // Fix invalid % sequences AFTER %u
+    .replace(/%([ \t\r\n\v\f])/g, '%25$1') // Escape % followed by whitespace
+    .replace(/%$/, '%25') // Fix truncated % at end
+    .replace(/%[0-9A-Fa-f]$/g, '%25') // Fix truncated % sequence at end (e.g., %A)
+    .replace(/%[0-9A-Fa-f](?![0-9A-Fa-f])/g, '%25'); // Fix single-digit % sequences (e.g., %A instead of %Ax)
+  // --- END ADDED CLEANING ---
       return decodeURIComponent(aggressiveCleaned.replace(/\+/g, ' '));
     } catch (thirdError) {
       console.error("Flashcard app: Third attempt to decode failed:", thirdError);
@@ -464,13 +467,17 @@ function safeParseJSON(jsonString, defaultVal = null) {
                      
                      // --- Restoring processing of actual data --- 
                      if (data.cards !== undefined) {
-                         updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(this.ensureSerializable(data.cards || []));
+                         // --- Log stringified cardBankData during preparation ---
+    const cardsToSerialize = this.ensureSerializable(data.cards || []);
+    const stringifiedCardBankData = JSON.stringify(cardsToSerialize);
+    console.log(`[SaveQueue prepareSaveData DEBUG] Stringified cardBankData being prepared (length: ${stringifiedCardBankData.length}):`, stringifiedCardBankData.substring(0, 500) + '...');
+    updateData[FIELD_MAPPING.cardBankData] = stringifiedCardBankData;
+    // --- End log ---
                      }
                      if (data.colorMapping !== undefined) {
                          // ** Encode topic keys before stringifying **
                          const safeColorMapping = this.ensureSerializable(data.colorMapping || {});
-                         const encodedColorMapping = this.encodeTopicKeys(safeColorMapping);
-                         updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(encodedColorMapping);
+                         updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(safeColorMapping);
                      }
                      if (data.spacedRepetition !== undefined) {
                          const srData = data.spacedRepetition || {};
@@ -1813,54 +1820,47 @@ retryApiCall(findRecordApiCall)
               lastSaved: record[FIELD_MAPPING.lastSaved] || null
           };
           
-          // Enhanced parsing for cards with better error handling
-          const rawCardData = record[FIELD_MAPPING.cardBankData];
-          if (rawCardData) {
-              try {
-                  // --- Log raw card data ---
-                  console.log(`[loadFlashcardUserData DEBUG] Raw cardBankData string (length: ${String(rawCardData).length}):`, String(rawCardData).substring(0, 500)); 
-                  // --- End log ---
-                  
-                  // First try to decode if needed
-                  let decodedData = rawCardData;
-                  if (typeof rawCardData === 'string' && rawCardData.includes('%')) {
-                      try {
-                          decodedData = safeDecodeURIComponent(rawCardData);
-                      } catch (decodeError) {
-                          console.error('[Knack Script] Error with primary decode, trying backup method:', decodeError);
-                          // Try handling broken encodings
-                          decodedData = String(rawCardData)
-                              .replace(/%(?![0-9A-Fa-f]{2})/g, '%25'); // Fix invalid % sequences
-                          try {
-                              decodedData = decodeURIComponent(decodedData);
-                          } catch (secondError) {
-                              console.error('[Knack Script] Advanced URI decode failed, using original:', secondError);
-                          }
-                      }
-                  }
-                  
-                  // --- Log decoded data ---
-                  console.log(`[loadFlashcardUserData DEBUG] Decoded card data string (length: ${String(decodedData).length}):`, String(decodedData).substring(0, 500)); 
-                  // --- End log ---
-                  
-                  // Parse the JSON safely
-                  userData.cards = safeParseJSON(decodedData, []);
-                  userData.cards = migrateTypeToQuestionType(userData.cards); // Migrate legacy types
-                  userData.cards = standardizeCards(userData.cards); // Standardize structure
-                  
-                  // --- Log parsed cards with options ---
-                  console.log(`[loadFlashcardUserData DEBUG] Parsed userData.cards count: ${userData.cards.length}`);
-                  userData.cards.slice(0, 5).forEach((card, index) => {
-                      if (card.questionType === 'multiple_choice' || (Array.isArray(card.options) && card.options.length > 0)) {
-                          console.log(`[loadFlashcardUserData DEBUG] Card ${index} (ID: ${card.id}) options:`, JSON.stringify(card.options));
-                      }
-                  });
-                  // --- End log ---
-              } catch (cardError) {
-                  console.error('[Knack Script] Fatal error processing cards:', cardError);
-                  userData.cards = []; // Reset to empty array
-              }
-          }
+             // Enhanced parsing for cards with better error handling
+    const rawCardData = record[FIELD_MAPPING.cardBankData];
+    if (rawCardData) {
+        try {
+            // --- Log raw card data ---
+            console.log(`[loadFlashcardUserData DEBUG] Raw cardBankData received from Knack (length: ${String(rawCardData).length}):`, String(rawCardData).substring(0, 500));
+            // --- End log ---
+
+            // First try to decode if needed
+            let decodedData = rawCardData;
+            if (typeof rawCardData === 'string' && rawCardData.includes('%')) {
+                try {
+                    decodedData = safeDecodeURIComponent(rawCardData);
+                    // --- Log DECODED card data ---
+                    console.log(`[loadFlashcardUserData DEBUG] Decoded card data string via safeDecodeURIComponent (length: ${String(decodedData).length}):`, String(decodedData).substring(0, 500));
+                    // --- End log ---
+                } catch (decodeError) {
+                    console.error('[Knack Script] Error during primary decode via safeDecodeURIComponent:', decodeError);
+                    // If primary decode failed, potentially log or use raw data
+                    decodedData = rawCardData; // Fallback to raw data
+                    console.warn('[Knack Script] Using raw card data due to decode error.');
+                }
+            } else {
+                 console.log(`[loadFlashcardUserData DEBUG] Raw card data did not need decoding.`);
+            }
+
+            // Parse the JSON safely
+            const parsedCards = safeParseJSON(decodedData, []);
+            // --- Log PARSED card data ---
+            console.log(`[loadFlashcardUserData DEBUG] Parsed card data via safeParseJSON (count: ${parsedCards?.length ?? 0}):`, parsedCards?.slice(0, 3)); // Log first few cards
+            // --- End log ---
+
+            userData.cards = migrateTypeToQuestionType(parsedCards); // Migrate legacy types
+            userData.cards = standardizeCards(userData.cards); // Standardize structure
+
+            // ... rest of card processing ...
+        } catch (cardError) {
+            console.error('[Knack Script] Fatal error processing cards:', cardError);
+            userData.cards = []; // Reset to empty array
+        }
+    }
           console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
           
           // Enhanced parsing for spaced repetition
