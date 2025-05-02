@@ -61,15 +61,12 @@ try {
     console.error("Flashcard app: Second attempt to decode failed:", secondError);
     
     try {
-       // --- ADDED MORE AGGRESSIVE CLEANING ---
-    const aggressiveCleaned = String(str)
-    .replace(/%u([0-9a-fA-F]{4})/g, (match, grp) => String.fromCharCode(parseInt(grp, 16))) // Handle %uXXXX sequences
-    .replace(/%(?![0-9A-Fa-f]{2})/g, '%25')  // Fix invalid % sequences AFTER %u
-    .replace(/%([ \t\r\n\v\f])/g, '%25$1') // Escape % followed by whitespace
-    .replace(/%$/, '%25') // Fix truncated % at end
-    .replace(/%[0-9A-Fa-f]$/g, '%25') // Fix truncated % sequence at end (e.g., %A)
-    .replace(/%[0-9A-Fa-f](?![0-9A-Fa-f])/g, '%25'); // Fix single-digit % sequences (e.g., %A instead of %Ax)
-  // --- END ADDED CLEANING ---
+      // Third attempt: Try more aggressive cleaning - handle truncated URIs by removing trailing %
+      const aggressiveCleaned = String(str)
+        .replace(/%(?![0-9A-Fa-f]{2})/g, '%25')  // Fix invalid % sequences
+        .replace(/%[0-9A-Fa-f]$/g, '%25')        // Fix truncated % at end
+        .replace(/%[0-9A-Fa-f](?![0-9A-Fa-f])/g, '%25'); // Fix single-digit % sequences
+      
       return decodeURIComponent(aggressiveCleaned.replace(/\+/g, ' '));
     } catch (thirdError) {
       console.error("Flashcard app: Third attempt to decode failed:", thirdError);
@@ -467,18 +464,10 @@ function safeParseJSON(jsonString, defaultVal = null) {
                      
                      // --- Restoring processing of actual data --- 
                      if (data.cards !== undefined) {
-                      // --- Ensure cardBankData is always set, defaulting to empty array ---
-                      const cardsToSave = data.cards !== undefined ? data.cards : []; // Use provided cards or empty array
-                      const serializableCards = this.ensureSerializable(cardsToSave || []);
-                      const stringifiedCardBankData = JSON.stringify(serializableCards);
-                      console.log(`[SaveQueue prepareSaveData DEBUG] Stringified cardBankData being prepared (length: ${stringifiedCardBankData.length}):`, stringifiedCardBankData.substring(0, 500) + '...');
-                      updateData[FIELD_MAPPING.cardBankData] = stringifiedCardBankData;
-                      // --- End cardBankData handling ---
-                  }
+                         updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(this.ensureSerializable(data.cards || []));
+                     }
                      if (data.colorMapping !== undefined) {
-                         // ** Encode topic keys before stringifying **
-                         const safeColorMapping = this.ensureSerializable(data.colorMapping || {});
-                         updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(safeColorMapping);
+                         updateData[FIELD_MAPPING.colorMapping] = JSON.stringify(this.ensureSerializable(data.colorMapping || {}));
                      }
                      if (data.spacedRepetition !== undefined) {
                          const srData = data.spacedRepetition || {};
@@ -553,17 +542,10 @@ function safeParseJSON(jsonString, defaultVal = null) {
         console.log(`[SaveQueue] Preserving fields for record. Fields in updateData: ${Object.keys(updateData).join(', ')}`);
        // Define all fields managed by the app that could be preserved
        const allAppFieldIds = [
--          /* FIELD_MAPPING.cardBankData, */ // Temporarily exclude cardBankData from preservation for testing
--            FIELD_MAPPING.cardBankData,
-FIELD_MAPPING.colorMapping,
-FIELD_MAPPING.topicLists,
-FIELD_MAPPING.topicMetadata,
-FIELD_MAPPING.box1Data,
-FIELD_MAPPING.box2Data,
-FIELD_MAPPING.box3Data,
-FIELD_MAPPING.box4Data,
-FIELD_MAPPING.box5Data
-            // Add other fields here if the app manages them directly
+          FIELD_MAPPING.cardBankData, FIELD_MAPPING.colorMapping, FIELD_MAPPING.topicLists,
+          FIELD_MAPPING.topicMetadata, FIELD_MAPPING.box1Data, FIELD_MAPPING.box2Data,
+          FIELD_MAPPING.box3Data, FIELD_MAPPING.box4Data, FIELD_MAPPING.box5Data
+          // Add other fields here if the app manages them directly
        ];
 
        allAppFieldIds.forEach(fieldId => {
@@ -739,52 +721,6 @@ FIELD_MAPPING.box5Data
            return data; // Return original data as a last resort
         }
       }
-    }
-
-    // ** NEW Helper: Encode topic keys for safe JSON storage **
-    encodeTopicKeys(colorMapping) {
-      if (!colorMapping || typeof colorMapping !== 'object') return colorMapping;
-      const encodedMapping = { ...colorMapping };
-      Object.keys(encodedMapping).forEach(subject => {
-        if (encodedMapping[subject] && typeof encodedMapping[subject] === 'object' && encodedMapping[subject].topics) {
-          const originalTopics = encodedMapping[subject].topics;
-          const encodedTopics = {};
-          Object.keys(originalTopics).forEach(topicKey => {
-            // Replace potentially problematic characters
-            const encodedKey = topicKey
-              .replace(/:/g, '__COLON__')
-              .replace(/&/g, '__AMP__')
-              .replace(/\./g, '__DOT__') // Replace dots as well
-              .replace(/\//g, '__SLASH__'); // Replace slashes
-            encodedTopics[encodedKey] = originalTopics[topicKey];
-          });
-          encodedMapping[subject].topics = encodedTopics;
-        }
-      });
-      return encodedMapping;
-    }
-
-    // ** NEW Helper: Decode topic keys after loading from JSON **
-    decodeTopicKeys(colorMapping) {
-      if (!colorMapping || typeof colorMapping !== 'object') return colorMapping;
-      const decodedMapping = { ...colorMapping };
-      Object.keys(decodedMapping).forEach(subject => {
-        if (decodedMapping[subject] && typeof decodedMapping[subject] === 'object' && decodedMapping[subject].topics) {
-          const encodedTopics = decodedMapping[subject].topics;
-          const decodedTopics = {};
-          Object.keys(encodedTopics).forEach(encodedKey => {
-            // Reverse the replacements
-            const decodedKey = encodedKey
-              .replace(/__COLON__/g, ':')
-              .replace(/__AMP__/g, '&')
-              .replace(/__DOT__/g, '.')
-              .replace(/__SLASH__/g, '/');
-            decodedTopics[decodedKey] = encodedTopics[encodedKey];
-          });
-          decodedMapping[subject].topics = decodedTopics;
-        }
-      });
-      return decodedMapping;
     }
   }
 
@@ -1828,50 +1764,54 @@ retryApiCall(findRecordApiCall)
               lastSaved: record[FIELD_MAPPING.lastSaved] || null
           };
           
-             // Enhanced parsing for cards with better error handling
-     
-    const rawCardData = record[FIELD_MAPPING.cardBankData];
-
-    if (rawCardData) {
-        try {
-            // --- Log raw card data ---
-            console.log(`[loadFlashcardUserData DEBUG] Raw cardBankData received from Knack (length: ${String(rawCardData).length}):`, String(rawCardData).substring(0, 500));
-            // --- End log ---
-
-            // First try to decode if needed
-            let decodedData = rawCardData;
-            if (typeof rawCardData === 'string' && rawCardData.includes('%')) {
-                try {
-                    decodedData = safeDecodeURIComponent(rawCardData);
-                    // --- Log DECODED card data ---
-                    console.log(`[loadFlashcardUserData DEBUG] Decoded card data string via safeDecodeURIComponent (length: ${String(decodedData).length}):`, String(decodedData).substring(0, 500));
-                    // --- End log ---
-                } catch (decodeError) {
-                    console.error('[Knack Script] Error during primary decode via safeDecodeURIComponent:', decodeError);
-                    // If primary decode failed, potentially log or use raw data
-                    decodedData = rawCardData; // Fallback to raw data
-                    console.warn('[Knack Script] Using raw card data due to decode error.');
-                }
-            } else {
-                 console.log(`[loadFlashcardUserData DEBUG] Raw card data did not need decoding.`);
-            }
-
-            // Parse the JSON safely
-            const parsedCards = safeParseJSON(decodedData, []);
-            // --- Log PARSED card data ---
-            console.log(`[loadFlashcardUserData DEBUG] Parsed card data via safeParseJSON (count: ${parsedCards?.length ?? 0}):`, parsedCards?.slice(0, 3)); // Log first few cards
-            // --- End log ---
-
-            userData.cards = migrateTypeToQuestionType(parsedCards); // Migrate legacy types
-            userData.cards = standardizeCards(userData.cards); // Standardize structure
-
-            // ... rest of card processing ...
-        } catch (cardError) {
-            console.error('[Knack Script] Fatal error processing cards:', cardError);
-            userData.cards = []; // Reset to empty array
-        }
-    }
-  
+          // Enhanced parsing for cards with better error handling
+          const rawCardData = record[FIELD_MAPPING.cardBankData];
+          if (rawCardData) {
+              try {
+                  // --- Log raw card data ---
+                  console.log(`[loadFlashcardUserData DEBUG] Raw cardBankData string (length: ${String(rawCardData).length}):`, String(rawCardData).substring(0, 500)); 
+                  // --- End log ---
+                  
+                  // First try to decode if needed
+                  let decodedData = rawCardData;
+                  if (typeof rawCardData === 'string' && rawCardData.includes('%')) {
+                      try {
+                          decodedData = safeDecodeURIComponent(rawCardData);
+                      } catch (decodeError) {
+                          console.error('[Knack Script] Error with primary decode, trying backup method:', decodeError);
+                          // Try handling broken encodings
+                          decodedData = String(rawCardData)
+                              .replace(/%(?![0-9A-Fa-f]{2})/g, '%25'); // Fix invalid % sequences
+                          try {
+                              decodedData = decodeURIComponent(decodedData);
+                          } catch (secondError) {
+                              console.error('[Knack Script] Advanced URI decode failed, using original:', secondError);
+                          }
+                      }
+                  }
+                  
+                  // --- Log decoded data ---
+                  console.log(`[loadFlashcardUserData DEBUG] Decoded card data string (length: ${String(decodedData).length}):`, String(decodedData).substring(0, 500)); 
+                  // --- End log ---
+                  
+                  // Parse the JSON safely
+                  userData.cards = safeParseJSON(decodedData, []);
+                  userData.cards = migrateTypeToQuestionType(userData.cards); // Migrate legacy types
+                  userData.cards = standardizeCards(userData.cards); // Standardize structure
+                  
+                  // --- Log parsed cards with options ---
+                  console.log(`[loadFlashcardUserData DEBUG] Parsed userData.cards count: ${userData.cards.length}`);
+                  userData.cards.slice(0, 5).forEach((card, index) => {
+                      if (card.questionType === 'multiple_choice' || (Array.isArray(card.options) && card.options.length > 0)) {
+                          console.log(`[loadFlashcardUserData DEBUG] Card ${index} (ID: ${card.id}) options:`, JSON.stringify(card.options));
+                      }
+                  });
+                  // --- End log ---
+              } catch (cardError) {
+                  console.error('[Knack Script] Fatal error processing cards:', cardError);
+                  userData.cards = []; // Reset to empty array
+              }
+          }
           console.log(`[Knack Script] Loaded ${userData.cards.length} cards/shells from bank.`);
           
           // Enhanced parsing for spaced repetition
@@ -1941,78 +1881,55 @@ retryApiCall(findRecordApiCall)
           console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists.`);
           
           // Enhanced parsing for color mapping
-           const rawColorData = record[FIELD_MAPPING.colorMapping];
-           let parsedColorMapping = {};
-           try { // Outer try block for overall color processing
-               if (rawColorData) {
-                   let decodedColor = rawColorData;
-                   // Attempt decoding only if it looks like it needs it
-                   if (typeof rawColorData === 'string' && rawColorData.includes('%')) {
-                       try {
-                           decodedColor = safeDecodeURIComponent(rawColorData);
-                       } catch (e) {
-                           console.error('[Knack Script] Error decoding color mapping:', e);
-                           // Keep decodedColor as the original rawColorData if decoding fails
-                       }
-                   }
-                   
-                   // Parse the potentially decoded JSON
-                   let tempParsedMapping = safeParseJSON(decodedColor, {});
-                   
-                   // Decode topic keys after parsing
-                   if (typeof tempParsedMapping === 'object' && tempParsedMapping !== null) {
-                       // Ensure saveQueue and decodeTopicKeys are accessible here
-                       // Assuming saveQueue is the instance created earlier in the script
-                       if (saveQueue && typeof saveQueue.decodeTopicKeys === 'function') {
-                           // REMOVED DECODING STEP AS WE USE IDs NOW: parsedColorMapping = saveQueue.decodeTopicKeys(tempParsedMapping); 
-                           parsedColorMapping = tempParsedMapping; // Use parsed mapping directly
-                       } else {
-                            console.error("[Knack Script] Error: saveQueue or decodeTopicKeys not available for color mapping.");
-                            parsedColorMapping = tempParsedMapping; // Use as is if decoder unavailable
-                       }
-                   } else {
-                       // Ensure it's an object if parsing failed or returned non-object
-                       parsedColorMapping = {};
-                   }
-               } else {
-                  // If rawColorData is null or empty, initialize as empty object
-                  parsedColorMapping = {};
-               }
-           } catch (colorError) { // Catch errors during the entire color processing block
-               console.error('[Knack Script] Error processing color mapping:', colorError);
-               parsedColorMapping = {}; // Reset on any error during processing
-           } // End outer try-catch
-           // --- ADDED CALL TO ENSURE STRUCTURE ---
-           userData.colorMapping = ensureValidColorMapping(parsedColorMapping); // Assign final mapping to userData
-           // --- END ADDED CALL ---
-           console.log(`[Knack Script] Loaded color mapping.`);
-           
-           // Enhanced parsing for topic metadata
-           const rawMetaData = record[FIELD_MAPPING.topicMetadata];
-           try {
-               if (rawMetaData) {
-                   let decodedMeta = rawMetaData;
-                   if (typeof rawMetaData === 'string' && rawMetaData.includes('%')) {
-                       try {
-                           decodedMeta = safeDecodeURIComponent(rawMetaData);
-                       } catch (e) {
-                           console.error('[Knack Script] Error decoding topic metadata:', e);
-                       }
-                   }
-                   userData.topicMetadata = safeParseJSON(decodedMeta, []);
-                   // Ensure it's an array
-                   if (!Array.isArray(userData.topicMetadata)) {
-                       userData.topicMetadata = [];
-                   }
-               }
-           } catch (metaError) {
-               console.error('[Knack Script] Error processing topic metadata:', metaError);
-               userData.topicMetadata = [];
-           }
-           console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
+          const rawColorData = record[FIELD_MAPPING.colorMapping];
+          try {
+              if (rawColorData) {
+                  let decodedColor = rawColorData;
+                  if (typeof rawColorData === 'string' && rawColorData.includes('%')) {
+                      try {
+                          decodedColor = safeDecodeURIComponent(rawColorData);
+                      } catch (e) {
+                          console.error('[Knack Script] Error decoding color mapping:', e);
+                      }
+                  }
+                  userData.colorMapping = safeParseJSON(decodedColor, {});
+                  // Ensure it's an object
+                  if (typeof userData.colorMapping !== 'object' || userData.colorMapping === null) {
+                      userData.colorMapping = {};
+                  }
+              }
+          } catch (colorError) {
+              console.error('[Knack Script] Error processing color mapping:', colorError);
+              userData.colorMapping = {};
+          }
+          console.log(`[Knack Script] Loaded color mapping.`);
+          
+          // Enhanced parsing for topic metadata
+          const rawMetaData = record[FIELD_MAPPING.topicMetadata];
+          try {
+              if (rawMetaData) {
+                  let decodedMeta = rawMetaData;
+                  if (typeof rawMetaData === 'string' && rawMetaData.includes('%')) {
+                      try {
+                          decodedMeta = safeDecodeURIComponent(rawMetaData);
+                      } catch (e) {
+                          console.error('[Knack Script] Error decoding topic metadata:', e);
+                      }
+                  }
+                  userData.topicMetadata = safeParseJSON(decodedMeta, []);
+                  // Ensure it's an array
+                  if (!Array.isArray(userData.topicMetadata)) {
+                      userData.topicMetadata = [];
+                  }
+              }
+          } catch (metaError) {
+              console.error('[Knack Script] Error processing topic metadata:', metaError);
+              userData.topicMetadata = [];
+          }
+          console.log(`[Knack Script] Loaded ${userData.topicMetadata.length} topic metadata items.`);
 
-           debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
-           callback(userData);
+          debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
+          callback(userData);
       } catch (e) {
           console.error("[Knack Script] Error processing user data fields:", e);
           // Return partially assembled data or fallback
@@ -2962,14 +2879,12 @@ try {
 async function handleDeleteTopicRequest(data, iframeWindow) {
 console.log("[Knack Script] Handling DELETE_TOPIC request", data);
 
-// --- UPDATED CHECK: Expect topicId ---
-if (!data || !data.recordId || !data.subject || !data.topicId) { 
-    console.error("[Knack Script] DELETE_TOPIC request missing recordId, subject name, or topicId");
+if (!data || !data.recordId || !data.subject || !data.topic) {
+    console.error("[Knack Script] DELETE_TOPIC request missing recordId, subject name, or topic name");
     if (iframeWindow) iframeWindow.postMessage({ 
         type: 'DELETE_TOPIC_RESULT', 
         success: false, 
-        // --- UPDATED ERROR MESSAGE ---
-        error: "Missing recordId, subject name, or topicId" 
+        error: "Missing recordId, subject name, or topic name" 
     }, '*');
     return;
 }
@@ -3051,9 +2966,7 @@ try {
             typeof colorMapping === 'object' && 
             colorMapping[data.subject] && 
             colorMapping[data.subject].topics) {
-            // --- USE topicId TO DELETE ---
-            delete colorMapping[data.subject].topics[data.topicId];
-            // ---------------------------
+            delete colorMapping[data.subject].topics[data.topic];
         }
     } catch (e) {
         console.error("[Knack Script] Error processing color mapping during topic deletion:", e);
