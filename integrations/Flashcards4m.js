@@ -1117,69 +1117,6 @@ function safeParseJSON(jsonString, defaultVal = null) {
       }
       // --------------------------------------
 
-      // --- NEW: Validate if this is an empty save that could erase data ---
-      const hasCards = Array.isArray(saveDataMessage.cards) && saveDataMessage.cards.length > 0;
-      const hasColorMapping = saveDataMessage.colorMapping && 
-                            typeof saveDataMessage.colorMapping === 'object' &&
-                            Object.keys(saveDataMessage.colorMapping).length > 0;
-      const hasTopicLists = Array.isArray(saveDataMessage.topicLists) && saveDataMessage.topicLists.length > 0;
-      
-      // Check if this save would erase existing data
-      const isEmptySave = !hasCards && !hasColorMapping && !hasTopicLists;
-      
-      // --- NEW: Block partial saves that would overwrite other subjects ---
-      if (hasCards && hasColorMapping) {
-        // Check that all subjects in cards are present in colorMapping
-        const subjectsInCards = new Set(saveDataMessage.cards.map(card => card.subject).filter(Boolean));
-        const subjectsInColors = new Set(Object.keys(saveDataMessage.colorMapping));
-        let missingSubjects = [];
-        subjectsInCards.forEach(subject => {
-          if (!subjectsInColors.has(subject)) missingSubjects.push(subject);
-        });
-        if (missingSubjects.length > 0) {
-          console.error(`[Knack Script] BLOCKING SAVE: The following subjects are present in cards but missing in colorMapping: ${missingSubjects.join(', ')}`);
-          if (iframeWindow) {
-            iframeWindow.postMessage({ 
-              type: 'SAVE_RESULT', 
-              success: false, 
-              error: `Blocking save: Missing color mapping for subjects: ${missingSubjects.join(', ')}`
-            }, '*');
-          }
-          return;
-        }
-      }
-      // --- END NEW VALIDATION ---
-
-      if (isEmptySave) {
-        console.warn("[Knack Script] WARNING: Detected potentially empty save operation");
-        console.log("[Knack Script] Empty save stats:", {
-          cards: Array.isArray(saveDataMessage.cards) ? saveDataMessage.cards.length : 0,
-          colorMapping: Object.keys(saveDataMessage.colorMapping || {}).length,
-          topicLists: Array.isArray(saveDataMessage.topicLists) ? saveDataMessage.topicLists.length : 0
-        });
-        
-        // If preserveFields isn't explicitly set to true, we might be at risk of data loss
-        if (!saveDataMessage.preserveFields) {
-          console.error("[Knack Script] Blocking empty save operation with preserveFields=false");
-          if (iframeWindow) {
-            iframeWindow.postMessage({ 
-              type: 'SAVE_RESULT', 
-              success: true, 
-              message: "Empty save operation blocked to prevent data loss",
-              blocked: true
-            }, '*');
-          }
-          return; // Don't proceed with the save
-        }
-        
-        // If preserveFields is true, proceed but with extra logging
-        console.log("[Knack Script] Proceeding with empty save since preserveFields=true");
-        
-        // Force preserveFields to true as an extra safety measure
-        saveDataMessage.preserveFields = true;
-      }
-      // --- END NEW VALIDATION ---
-
       // Validate and structure colorMapping before saving
       if (saveDataMessage.colorMapping) {
         console.log("[Knack Script] Validating color mapping structure before save");
@@ -1192,7 +1129,7 @@ function safeParseJSON(jsonString, defaultVal = null) {
         // --- Use RENAMED PARAMETER --- 
         data: saveDataMessage, // Pass the whole data object received
         recordId: saveDataMessage.recordId,
-        preserveFields: saveDataMessage.preserveFields || true // Always default preserveFields to TRUE for safety
+        preserveFields: saveDataMessage.preserveFields || false // Default preserveFields to false if not provided
       });
 
       console.log(`[Knack Script] SAVE_DATA for record ${saveDataMessage.recordId} completed successfully.`);
@@ -2419,6 +2356,7 @@ retryApiCall(findRecordApiCall)
                  throw new Error(`Failed to fetch existing data for record ${recordId} during shell creation.`);
             }
 
+
            // 2. Parse existing data safely
            let subjectColors = {};
             let existingTopicMetadata = [];
@@ -2438,7 +2376,7 @@ retryApiCall(findRecordApiCall)
                    metaDataStr = safeDecodeURIComponent(metaDataStr);
                }
                existingTopicMetadata = safeParseJSON(metaDataStr, []); // Default to empty array
-            } catch (e) { console.error("Error parsing existing topic metadata:", e); existingTopicMetadata = [];} 
+            } catch (e) { console.error("Error parsing existing topic metadata:", e); existingTopicMetadata = [];}
 
            try {
                let bankDataStr = existingData[FIELD_MAPPING.cardBankData];
@@ -2446,11 +2384,12 @@ retryApiCall(findRecordApiCall)
                    bankDataStr = safeDecodeURIComponent(bankDataStr);
                }
                existingItems = safeParseJSON(bankDataStr, []); // Default to empty array
-            } catch(e) { console.error("Error parsing existing card bank data:", e); existingItems = [];} 
+            } catch(e) { console.error("Error parsing existing card bank data:", e); existingItems = [];}
 
            // Split existing items from card bank
            const { topics: existingTopicShells, cards: existingCards } = splitByType(existingItems);
            console.log(`[Knack Script] Existing data parsed: ${existingTopicShells.length} shells, ${existingCards.length} cards, ${existingTopicMetadata.length} metadata items.`);
+
 
            // 3. Generate New Topic Shells and update Colors/Metadata based on topicLists
            const { newShells, updatedColors, updatedMetadata } = generateNewShellsAndMetadata(
@@ -2460,6 +2399,7 @@ retryApiCall(findRecordApiCall)
            );
            console.log(`[Knack Script] Generated ${newShells.length} new shells based on topic lists.`);
 
+
            // 4. Merge new shells with existing shells (preserves card arrays in existing shells)
            const finalTopicShells = mergeTopicShells(existingTopicShells, newShells);
            console.log(`[Knack Script] Merged shells. Total shells: ${finalTopicShells.length}`);
@@ -2467,21 +2407,17 @@ retryApiCall(findRecordApiCall)
            // 5. Combine final shells with existing cards for the new cardBankData payload
            const finalBankData = [...finalTopicShells, ...existingCards];
 
-           // 6. Merge color mappings to ensure all subjects are included
-           const mergedColors = { ...subjectColors, ...updatedColors };
-           Object.keys(updatedColors).forEach(subject => {
-               mergedColors[subject] = updatedColors[subject];
-           });
-
-           // 7. Prepare the data payload for saving (includes all shells and color mappings)
+           // 6. Prepare the data payload for saving (includes updated bank, colors, metadata)
+           // This payload object contains the specific fields we want to update
            const saveDataPayload = {
-               cards: finalBankData, // All topic shells and cards
-               colorMapping: mergedColors, // All color mappings for all subjects
+               // recordId is not part of the payload itself, passed to queue separately
+               cards: finalBankData, // Updated card bank with merged shells
+               colorMapping: updatedColors, // Potentially updated colors
                topicMetadata: updatedMetadata // Merged metadata
                // We will use preserveFields: true, so other fields like boxes, topicLists are kept
            };
 
-           // 8. Queue the save operation using 'full' type as multiple fields are potentially updated
+           // 7. Queue the save operation using 'full' type as multiple fields are potentially updated
            console.log(`[Knack Script] Queuing 'full' save for topic shell creation/update for record ${recordId}.`);
            await saveQueue.addToQueue({
                type: 'full',
@@ -2494,6 +2430,7 @@ retryApiCall(findRecordApiCall)
 
            // Notify React app immediately that shells were processed and save is queued
            if (iframeWindow) iframeWindow.postMessage({ type: 'TOPIC_SHELLS_PROCESSED', success: true, count: newShells.length }, '*');
+
 
        } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -3178,23 +3115,10 @@ function ensureValidColorMapping(colorMapping) {
   }
   
   // Create a copy to avoid modifying the input directly
-  let updatedMapping;
-  try {
-      updatedMapping = JSON.parse(JSON.stringify(colorMapping));
-  } catch (err) {
-      console.error("[Knack Script] Error cloning colorMapping, creating new object:", err);
-      updatedMapping = {};
-  }
+  const updatedMapping = JSON.parse(JSON.stringify(colorMapping));
   
   // Check each subject entry
   Object.keys(updatedMapping).forEach(subject => {
-      // Skip invalid subject keys that might cause issues
-      if (!subject || typeof subject !== 'string') {
-          console.warn("[Knack Script] Removing invalid subject key from colorMapping");
-          delete updatedMapping[subject];
-          return;
-      }
-      
       const subjectData = updatedMapping[subject];
       
       // Convert string values to proper structure
@@ -3214,28 +3138,6 @@ function ensureValidColorMapping(colorMapping) {
           if (!subjectData.topics || typeof subjectData.topics !== 'object') {
               console.log(`[Knack Script] Creating topics object for ${subject}.`);
               subjectData.topics = {};
-          } else {
-              // Sanitize topic keys to prevent problematic strings
-              const sanitizedTopics = {};
-              Object.keys(subjectData.topics).forEach(topicKey => {
-                  // Skip null/undefined keys
-                  if (!topicKey) return;
-                  
-                  // Create a sanitized key that's safe for JSON and storage
-                  const sanitizedKey = String(topicKey)
-                      .replace(/[\n\r\t]/g, ' ')           // Replace newlines/tabs with spaces
-                      .replace(/\s+/g, ' ')                // Normalize multiple spaces
-                      .replace(/["\\]/g, '')               // Remove quotes and backslashes
-                      .substring(0, 100)                   // Limit length
-                      .trim();                             // Trim whitespace
-                  
-                  if (sanitizedKey) {
-                      sanitizedTopics[sanitizedKey] = subjectData.topics[topicKey];
-                  }
-              });
-              
-              // Replace with sanitized topics
-              subjectData.topics = sanitizedTopics;
           }
       }
       // Replace invalid values with proper structure
@@ -3247,16 +3149,6 @@ function ensureValidColorMapping(colorMapping) {
           };
       }
   });
-  
-  // Check if the mapping has at least one subject - if not, it's likely a corrupted mapping
-  if (Object.keys(updatedMapping).length === 0) {
-      console.warn("[Knack Script] Empty color mapping detected, creating default mapping");
-      // Create a default entry to prevent empty mappings
-      updatedMapping["General"] = {
-          base: "#4363d8", // Default blue
-          topics: {}
-      };
-  }
   
   return updatedMapping;
 }
