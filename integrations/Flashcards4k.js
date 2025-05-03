@@ -461,8 +461,8 @@ function safeParseJSON(jsonString, defaultVal = null) {
                  case 'full': // This is the primary case used now
                      console.log("[SaveQueue] Preparing 'full' save data by stringifying fields.");
                      // 'data' contains the raw JS objects/arrays (cards, colorMapping, etc.)
-
-                     // --- Ensure all relevant fields are stringified and assigned correctly ---
+                     
+                     // --- Restoring processing of actual data --- 
                      if (data.cards !== undefined) {
                          updateData[FIELD_MAPPING.cardBankData] = JSON.stringify(this.ensureSerializable(data.cards || []));
                      }
@@ -477,15 +477,10 @@ function safeParseJSON(jsonString, defaultVal = null) {
                          if (srData.box4 !== undefined) updateData[FIELD_MAPPING.box4Data] = JSON.stringify(this.ensureSerializable(srData.box4 || []));
                          if (srData.box5 !== undefined) updateData[FIELD_MAPPING.box5Data] = JSON.stringify(this.ensureSerializable(srData.box5 || []));
                      }
-                     // --- FIX: Explicitly handle topicLists for 'full' save ---
-                     if (data.topicLists !== undefined) {
-                         updateData[FIELD_MAPPING.topicLists] = JSON.stringify(this.ensureSerializable(data.topicLists || []));
-                         console.log("[SaveQueue 'full'] Stringified topicLists field.");
-                     }
-                     // --- END FIX ---
                      if (data.topicMetadata !== undefined) {
                          updateData[FIELD_MAPPING.topicMetadata] = JSON.stringify(this.ensureSerializable(data.topicMetadata || []));
                      }
+                     // --- End restoring processing --- 
                      break;
                  default:
                      console.error(`[SaveQueue] Unknown save operation type: ${type}`);
@@ -1132,6 +1127,29 @@ function safeParseJSON(jsonString, defaultVal = null) {
       // Check if this save would erase existing data
       const isEmptySave = !hasCards && !hasColorMapping && !hasTopicLists;
       
+      // --- NEW: Block partial saves that would overwrite other subjects ---
+      if (hasCards && hasColorMapping) {
+        // Check that all subjects in cards are present in colorMapping
+        const subjectsInCards = new Set(saveDataMessage.cards.map(card => card.subject).filter(Boolean));
+        const subjectsInColors = new Set(Object.keys(saveDataMessage.colorMapping));
+        let missingSubjects = [];
+        subjectsInCards.forEach(subject => {
+          if (!subjectsInColors.has(subject)) missingSubjects.push(subject);
+        });
+        if (missingSubjects.length > 0) {
+          console.error(`[Knack Script] BLOCKING SAVE: The following subjects are present in cards but missing in colorMapping: ${missingSubjects.join(', ')}`);
+          if (iframeWindow) {
+            iframeWindow.postMessage({ 
+              type: 'SAVE_RESULT', 
+              success: false, 
+              error: `Blocking save: Missing color mapping for subjects: ${missingSubjects.join(', ')}`
+            }, '*');
+          }
+          return;
+        }
+      }
+      // --- END NEW VALIDATION ---
+
       if (isEmptySave) {
         console.warn("[Knack Script] WARNING: Detected potentially empty save operation");
         console.log("[Knack Script] Empty save stats:", {
@@ -1803,7 +1821,7 @@ retryApiCall(findRecordApiCall)
               recordId: record.id,
               cards: [],
               spacedRepetition: { box1: [], box2: [], box3: [], box4: [], box5: [] },
-              topicLists: [], // Initialize as empty array
+              topicLists: [],
               colorMapping: {},
               topicMetadata: [],
               lastSaved: record[FIELD_MAPPING.lastSaved] || null
@@ -1885,50 +1903,46 @@ retryApiCall(findRecordApiCall)
           console.log(`[Knack Script] Loaded spaced repetition data.`);
           
           // Enhanced parsing for topic lists - CRITICAL for multi-subject
-          const rawTopicLists = record[FIELD_MAPPING.topicLists]; // Use correct field mapping
+          const rawTopicLists = record[FIELD_MAPPING.topicLists];
           try {
               if (rawTopicLists) {
                   let decodedLists = rawTopicLists;
-                  // Attempt decoding only if it seems necessary
                   if (typeof rawTopicLists === 'string' && rawTopicLists.includes('%')) {
                       try {
                           decodedLists = safeDecodeURIComponent(rawTopicLists);
                       } catch (decodeError) {
                           console.error('[Knack Script] Topic lists decode error, trying backup:', decodeError);
-                          const jsonPattern = /\[\s*\{.*\}\s*\]/s; // More robust pattern
+                          // Try to recover with pattern matching
+                          const jsonPattern = /\[\s*\{.*\}\s*\]/s;
                           const match = String(rawTopicLists).match(jsonPattern);
                           if (match) {
-                              console.log('[Knack Script] Found JSON pattern in corrupted topic lists');
+                              console.log('[Knack Script] Found JSON pattern in topic lists');
                               decodedLists = match[0];
-                          } else {
-                               decodedLists = rawTopicLists; // Use original if pattern fails
-                               console.warn('[Knack Script] Could not decode or find pattern in topic lists.');
                           }
                       }
                   }
-
-                  const parsedLists = safeParseJSON(decodedLists, []); // Safely parse
-
+                  
+                  const parsedLists = safeParseJSON(decodedLists, []);
+                  
                   // Ensure topic lists have minimal valid structure
                   userData.topicLists = Array.isArray(parsedLists) ? parsedLists.map(list => {
+                      // Basic validation
                       if (!list || typeof list !== 'object') return null;
+                      
+                      // Clean up potentially malformed lists
                       return {
                           subject: list.subject || "General",
-                          topics: Array.isArray(list.topics) ? list.topics.filter(Boolean) : [], // Ensure topics is array
-                          color: list.color || "#808080" // Add default color if missing
+                          topics: Array.isArray(list.topics) ? list.topics.filter(Boolean) : [],
+                          color: list.color || "#808080"
                       };
-                  }).filter(Boolean) : []; // Filter out nulls and ensure it's an array
-              } else {
-                   console.log('[Knack Script] Topic lists field is empty or missing.');
-                   userData.topicLists = []; // Ensure it's an empty array if field is missing
+                  }).filter(Boolean) : [];
               }
           } catch (listError) {
               console.error('[Knack Script] Error processing topic lists:', listError);
-              userData.topicLists = []; // Reset to empty array on error
+              userData.topicLists = [];
           }
-          console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists from field ${FIELD_MAPPING.topicLists}.`);
-          // --- END FIX ---
-
+          console.log(`[Knack Script] Loaded ${userData.topicLists.length} topic lists.`);
+          
           // Enhanced parsing for color mapping
           const rawColorData = record[FIELD_MAPPING.colorMapping];
           try {
@@ -1979,7 +1993,6 @@ retryApiCall(findRecordApiCall)
 
           debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
           callback(userData);
-
       } catch (e) {
           console.error("[Knack Script] Error processing user data fields:", e);
           // Return partially assembled data or fallback
@@ -2406,7 +2419,6 @@ retryApiCall(findRecordApiCall)
                  throw new Error(`Failed to fetch existing data for record ${recordId} during shell creation.`);
             }
 
-
            // 2. Parse existing data safely
            let subjectColors = {};
             let existingTopicMetadata = [];
@@ -2426,7 +2438,7 @@ retryApiCall(findRecordApiCall)
                    metaDataStr = safeDecodeURIComponent(metaDataStr);
                }
                existingTopicMetadata = safeParseJSON(metaDataStr, []); // Default to empty array
-            } catch (e) { console.error("Error parsing existing topic metadata:", e); existingTopicMetadata = [];}
+            } catch (e) { console.error("Error parsing existing topic metadata:", e); existingTopicMetadata = [];} 
 
            try {
                let bankDataStr = existingData[FIELD_MAPPING.cardBankData];
@@ -2434,12 +2446,11 @@ retryApiCall(findRecordApiCall)
                    bankDataStr = safeDecodeURIComponent(bankDataStr);
                }
                existingItems = safeParseJSON(bankDataStr, []); // Default to empty array
-            } catch(e) { console.error("Error parsing existing card bank data:", e); existingItems = [];}
+            } catch(e) { console.error("Error parsing existing card bank data:", e); existingItems = [];} 
 
            // Split existing items from card bank
            const { topics: existingTopicShells, cards: existingCards } = splitByType(existingItems);
            console.log(`[Knack Script] Existing data parsed: ${existingTopicShells.length} shells, ${existingCards.length} cards, ${existingTopicMetadata.length} metadata items.`);
-
 
            // 3. Generate New Topic Shells and update Colors/Metadata based on topicLists
            const { newShells, updatedColors, updatedMetadata } = generateNewShellsAndMetadata(
@@ -2449,7 +2460,6 @@ retryApiCall(findRecordApiCall)
            );
            console.log(`[Knack Script] Generated ${newShells.length} new shells based on topic lists.`);
 
-
            // 4. Merge new shells with existing shells (preserves card arrays in existing shells)
            const finalTopicShells = mergeTopicShells(existingTopicShells, newShells);
            console.log(`[Knack Script] Merged shells. Total shells: ${finalTopicShells.length}`);
@@ -2457,17 +2467,21 @@ retryApiCall(findRecordApiCall)
            // 5. Combine final shells with existing cards for the new cardBankData payload
            const finalBankData = [...finalTopicShells, ...existingCards];
 
-           // 6. Prepare the data payload for saving (includes updated bank, colors, metadata)
-           // This payload object contains the specific fields we want to update
+           // 6. Merge color mappings to ensure all subjects are included
+           const mergedColors = { ...subjectColors, ...updatedColors };
+           Object.keys(updatedColors).forEach(subject => {
+               mergedColors[subject] = updatedColors[subject];
+           });
+
+           // 7. Prepare the data payload for saving (includes all shells and color mappings)
            const saveDataPayload = {
-               // recordId is not part of the payload itself, passed to queue separately
-               cards: finalBankData, // Updated card bank with merged shells
-               colorMapping: updatedColors, // Potentially updated colors
+               cards: finalBankData, // All topic shells and cards
+               colorMapping: mergedColors, // All color mappings for all subjects
                topicMetadata: updatedMetadata // Merged metadata
                // We will use preserveFields: true, so other fields like boxes, topicLists are kept
            };
 
-           // 7. Queue the save operation using 'full' type as multiple fields are potentially updated
+           // 8. Queue the save operation using 'full' type as multiple fields are potentially updated
            console.log(`[Knack Script] Queuing 'full' save for topic shell creation/update for record ${recordId}.`);
            await saveQueue.addToQueue({
                type: 'full',
@@ -2480,7 +2494,6 @@ retryApiCall(findRecordApiCall)
 
            // Notify React app immediately that shells were processed and save is queued
            if (iframeWindow) iframeWindow.postMessage({ type: 'TOPIC_SHELLS_PROCESSED', success: true, count: newShells.length }, '*');
-
 
        } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
