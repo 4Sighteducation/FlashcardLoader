@@ -1296,11 +1296,10 @@ function safeParseJSON(jsonString, defaultVal = null) {
 
           // Calculate tomorrow's date for next review
           const now = new Date();
-          const tomorrow = new Date(now);
-          tomorrow.setDate(now.getDate() + 1);
-          
           const nowISO = now.toISOString();
-          const tomorrowISO = tomorrow.toISOString();
+          // const tomorrow = new Date(now); // REMOVE
+          // tomorrow.setDate(now.getDate() + 1); // REMOVE
+          // const tomorrowISO = tomorrow.toISOString(); // REMOVE
           
           const existingBox1Map = new Map(box1Data.map(entry => [entry.cardId, true]));
           
@@ -1310,11 +1309,11 @@ function safeParseJSON(jsonString, defaultVal = null) {
             .map(card => ({ 
               cardId: card.id, 
               lastReviewed: nowISO, 
-              nextReviewDate: tomorrowISO // Schedule for tomorrow
+              nextReviewDate: nowISO // CORRECTED: Schedule for review today (nowISO)
             }));
 
           const updatedBox1 = [...box1Data, ...newBox1Entries];
-          console.log(`[Knack Script] Added ${newBox1Entries.length} new entries to Box 1 with nextReviewDate: ${tomorrowISO}`);
+          console.log(`[Knack Script] Added ${newBox1Entries.length} new entries to Box 1 with nextReviewDate: ${nowISO}`); // Log nowISO
 
          // --- Queue a 'full' save operation with merged data ---
          const fullSaveData = {
