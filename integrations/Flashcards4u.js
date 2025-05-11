@@ -1000,10 +1000,12 @@ function safeParseJSON(jsonString, defaultVal = null) {
                                  emailId: window.currentKnackUser.emailId,
                                  schoolId: window.currentKnackUser.schoolId,
                                  tutorId: window.currentKnackUser.tutorId,
-                                 roleId: window.currentKnackUser.roleId
+                                 roleId: window.currentKnackUser.roleId,
+                                 // Corrected: Use the lastSaved timestamp from the flashcard userData, not the main user record
+                                 knackRecordLastSaved: userData?.lastSaved || null 
                              }
                          };
-                         debugLog("--> Sending KNACK_USER_INFO to React App", initialData.data);
+                         debugLog("--> Sending KNACK_USER_INFO to React App (with corrected knackRecordLastSaved from flashcard data)", initialData.data);
                          // --- FIX: Use iframe.contentWindow --- 
                          iframe.contentWindow.postMessage(initialData, '*'); 
 
