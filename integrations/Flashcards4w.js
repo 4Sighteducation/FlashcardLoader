@@ -1,6 +1,29 @@
 // knack-integration.js - Safe for public GitHub repository
 // Version: 5x (Introduces SaveQueue and corrected message handling)
 (function () {
+  // --- Debug Mode & Logger for this specific Knack script ---
+  const KNACK_DEBUG_MODE = true; // Set to false to disable logs in this specific file
+
+  const dlog = (...args) => {
+    if (KNACK_DEBUG_MODE) {
+      console.log('[KNACK_SCRIPT_DEBUG]', ...args);
+    }
+  };
+  const dwarn = (...args) => {
+    if (KNACK_DEBUG_MODE) {
+      console.warn('[KNACK_SCRIPT_DEBUG]', ...args);
+    }
+  };
+  const derr = (...args) => {
+    if (KNACK_DEBUG_MODE) {
+      console.error('[KNACK_SCRIPT_DEBUG]', ...args);
+    }
+  };
+  // Add dinfo, dtable here if you replaced console.info/table in this file.
+  // For example:
+  // const dinfo = (...args) => { if (KNACK_DEBUG_MODE) { console.info('[KNACK_SCRIPT_DEBUG]', ...args); } };
+  // const dtable = (data, cols) => { if (KNACK_DEBUG_MODE) { console.table(data, cols); } };
+
   // --- Configuration and Constants ---
   // Moved config-dependent constants into initializeFlashcardApp
   const KNACK_API_URL = 'https://api.knack.com/v1';
