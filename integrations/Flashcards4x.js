@@ -2,7 +2,7 @@
 // Version: 5x (Introduces SaveQueue and corrected message handling)
 (function () {
   // --- Debug Mode & Logger for this specific Knack script ---
-  const KNACK_DEBUG_MODE = true; // Set to false to disable logs in this specific file
+  const KNACK_DEBUG_MODE = false; // Set to false to disable logs in this specific file
 
   const dlog = (...args) => {
     if (KNACK_DEBUG_MODE) {
