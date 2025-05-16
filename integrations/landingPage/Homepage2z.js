@@ -1854,7 +1854,7 @@
       .profile-vespa-scores-container {
         padding: 15px 0px 10px 0px; /* Adjusted padding to be mostly top/bottom */
         margin-top: 15px; /* Space between subjects and VESPA scores title */
-        border-top: 1px solid rgba(7, 155, 170, 0.2); /* Subtle separator line */
+        /* border-top: 1px solid rgba(7, 155, 170, 0.2); */ /* Removed faint top border */
       }
       .profile-vespa-scores-title {
         font-size: 16px; /* Smaller title */
@@ -1864,7 +1864,7 @@
         text-align: left; /* Align with profile content */
         padding-left: 8px; /* Align with profile item labels */
         padding-bottom: 5px; /* Space for the border */
-        border-bottom: 1px solid rgba(7, 155, 170, 0.5); /* Added border */
+        border-bottom: 2px solid #079baa; /* Matched to main section title border */
       }
       .vespa-scores-grid {
         display: flex;
