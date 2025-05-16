@@ -6,6 +6,17 @@
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
   const DEBUG_MODE = true; // Enable console logging
 
+  // Flashcard specific constants
+  const FLASHCARD_DATA_OBJECT = 'object_102';
+  const FLASHCARD_USER_LINK_FIELD = 'field_2954'; // Field in object_102 that links to the user
+  const FLASHCARD_BOX_FIELDS = {
+    box1: 'field_2986',
+    box2: 'field_2987',
+    box3: 'field_2988',
+    box4: 'field_2989',
+    box5: 'field_2990'
+  };
+
   // Field mappings for the user profile object
   const FIELD_MAPPING = {
     userId: 'field_3064',         // User ID
@@ -889,9 +900,93 @@
     }
   }
   
+  // --- Flashcard Review Notification Functions ---
+  async function fetchFlashcardReviewData(userId) {
+    if (!userId) {
+      console.error("[Homepage] Cannot fetch flashcard data: userId is missing.");
+      return null;
+    }
+    debugLog(`Fetching flashcard review data for user ID: ${userId}`);
+
+    const findFilters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [
+        { field: FLASHCARD_USER_LINK_FIELD, operator: 'is', value: userId }
+      ]
+    }));
+
+    const fieldsToRequest = Object.values(FLASHCARD_BOX_FIELDS).join(',');
+
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${FLASHCARD_DATA_OBJECT}/records?filters=${findFilters}&fields=${fieldsToRequest}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+
+      if (response && response.records && response.records.length > 0) {
+        debugLog(`Found flashcard data record for user ${userId}`, response.records[0]);
+        return response.records[0];
+      } else {
+        debugLog(`No flashcard data record found for user ${userId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('[Homepage] Error fetching flashcard review data:', error);
+      return null;
+    }
+  }
+
+  function processFlashcardData(flashcardRecord) {
+    if (!flashcardRecord) {
+      return { total: 0, box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 };
+    }
+
+    const counts = { total: 0, box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const boxKey in FLASHCARD_BOX_FIELDS) {
+      const fieldId = FLASHCARD_BOX_FIELDS[boxKey];
+      const boxDataRaw = flashcardRecord[fieldId];
+
+      if (boxDataRaw) {
+        const cardsArray = safeParseJSON(boxDataRaw, []);
+        if (Array.isArray(cardsArray)) {
+          let dueInBox = 0;
+          cardsArray.forEach(card => {
+            if (card.nextReviewDate) {
+              try {
+                const nextReview = new Date(card.nextReviewDate);
+                if (nextReview <= today) {
+                  dueInBox++;
+                }
+              } catch (dateError) {
+                console.warn(`[Homepage] Error parsing nextReviewDate '${card.nextReviewDate}':`, dateError);
+              }
+            }
+          });
+          counts[boxKey] = dueInBox;
+          counts.total += dueInBox;
+        } else {
+          debugLog(`Parsed data for ${fieldId} is not an array:`, cardsArray);
+        }
+      }
+    }
+    debugLog('Processed flashcard counts:', counts);
+    return counts;
+  }
+  
   // --- UI Rendering ---
   // Render the main homepage UI
-  function renderHomepage(userProfile) {
+  function renderHomepage(userProfile, flashcardReviewCounts) {
     const container = document.querySelector(window.HOMEPAGE_CONFIG.elementSelector);
     if (!container) {
       console.error('[Homepage] Container element not found.');
@@ -937,7 +1032,7 @@
         ${renderProfileSection(profileData)}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
-          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity)}
+          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts)}
         </div>
       </div>
     `;
@@ -1220,7 +1315,52 @@
         transition: transform 0.3s, box-shadow 0.3s;
         animation: fadeIn 0.5s ease-out forwards;
         border: 1px solid rgba(7, 155, 170, 0.3);
-        position: relative;
+        position: relative; /* Ensure positioning context for badge */
+      }
+      
+      /* Flashcard Notification Badge */
+      .flashcard-notification-badge {
+        position: absolute;
+        top: 5px;
+        right: 30px; /* Adjust to not overlap info icon */
+        background-color: red;
+        color: white;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 15; /* Higher than info icon */
+        box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      }
+
+      /* Flashcard Count Tooltip */
+      .flashcard-count-tooltip {
+        position: fixed;
+        background-color: #12204d; /* Slightly darker blue */
+        color: #ffffff;
+        padding: 10px;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        width: auto; /* Auto width based on content */
+        min-width: 180px; /* Minimum width */
+        z-index: 10001; /* Above other tooltips */
+        border: 1px solid #00e5db;
+        font-size: 13px;
+        text-align: left;
+        pointer-events: none; /* Tooltip should not be interactive */
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+        white-space: pre-wrap; /* To respect newlines in the content */
+      }
+
+      .flashcard-count-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
       }
       
       /* Tooltip/Popup Styles */
@@ -1952,19 +2092,89 @@
         console.log(`[Homepage] Tooltip created and displayed for icon #${index + 1}`);
       });
     });
+
+    // --- Add Flashcard Hover Tooltip Logic ---
+    const flashcardAppCard = document.querySelector('.app-card[data-box1-count]');
+    let flashcardCountsTooltip = null;
+
+    if (flashcardAppCard) {
+      flashcardAppCard.addEventListener('mouseenter', function(e) {
+        const total = parseInt(this.querySelector('.flashcard-notification-badge')?.textContent || '0', 10);
+        if (total === 0) return; // Don't show if no cards due (badge might not be there)
+
+        if (flashcardCountsTooltip) {
+          flashcardCountsTooltip.remove(); // Remove any lingering tooltip
+        }
+
+        flashcardCountsTooltip = document.createElement('div');
+        flashcardCountsTooltip.className = 'flashcard-count-tooltip';
+        
+        let tooltipText = 'Cards for Review:\n';
+        tooltipText += `Box 1 (Daily):       ${this.dataset.box1Count}\n`;
+        tooltipText += `Box 2 (Every Other): ${this.dataset.box2Count}\n`;
+        tooltipText += `Box 3 (Every 3 Days):  ${this.dataset.box3Count}\n`;
+        tooltipText += `Box 4 (Weekly):      ${this.dataset.box4Count}\n`;
+        tooltipText += `Box 5 (3 Weeks):    ${this.dataset.box5Count}`;
+        flashcardCountsTooltip.textContent = tooltipText;
+        
+        document.body.appendChild(flashcardCountsTooltip);
+
+        // Position tooltip
+        const rect = this.getBoundingClientRect();
+        const tooltipRect = flashcardCountsTooltip.getBoundingClientRect();
+        let top = rect.top - tooltipRect.height - 10; // Above the card
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+        // Adjust if too high
+        if (top < 0) {
+          top = rect.bottom + 10; // Below the card
+        }
+        // Adjust if too far left/right
+        if (left < 0) left = 5;
+        if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 5;
+
+        flashcardCountsTooltip.style.top = `${top + window.scrollY}px`;
+        flashcardCountsTooltip.style.left = `${left + window.scrollX}px`;
+        flashcardCountsTooltip.classList.add('visible');
+      });
+
+      flashcardAppCard.addEventListener('mouseleave', function() {
+        if (flashcardCountsTooltip) {
+          flashcardCountsTooltip.classList.remove('visible');
+          // Optional: remove after a delay to allow fade-out, or immediately
+          setTimeout(() => {
+             if (flashcardCountsTooltip && !flashcardCountsTooltip.classList.contains('visible')) {
+                flashcardCountsTooltip.remove();
+                flashcardCountsTooltip = null;
+             }
+          }, 200); // Matches transition duration
+        }
+      });
+    }
   }
   
   // Render an app hub section
-  function renderAppHubSection(title, apps) {
+  function renderAppHubSection(title, apps, flashcardReviewCounts = null) {
     let appsHTML = '';
-    let id = 0;
     
     apps.forEach(app => {
-      // Store the description directly in the info icon data-attribute
       const sanitizedDescription = sanitizeField(app.description);
+      let notificationBadgeHTML = '';
+      let cardDataAttributes = '';
+
+      if (app.name === "Flashcards" && flashcardReviewCounts && flashcardReviewCounts.total > 0) {
+        notificationBadgeHTML = `<span class="flashcard-notification-badge">${flashcardReviewCounts.total}</span>`;
+        cardDataAttributes = ` data-box1-count="${flashcardReviewCounts.box1}" 
+                               data-box2-count="${flashcardReviewCounts.box2}" 
+                               data-box3-count="${flashcardReviewCounts.box3}" 
+                               data-box4-count="${flashcardReviewCounts.box4}" 
+                               data-box5-count="${flashcardReviewCounts.box5}"`;
+      }
+
       appsHTML += `
-        <div class="app-card">
+        <div class="app-card"${cardDataAttributes}>
           <div class="app-card-header">
+            ${notificationBadgeHTML}
             <div class="app-info-icon" title="Click for details" data-description="${sanitizedDescription}">i</div>
             <img src="${app.icon}" alt="${app.name}" class="app-icon">
             <div class="app-name">${sanitizeField(app.name)}</div>
@@ -2087,8 +2297,20 @@
       const userProfile = await findOrCreateUserProfile(user.id, user.name, user.email);
       
       if (userProfile) {
-        // Render the homepage UI
-        renderHomepage(userProfile);
+        // Fetch and process flashcard review data
+        let flashcardReviewCounts = { total: 0, box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 }; // Default
+        try {
+          const flashcardDataRecord = await fetchFlashcardReviewData(user.id);
+          if (flashcardDataRecord) {
+            flashcardReviewCounts = processFlashcardData(flashcardDataRecord);
+          }
+        } catch (fcError) {
+          console.error("[Homepage] Error fetching or processing flashcard data:", fcError);
+          // Keep default counts (all zeros) if there's an error
+        }
+        
+        // Render the homepage UI with flashcard counts
+        renderHomepage(userProfile, flashcardReviewCounts);
       } else {
         container.innerHTML = `
           <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
@@ -2111,6 +2333,4 @@
   };
 
 })(); // End of IIFE
-
-
 
