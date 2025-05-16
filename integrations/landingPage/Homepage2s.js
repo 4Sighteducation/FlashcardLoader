@@ -1762,6 +1762,49 @@
         z-index: 15;
         box-shadow: 0 0 5px rgba(0,0,0,0.5);
       }
+
+      /* Custom App Data Tooltip */
+      .app-data-tooltip {
+        position: absolute; 
+        background-color: #1c2b5f; 
+        color: #ffffff; 
+        border: 1px solid #00e5db; 
+        border-radius: 6px;
+        padding: 10px 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        z-index: 10000; 
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+        max-width: 300px; 
+        font-size: 0.9em;
+        pointer-events: none; /* Prevents tooltip from interfering with mouse events */
+      }
+
+      .app-data-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .app-data-tooltip h4 {
+        color: #00e5db;
+        font-size: 1.1em;
+        margin-top: 0;
+        margin-bottom: 8px;
+        border-bottom: 1px solid rgba(0, 229, 219, 0.3);
+        padding-bottom: 5px;
+      }
+
+      .app-data-tooltip ul {
+        list-style-type: none;
+        padding-left: 0;
+        margin-bottom: 0;
+      }
+
+      .app-data-tooltip ul li {
+        margin-bottom: 4px;
+        line-height: 1.4;
+      }
     `;
     
     // Add style and content to the container
@@ -2061,7 +2104,7 @@
 
     appCardsWithData.forEach(card => {
       card.addEventListener('mouseenter', function(e) {
-        e.preventDefault(); 
+        // e.preventDefault(); // Removed: Not necessary for mouseenter on a div
         e.stopPropagation();
         // console.log("[Homepage] Mouse enter on app card TYPE:", this.dataset.appType); 
 
