@@ -1296,8 +1296,8 @@
       <div id="vespa-homepage">
         ${renderProfileSection(profileData, vespaScoresData)}
         <div class="app-hubs-container">
-          ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
-          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
+          ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa, flashcardReviewCounts, studyPlannerData, taskboardData)}
+          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity)}
         </div>
       </div>
     `;
@@ -2407,6 +2407,64 @@
         }
       });
     });
+  }
+  
+  // Render an app hub section
+  function renderAppHubSection(title, apps, flashcardReviewCounts = null, studyPlannerData = null, taskboardData = null) {
+    let appsHTML = '';
+    
+    apps.forEach(app => {
+      let notificationBadgeHTML = '';
+      let cardDataAttributes = '';
+
+      if (app.name === "Flashcards" && flashcardReviewCounts && flashcardReviewCounts.totalDue > 0) {
+        notificationBadgeHTML = `<span class="flashcard-notification-badge">${flashcardReviewCounts.totalDue}</span>`;
+        cardDataAttributes = ` data-app-type="flashcards"
+                               data-box1-due-count="${flashcardReviewCounts.box1.due}" 
+                               data-box1-total-count="${flashcardReviewCounts.box1.total}" 
+                               data-box2-due-count="${flashcardReviewCounts.box2.due}" 
+                               data-box2-total-count="${flashcardReviewCounts.box2.total}" 
+                               data-box3-due-count="${flashcardReviewCounts.box3.due}" 
+                               data-box3-total-count="${flashcardReviewCounts.box3.total}" 
+                               data-box4-due-count="${flashcardReviewCounts.box4.due}" 
+                               data-box4-total-count="${flashcardReviewCounts.box4.total}" 
+                               data-box5-due-count="${flashcardReviewCounts.box5.due}" 
+                               data-box5-total-count="${flashcardReviewCounts.box5.total}"`;
+      } else if (app.name === "Study Planner" && studyPlannerData && studyPlannerData.count > 0) {
+        notificationBadgeHTML = `<span class="study-planner-notification-badge">${studyPlannerData.count}</span>`;
+        cardDataAttributes = ` data-app-type="study-planner"
+                               data-sessions-details=\'${JSON.stringify(studyPlannerData.sessionsDetails)}\'`; 
+      } else if (app.name === "Taskboard" && taskboardData && taskboardData.doingCount > 0) {
+        notificationBadgeHTML = `<span class="taskboard-notification-badge">${taskboardData.doingCount}</span>`;
+        cardDataAttributes = ` data-app-type="taskboard"
+                               data-pending-hot="${taskboardData.pendingHot}"
+                               data-pending-warm="${taskboardData.pendingWarm}"
+                               data-pending-cold="${taskboardData.pendingCold}"
+                               data-doing-titles=\'${JSON.stringify(taskboardData.doingTaskTitles)}\'`;
+      }
+
+      // Ensure no title attribute on the link to prevent default browser tooltip
+      appsHTML += `
+        <div class="app-card"${cardDataAttributes}>
+          <a href="${app.url}" class="app-card-link"> 
+            <div class="app-card-header">
+              ${notificationBadgeHTML}
+              <img src="${app.icon}" alt="${app.name}" class="app-icon">
+              <div class="app-name">${sanitizeField(app.name)}</div>
+            </div>
+          </a>
+        </div>
+      `;
+    });
+    
+    return `
+      <section class="vespa-section">
+        <h2 class="vespa-section-title">${sanitizeField(title)}</h2>
+        <div class="app-hub">
+          ${appsHTML}
+        </div>
+      </section>
+    `;
   }
   
   // --- Entry Point Function ---
