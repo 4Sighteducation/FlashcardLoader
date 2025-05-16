@@ -1705,6 +1705,63 @@
           font-size: 1em;
         }
       }
+      
+      /* Flashcard Notification Badge */
+      .flashcard-notification-badge {
+        position: absolute;
+        top: 5px;
+        right: 8px; /* Adjusted from 30px */
+        background-color: red;
+        color: white;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 15;
+        box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      }
+      
+      /* Study Planner Notification Badge */
+      .study-planner-notification-badge {
+        position: absolute;
+        top: 5px;
+        right: 8px; /* Adjusted from 30px */
+        background-color: #28a745; /* Green */
+        color: white;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 15;
+        box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      }
+      
+      /* Taskboard Notification Badge */
+      .taskboard-notification-badge {
+        position: absolute;
+        top: 5px;
+        right: 8px; /* Adjusted from 30px */
+        background-color: #ffc107; /* Yellow */
+        color: #212529; /* Dark text for yellow bg */
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 15;
+        box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      }
     `;
     
     // Add style and content to the container
