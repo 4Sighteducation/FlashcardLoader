@@ -2051,23 +2051,26 @@
   
   // Enhanced tooltip setup with better styling
   function setupTooltips() {
-    console.log("[Homepage] Setting up enhanced tooltips");
+    console.log("[Homepage] Setting up tooltips (v3 - position debug)");
     
-    // Clear any potentially orphaned tooltips from previous (failed) initializations
     cleanupTooltips(); 
 
     const appCardsWithData = document.querySelectorAll('.app-card[data-app-type]');
     let activeDataTooltip = null; 
-    let tooltipHideTimeout = null; // Timeout for hiding/removing the tooltip
+    let tooltipHideTimeout = null;
 
     appCardsWithData.forEach(card => {
       card.addEventListener('mouseenter', function(e) {
+        e.preventDefault(); 
+        e.stopPropagation();
+        // console.log("[Homepage] Mouse enter on app card TYPE:", this.dataset.appType); 
+
         if (tooltipHideTimeout) {
-          clearTimeout(tooltipHideTimeout); // Cancel any pending hide operation
+          clearTimeout(tooltipHideTimeout);
           tooltipHideTimeout = null;
         }
         if (activeDataTooltip) { 
-          activeDataTooltip.remove(); // Remove any currently visible tooltip immediately
+          activeDataTooltip.remove(); 
           activeDataTooltip = null;
         }
 
@@ -2077,7 +2080,6 @@
         if (appType === 'flashcards') {
           const totalBadge = this.querySelector('.flashcard-notification-badge');
           if (!totalBadge || parseInt(totalBadge.textContent || '0', 10) === 0) return;
-
           tooltipContentHTML = `<h4>Flashcards for Review:</h4>
             Box 1 (Daily):       ${this.dataset.box1Count}<br>
             Box 2 (Every Other): ${this.dataset.box2Count}<br>
@@ -2097,12 +2099,10 @@
         } else if (appType === 'taskboard') {
           const totalBadge = this.querySelector('.taskboard-notification-badge');
           if (!totalBadge || parseInt(totalBadge.textContent || '0', 10) === 0) return;
-          
           const pendingHot = parseInt(this.dataset.pendingHot || '0', 10);
           const pendingWarm = parseInt(this.dataset.pendingWarm || '0', 10);
           const pendingCold = parseInt(this.dataset.pendingCold || '0', 10);
           const doingTitles = safeParseJSON(this.dataset.doingTitles || '[]');
-
           tooltipContentHTML = '';
           if (pendingHot > 0 || pendingWarm > 0 || pendingCold > 0) {
             tooltipContentHTML += `<h4>Pending Tasks:</h4><ul>`;
@@ -2115,19 +2115,27 @@
             tooltipContentHTML += `${(pendingHot > 0 || pendingWarm > 0 || pendingCold > 0) ? '<hr style="border-color: rgba(0, 229, 219, 0.3); margin: 8px 0;">' : ''}<h4>Currently Doing:</h4><ul>${doingTitles.map(t => `<li>${t}</li>`).join('')}</ul>`;
           }
         }
-
+        
         if (!tooltipContentHTML) return;
 
         activeDataTooltip = document.createElement('div'); 
-        activeDataTooltip.id = 'activeAppDataTooltip'; // Assign an ID for easier removal/styling if needed
+        activeDataTooltip.id = 'activeAppDataTooltip'; 
         activeDataTooltip.className = 'app-data-tooltip';
         activeDataTooltip.innerHTML = tooltipContentHTML;
-        document.body.appendChild(activeDataTooltip); // Append to body BEFORE getting its rect
+        document.body.appendChild(activeDataTooltip); 
 
         const cardRect = this.getBoundingClientRect();
-        const tooltipRect = activeDataTooltip.getBoundingClientRect(); // Get rect AFTER appending and content set
+        const tooltipRect = activeDataTooltip.getBoundingClientRect(); 
         
-        let top = cardRect.top + window.scrollY - tooltipRect.height - 10; 
+        console.log("[Homepage] Tooltip Positioning Debug:", {
+            cardRect: { top: cardRect.top, left: cardRect.left, width: cardRect.width, height: cardRect.height },
+            tooltipRect: { width: tooltipRect.width, height: tooltipRect.height },
+            scrollY: window.scrollY,
+            scrollX: window.scrollX,
+            innerWidth: window.innerWidth
+        });
+
+        let top = cardRect.top + window.scrollY - tooltipRect.height - 10; // Default above the card
         let left = cardRect.left + window.scrollX + (cardRect.width / 2) - (tooltipRect.width / 2);
 
         if (top < window.scrollY) { 
@@ -2139,16 +2147,17 @@
         if (left + tooltipRect.width > window.scrollX + window.innerWidth) {
           left = window.scrollX + window.innerWidth - tooltipRect.width - 5;
         }
+        console.log("[Homepage] Calculated top, left:", { top, left });
 
         activeDataTooltip.style.top = `${top}px`;
         activeDataTooltip.style.left = `${left}px`;
         
-        // Force reflow before adding class for transition to work reliably
         void activeDataTooltip.offsetWidth; 
         activeDataTooltip.classList.add('visible');
       });
 
       card.addEventListener('mouseleave', function() {
+        // console.log("[Homepage] Mouse leave on app card TYPE:", this.dataset.appType);
         if (tooltipHideTimeout) {
             clearTimeout(tooltipHideTimeout);
         }
@@ -2195,6 +2204,7 @@
                                data-doing-titles=\'${JSON.stringify(taskboardData.doingTaskTitles)}\'`;
       }
 
+      // Ensure no title attribute on the link to prevent default browser tooltip
       appsHTML += `
         <div class="app-card"${cardDataAttributes}>
           <a href="${app.url}" class="app-card-link"> 
