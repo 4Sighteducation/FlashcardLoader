@@ -1296,8 +1296,8 @@
       <div id="vespa-homepage">
         ${renderProfileSection(profileData, vespaScoresData)}
         <div class="app-hubs-container">
-          ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa, flashcardReviewCounts, studyPlannerData, taskboardData)}
-          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity)}
+          ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
+          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
         </div>
       </div>
     `;
@@ -1859,10 +1859,12 @@
       .profile-vespa-scores-title {
         font-size: 16px; /* Smaller title */
         font-weight: 600;
-        color: #00e5db; /* Match section titles */
+        color: #00e5db; /* Changed to #00e5db as requested */
         margin-bottom: 15px; /* Space below title */
         text-align: left; /* Align with profile content */
         padding-left: 8px; /* Align with profile item labels */
+        padding-bottom: 5px; /* Space for the border */
+        border-bottom: 1px solid rgba(7, 155, 170, 0.5); /* Added border */
       }
       .vespa-scores-grid {
         display: flex;
