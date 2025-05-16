@@ -2037,22 +2037,6 @@
   
   // Cleanup function to remove all tooltip elements when homepage is unloaded
   function cleanupTooltips() {
-    // Remove any existing tooltip containers from previous sessions (if any were used by old info icons)
-    const existingTooltipContainers = document.querySelectorAll('.tooltip-container');
-    existingTooltipContainers.forEach(container => {
-      if (container && container.parentNode) {
-        container.parentNode.removeChild(container);
-      }
-    });
-    
-    // Remove any standalone tooltips from info icons (legacy, should be none now)
-    const existingInfoTooltips = document.querySelectorAll('.vespa-tooltip');
-    existingInfoTooltips.forEach(tooltip => {
-      if (tooltip && tooltip.parentNode) {
-        tooltip.parentNode.removeChild(tooltip);
-      }
-    });
-
     // Remove any app data tooltips (our new hover tooltips)
     const existingAppDataTooltips = document.querySelectorAll('.app-data-tooltip');
     existingAppDataTooltips.forEach(tooltip => {
@@ -2060,44 +2044,32 @@
         tooltip.parentNode.removeChild(tooltip);
       }
     });
-    
-    // Remove any overlay elements (legacy, should be none now)
-    const existingOverlays = document.querySelectorAll('.tooltip-overlay');
-    existingOverlays.forEach(overlay => {
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    });
-    
-    // Clear the tracked elements array
-    tooltipElements = [];
+    // Remove other legacy tooltips if any were missed by specific class cleanup
+    const legacyTooltips = document.querySelectorAll('.vespa-tooltip, .tooltip-overlay, .tooltip-container');
+    legacyTooltips.forEach(el => el.remove());
   }
   
   // Enhanced tooltip setup with better styling
   function setupTooltips() {
     console.log("[Homepage] Setting up enhanced tooltips");
     
-    const existingOverlay = document.querySelector('.tooltip-overlay');
-    if (existingOverlay) existingOverlay.remove();
-    
-    const infoIcons = document.querySelectorAll('.app-info-icon');
-    if (infoIcons.length > 0) {
-        console.warn("[Homepage] Info icons found, but their tooltip functionality is being removed.");
-    }
+    // Clear any potentially orphaned tooltips from previous (failed) initializations
+    cleanupTooltips(); 
 
-    // --- App Card Data Tooltip Logic (Flashcards, Study Planner, Taskboard) ---
     const appCardsWithData = document.querySelectorAll('.app-card[data-app-type]');
-    let activeDataTooltip = null; // Use a more descriptive name, and ensure it's properly managed
+    let activeDataTooltip = null; 
+    let tooltipHideTimeout = null; // Timeout for hiding/removing the tooltip
 
     appCardsWithData.forEach(card => {
-      let tooltipTimeout = null; // To manage delayed removal on mouseleave
-
       card.addEventListener('mouseenter', function(e) {
-        if (activeDataTooltip) { // If a tooltip is already active, remove it immediately
-          activeDataTooltip.remove();
+        if (tooltipHideTimeout) {
+          clearTimeout(tooltipHideTimeout); // Cancel any pending hide operation
+          tooltipHideTimeout = null;
+        }
+        if (activeDataTooltip) { 
+          activeDataTooltip.remove(); // Remove any currently visible tooltip immediately
           activeDataTooltip = null;
         }
-        if(tooltipTimeout) clearTimeout(tooltipTimeout); // Clear any pending removal
 
         const appType = this.dataset.appType;
         let tooltipContentHTML = '';
@@ -2144,51 +2116,52 @@
           }
         }
 
-        if (!tooltipContentHTML) return; // Don't show empty tooltip
+        if (!tooltipContentHTML) return;
 
-        activeDataTooltip = document.createElement('div'); // Assign to the shared activeDataTooltip
+        activeDataTooltip = document.createElement('div'); 
+        activeDataTooltip.id = 'activeAppDataTooltip'; // Assign an ID for easier removal/styling if needed
         activeDataTooltip.className = 'app-data-tooltip';
         activeDataTooltip.innerHTML = tooltipContentHTML;
-        document.body.appendChild(activeDataTooltip);
+        document.body.appendChild(activeDataTooltip); // Append to body BEFORE getting its rect
 
         const cardRect = this.getBoundingClientRect();
-        const tooltipRect = activeDataTooltip.getBoundingClientRect();
+        const tooltipRect = activeDataTooltip.getBoundingClientRect(); // Get rect AFTER appending and content set
         
-        let top = cardRect.top + window.scrollY - tooltipRect.height - 10; // Default above the card
+        let top = cardRect.top + window.scrollY - tooltipRect.height - 10; 
         let left = cardRect.left + window.scrollX + (cardRect.width / 2) - (tooltipRect.width / 2);
 
-        // Adjust if tooltip goes off screen top
         if (top < window.scrollY) { 
-          top = cardRect.bottom + window.scrollY + 10; // Position below the card
+          top = cardRect.bottom + window.scrollY + 10; 
         }
-        // Adjust if tooltip goes off screen left
         if (left < window.scrollX) {
           left = window.scrollX + 5;
         }
-        // Adjust if tooltip goes off screen right
         if (left + tooltipRect.width > window.scrollX + window.innerWidth) {
           left = window.scrollX + window.innerWidth - tooltipRect.width - 5;
         }
 
         activeDataTooltip.style.top = `${top}px`;
         activeDataTooltip.style.left = `${left}px`;
+        
+        // Force reflow before adding class for transition to work reliably
+        void activeDataTooltip.offsetWidth; 
         activeDataTooltip.classList.add('visible');
       });
 
       card.addEventListener('mouseleave', function() {
-        if (tooltipTimeout) clearTimeout(tooltipTimeout); // Clear previous timeout if any
-        tooltipTimeout = setTimeout(() => {
-           if (activeDataTooltip) {
-              activeDataTooltip.classList.remove('visible');
-              // Give it a moment to fade out before removing from DOM
-              setTimeout(() => {
-                  if (activeDataTooltip && !activeDataTooltip.classList.contains('visible')) {
-                      activeDataTooltip.remove();
-                      activeDataTooltip = null; 
-                  }
-              }, 200); // Should match CSS transition time
-           }
-        }, 100); // Small delay before starting fade-out to avoid flicker if mouse re-enters quickly
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+        }
+        if (activeDataTooltip) {
+          activeDataTooltip.classList.remove('visible');
+          tooltipHideTimeout = setTimeout(() => {
+              if (activeDataTooltip) { // Check if it wasn't replaced by another mouseenter
+                  activeDataTooltip.remove();
+                  activeDataTooltip = null; 
+              }
+              tooltipHideTimeout = null;
+          }, 200); // Match CSS transition time for opacity
+        }
       });
     });
   }
@@ -2224,7 +2197,7 @@
 
       appsHTML += `
         <div class="app-card"${cardDataAttributes}>
-          <a href="${app.url}" class="app-card-link" title="Launch ${sanitizeField(app.name)}">
+          <a href="${app.url}" class="app-card-link"> 
             <div class="app-card-header">
               ${notificationBadgeHTML}
               <img src="${app.icon}" alt="${app.name}" class="app-icon">
