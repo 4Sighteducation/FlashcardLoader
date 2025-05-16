@@ -1294,8 +1294,7 @@
     // Create the main container with app hubs side-by-side
     const homepageHTML = `
       <div id="vespa-homepage">
-        ${renderProfileSection(profileData)}
-        ${vespaScoresData ? renderVespaScoresSection(vespaScoresData) : ''}
+        ${renderProfileSection(profileData, vespaScoresData)}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
           ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
@@ -1850,6 +1849,60 @@
         z-index: 15;
         box-shadow: 0 0 5px rgba(0,0,0,0.5);
       }
+      
+      /* VESPA Scores Section (within Profile) */
+      .profile-vespa-scores-container {
+        padding: 15px 0px 10px 0px; /* Adjusted padding to be mostly top/bottom */
+        margin-top: 15px; /* Space between subjects and VESPA scores title */
+        border-top: 1px solid rgba(7, 155, 170, 0.2); /* Subtle separator line */
+      }
+      .profile-vespa-scores-title {
+        font-size: 16px; /* Smaller title */
+        font-weight: 600;
+        color: #00e5db; /* Match section titles */
+        margin-bottom: 15px; /* Space below title */
+        text-align: left; /* Align with profile content */
+        padding-left: 8px; /* Align with profile item labels */
+      }
+      .vespa-scores-grid {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around; /* Distribute items evenly */
+        gap: 10px; /* Reduced gap for tighter packing if needed */
+        padding: 0px 8px; /* Padding to align with profile items */
+      }
+      .vespa-score-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 70px; /* Adjusted min-width */
+        flex-basis: calc(100% / 6 - 10px); /* Aim for 6 items per row, adjust gap accordingly */
+        max-width: 90px;
+      }
+      .vespa-score-circle {
+        width: 55px; /* Adjusted size */
+        height: 55px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 6px; /* Reduced margin */
+        font-weight: bold;
+        font-size: 1.2em; /* Adjusted font size */
+        color: #ffffff; /* Default text color */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transition: transform 0.2s ease-out;
+      }
+      .vespa-score-circle:hover {
+        transform: scale(1.1);
+      }
+      .vespa-score-label {
+        font-size: 0.7em; /* Adjusted label size */
+        color: #00e5db;
+        text-transform: uppercase;
+        font-weight: 500;
+        text-align: center;
+      }
 
       /* Custom App Data Tooltip */
       .app-data-tooltip {
@@ -1915,7 +1968,7 @@
   }
   
   // Render the profile section
-  function renderProfileSection(profileData) {
+  function renderProfileSection(profileData, vespaScoresData) {
     const name = sanitizeField(profileData.name);
     
     // Fix for school field - handle if it's an object - improved to handle connection fields better
@@ -2159,7 +2212,45 @@
             </div>
           </div>
         </div>
+        ${vespaScoresData ? renderVespaCirclesHTML(vespaScoresData) : ''}
       </section>
+    `;
+  }
+
+  // Helper to render VESPA score circles HTML (to be used within renderProfileSection)
+  function renderVespaCirclesHTML(scoresData) {
+    if (!scoresData) return '';
+
+    let scoresCircleHTML = '';
+    const scoreOrder = ['vision', 'effort', 'systems', 'practice', 'attitude', 'overall'];
+
+    scoreOrder.forEach(key => {
+      if (scoresData[key] && scoresData[key] !== 'N/A') { // Also check for 'N/A'
+        const scoreValue = sanitizeField(scoresData[key]);
+        const color = VESPA_SCORE_COLORS[key] || '#cccccc';
+        const textColor = (key === 'overall' && color === '#f3f553') ? '#333333' : '#ffffff';
+        scoresCircleHTML += `
+          <div class="vespa-score-item">
+            <div class="vespa-score-circle" style="background-color: ${color}; color: ${textColor};">
+              <span>${scoreValue}</span>
+            </div>
+            <div class="vespa-score-label">${key.toUpperCase()}</div>
+          </div>
+        `;
+      }
+    });
+
+    if (!scoresCircleHTML) {
+      return ''; // Don't render section if no scores to show
+    }
+
+    return `
+      <div class="profile-vespa-scores-container">
+        <h3 class="profile-vespa-scores-title">Current VESPA Scores</h3>
+        <div class="vespa-scores-grid">
+          ${scoresCircleHTML}
+        </div>
+      </div>
     `;
   }
   
@@ -2318,102 +2409,6 @@
     });
   }
   
-  // Render the VESPA Scores section
-  function renderVespaScoresSection(scoresData) {
-    if (!scoresData) return '';
-
-    let scoresHTML = '';
-    const scoreOrder = ['vision', 'effort', 'systems', 'practice', 'attitude', 'overall'];
-
-    scoreOrder.forEach(key => {
-      if (scoresData[key]) {
-        const scoreValue = sanitizeField(scoresData[key]);
-        const color = VESPA_SCORE_COLORS[key] || '#cccccc';
-        // Determine text color based on background lightness for Overall score, can be expanded if other colors are light
-        const textColor = (key === 'overall' && color === '#f3f553') ? '#333333' : '#ffffff'; 
-        scoresHTML += `
-          <div class="vespa-score-item">
-            <div class="vespa-score-circle" style="background-color: ${color}; color: ${textColor};">
-              <span>${scoreValue}</span>
-            </div>
-            <div class="vespa-score-label">${key.toUpperCase()}</div>
-          </div>
-        `;
-      }
-    });
-
-    if (!scoresHTML) {
-      return ''; // Don't render section if no scores to show
-    }
-
-    return `
-      <section class="vespa-section vespa-scores-section">
-        <h2 class="vespa-section-title">Current VESPA Scores</h2>
-        <div class="vespa-scores-grid">
-          ${scoresHTML}
-        </div>
-      </section>
-    `;
-  }
-  
-  // Render an app hub section
-  function renderAppHubSection(title, apps, flashcardReviewCounts = null, studyPlannerData = null, taskboardData = null) {
-    let appsHTML = '';
-    
-    apps.forEach(app => {
-      let notificationBadgeHTML = '';
-      let cardDataAttributes = '';
-
-      if (app.name === "Flashcards" && flashcardReviewCounts && flashcardReviewCounts.totalDue > 0) {
-        notificationBadgeHTML = `<span class="flashcard-notification-badge">${flashcardReviewCounts.totalDue}</span>`;
-        cardDataAttributes = ` data-app-type="flashcards"
-                               data-box1-due-count="${flashcardReviewCounts.box1.due}" 
-                               data-box1-total-count="${flashcardReviewCounts.box1.total}" 
-                               data-box2-due-count="${flashcardReviewCounts.box2.due}" 
-                               data-box2-total-count="${flashcardReviewCounts.box2.total}" 
-                               data-box3-due-count="${flashcardReviewCounts.box3.due}" 
-                               data-box3-total-count="${flashcardReviewCounts.box3.total}" 
-                               data-box4-due-count="${flashcardReviewCounts.box4.due}" 
-                               data-box4-total-count="${flashcardReviewCounts.box4.total}" 
-                               data-box5-due-count="${flashcardReviewCounts.box5.due}" 
-                               data-box5-total-count="${flashcardReviewCounts.box5.total}"`;
-      } else if (app.name === "Study Planner" && studyPlannerData && studyPlannerData.count > 0) {
-        notificationBadgeHTML = `<span class="study-planner-notification-badge">${studyPlannerData.count}</span>`;
-        cardDataAttributes = ` data-app-type="study-planner"
-                               data-sessions-details=\'${JSON.stringify(studyPlannerData.sessionsDetails)}\'`; 
-      } else if (app.name === "Taskboard" && taskboardData && taskboardData.doingCount > 0) {
-        notificationBadgeHTML = `<span class="taskboard-notification-badge">${taskboardData.doingCount}</span>`;
-        cardDataAttributes = ` data-app-type="taskboard"
-                               data-pending-hot="${taskboardData.pendingHot}"
-                               data-pending-warm="${taskboardData.pendingWarm}"
-                               data-pending-cold="${taskboardData.pendingCold}"
-                               data-doing-titles=\'${JSON.stringify(taskboardData.doingTaskTitles)}\'`;
-      }
-
-      // Ensure no title attribute on the link to prevent default browser tooltip
-      appsHTML += `
-        <div class="app-card"${cardDataAttributes}>
-          <a href="${app.url}" class="app-card-link"> 
-            <div class="app-card-header">
-              ${notificationBadgeHTML}
-              <img src="${app.icon}" alt="${app.name}" class="app-icon">
-              <div class="app-name">${sanitizeField(app.name)}</div>
-            </div>
-          </a>
-        </div>
-      `;
-    });
-    
-    return `
-      <section class="vespa-section">
-        <h2 class="vespa-section-title">${sanitizeField(title)}</h2>
-        <div class="app-hub">
-          ${appsHTML}
-        </div>
-      </section>
-    `;
-  }
-
   // --- Entry Point Function ---
   // Main initialization function, exposed globally
   window.initializeHomepage = async function() {
