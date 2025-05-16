@@ -17,6 +17,16 @@
     box5: 'field_2990'
   };
 
+  // Study Planner specific constants
+  const STUDY_PLANNER_OBJECT_ID = 'object_110';
+  const STUDY_PLANNER_USER_LINK_FIELD = 'field_3040';
+  const STUDY_PLANNER_JSON_FIELD = 'field_3042';
+
+  // Taskboard specific constants
+  const TASKBOARD_OBJECT_ID = 'object_111';
+  const TASKBOARD_USER_LINK_FIELD = 'field_3048';
+  const TASKBOARD_JSON_FIELD = 'field_3052';
+
   // Field mappings for the user profile object
   const FIELD_MAPPING = {
     userId: 'field_3064',         // User ID
@@ -995,9 +1005,161 @@
     return counts;
   }
   
+  // --- Study Planner Notification Functions ---
+  async function fetchStudyPlannerData(userId) {
+    if (!userId) {
+      console.error("[Homepage] Cannot fetch Study Planner data: userId is missing.");
+      return null;
+    }
+    debugLog(`Fetching Study Planner data for user ID: ${userId}`);
+    const findFilters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: STUDY_PLANNER_USER_LINK_FIELD, operator: 'is', value: userId }]
+    }));
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${STUDY_PLANNER_OBJECT_ID}/records?filters=${findFilters}&fields=${STUDY_PLANNER_JSON_FIELD}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      if (response && response.records && response.records.length > 0) {
+        debugLog(`Found Study Planner data for user ${userId}`, response.records[0]);
+        return response.records[0][STUDY_PLANNER_JSON_FIELD];
+      } else {
+        debugLog(`No Study Planner data found for user ${userId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('[Homepage] Error fetching Study Planner data:', error);
+      return null;
+    }
+  }
+
+  function processStudyPlannerData(plannerJsonString) {
+    if (!plannerJsonString) {
+      return { count: 0, sessionsDetails: [] };
+    }
+    const plannerData = safeParseJSON(plannerJsonString);
+    if (!plannerData || !plannerData.weekStart || !plannerData.sessions) {
+      debugLog('Study Planner data is invalid or missing weekStart/sessions', plannerData);
+      return { count: 0, sessionsDetails: [] };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentDay = today.getDay(); // Sunday - 0, Monday - 1, ..., Saturday - 6
+    const daysToSubtractForMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const currentWeekMonday = new Date(today);
+    currentWeekMonday.setDate(today.getDate() - daysToSubtractForMonday);
+    currentWeekMonday.setHours(0,0,0,0);
+
+    let jsonWeekStartDate;
+    try {
+        jsonWeekStartDate = new Date(plannerData.weekStart);
+        jsonWeekStartDate.setHours(0,0,0,0);
+    } catch (e) {
+        debugLog('Invalid weekStart date in Study Planner JSON', plannerData.weekStart);
+        return { count: 0, sessionsDetails: [] };
+    }
+
+    if (currentWeekMonday.getTime() !== jsonWeekStartDate.getTime()) {
+      debugLog(`Study Planner week (${jsonWeekStartDate.toDateString()}) does not match current week (${currentWeekMonday.toDateString()}). No notification.`);
+      return { count: 0, sessionsDetails: [] };
+    }
+
+    let sessionCount = 0;
+    const sessionsDetails = [];
+    for (const dayKey in plannerData.sessions) { // dayKey is like "Mon Apr 21 2025"
+      if (Array.isArray(plannerData.sessions[dayKey])) {
+        plannerData.sessions[dayKey].forEach(session => {
+          sessionCount++;
+          sessionsDetails.push(`${session.startTime} - ${session.subject} (${session.studyLength})`);
+        });
+      }
+    }
+    debugLog(`Processed Study Planner: ${sessionCount} sessions for the current week.`, sessionsDetails);
+    return { count: sessionCount, sessionsDetails };
+  }
+
+  // --- Taskboard Notification Functions ---
+  async function fetchTaskboardData(userId) {
+    if (!userId) {
+      console.error("[Homepage] Cannot fetch Taskboard data: userId is missing.");
+      return null;
+    }
+    debugLog(`Fetching Taskboard data for user ID: ${userId}`);
+    const findFilters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: TASKBOARD_USER_LINK_FIELD, operator: 'is', value: userId }]
+    }));
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${TASKBOARD_OBJECT_ID}/records?filters=${findFilters}&fields=${TASKBOARD_JSON_FIELD}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      if (response && response.records && response.records.length > 0) {
+        debugLog(`Found Taskboard data for user ${userId}`, response.records[0]);
+        return response.records[0][TASKBOARD_JSON_FIELD];
+      } else {
+        debugLog(`No Taskboard data found for user ${userId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('[Homepage] Error fetching Taskboard data:', error);
+      return null;
+    }
+  }
+
+  function processTaskboardData(taskboardJsonString) {
+    if (!taskboardJsonString) {
+      return { doingCount: 0, pendingHot: 0, pendingWarm: 0, pendingCold: 0, doingTaskTitles: [] };
+    }
+    const taskboardData = safeParseJSON(taskboardJsonString);
+    if (!taskboardData || !Array.isArray(taskboardData.tasks)) {
+      debugLog('Taskboard data is invalid or missing tasks array', taskboardData);
+      return { doingCount: 0, pendingHot: 0, pendingWarm: 0, pendingCold: 0, doingTaskTitles: [] };
+    }
+
+    let doingCount = 0;
+    let pendingHot = 0;
+    let pendingWarm = 0;
+    let pendingCold = 0;
+    const doingTaskTitles = [];
+
+    taskboardData.tasks.forEach(task => {
+      if (task.status === 'Doing') {
+        doingCount++;
+        doingTaskTitles.push(task.title);
+      } else if (task.status === 'Pending') {
+        if (task.priority === 'Hot') pendingHot++;
+        else if (task.priority === 'Warm') pendingWarm++;
+        else if (task.priority === 'Cold') pendingCold++;
+      }
+    });
+
+    const result = { doingCount, pendingHot, pendingWarm, pendingCold, doingTaskTitles };
+    debugLog('Processed Taskboard data:', result);
+    return result;
+  }
+
   // --- UI Rendering ---
   // Render the main homepage UI
-  function renderHomepage(userProfile, flashcardReviewCounts) {
+  function renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData) {
     const container = document.querySelector(window.HOMEPAGE_CONFIG.elementSelector);
     if (!container) {
       console.error('[Homepage] Container element not found.');
@@ -1043,7 +1205,7 @@
         ${renderProfileSection(profileData)}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
-          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts)}
+          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
         </div>
       </div>
     `;
@@ -1322,100 +1484,22 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
         width: 100%;
         max-width: 210px;
-        overflow: hidden;
+        /* overflow: hidden; // Allow link to manage this if needed */
         transition: transform 0.3s, box-shadow 0.3s;
         animation: fadeIn 0.5s ease-out forwards;
         border: 1px solid rgba(7, 155, 170, 0.3);
         position: relative; /* Ensure positioning context for badge */
-      }
-      
-      /* Flashcard Notification Badge */
-      .flashcard-notification-badge {
-        position: absolute;
-        top: 5px;
-        right: 30px; /* Adjust to not overlap info icon */
-        background-color: red;
-        color: white;
-        border-radius: 50%;
-        width: 22px;
-        height: 22px;
-        font-size: 12px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 15; /* Higher than info icon */
-        box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        display: flex; /* Added to help link fill the card */
+        flex-direction: column; /* Added to stack header and (removed) button */
       }
 
-      /* Flashcard Count Tooltip */
-      .flashcard-count-tooltip {
-        position: fixed;
-        background-color: #12204d; /* Slightly darker blue */
-        color: #ffffff;
-        padding: 10px;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        width: auto; /* Auto width based on content */
-        min-width: 180px; /* Minimum width */
-        z-index: 10001; /* Above other tooltips */
-        border: 1px solid #00e5db;
-        font-size: 13px;
-        text-align: left;
-        pointer-events: none; /* Tooltip should not be interactive */
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.2s, visibility 0.2s;
-        white-space: pre-wrap; /* To respect newlines in the content */
-      }
-
-      .flashcard-count-tooltip.visible {
-        opacity: 1;
-        visibility: visible;
-      }
-      
-      /* Tooltip/Popup Styles */
-      .app-tooltip {
-        position: fixed; /* Changed from absolute to fixed */
-        background-color: #1c2b5f;
-        color: #ffffff;
-        padding: 12px;
-        border-radius: 8px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-        width: 250px;
-        z-index: 9999; /* Much higher z-index */
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
-        border: 2px solid #00e5db;
-        font-size: 14px;
-        text-align: center;
-        pointer-events: none;
-        max-width: 90vw; /* Prevent overflow on mobile */
-      }
-      
-      .app-tooltip::before {
-        content: '';
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        margin-left: -8px;
-        border-width: 8px;
-        border-style: solid;
-        border-color: transparent transparent #1c2b5f transparent;
-      }
-      
-      /* We'll manually position the tooltip via JavaScript */
-      
-      /* Stagger app card animations */
-      .app-hub .app-card:nth-child(1) { animation-delay: 0.4s; }
-      .app-hub .app-card:nth-child(2) { animation-delay: 0.5s; }
-      .app-hub .app-card:nth-child(3) { animation-delay: 0.6s; }
-      
-      .app-card:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-        animation: pulseGlow 2s infinite;
+      /* App Card Link (replaces Launch button and makes header clickable) */
+      .app-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block; /* Make the link take up available space */
+        flex-grow: 1; /* Allow link to grow and fill card, useful if app-card has a fixed height or uses flex */
+        cursor: pointer; /* Indicate it's clickable */
       }
       
       .app-card-header {
@@ -1923,274 +2007,151 @@
   function setupTooltips() {
     console.log("[Homepage] Setting up enhanced tooltips");
     
-    // Create overlay for mobile
-    const overlay = document.createElement('div');
-    overlay.className = 'tooltip-overlay';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none;';
-    document.body.appendChild(overlay);
-    tooltipElements.push(overlay);
+    // Remove overlay for mobile (for existing info icon tooltips) as info icons are removed
+    const existingOverlay = document.querySelector('.tooltip-overlay');
+    if (existingOverlay) existingOverlay.remove();
     
-    // Handle clicks on overlay to close tooltips
-    overlay.addEventListener('click', function() {
-      hideAllTooltips();
-    });
-    
-    // Track active tooltip for cleanup
-    let activeTooltip = null;
-    
-    // Function to hide all tooltips
-    function hideAllTooltips() {
-      if (activeTooltip) {
-        activeTooltip.classList.add('tooltip-hiding');
-        setTimeout(() => {
-          if (activeTooltip && activeTooltip.parentNode) {
-            activeTooltip.parentNode.removeChild(activeTooltip);
-          }
-          activeTooltip = null;
-        }, 300);
-        overlay.style.display = 'none';
-      }
-    }
-    
-    // Add global click listener to close tooltips when clicking outside
-    document.addEventListener('click', function(e) {
-      if (activeTooltip && !e.target.closest('.app-info-icon') && !e.target.closest('.vespa-tooltip')) {
-        hideAllTooltips();
-      }
-    });
-    
-    // Get all info icons
+    // Remove global click listener for info icon tooltips as they are removed
+    // document.removeEventListener('click', ...) // Need a way to remove specific named functions if previously added
+    // For now, we will rely on the fact that infoIcons query will be empty.
+
+    // Get all info icons - THIS WILL NOW BE EMPTY OR NOT USED FOR TOOLTIPS
     const infoIcons = document.querySelectorAll('.app-info-icon');
-    console.log(`[Homepage] Found ${infoIcons.length} info icons`);
-    
-    // Add click handlers to each icon
-    infoIcons.forEach((icon, index) => {
-      console.log(`[Homepage] Setting up icon #${index + 1}`);
-      
-      // Add click event
-      icon.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Close any existing tooltip first
-        hideAllTooltips();
-        
-        console.log(`[Homepage] Icon #${index + 1} clicked!`);
-        
-        // Get description from attribute
-        const description = this.getAttribute('data-description');
-        if (!description) {
-          console.error(`[Homepage] No description found for clicked icon #${index + 1}`);
-          return;
+    if (infoIcons.length > 0) {
+        console.warn("[Homepage] Info icons found, but their tooltip functionality is being removed.");
+    }
+    // Existing click handlers for infoIcons are effectively disabled as no new ones are added
+    // and the elements themselves will be removed from renderAppHubSection.
+
+    // --- App Card Data Tooltip Logic (Flashcards, Study Planner, Taskboard) ---
+    const appCardsWithData = document.querySelectorAll('.app-card[data-app-type]');
+    let currentDataTooltip = null;
+
+    appCardsWithData.forEach(card => {
+      card.addEventListener('mouseenter', function(e) {
+        if (currentDataTooltip) {
+          currentDataTooltip.remove(); // Remove any lingering tooltip
+          currentDataTooltip = null;
         }
-        
-        // Create tooltip element with arrow
-        const tooltip = document.createElement('div');
-        tooltip.className = 'vespa-tooltip';
-        tooltip.innerHTML = `
-          <div class="tooltip-arrow"></div>
-          <div class="tooltip-content">${description}</div>
-        `;
-        
-        // Get position of the icon
+
+        const appType = this.dataset.appType;
+        let tooltipContentHTML = '';
+
+        if (appType === 'flashcards') {
+          const totalBadge = this.querySelector('.flashcard-notification-badge');
+          if (!totalBadge || parseInt(totalBadge.textContent || '0', 10) === 0) return;
+
+          tooltipContentHTML = `<h4>Flashcards for Review:</h4>
+            Box 1 (Daily):       ${this.dataset.box1Count}<br>
+            Box 2 (Every Other): ${this.dataset.box2Count}<br>
+            Box 3 (Every 3 Days):  ${this.dataset.box3Count}<br>
+            Box 4 (Weekly):      ${this.dataset.box4Count}<br>
+            Box 5 (3 Weeks):    ${this.dataset.box5Count}`;
+        } else if (appType === 'study-planner') {
+          const totalBadge = this.querySelector('.study-planner-notification-badge');
+          if (!totalBadge || parseInt(totalBadge.textContent || '0', 10) === 0) return;
+          const sessionsDetails = safeParseJSON(this.dataset.sessionsDetails || '[]');
+          tooltipContentHTML = `<h4>This Week\'s Sessions:</h4>`;
+          if (sessionsDetails.length > 0) {
+            tooltipContentHTML += `<ul>${sessionsDetails.map(s => `<li>${s}</li>`).join('')}</ul>`;
+          } else {
+            tooltipContentHTML += `No sessions scheduled for this week.`;
+          }
+        } else if (appType === 'taskboard') {
+          const totalBadge = this.querySelector('.taskboard-notification-badge');
+          if (!totalBadge || parseInt(totalBadge.textContent || '0', 10) === 0) return;
+          
+          const pendingHot = parseInt(this.dataset.pendingHot || '0', 10);
+          const pendingWarm = parseInt(this.dataset.pendingWarm || '0', 10);
+          const pendingCold = parseInt(this.dataset.pendingCold || '0', 10);
+          const doingTitles = safeParseJSON(this.dataset.doingTitles || '[]');
+
+          tooltipContentHTML = '';
+          if (pendingHot > 0 || pendingWarm > 0 || pendingCold > 0) {
+            tooltipContentHTML += `<h4>Pending Tasks:</h4><ul>`;
+            if (pendingHot > 0) tooltipContentHTML += `<li>🔥 Hot: ${pendingHot}</li>`;
+            if (pendingWarm > 0) tooltipContentHTML += `<li>☀️ Warm: ${pendingWarm}</li>`;
+            if (pendingCold > 0) tooltipContentHTML += `<li>❄️ Cold: ${pendingCold}</li>`;
+            tooltipContentHTML += `</ul>`;
+          }
+          if (doingTitles.length > 0) {
+            tooltipContentHTML += `${(pendingHot > 0 || pendingWarm > 0 || pendingCold > 0) ? '<hr style="border-color: rgba(0, 229, 219, 0.3); margin: 8px 0;">' : ''}<h4>Currently Doing:</h4><ul>${doingTitles.map(t => `<li>${t}</li>`).join('')}</ul>`;
+          }
+        }
+
+        if (!tooltipContentHTML) return; // Don't show empty tooltip
+
+        currentDataTooltip = document.createElement('div');
+        currentDataTooltip.className = 'app-data-tooltip';
+        currentDataTooltip.innerHTML = tooltipContentHTML;
+        document.body.appendChild(currentDataTooltip);
+
         const rect = this.getBoundingClientRect();
-        const isMobile = window.innerWidth <= 768;
-        
-        // Style the tooltip
-        if (isMobile) {
-          // Mobile styling - center in screen
-          tooltip.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #1c2b5f;
-            color: #ffffff;
-            padding: 15px;
-            border-radius: 8px;
-            border: 2px solid #00e5db;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
-            width: 80%;
-            max-width: 300px;
-            z-index: 10000;
-            text-align: center;
-            animation: tooltipFadeIn 0.3s forwards;
-            font-size: 14px;
-          `;
-          
-          // Show overlay on mobile
-          overlay.style.display = 'block';
-          
-          // Hide the arrow on mobile
-          tooltip.querySelector('.tooltip-arrow').style.display = 'none';
-          
-          // Add close button for mobile
-          const closeBtn = document.createElement('button');
-          closeBtn.textContent = 'Close';
-          closeBtn.className = 'tooltip-close-btn';
-          closeBtn.style.cssText = `
-            background-color: #00e5db;
-            color: #1c2b5f;
-            border: none;
-            padding: 6px 12px;
-            margin-top: 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-          `;
-          
-          closeBtn.addEventListener('click', hideAllTooltips);
-          tooltip.appendChild(closeBtn);
-        } else {
-          // Desktop styling - position below icon
-          const tooltipWidth = 250;
-          tooltip.style.cssText = `
-            position: fixed;
-            top: ${rect.bottom + window.scrollY + 10}px;
-            left: ${rect.left + (rect.width / 2) - (tooltipWidth / 2) + window.scrollX}px;
-            background-color: #1c2b5f;
-            color: #ffffff;
-            padding: 12px;
-            border-radius: 8px;
-            border: 2px solid #00e5db;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
-            width: ${tooltipWidth}px;
-            z-index: 10000;
-            text-align: center;
-            animation: tooltipFadeIn 0.3s forwards;
-            font-size: 14px;
-          `;
-          
-          // Style the arrow
-          const arrow = tooltip.querySelector('.tooltip-arrow');
-          arrow.style.cssText = `
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            margin-left: -8px;
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 8px solid #1c2b5f;
-          `;
-        }
-        
-        // Add CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
-          @keyframes tooltipFadeIn {
-            from { opacity: 0; transform: ${isMobile ? 'translate(-50%, -60%)' : 'translateY(-10px)'}; }
-            to { opacity: 1; transform: ${isMobile ? 'translate(-50%, -50%)' : 'translateY(0)'}; }
-          }
-          
-          @keyframes tooltipFadeOut {
-            from { opacity: 1; transform: ${isMobile ? 'translate(-50%, -50%)' : 'translateY(0)'}; }
-            to { opacity: 0; transform: ${isMobile ? 'translate(-50%, -60%)' : 'translateY(-10px)'}; }
-          }
-          
-          .tooltip-hiding {
-            animation: tooltipFadeOut 0.3s forwards;
-          }
-        `;
-        document.head.appendChild(style);
-        
-        // Add tooltip to body and save reference
-        document.body.appendChild(tooltip);
-        activeTooltip = tooltip;
-        
-        console.log(`[Homepage] Tooltip created and displayed for icon #${index + 1}`);
-      });
-    });
-
-    // --- Add Flashcard Hover Tooltip Logic ---
-    const flashcardAppCard = document.querySelector('.app-card[data-box1-count]');
-    let flashcardCountsTooltip = null;
-
-    if (flashcardAppCard) {
-      flashcardAppCard.addEventListener('mouseenter', function(e) {
-        const total = parseInt(this.querySelector('.flashcard-notification-badge')?.textContent || '0', 10);
-        if (total === 0) return; // Don't show if no cards due (badge might not be there)
-
-        if (flashcardCountsTooltip) {
-          flashcardCountsTooltip.remove(); // Remove any lingering tooltip
-        }
-
-        flashcardCountsTooltip = document.createElement('div');
-        flashcardCountsTooltip.className = 'flashcard-count-tooltip';
-        
-        let tooltipText = 'Cards for Review:\n';
-        tooltipText += `Box 1 (Daily):       ${this.dataset.box1Count}\n`;
-        tooltipText += `Box 2 (Every Other): ${this.dataset.box2Count}\n`;
-        tooltipText += `Box 3 (Every 3 Days):  ${this.dataset.box3Count}\n`;
-        tooltipText += `Box 4 (Weekly):      ${this.dataset.box4Count}\n`;
-        tooltipText += `Box 5 (3 Weeks):    ${this.dataset.box5Count}`;
-        flashcardCountsTooltip.textContent = tooltipText;
-        
-        document.body.appendChild(flashcardCountsTooltip);
-
-        // Position tooltip
-        const rect = this.getBoundingClientRect();
-        const tooltipRect = flashcardCountsTooltip.getBoundingClientRect();
-        let top = rect.top - tooltipRect.height - 10; // Above the card
+        const tooltipRect = currentDataTooltip.getBoundingClientRect();
+        let top = rect.top - tooltipRect.height - 10; 
         let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
 
-        // Adjust if too high
-        if (top < 0) {
-          top = rect.bottom + 10; // Below the card
-        }
-        // Adjust if too far left/right
+        if (top < 0) top = rect.bottom + 10;
         if (left < 0) left = 5;
         if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 5;
 
-        flashcardCountsTooltip.style.top = `${top + window.scrollY}px`;
-        flashcardCountsTooltip.style.left = `${left + window.scrollX}px`;
-        flashcardCountsTooltip.classList.add('visible');
+        currentDataTooltip.style.top = `${top + window.scrollY}px`;
+        currentDataTooltip.style.left = `${left + window.scrollX}px`;
+        currentDataTooltip.classList.add('visible');
       });
 
-      flashcardAppCard.addEventListener('mouseleave', function() {
-        if (flashcardCountsTooltip) {
-          flashcardCountsTooltip.classList.remove('visible');
-          // Optional: remove after a delay to allow fade-out, or immediately
+      card.addEventListener('mouseleave', function() {
+        if (currentDataTooltip) {
+          currentDataTooltip.classList.remove('visible');
           setTimeout(() => {
-             if (flashcardCountsTooltip && !flashcardCountsTooltip.classList.contains('visible')) {
-                flashcardCountsTooltip.remove();
-                flashcardCountsTooltip = null;
+             if (currentDataTooltip && !currentDataTooltip.classList.contains('visible')) {
+                currentDataTooltip.remove();
+                currentDataTooltip = null;
              }
-          }, 200); // Matches transition duration
+          }, 200); 
         }
       });
-    }
+    });
   }
   
   // Render an app hub section
-  function renderAppHubSection(title, apps, flashcardReviewCounts = null) {
+  function renderAppHubSection(title, apps, flashcardReviewCounts = null, studyPlannerData = null, taskboardData = null) {
     let appsHTML = '';
     
     apps.forEach(app => {
-      const sanitizedDescription = sanitizeField(app.description);
       let notificationBadgeHTML = '';
       let cardDataAttributes = '';
 
       if (app.name === "Flashcards" && flashcardReviewCounts && flashcardReviewCounts.total > 0) {
         notificationBadgeHTML = `<span class="flashcard-notification-badge">${flashcardReviewCounts.total}</span>`;
-        cardDataAttributes = ` data-box1-count="${flashcardReviewCounts.box1}" 
+        cardDataAttributes = ` data-app-type="flashcards"
+                               data-box1-count="${flashcardReviewCounts.box1}" 
                                data-box2-count="${flashcardReviewCounts.box2}" 
                                data-box3-count="${flashcardReviewCounts.box3}" 
                                data-box4-count="${flashcardReviewCounts.box4}" 
                                data-box5-count="${flashcardReviewCounts.box5}"`;
+      } else if (app.name === "Study Planner" && studyPlannerData && studyPlannerData.count > 0) {
+        notificationBadgeHTML = `<span class="study-planner-notification-badge">${studyPlannerData.count}</span>`;
+        cardDataAttributes = ` data-app-type="study-planner"
+                               data-sessions-details=\'${JSON.stringify(studyPlannerData.sessionsDetails)}\'`; 
+      } else if (app.name === "Taskboard" && taskboardData && taskboardData.doingCount > 0) {
+        notificationBadgeHTML = `<span class="taskboard-notification-badge">${taskboardData.doingCount}</span>`;
+        cardDataAttributes = ` data-app-type="taskboard"
+                               data-pending-hot="${taskboardData.pendingHot}"
+                               data-pending-warm="${taskboardData.pendingWarm}"
+                               data-pending-cold="${taskboardData.pendingCold}"
+                               data-doing-titles=\'${JSON.stringify(taskboardData.doingTaskTitles)}\'`;
       }
 
       appsHTML += `
         <div class="app-card"${cardDataAttributes}>
-          <div class="app-card-header">
-            ${notificationBadgeHTML}
-            <div class="app-info-icon" title="Click for details" data-description="${sanitizedDescription}">i</div>
-            <img src="${app.icon}" alt="${app.name}" class="app-icon">
-            <div class="app-name">${sanitizeField(app.name)}</div>
-          </div>
-          <a href="${app.url}" class="app-button">Launch</a>
+          <a href="${app.url}" class="app-card-link" title="Launch ${sanitizeField(app.name)}">
+            <div class="app-card-header">
+              ${notificationBadgeHTML}
+              <img src="${app.icon}" alt="${app.name}" class="app-icon">
+              <div class="app-name">${sanitizeField(app.name)}</div>
+            </div>
+          </a>
         </div>
       `;
     });
@@ -2320,8 +2281,32 @@
           // Keep default counts (all zeros) if there's an error
         }
         
-        // Render the homepage UI with flashcard counts
-        renderHomepage(userProfile, flashcardReviewCounts);
+        // Fetch and process Study Planner data
+        let studyPlannerData = null;
+        try {
+          studyPlannerData = await fetchStudyPlannerData(user.id);
+          if (studyPlannerData) {
+            studyPlannerData = processStudyPlannerData(studyPlannerData);
+          }
+        } catch (spError) {
+          console.error("[Homepage] Error fetching or processing Study Planner data:", spError);
+          // Keep default data (null) if there's an error
+        }
+        
+        // Fetch and process Taskboard data
+        let taskboardData = null;
+        try {
+          taskboardData = await fetchTaskboardData(user.id);
+          if (taskboardData) {
+            taskboardData = processTaskboardData(taskboardData);
+          }
+        } catch (tbError) {
+          console.error("[Homepage] Error fetching or processing Taskboard data:", tbError);
+          // Keep default data (null) if there's an error
+        }
+        
+        // Render the homepage UI with all data
+        renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData);
       } else {
         container.innerHTML = `
           <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
