@@ -175,48 +175,47 @@
   function extractValidRecordId(value) {
     if (!value) return null;
     
-    console.log('[Homepage] Extracting valid record ID from value type:', typeof value, value);
+    debugLog('Extracting valid record ID from value', { type: typeof value, value });
 
     // Handle objects (most common case in Knack connections)
     if (typeof value === 'object' && value !== null) {
       // Check for direct ID property
       if (value.id && isValidKnackId(value.id)) {
-        console.log('[Homepage] Found valid ID in object.id:', value.id);
+        debugLog('Found valid ID in object.id', value.id);
         return value.id;
       }
       
       // Check for identifier property (sometimes used by Knack)
       if (value.identifier && isValidKnackId(value.identifier)) {
-        console.log('[Homepage] Found valid ID in object.identifier:', value.identifier);
+        debugLog('Found valid ID in object.identifier', value.identifier);
         return value.identifier;
       }
       
       // Handle arrays from connection fields
       if (Array.isArray(value)) {
-        console.log('[Homepage] Value is an array with length:', value.length);
+        debugLog('Value is an array', { length: value.length });
         
         // Handle single item array
         if (value.length === 1) {
           if (typeof value[0] === 'object' && value[0].id) {
-            console.log('[Homepage] Found valid ID in array[0].id:', value[0].id);
+            debugLog('Found valid ID in array[0].id', value[0].id);
             return isValidKnackId(value[0].id) ? value[0].id : null;
           }
           if (typeof value[0] === 'string' && isValidKnackId(value[0])) {
-            console.log('[Homepage] Found valid ID as string in array[0]:', value[0]);
+            debugLog('Found valid ID as string in array[0]', value[0]);
             return value[0];
           }
         }
         
         // For debugging, log contents of larger arrays
         if (value.length > 1) {
-          console.log('[Homepage] Array contains multiple items, first few are:', 
-                     value.slice(0, 3));
+          debugLog('Array contains multiple items, first few are', value.slice(0, 3));
         }
       }
       
       // Check for '_id' property which is sometimes used
       if (value._id && isValidKnackId(value._id)) {
-        console.log('[Homepage] Found valid ID in object._id:', value._id);
+        debugLog('Found valid ID in object._id', value._id);
         return value._id;
       }
     }
@@ -224,14 +223,14 @@
     // If it's a direct string ID
     if (typeof value === 'string') {
       if (isValidKnackId(value)) {
-        console.log('[Homepage] Value is a valid ID string:', value);
+        debugLog('Value is a valid ID string', value);
         return value;
       } else {
-        console.log('[Homepage] String is not a valid Knack ID:', value);
+        debugLog('String is not a valid Knack ID', value);
       }
     }
 
-    console.log('[Homepage] No valid record ID found in value');
+    debugLog('No valid record ID found in value', value);
     return null;
   }
 
@@ -280,14 +279,14 @@
     // Reading knackAppId and knackApiKey from HOMEPAGE_CONFIG
     const config = window.HOMEPAGE_CONFIG;
     
-    console.log("[Homepage] Config for headers:", JSON.stringify(config));
+    debugLog("Config for headers", config);
     
     // Fallback to using Knack's global application ID if not in config
     const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
     // Use our known API key if not in config
     const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '8f733aa5-dd35-4464-8348-64824d1f5f0d';
     
-    console.log(`[Homepage] Using AppID: ${knackAppId}`);
+    debugLog(`Using AppID ${knackAppId}`);
     
     if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
       console.error("[Homepage] Knack object or getUserToken function not available.");
@@ -306,7 +305,7 @@
       'Content-Type': 'application/json'
     };
     
-    console.log("[Homepage] Headers being used:", JSON.stringify(headers));
+    debugLog("Headers being used", headers);
     
     return headers;
   }
@@ -480,7 +479,7 @@
       return [];
     }
     
-    console.log(`[Homepage] DEBUG: Attempting to fetch subject data with Email:${userEmail}, UPN:${userUpn}`);
+    debugLog(`Attempting to fetch subject data with Email:${userEmail}, UPN:${userUpn}`, null);
     
     try {
       const rules = [];
@@ -497,7 +496,7 @@
         debugLog(`Filtering Object_113 by email: ${userEmail}`);
       }
       
-      console.log('[Homepage] DEBUG: Using filter:', JSON.stringify({ match: 'or', rules }));
+      debugLog('Using filter for Object_113', { match: 'or', rules });
       
       // Create filter to find records by UPN and/or email
       const filters = encodeURIComponent(JSON.stringify({
@@ -519,7 +518,7 @@
       });
       
       // Log the COMPLETE response for debugging
-      console.log(`[Homepage] DEBUG: Complete API Response from Object_113:`, response);
+      debugLog(`Complete API Response from Object_113`, response);
       
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found ${response.records.length} subject records in Object_113`, response.records);
@@ -661,16 +660,17 @@
           let schoolId = null;
           
           // Log all potential VESPA Customer fields for debugging
-          console.log('[Homepage] Potential VESPA Customer fields:');
-          console.log('- field_122_raw:', studentRecord.field_122_raw);
-          console.log('- field_122:', studentRecord.field_122);
-          console.log('- field_179:', studentRecord.field_179);
+          debugLog('Potential VESPA Customer fields', {
+            field_122_raw: studentRecord.field_122_raw,
+            field_122: studentRecord.field_122,
+            field_179: studentRecord.field_179
+          });
           
           // Try field_122_raw first
           if (studentRecord.field_122_raw) {
             schoolId = extractValidRecordId(studentRecord.field_122_raw);
             if (schoolId) {
-              console.log(`[Homepage] Found VESPA Customer in field_122_raw: ${schoolId}`);
+              debugLog(`Found VESPA Customer in field_122_raw: ${schoolId}`);
             }
           }
           
@@ -678,7 +678,7 @@
           if (!schoolId && studentRecord.field_179) {
             schoolId = extractValidRecordId(studentRecord.field_179);
             if (schoolId) {
-              console.log(`[Homepage] Found VESPA Customer in field_179: ${schoolId}`);
+              debugLog(`Found VESPA Customer in field_179: ${schoolId}`);
             }
           }
           
@@ -686,7 +686,7 @@
           if (!schoolId && studentRecord.field_122) {
             if (typeof studentRecord.field_122 === 'string' && isValidKnackId(studentRecord.field_122)) {
               schoolId = studentRecord.field_122;
-              console.log(`[Homepage] Found VESPA Customer in field_122: ${schoolId}`);
+              debugLog(`Found VESPA Customer in field_122: ${schoolId}`);
             }
           }
           
@@ -695,7 +695,7 @@
             data[FIELD_MAPPING.vespaCustomer] = schoolId;
             console.log(`[Homepage] Setting VESPA Customer from student record: ${schoolId}`);
           } else {
-            console.log('[Homepage] Could not find valid VESPA Customer ID in any field');
+            debugLog('Could not find valid VESPA Customer ID in any field', null);
           }
         }
         
@@ -810,10 +810,11 @@
       }
       
       // Debug log the final data with explicit connection fields info
-      console.log('[Homepage] Connection fields in record creation:');
-      console.log(`[Homepage] - VESPA Customer: ${data[FIELD_MAPPING.vespaCustomer]}`);
-      console.log(`[Homepage] - Tutor: ${JSON.stringify(data[FIELD_MAPPING.tutorConnection])}`);
-      console.log(`[Homepage] - Staff Admin: ${JSON.stringify(data[FIELD_MAPPING.staffAdminConnection])}`);
+      debugLog('Connection fields in record creation', {
+        vespaCustomer: data[FIELD_MAPPING.vespaCustomer],
+        tutorConnection: data[FIELD_MAPPING.tutorConnection],
+        staffAdminConnection: data[FIELD_MAPPING.staffAdminConnection]
+      });
       
       debugLog('Creating user profile with prepared data:', data);
       
@@ -907,20 +908,21 @@
         const studentRecord = response.records[0];
         
         // Log the entire student record structure to identify all available fields
-        console.log('[Homepage] COMPLETE STUDENT RECORD:', JSON.stringify(studentRecord, null, 2));
+        debugLog('COMPLETE STUDENT RECORD', studentRecord);
         
         // Check explicitly for the tutor and staff admin fields
-        console.log('[Homepage] Checking for connection fields:');
-        console.log('- Tutor field_1682 exists:', studentRecord.field_1682 !== undefined);
-        console.log('- Tutor field_1682_raw exists:', studentRecord.field_1682_raw !== undefined);
-        console.log('- Staff Admin field_190 exists:', studentRecord.field_190 !== undefined);
-        console.log('- Staff Admin field_190_raw exists:', studentRecord.field_190_raw !== undefined);
+        debugLog('Checking for connection fields in student record', {
+          tutor_field_1682_exists: studentRecord.field_1682 !== undefined,
+          tutor_field_1682_raw_exists: studentRecord.field_1682_raw !== undefined,
+          staff_admin_field_190_exists: studentRecord.field_190 !== undefined,
+          staff_admin_field_190_raw_exists: studentRecord.field_190_raw !== undefined
+        });
         
         // Extract UPN (Unique Pupil Number) if available
         if (studentRecord.field_3129) {
           debugLog(`Found UPN for student: ${studentRecord.field_3129}`);
         } else {
-          console.log('[Homepage] No UPN found in student record (field_3129)');
+          debugLog('No UPN found in student record (field_3129)', null);
         }
         
         return studentRecord;
@@ -1977,7 +1979,7 @@
     let schoolDisplay = 'N/A';
     if (profileData.school) {
       // Log the school field to debug
-      console.log('[Homepage] School field value:', profileData.school);
+      debugLog('School field value for profile rendering', profileData.school);
       
       if (typeof profileData.school === 'object' && profileData.school !== null) {
         // Check for raw versions first
@@ -2275,7 +2277,7 @@
   
   // Enhanced tooltip setup with better styling
   function setupTooltips() {
-    console.log("[Homepage] Setting up tooltips (v3 - position debug)");
+    debugLog("Setting up tooltips (v3 - position debug)", null);
     
     cleanupTooltips(); 
 
@@ -2363,7 +2365,7 @@
         const cardRect = this.getBoundingClientRect();
         const tooltipRect = activeDataTooltip.getBoundingClientRect(); 
         
-        console.log("[Homepage] Tooltip Positioning Debug:", {
+        debugLog("Tooltip Positioning Debug", {
             cardRect: { top: cardRect.top, left: cardRect.left, width: cardRect.width, height: cardRect.height },
             tooltipRect: { width: tooltipRect.width, height: tooltipRect.height },
             scrollY: window.scrollY,
@@ -2383,7 +2385,7 @@
         if (left + tooltipRect.width > window.scrollX + window.innerWidth) {
           left = window.scrollX + window.innerWidth - tooltipRect.width - 5;
         }
-        console.log("[Homepage] Calculated top, left:", { top, left });
+        debugLog("Calculated tooltip top, left", { top, left });
 
         activeDataTooltip.style.top = `${top}px`;
         activeDataTooltip.style.left = `${left}px`;
@@ -2508,13 +2510,13 @@
     debugLog("Current user:", user);
     
     // Find the target container - add more logging to troubleshoot
-    console.log(`[Homepage] Looking for container with selector: ${config.elementSelector}`);
+    debugLog(`Looking for container with selector: ${config.elementSelector}`);
     
     // Try alternative selectors if the main one fails
     let container = document.querySelector(config.elementSelector);
     
     if (!container) {
-      console.log(`[Homepage] Primary selector failed, trying alternatives...`);
+      debugLog(`Primary selector failed, trying alternatives...`, null);
       
       // Try alternative selectors
       const alternatives = [
@@ -2526,10 +2528,10 @@
       ];
       
       for (const altSelector of alternatives) {
-        console.log(`[Homepage] Trying alternative selector: ${altSelector}`);
+        debugLog(`Trying alternative selector: ${altSelector}`);
         container = document.querySelector(altSelector);
         if (container) {
-          console.log(`[Homepage] Found container with alternative selector: ${altSelector}`);
+          debugLog(`Found container with alternative selector: ${altSelector}`);
           break;
         }
       }
@@ -2540,12 +2542,12 @@
       console.error(`Homepage Error: Container not found using selector: ${config.elementSelector} or alternatives`);
       
       // Dump the DOM structure to help debug
-      console.log(`[Homepage] DOM structure for debugging:`, 
-        document.querySelector('.kn-content')?.innerHTML || 'No .kn-content found');
+      debugLog(`DOM structure for debugging`, 
+        { html: document.querySelector('.kn-content')?.innerHTML || 'No .kn-content found' });
       
       // Last resort - just use the body
       container = document.body;
-      console.warn(`[Homepage] Using document.body as last resort container`);
+      console.warn(`Using document.body as last resort container`);
     }
     
     // Show loading indicator
