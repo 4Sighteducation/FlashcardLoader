@@ -2037,7 +2037,7 @@
   
   // Cleanup function to remove all tooltip elements when homepage is unloaded
   function cleanupTooltips() {
-    // Remove any existing tooltip containers from previous sessions
+    // Remove any existing tooltip containers from previous sessions (if any were used by old info icons)
     const existingTooltipContainers = document.querySelectorAll('.tooltip-container');
     existingTooltipContainers.forEach(container => {
       if (container && container.parentNode) {
@@ -2045,15 +2045,23 @@
       }
     });
     
-    // Remove any standalone tooltips
-    const existingTooltips = document.querySelectorAll('.app-tooltip');
-    existingTooltips.forEach(tooltip => {
+    // Remove any standalone tooltips from info icons (legacy, should be none now)
+    const existingInfoTooltips = document.querySelectorAll('.vespa-tooltip');
+    existingInfoTooltips.forEach(tooltip => {
+      if (tooltip && tooltip.parentNode) {
+        tooltip.parentNode.removeChild(tooltip);
+      }
+    });
+
+    // Remove any app data tooltips (our new hover tooltips)
+    const existingAppDataTooltips = document.querySelectorAll('.app-data-tooltip');
+    existingAppDataTooltips.forEach(tooltip => {
       if (tooltip && tooltip.parentNode) {
         tooltip.parentNode.removeChild(tooltip);
       }
     });
     
-    // Remove any overlay elements
+    // Remove any overlay elements (legacy, should be none now)
     const existingOverlays = document.querySelectorAll('.tooltip-overlay');
     existingOverlays.forEach(overlay => {
       if (overlay && overlay.parentNode) {
@@ -2069,32 +2077,27 @@
   function setupTooltips() {
     console.log("[Homepage] Setting up enhanced tooltips");
     
-    // Remove overlay for mobile (for existing info icon tooltips) as info icons are removed
     const existingOverlay = document.querySelector('.tooltip-overlay');
     if (existingOverlay) existingOverlay.remove();
     
-    // Remove global click listener for info icon tooltips as they are removed
-    // document.removeEventListener('click', ...) // Need a way to remove specific named functions if previously added
-    // For now, we will rely on the fact that infoIcons query will be empty.
-
-    // Get all info icons - THIS WILL NOW BE EMPTY OR NOT USED FOR TOOLTIPS
     const infoIcons = document.querySelectorAll('.app-info-icon');
     if (infoIcons.length > 0) {
         console.warn("[Homepage] Info icons found, but their tooltip functionality is being removed.");
     }
-    // Existing click handlers for infoIcons are effectively disabled as no new ones are added
-    // and the elements themselves will be removed from renderAppHubSection.
 
     // --- App Card Data Tooltip Logic (Flashcards, Study Planner, Taskboard) ---
     const appCardsWithData = document.querySelectorAll('.app-card[data-app-type]');
-    let currentDataTooltip = null;
+    let activeDataTooltip = null; // Use a more descriptive name, and ensure it's properly managed
 
     appCardsWithData.forEach(card => {
+      let tooltipTimeout = null; // To manage delayed removal on mouseleave
+
       card.addEventListener('mouseenter', function(e) {
-        if (currentDataTooltip) {
-          currentDataTooltip.remove(); // Remove any lingering tooltip
-          currentDataTooltip = null;
+        if (activeDataTooltip) { // If a tooltip is already active, remove it immediately
+          activeDataTooltip.remove();
+          activeDataTooltip = null;
         }
+        if(tooltipTimeout) clearTimeout(tooltipTimeout); // Clear any pending removal
 
         const appType = this.dataset.appType;
         let tooltipContentHTML = '';
@@ -2143,35 +2146,49 @@
 
         if (!tooltipContentHTML) return; // Don't show empty tooltip
 
-        currentDataTooltip = document.createElement('div');
-        currentDataTooltip.className = 'app-data-tooltip';
-        currentDataTooltip.innerHTML = tooltipContentHTML;
-        document.body.appendChild(currentDataTooltip);
+        activeDataTooltip = document.createElement('div'); // Assign to the shared activeDataTooltip
+        activeDataTooltip.className = 'app-data-tooltip';
+        activeDataTooltip.innerHTML = tooltipContentHTML;
+        document.body.appendChild(activeDataTooltip);
 
-        const rect = this.getBoundingClientRect();
-        const tooltipRect = currentDataTooltip.getBoundingClientRect();
-        let top = rect.top - tooltipRect.height - 10; 
-        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+        const cardRect = this.getBoundingClientRect();
+        const tooltipRect = activeDataTooltip.getBoundingClientRect();
+        
+        let top = cardRect.top + window.scrollY - tooltipRect.height - 10; // Default above the card
+        let left = cardRect.left + window.scrollX + (cardRect.width / 2) - (tooltipRect.width / 2);
 
-        if (top < 0) top = rect.bottom + 10;
-        if (left < 0) left = 5;
-        if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 5;
+        // Adjust if tooltip goes off screen top
+        if (top < window.scrollY) { 
+          top = cardRect.bottom + window.scrollY + 10; // Position below the card
+        }
+        // Adjust if tooltip goes off screen left
+        if (left < window.scrollX) {
+          left = window.scrollX + 5;
+        }
+        // Adjust if tooltip goes off screen right
+        if (left + tooltipRect.width > window.scrollX + window.innerWidth) {
+          left = window.scrollX + window.innerWidth - tooltipRect.width - 5;
+        }
 
-        currentDataTooltip.style.top = `${top + window.scrollY}px`;
-        currentDataTooltip.style.left = `${left + window.scrollX}px`;
-        currentDataTooltip.classList.add('visible');
+        activeDataTooltip.style.top = `${top}px`;
+        activeDataTooltip.style.left = `${left}px`;
+        activeDataTooltip.classList.add('visible');
       });
 
       card.addEventListener('mouseleave', function() {
-        if (currentDataTooltip) {
-          currentDataTooltip.classList.remove('visible');
-          setTimeout(() => {
-             if (currentDataTooltip && !currentDataTooltip.classList.contains('visible')) {
-                currentDataTooltip.remove();
-                currentDataTooltip = null;
-             }
-          }, 200); 
-        }
+        if (tooltipTimeout) clearTimeout(tooltipTimeout); // Clear previous timeout if any
+        tooltipTimeout = setTimeout(() => {
+           if (activeDataTooltip) {
+              activeDataTooltip.classList.remove('visible');
+              // Give it a moment to fade out before removing from DOM
+              setTimeout(() => {
+                  if (activeDataTooltip && !activeDataTooltip.classList.contains('visible')) {
+                      activeDataTooltip.remove();
+                      activeDataTooltip = null; 
+                  }
+              }, 200); // Should match CSS transition time
+           }
+        }, 100); // Small delay before starting fade-out to avoid flicker if mouse re-enters quickly
       });
     });
   }
