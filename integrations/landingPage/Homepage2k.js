@@ -955,9 +955,20 @@
 
     for (const boxKey in FLASHCARD_BOX_FIELDS) {
       const fieldId = FLASHCARD_BOX_FIELDS[boxKey];
-      const boxDataRaw = flashcardRecord[fieldId];
+      let boxDataRaw = flashcardRecord[fieldId];
 
-      if (boxDataRaw) {
+      if (boxDataRaw && typeof boxDataRaw === 'string') {
+        try {
+          // Attempt to decode if it looks URL encoded (starts with %)
+          if (boxDataRaw.startsWith('%')) {
+            boxDataRaw = decodeURIComponent(boxDataRaw);
+            debugLog(`Decoded ${fieldId} data:`, boxDataRaw.substring(0,100)); // Log first 100 chars
+          }
+        } catch (e) {
+          console.warn(`[Homepage] Error decoding URI component for ${fieldId}:`, e, "Original string:", boxDataRaw.substring(0,100));
+          // If decoding fails, proceed with the original string, maybe it wasn't encoded
+        }
+        
         const cardsArray = safeParseJSON(boxDataRaw, []);
         if (Array.isArray(cardsArray)) {
           let dueInBox = 0;
@@ -2333,4 +2344,3 @@
   };
 
 })(); // End of IIFE
-
