@@ -959,16 +959,32 @@
 
   function processFlashcardData(flashcardRecord) {
     if (!flashcardRecord) {
-      return { total: 0, box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 };
+      return { 
+        totalDue: 0, 
+        box1: { due: 0, total: 0 }, 
+        box2: { due: 0, total: 0 }, 
+        box3: { due: 0, total: 0 }, 
+        box4: { due: 0, total: 0 }, 
+        box5: { due: 0, total: 0 } 
+      };
     }
 
-    const counts = { total: 0, box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 };
+    const counts = { 
+      totalDue: 0, 
+      box1: { due: 0, total: 0 }, 
+      box2: { due: 0, total: 0 }, 
+      box3: { due: 0, total: 0 }, 
+      box4: { due: 0, total: 0 }, 
+      box5: { due: 0, total: 0 } 
+    };
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
 
-    for (const boxKey in FLASHCARD_BOX_FIELDS) {
+    for (const boxKey in FLASHCARD_BOX_FIELDS) { // boxKey will be "box1", "box2", etc.
       const fieldId = FLASHCARD_BOX_FIELDS[boxKey];
       let boxDataRaw = flashcardRecord[fieldId];
+      let currentBoxDueCount = 0;
+      let currentBoxTotalCount = 0;
 
       if (boxDataRaw && typeof boxDataRaw === 'string') {
         try {
@@ -984,7 +1000,7 @@
         
         const cardsArray = safeParseJSON(boxDataRaw, []);
         if (Array.isArray(cardsArray)) {
-          let dueInBox = 0;
+          currentBoxTotalCount = cardsArray.length;
           cardsArray.forEach(card => {
             if (card.nextReviewDate) {
               try {
@@ -992,18 +1008,21 @@
                 nextReview.setHours(0,0,0,0); // Normalize nextReviewDate to the start of its day
                 
                 if (nextReview <= today) {
-                  dueInBox++;
+                  currentBoxDueCount++;
                 }
               } catch (dateError) {
                 console.warn(`[Homepage] Error parsing nextReviewDate '${card.nextReviewDate}':`, dateError);
               }
             }
           });
-          counts[boxKey] = dueInBox;
-          counts.total += dueInBox;
+          counts[boxKey] = { due: currentBoxDueCount, total: currentBoxTotalCount };
+          counts.totalDue += currentBoxDueCount;
         } else {
           debugLog(`Parsed data for ${fieldId} is not an array:`, cardsArray);
+          counts[boxKey] = { due: 0, total: 0 }; // Initialize if parsing failed for this box
         }
+      } else {
+        counts[boxKey] = { due: 0, total: 0 }; // Initialize if no data for this box
       }
     }
     debugLog('Processed flashcard counts:', counts);
@@ -2123,12 +2142,24 @@
         if (appType === 'flashcards') {
           const totalBadge = this.querySelector('.flashcard-notification-badge');
           if (!totalBadge || parseInt(totalBadge.textContent || '0', 10) === 0) return;
-          tooltipContentHTML = `<h4>Flashcards for Review:</h4>
-            Box 1 (Daily):       ${this.dataset.box1Count}<br>
-            Box 2 (Every Other): ${this.dataset.box2Count}<br>
-            Box 3 (Every 3 Days):  ${this.dataset.box3Count}<br>
-            Box 4 (Weekly):      ${this.dataset.box4Count}<br>
-            Box 5 (3 Weeks):    ${this.dataset.box5Count}`;
+
+          const box1Due = this.dataset.box1DueCount || '0';
+          const box1Total = this.dataset.box1TotalCount || '0';
+          const box2Due = this.dataset.box2DueCount || '0';
+          const box2Total = this.dataset.box2TotalCount || '0';
+          const box3Due = this.dataset.box3DueCount || '0';
+          const box3Total = this.dataset.box3TotalCount || '0';
+          const box4Due = this.dataset.box4DueCount || '0';
+          const box4Total = this.dataset.box4TotalCount || '0';
+          const box5Due = this.dataset.box5DueCount || '0';
+          const box5Total = this.dataset.box5TotalCount || '0';
+          
+          tooltipContentHTML = `<h4>Flashcards:</h4>
+            Box 1 (Daily):       ${box1Due} due / ${box1Total} total<br>
+            Box 2 (Every Other): ${box2Due} due / ${box2Total} total<br>
+            Box 3 (Every 3 Days):  ${box3Due} due / ${box3Total} total<br>
+            Box 4 (Weekly):      ${box4Due} due / ${box4Total} total<br>
+            Box 5 (3 Weeks):    ${box5Due} due / ${box5Total} total`;
         } else if (appType === 'study-planner') {
           const totalBadge = this.querySelector('.study-planner-notification-badge');
           if (!totalBadge || parseInt(totalBadge.textContent || '0', 10) === 0) return;
@@ -2226,14 +2257,19 @@
       let notificationBadgeHTML = '';
       let cardDataAttributes = '';
 
-      if (app.name === "Flashcards" && flashcardReviewCounts && flashcardReviewCounts.total > 0) {
-        notificationBadgeHTML = `<span class="flashcard-notification-badge">${flashcardReviewCounts.total}</span>`;
+      if (app.name === "Flashcards" && flashcardReviewCounts && flashcardReviewCounts.totalDue > 0) {
+        notificationBadgeHTML = `<span class="flashcard-notification-badge">${flashcardReviewCounts.totalDue}</span>`;
         cardDataAttributes = ` data-app-type="flashcards"
-                               data-box1-count="${flashcardReviewCounts.box1}" 
-                               data-box2-count="${flashcardReviewCounts.box2}" 
-                               data-box3-count="${flashcardReviewCounts.box3}" 
-                               data-box4-count="${flashcardReviewCounts.box4}" 
-                               data-box5-count="${flashcardReviewCounts.box5}"`;
+                               data-box1-due-count="${flashcardReviewCounts.box1.due}" 
+                               data-box1-total-count="${flashcardReviewCounts.box1.total}" 
+                               data-box2-due-count="${flashcardReviewCounts.box2.due}" 
+                               data-box2-total-count="${flashcardReviewCounts.box2.total}" 
+                               data-box3-due-count="${flashcardReviewCounts.box3.due}" 
+                               data-box3-total-count="${flashcardReviewCounts.box3.total}" 
+                               data-box4-due-count="${flashcardReviewCounts.box4.due}" 
+                               data-box4-total-count="${flashcardReviewCounts.box4.total}" 
+                               data-box5-due-count="${flashcardReviewCounts.box5.due}" 
+                               data-box5-total-count="${flashcardReviewCounts.box5.total}"`;
       } else if (app.name === "Study Planner" && studyPlannerData && studyPlannerData.count > 0) {
         notificationBadgeHTML = `<span class="study-planner-notification-badge">${studyPlannerData.count}</span>`;
         cardDataAttributes = ` data-app-type="study-planner"
@@ -2375,7 +2411,14 @@
       
       if (userProfile) {
         // Fetch and process flashcard review data
-        let flashcardReviewCounts = { total: 0, box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 }; // Default
+        let flashcardReviewCounts = { 
+          totalDue: 0, 
+          box1: { due: 0, total: 0 }, 
+          box2: { due: 0, total: 0 }, 
+          box3: { due: 0, total: 0 }, 
+          box4: { due: 0, total: 0 }, 
+          box5: { due: 0, total: 0 } 
+        }; // Default
         try {
           const flashcardDataRecord = await fetchFlashcardReviewData(user.id);
           if (flashcardDataRecord) {
@@ -2433,5 +2476,13 @@
       `;
     }
   };
+
+  // Listen for Knack page changes to clean up tooltips
+  $(document).on('knack-page-render.any', function() {
+    if (typeof cleanupTooltips === 'function') {
+      debugLog("Knack page render detected (knack-page-render.any), cleaning up tooltips.");
+      cleanupTooltips();
+    }
+  });
 
 })(); // End of IIFE
