@@ -110,10 +110,13 @@
     console.log(`%c[Homepage] ${title}`, 'color: #00e5db; font-weight: bold; font-size: 12px;');
     try {
       if (data !== undefined) {
+        // Try to log a clone for better inspection in some consoles
         console.log(JSON.parse(JSON.stringify(data, null, 2)));
       }
     } catch (e) {
-      console.log("Data could not be fully serialized for logging:", data);
+      // If stringify fails (e.g., circular references, though less likely for our data objects)
+      // or if data is not easily stringifiable, log the raw data object.
+      console.log("Data (raw, stringify failed or not applicable):", data);
     }
     return data;
   }
@@ -961,7 +964,7 @@
 
     const counts = { total: 0, box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 };
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
 
     for (const boxKey in FLASHCARD_BOX_FIELDS) {
       const fieldId = FLASHCARD_BOX_FIELDS[boxKey];
@@ -986,6 +989,8 @@
             if (card.nextReviewDate) {
               try {
                 const nextReview = new Date(card.nextReviewDate);
+                nextReview.setHours(0,0,0,0); // Normalize nextReviewDate to the start of its day
+                
                 if (nextReview <= today) {
                   dueInBox++;
                 }
@@ -2276,37 +2281,38 @@
           if (flashcardDataRecord) {
             flashcardReviewCounts = processFlashcardData(flashcardDataRecord);
           }
+          debugLog('Flashcard Counts After Processing:', flashcardReviewCounts); // Explicit log
         } catch (fcError) {
           console.error("[Homepage] Error fetching or processing flashcard data:", fcError);
           // Keep default counts (all zeros) if there's an error
         }
         
         // Fetch and process Study Planner data
-        let studyPlannerData = null;
+        let studyPlannerNotificationData = { count: 0, sessionsDetails: [] }; // Default
         try {
-          studyPlannerData = await fetchStudyPlannerData(user.id);
-          if (studyPlannerData) {
-            studyPlannerData = processStudyPlannerData(studyPlannerData);
+          const studyPlannerJson = await fetchStudyPlannerData(user.id);
+          if (studyPlannerJson) {
+            studyPlannerNotificationData = processStudyPlannerData(studyPlannerJson);
           }
+          debugLog('Study Planner Data After Processing:', studyPlannerNotificationData); // Explicit log
         } catch (spError) {
           console.error("[Homepage] Error fetching or processing Study Planner data:", spError);
-          // Keep default data (null) if there's an error
         }
         
         // Fetch and process Taskboard data
-        let taskboardData = null;
+        let taskboardNotificationData = { doingCount: 0, pendingHot: 0, pendingWarm: 0, pendingCold: 0, doingTaskTitles: [] }; // Default
         try {
-          taskboardData = await fetchTaskboardData(user.id);
-          if (taskboardData) {
-            taskboardData = processTaskboardData(taskboardData);
+          const taskboardJson = await fetchTaskboardData(user.id);
+          if (taskboardJson) {
+            taskboardNotificationData = processTaskboardData(taskboardJson);
           }
+          debugLog('Taskboard Data After Processing:', taskboardNotificationData); // Explicit log
         } catch (tbError) {
           console.error("[Homepage] Error fetching or processing Taskboard data:", tbError);
-          // Keep default data (null) if there's an error
         }
         
         // Render the homepage UI with all data
-        renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData);
+        renderHomepage(userProfile, flashcardReviewCounts, studyPlannerNotificationData, taskboardNotificationData);
       } else {
         container.innerHTML = `
           <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
