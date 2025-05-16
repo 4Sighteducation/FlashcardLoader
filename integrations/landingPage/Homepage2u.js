@@ -27,6 +27,26 @@
   const TASKBOARD_USER_LINK_FIELD = 'field_3048';
   const TASKBOARD_JSON_FIELD = 'field_3052';
 
+  // VESPA Scores specific constants
+  const VESPA_SCORES_OBJECT = 'object_10';
+  const VESPA_SCORES_EMAIL_FIELD = 'field_197'; // Student Email in object_10
+  const VESPA_SCORES_FIELDS = {
+    vision: 'field_147',    // #ff8f00
+    effort: 'field_148',    // #86b4f0
+    systems: 'field_149',   // #72cb44
+    practice: 'field_150',  // #7f31a4
+    attitude: 'field_151',  // #f032e6
+    overall: 'field_152'    // #f3f553
+  };
+  const VESPA_SCORE_COLORS = {
+    vision: '#ff8f00',
+    effort: '#86b4f0',
+    systems: '#72cb44',
+    practice: '#7f31a4',
+    attitude: '#f032e6',
+    overall: '#f3f553'
+  };
+
   // Field mappings for the user profile object
   const FIELD_MAPPING = {
     userId: 'field_3064',         // User ID
@@ -1181,9 +1201,57 @@
     return result;
   }
 
+  // --- VESPA Scores Data Function ---
+  async function fetchVespaScores(userEmail) {
+    if (!userEmail) {
+      console.warn("[Homepage] Cannot fetch VESPA scores: userEmail is missing.");
+      return null;
+    }
+    debugLog(`Fetching VESPA scores for email: ${userEmail}`);
+
+    const findFilters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: VESPA_SCORES_EMAIL_FIELD, operator: 'is', value: userEmail }]
+    }));
+
+    const fieldsToRequest = Object.values(VESPA_SCORES_FIELDS).join(',');
+
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/${VESPA_SCORES_OBJECT}/records?filters=${findFilters}&fields=${fieldsToRequest}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+
+      if (response && response.records && response.records.length > 0) {
+        const record = response.records[0];
+        debugLog(`Found VESPA scores record for ${userEmail}`, record);
+        const scores = {};
+        for (const key in VESPA_SCORES_FIELDS) {
+          scores[key] = sanitizeField(record[VESPA_SCORES_FIELDS[key]] || 'N/A');
+        }
+        debugLog('Processed VESPA scores:', scores);
+        return scores;
+      } else {
+        debugLog(`No VESPA scores record found for ${userEmail}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('[Homepage] Error fetching VESPA scores:', error);
+      return null;
+    }
+  }
+
   // --- UI Rendering ---
   // Render the main homepage UI
-  function renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData) {
+  function renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData, vespaScoresData) {
     const container = document.querySelector(window.HOMEPAGE_CONFIG.elementSelector);
     if (!container) {
       console.error('[Homepage] Container element not found.');
@@ -1227,6 +1295,7 @@
     const homepageHTML = `
       <div id="vespa-homepage">
         ${renderProfileSection(profileData)}
+        ${vespaScoresData ? renderVespaScoresSection(vespaScoresData) : ''}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
           ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
@@ -2249,6 +2318,44 @@
     });
   }
   
+  // Render the VESPA Scores section
+  function renderVespaScoresSection(scoresData) {
+    if (!scoresData) return '';
+
+    let scoresHTML = '';
+    const scoreOrder = ['vision', 'effort', 'systems', 'practice', 'attitude', 'overall'];
+
+    scoreOrder.forEach(key => {
+      if (scoresData[key]) {
+        const scoreValue = sanitizeField(scoresData[key]);
+        const color = VESPA_SCORE_COLORS[key] || '#cccccc';
+        // Determine text color based on background lightness for Overall score, can be expanded if other colors are light
+        const textColor = (key === 'overall' && color === '#f3f553') ? '#333333' : '#ffffff'; 
+        scoresHTML += `
+          <div class="vespa-score-item">
+            <div class="vespa-score-circle" style="background-color: ${color}; color: ${textColor};">
+              <span>${scoreValue}</span>
+            </div>
+            <div class="vespa-score-label">${key.toUpperCase()}</div>
+          </div>
+        `;
+      }
+    });
+
+    if (!scoresHTML) {
+      return ''; // Don't render section if no scores to show
+    }
+
+    return `
+      <section class="vespa-section vespa-scores-section">
+        <h2 class="vespa-section-title">Current VESPA Scores</h2>
+        <div class="vespa-scores-grid">
+          ${scoresHTML}
+        </div>
+      </section>
+    `;
+  }
+  
   // Render an app hub section
   function renderAppHubSection(title, apps, flashcardReviewCounts = null, studyPlannerData = null, taskboardData = null) {
     let appsHTML = '';
@@ -2453,9 +2560,18 @@
         } catch (tbError) {
           console.error("[Homepage] Error fetching or processing Taskboard data:", tbError);
         }
+
+        // Fetch VESPA Scores
+        let vespaScoresData = null;
+        try {
+          vespaScoresData = await fetchVespaScores(user.email);
+          debugLog('VESPA Scores Data After Processing:', vespaScoresData);
+        } catch (vsError) {
+          console.error("[Homepage] Error fetching or processing VESPA scores:", vsError);
+        }
         
         // Render the homepage UI with all data
-        renderHomepage(userProfile, flashcardReviewCounts, studyPlannerNotificationData, taskboardNotificationData);
+        renderHomepage(userProfile, flashcardReviewCounts, studyPlannerNotificationData, taskboardNotificationData, vespaScoresData);
       } else {
         container.innerHTML = `
           <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
