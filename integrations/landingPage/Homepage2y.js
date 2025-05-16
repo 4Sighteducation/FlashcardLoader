@@ -1859,7 +1859,7 @@
       .profile-vespa-scores-title {
         font-size: 16px; /* Smaller title */
         font-weight: 600;
-        color: #00e5db; /* Changed to #00e5db as requested */
+        color: #00e5db !important; /* Changed to #00e5db and added !important */
         margin-bottom: 15px; /* Space below title */
         text-align: left; /* Align with profile content */
         padding-left: 8px; /* Align with profile item labels */
