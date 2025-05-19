@@ -149,17 +149,17 @@
       if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
       return JSON.parse(jsonString);
     } catch (error) {
-      console.warn("[Homepage] JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
+      debugLog("[Homepage] JSON parse failed", { error: error.message, stringSample: String(jsonString).substring(0, 100) });
       try {
         const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
         const recovered = cleanedString
           .replace(/\\"/g, '"')
           .replace(/,\s*([}\]])/g, '$1');
         const result = JSON.parse(recovered);
-        console.log("[Homepage] JSON recovery successful.");
+        debugLog("[Homepage] JSON recovery successful", result);
         return result;
       } catch (secondError) {
-        console.error("[Homepage] JSON recovery failed:", secondError);
+        debugLog("[Homepage] JSON recovery failed", { error: secondError.message });
         return defaultVal;
       }
     }
@@ -258,14 +258,14 @@
           .then(resolve)
           .catch((error) => {
             const attemptsMade = retryCount + 1;
-            console.warn(`API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
+            debugLog(`API call failed (Attempt ${attemptsMade}/${maxRetries})`, { status: error.status, statusText: error.statusText, responseText: error.responseText });
 
             if (retryCount < maxRetries - 1) {
               const retryDelay = delay * Math.pow(2, retryCount);
-              console.log(`Retrying API call in ${retryDelay}ms...`);
+              debugLog(`Retrying API call in ${retryDelay}ms...`);
               setTimeout(() => attempt(retryCount + 1), retryDelay);
             } else {
-              console.error(`API call failed after ${maxRetries} attempts.`);
+              debugLog(`API call failed after ${maxRetries} attempts.`);
               reject(error);
             }
           });
@@ -289,13 +289,13 @@
     debugLog(`Using AppID ${knackAppId}`);
     
     if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-      console.error("[Homepage] Knack object or getUserToken function not available.");
+      if (DEBUG_MODE) console.error("[Homepage] Knack object or getUserToken function not available.");
       throw new Error("Knack authentication context not available.");
     }
     
     const token = Knack.getUserToken();
     if (!token) {
-      console.warn("[Homepage] Knack user token is null or undefined. API calls may fail.");
+      debugLog("[Homepage] Knack user token is null or undefined. API calls may fail.");
     }
     
     const headers = {
@@ -314,7 +314,7 @@
   // Find or create the user profile record
   async function findOrCreateUserProfile(userId, userName, userEmail) {
     if (!userId) {
-      console.error("[Homepage] Cannot find or create user profile: userId is missing.");
+      debugLog("[Homepage] Cannot find or create user profile: userId is missing.");
       return null;
     }
     
@@ -360,7 +360,7 @@
         profileRecord = await createUserProfile(userId, userName, userEmail);
         isNewProfile = true;
         if (!profileRecord) {
-          console.error('[Homepage] Failed to create user profile');
+          debugLog('[Homepage] Failed to create user profile');
           return null;
         }
       }
@@ -421,13 +421,13 @@
           } else {
             // If this is not a new profile and we couldn't find subjects, it might be an issue
             if (!isNewProfile) {
-              console.warn(`[Homepage] No subject records found in Object_113 for returning user ${userEmail} with UPN=${userUpn}`);
+              debugLog(`[Homepage] No subject records found in Object_113 for returning user ${userEmail} with UPN=${userUpn}`);
             } else {
               debugLog(`No subject records found in Object_113 for new user ${userEmail}, profile will have no subjects`);
             }
           }
         } catch (error) {
-          console.error('[Homepage] Error processing subject data from Object_113:', error);
+          debugLog('[Homepage] Error processing subject data from Object_113', { error: error.message, stack: error.stack });
         }
       }
       
@@ -436,7 +436,7 @@
       
       return profileRecord;
     } catch (error) {
-      console.error('[Homepage] Error finding or creating user profile:', error);
+      debugLog('[Homepage] Error finding or creating user profile', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -444,7 +444,7 @@
   // Fetch a user profile record by ID
   async function getUserProfileRecord(recordId) {
     if (!recordId) {
-      console.error('[Homepage] Cannot get user profile: recordId is missing');
+      debugLog('[Homepage] Cannot get user profile: recordId is missing');
       return null;
     }
     
@@ -467,7 +467,7 @@
       
       return response;
     } catch (error) {
-      console.error(`[Homepage] Error getting user profile record ${recordId}:`, error);
+      debugLog(`[Homepage] Error getting user profile record ${recordId}`, { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -475,7 +475,7 @@
   // Fetch subject data from Object_113 using user email and/or UPN
   async function fetchSubjectDataFromObject113(userEmail, userUpn) {
     if (!userEmail && !userUpn) {
-      console.error("[Homepage] Cannot fetch subject data: Both userEmail and userUpn are missing.");
+      debugLog("[Homepage] Cannot fetch subject data: Both userEmail and userUpn are missing.");
       return [];
     }
     
@@ -522,15 +522,15 @@
       
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found ${response.records.length} subject records in Object_113`, response.records);
-        // ---- ADD EXTRA LOGGING HERE ----
-        console.log('[Homepage DEBUG] Raw subject records fetched from object_113:', JSON.parse(JSON.stringify(response.records)));
+        // ---- CONVERTED EXTRA LOGGING HERE ----
+        debugLog('[Homepage DEBUG] Raw subject records fetched from object_113', response.records);
         // ---------------------------------
         return response.records;
       }
       
       return [];
     } catch (error) {
-      console.error('[Homepage] Error fetching subject data from Object_113:', error);
+      debugLog('[Homepage] Error fetching subject data from Object_113', { error: error.message, stack: error.stack });
       return [];
     }
   }
@@ -555,8 +555,8 @@
       };
     });
 
-    // ---- ADD EXTRA LOGGING HERE ----
-    console.log('[Homepage DEBUG] Built subject data for object_112 update:', JSON.parse(JSON.stringify(builtRecords))); 
+    // ---- CONVERTED EXTRA LOGGING HERE ----
+    debugLog('[Homepage DEBUG] Built subject data for object_112 update', builtRecords); 
     // ---------------------------------
     return builtRecords; 
   }
@@ -564,11 +564,11 @@
   // Update subject fields in user profile
   async function updateUserProfileSubjects(recordId, subjectDataArray) {
     if (!recordId || !subjectDataArray || !Array.isArray(subjectDataArray)) {
-      console.error('[Homepage] Cannot update subjects: Invalid parameters');
+      debugLog('[Homepage] Cannot update subjects: Invalid parameters');
       return false;
     }
-    // ---- ADD EXTRA LOGGING HERE ----
-    console.log('[Homepage DEBUG] updateUserProfileSubjects received subjectDataArray:', JSON.parse(JSON.stringify(subjectDataArray)));
+    // ---- CONVERTED EXTRA LOGGING HERE ----
+    debugLog('[Homepage DEBUG] updateUserProfileSubjects received subjectDataArray', subjectDataArray);
     // ---------------------------------
     
     // Limit to 15 subjects max
@@ -581,8 +581,8 @@
       const fieldId = `field_${3080 + i}`; // field_3080 for index 0, field_3081 for index 1, etc.
       updateData[fieldId] = JSON.stringify(subjectDataArray[i]);
     }
-    // ---- ADD EXTRA LOGGING HERE ----
-    console.log('[Homepage DEBUG] Data prepared for PUT to object_112:', JSON.parse(JSON.stringify(updateData)));
+    // ---- CONVERTED EXTRA LOGGING HERE ----
+    debugLog('[Homepage DEBUG] Data prepared for PUT to object_112', updateData);
     // ---------------------------------
     
     try {
@@ -599,16 +599,13 @@
           });
         });
       });
-      // ---- ADD EXTRA LOGGING HERE ----
-      console.log('[Homepage DEBUG] Successfully updated subjects in object_112. Response:', response);
+      // ---- CONVERTED EXTRA LOGGING HERE ----
+      debugLog('[Homepage DEBUG] Successfully updated subjects in object_112. Response', response);
       // ---------------------------------
       return true;
     } catch (error) {
-      // ---- ADD EXTRA LOGGING HERE ----
-      console.error('[Homepage DEBUG] Error updating user profile subjects in object_112:', error);
-      if (error.responseText) {
-        console.error('[Homepage DEBUG] Error responseText:', error.responseText);
-      }
+      // ---- CONVERTED EXTRA LOGGING HERE ----
+      debugLog('[Homepage DEBUG] Error updating user profile subjects in object_112', { error: error.message, responseText: error.responseText });
       // ---------------------------------
       return false;
     }
@@ -618,7 +615,7 @@
   async function createUserProfile(userId, userName, userEmail) {
     const user = window.currentKnackUser;
     if (!user) {
-      console.error("[Homepage] Cannot create user profile: currentKnackUser is missing.");
+      debugLog("[Homepage] Cannot create user profile: currentKnackUser is missing.");
       return null;
     }
     
@@ -631,23 +628,23 @@
       
       // Log detailed information about ALL fields in student record
       if (studentRecord) {
-        console.log('[Homepage] Student record field data:');
-        console.log('[Homepage] VESPA Customer field:', studentRecord.field_122_raw);
+        debugLog('[Homepage] Student record field data, VESPA Customer field', { customerField: studentRecord.field_122_raw });
         
         // Log ALL fields related to tutors to debug the issue
-        console.log('[Homepage] Tutor field raw:', studentRecord.field_1682_raw);
-        console.log('[Homepage] Tutor field non-raw:', studentRecord.field_1682);
+        debugLog('[Homepage] Tutor fields', { raw: studentRecord.field_1682_raw, nonRaw: studentRecord.field_1682 });
         
         // Log ALL fields related to staff admins to debug the issue
-        console.log('[Homepage] Staff Admin field raw:', studentRecord.field_190_raw);
-        console.log('[Homepage] Staff Admin field non-raw:', studentRecord.field_190);
+        debugLog('[Homepage] Staff Admin fields', { raw: studentRecord.field_190_raw, nonRaw: studentRecord.field_190 });
         
         // Log any other key fields that might contain connection info
-        console.log('[Homepage] Connection fields in record:');
-        for (const key in studentRecord) {
-          if (key.includes('connect') || key.includes('tutor') || key.includes('admin') || key.includes('staff')) {
-            console.log(`[Homepage] Found potential connection field: ${key}:`, studentRecord[key]);
+        if (DEBUG_MODE) {
+          let potentialConnections = {};
+          for (const key in studentRecord) {
+            if (key.includes('connect') || key.includes('tutor') || key.includes('admin') || key.includes('staff')) {
+              potentialConnections[key] = studentRecord[key];
+            }
           }
+          debugLog('[Homepage] Potential connection fields in record', potentialConnections);
         }
       }
       
@@ -660,12 +657,12 @@
       
       // Connection fields - User Account (direct user ID) - Always set directly
       data[FIELD_MAPPING.userConnection] = userId;
-      console.log(`[Homepage] Setting User Connection: ${userId}`);
+      debugLog(`[Homepage] Setting User Connection: ${userId}`);
       
       // Connection fields from user object
       if (user.schoolId) {
         data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
-        console.log(`[Homepage] Setting VESPA Customer from user: ${user.schoolId}`);
+        debugLog(`[Homepage] Setting VESPA Customer from user: ${user.schoolId}`);
       }
       
       // Store UPN if available from student record
@@ -715,7 +712,7 @@
           // Set the school ID if found in any field
           if (schoolId) {
             data[FIELD_MAPPING.vespaCustomer] = schoolId;
-            console.log(`[Homepage] Setting VESPA Customer from student record: ${schoolId}`);
+            debugLog(`[Homepage] Setting VESPA Customer from student record: ${schoolId}`);
           } else {
             debugLog('Could not find valid VESPA Customer ID in any field', null);
           }
@@ -727,12 +724,12 @@
         // First check the raw field (original)
         if (studentRecord.field_1682_raw) {
           tutorField = studentRecord.field_1682_raw;
-          console.log('[Homepage] Using field_1682_raw for tutors');
+          debugLog('[Homepage] Using field_1682_raw for tutors');
         } 
         // Then check the non-raw field as fallback
         else if (studentRecord.field_1682) {
           tutorField = studentRecord.field_1682;
-          console.log('[Homepage] Using field_1682 for tutors');
+          debugLog('[Homepage] Using field_1682 for tutors');
         }
         
         if (tutorField) {
@@ -740,32 +737,32 @@
           
           // Handle array
           if (Array.isArray(tutorField)) {
-            console.log('[Homepage] Tutor field is an array with', tutorField.length, 'items');
+            debugLog('[Homepage] Tutor field is an array with items', { length: tutorField.length });
             tutorIds = tutorField
               .map(item => extractValidRecordId(item))
               .filter(id => id);
           } 
           // Handle object
           else if (typeof tutorField === 'object') {
-            console.log('[Homepage] Tutor field is an object');
+            debugLog('[Homepage] Tutor field is an object');
             const id = extractValidRecordId(tutorField);
             if (id) tutorIds.push(id);
           } 
           // Handle string (direct ID)
           else if (typeof tutorField === 'string' && isValidKnackId(tutorField)) {
-            console.log('[Homepage] Tutor field is a string ID');
+            debugLog('[Homepage] Tutor field is a string ID');
             tutorIds.push(tutorField);
           }
           
           if (tutorIds.length > 0) {
             // For Knack connection fields, format depends on single vs multiple
             data[FIELD_MAPPING.tutorConnection] = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
-            console.log(`[Homepage] Setting Tutor connection: ${JSON.stringify(tutorIds)}`);
+            debugLog(`[Homepage] Setting Tutor connection`, tutorIds);
           } else {
-            console.log('[Homepage] No valid tutor IDs found after processing');
+            debugLog('[Homepage] No valid tutor IDs found after processing');
           }
         } else {
-          console.log('[Homepage] No tutor field found in student record');
+          debugLog('[Homepage] No tutor field found in student record');
         }
         
         // Staff Admin connections - handle multiple - try both raw and non-raw versions
@@ -774,12 +771,12 @@
         // First check the raw field (original)
         if (studentRecord.field_190_raw) {
           staffAdminField = studentRecord.field_190_raw;
-          console.log('[Homepage] Using field_190_raw for staff admins');
+          debugLog('[Homepage] Using field_190_raw for staff admins');
         } 
         // Then check the non-raw field as fallback
         else if (studentRecord.field_190) {
           staffAdminField = studentRecord.field_190;
-          console.log('[Homepage] Using field_190 for staff admins');
+          debugLog('[Homepage] Using field_190 for staff admins');
         }
         
         if (staffAdminField) {
@@ -787,32 +784,32 @@
           
           // Handle array
           if (Array.isArray(staffAdminField)) {
-            console.log('[Homepage] Staff Admin field is an array with', staffAdminField.length, 'items');
+            debugLog('[Homepage] Staff Admin field is an array with items', { length: staffAdminField.length });
             staffAdminIds = staffAdminField
               .map(item => extractValidRecordId(item))
               .filter(id => id);
           } 
           // Handle object
           else if (typeof staffAdminField === 'object') {
-            console.log('[Homepage] Staff Admin field is an object');
+            debugLog('[Homepage] Staff Admin field is an object');
             const id = extractValidRecordId(staffAdminField);
             if (id) staffAdminIds.push(id);
           } 
           // Handle string (direct ID)
           else if (typeof staffAdminField === 'string' && isValidKnackId(staffAdminField)) {
-            console.log('[Homepage] Staff Admin field is a string ID');
+            debugLog('[Homepage] Staff Admin field is a string ID');
             staffAdminIds.push(staffAdminField);
           }
           
           if (staffAdminIds.length > 0) {
             // For Knack connection fields, format depends on single vs multiple
             data[FIELD_MAPPING.staffAdminConnection] = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
-            console.log(`[Homepage] Setting Staff Admin connection: ${JSON.stringify(staffAdminIds)}`);
+            debugLog(`[Homepage] Setting Staff Admin connection`, staffAdminIds);
           } else {
-            console.log('[Homepage] No valid staff admin IDs found after processing');
+            debugLog('[Homepage] No valid staff admin IDs found after processing');
           }
         } else {
-          console.log('[Homepage] No staff admin field found in student record');
+          debugLog('[Homepage] No staff admin field found in student record');
         }
         
         // Get Tutor Group from field_565
@@ -859,11 +856,11 @@
         debugLog(`Created new user profile record: ${response.id}`, response);
         return response;
       } else {
-        console.error('[Homepage] Failed to create user profile: No ID returned', response);
+        debugLog('[Homepage] Failed to create user profile: No ID returned', response);
         return null;
       }
     } catch (error) {
-      console.error('[Homepage] Error creating user profile:', error);
+      debugLog('[Homepage] Error creating user profile', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -871,7 +868,7 @@
   // Update a specific field in the user profile
   async function updateUserProfileField(recordId, fieldId, value) {
     if (!recordId || !fieldId) {
-      console.error('[Homepage] Cannot update profile: Missing recordId or fieldId');
+      debugLog('[Homepage] Cannot update profile: Missing recordId or fieldId');
       return false;
     }
     
@@ -894,7 +891,7 @@
       
       return true;
     } catch (error) {
-      console.error(`[Homepage] Error updating profile field ${fieldId}:`, error);
+      debugLog(`[Homepage] Error updating profile field ${fieldId}`, { error: error.message, stack: error.stack });
       return false;
     }
   }
@@ -952,7 +949,7 @@
       
       return null;
     } catch (error) {
-      console.error('[Homepage] Error finding student record:', error);
+      debugLog('[Homepage] Error finding student record', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -960,7 +957,7 @@
   // --- Flashcard Review Notification Functions ---
   async function fetchFlashcardReviewData(userId) {
     if (!userId) {
-      console.error("[Homepage] Cannot fetch flashcard data: userId is missing.");
+      debugLog("[Homepage] Cannot fetch flashcard data: userId is missing.");
       return null;
     }
     debugLog(`Fetching flashcard review data for user ID: ${userId}`);
@@ -996,7 +993,7 @@
         return null;
       }
     } catch (error) {
-      console.error('[Homepage] Error fetching flashcard review data:', error);
+      debugLog('[Homepage] Error fetching flashcard review data', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -1038,7 +1035,7 @@
             debugLog(`Decoded ${fieldId} data:`, boxDataRaw.substring(0,100)); // Log first 100 chars
           }
         } catch (e) {
-          console.warn(`[Homepage] Error decoding URI component for ${fieldId}:`, e, "Original string:", boxDataRaw.substring(0,100));
+          debugLog(`[Homepage] Error decoding URI component for ${fieldId}`, { error: e.message, originalStringSample: boxDataRaw.substring(0,100) });
           // If decoding fails, proceed with the original string, maybe it wasn't encoded
         }
         
@@ -1055,7 +1052,7 @@
                   currentBoxDueCount++;
                 }
               } catch (dateError) {
-                console.warn(`[Homepage] Error parsing nextReviewDate '${card.nextReviewDate}':`, dateError);
+                debugLog(`[Homepage] Error parsing nextReviewDate '${card.nextReviewDate}'`, { error: dateError.message });
               }
             }
           });
@@ -1076,7 +1073,7 @@
   // --- Study Planner Notification Functions ---
   async function fetchStudyPlannerData(userId) {
     if (!userId) {
-      console.error("[Homepage] Cannot fetch Study Planner data: userId is missing.");
+      debugLog("[Homepage] Cannot fetch Study Planner data: userId is missing.");
       return null;
     }
     debugLog(`Fetching Study Planner data for user ID: ${userId}`);
@@ -1105,7 +1102,7 @@
         return null;
       }
     } catch (error) {
-      console.error('[Homepage] Error fetching Study Planner data:', error);
+      debugLog('[Homepage] Error fetching Study Planner data', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -1159,7 +1156,7 @@
   // --- Taskboard Notification Functions ---
   async function fetchTaskboardData(userId) {
     if (!userId) {
-      console.error("[Homepage] Cannot fetch Taskboard data: userId is missing.");
+      debugLog("[Homepage] Cannot fetch Taskboard data: userId is missing.");
       return null;
     }
     debugLog(`Fetching Taskboard data for user ID: ${userId}`);
@@ -1188,7 +1185,7 @@
         return null;
       }
     } catch (error) {
-      console.error('[Homepage] Error fetching Taskboard data:', error);
+      debugLog('[Homepage] Error fetching Taskboard data', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -1228,7 +1225,7 @@
   // --- VESPA Scores Data Function ---
   async function fetchVespaScores(userEmail) {
     if (!userEmail) {
-      console.warn("[Homepage] Cannot fetch VESPA scores: userEmail is missing.");
+      debugLog("[Homepage] Cannot fetch VESPA scores: userEmail is missing.");
       return null;
     }
     debugLog(`Fetching VESPA scores for email: ${userEmail}`);
@@ -1268,7 +1265,7 @@
         return null;
       }
     } catch (error) {
-      console.error('[Homepage] Error fetching VESPA scores:', error);
+      debugLog('[Homepage] Error fetching VESPA scores', { error: error.message, stack: error.stack });
       return null;
     }
   }
@@ -1278,7 +1275,7 @@
   function renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData, vespaScoresData) {
     const container = document.querySelector(window.HOMEPAGE_CONFIG.elementSelector);
     if (!container) {
-      console.error('[Homepage] Container element not found.');
+      if (DEBUG_MODE) console.error('[Homepage] Container element not found.');
       return;
     }
     
@@ -1298,7 +1295,7 @@
             subjectData.push(subject);
           }
         } catch (e) {
-          console.warn(`[Homepage] Error parsing subject data for ${fieldKey}:`, e);
+          debugLog(`[Homepage] Error parsing subject data for ${fieldKey}`, { error: e.message });
         }
       }
     }
@@ -1384,17 +1381,78 @@
         border-bottom: 2px solid #079baa;
         position: relative;
         overflow: hidden;
+        display: flex; /* For aligning title and info button */
+        align-items: center; /* For aligning title and info button */
       }
       
-      .vespa-section-title::after {
-        content: '';
+      .profile-info-button {
+        margin-left: 10px;
+        font-size: 16px; /* Adjust size as needed */
+        color: #00e5db;
+        cursor: pointer;
+        border: 1px solid #00e5db;
+        border-radius: 50%;
+        width: 22px; /* Adjust size */
+        height: 22px; /* Adjust size */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      }
+      .profile-info-button:hover {
+        background-color: #00e5db;
+        color: #23356f;
+      }
+
+      .profile-info-tooltip {
+        position: fixed; /* Use fixed to overlay content */
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #1c2b5f;
+        color: #ffffff;
+        border: 1px solid #00e5db;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        z-index: 10001; /* Ensure it's on top */
+        max-width: 500px;
+        width: 90%;
+        font-size: 0.95em;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+      }
+      .profile-info-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      .profile-info-tooltip h4 {
+        color: #00e5db;
+        font-size: 1.2em;
+        margin-top: 0;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(0, 229, 219, 0.3);
+        padding-bottom: 10px;
+      }
+      .profile-info-tooltip p {
+        margin-bottom: 10px;
+        line-height: 1.6;
+      }
+      .profile-info-tooltip strong {
+        color: #00e5db;
+      }
+      .profile-info-tooltip-close {
         position: absolute;
-        bottom: 0;
-        left: -100%;
-        width: 100%;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(7, 155, 170, 0.8), transparent);
-        animation: shimmer 2.5s infinite;
+        top: 10px;
+        right: 15px;
+        font-size: 24px;
+        color: #00e5db;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .profile-info-tooltip-close:hover {
+        color: #ffffff;
       }
       
       @keyframes shimmer {
@@ -1561,7 +1619,7 @@
         transform: scale(1.1);
       }
       
-      .grade-meg {
+      .grade-exg { /* Changed from grade-meg */
         color: #00e5db;
       }
       
@@ -1991,6 +2049,8 @@
     
     // Initialize tooltips
     setupTooltips();
+    // Initialize profile info tooltip
+    setupProfileInfoTooltip();
   }
   
   // Render the profile section
@@ -2179,8 +2239,8 @@
             </div>
             <div class="grades-container">
               <div class="grade-item">
-                <div class="grade-label">MEG</div>
-                <div class="grade-value grade-meg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
+                <div class="grade-label">EXG</div> <!-- Changed MEG to EXG -->
+                <div class="grade-value grade-exg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
               </div>
               <div class="grade-item">
                 <div class="grade-label">Current</div>
@@ -2194,13 +2254,13 @@
           </div>
         `;
       });
-    } else {
-      subjectsHTML = '<div class="no-subjects">No subjects available</div>';
-    }
-    
+    } 
     return `
       <section class="vespa-section profile-section">
-        <h2 class="vespa-section-title">Student Profile</h2>
+        <h2 class="vespa-section-title">
+          Student Profile
+          <span class="profile-info-button" title="Understanding Your Grades">i</span>
+        </h2>
         <div class="profile-info">
           <div class="profile-details">
             <div class="profile-name">${name}</div>
@@ -2504,26 +2564,26 @@
     // Get config from loader
     const config = window.HOMEPAGE_CONFIG;
     if (!config || !config.elementSelector) {
-      console.error("Homepage Error: Missing configuration when initializeHomepage called.");
+      if (DEBUG_MODE) console.error("Homepage Error: Missing configuration when initializeHomepage called.");
       return;
     }
     
     // Verify Knack context and authentication
     if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-      console.error("Homepage Error: Knack context not available.");
+      if (DEBUG_MODE) console.error("Homepage Error: Knack context not available.");
       return;
     }
     
     const userToken = Knack.getUserToken();
     if (!userToken) {
-      console.error("Homepage Error: User is not authenticated (no token).");
+      if (DEBUG_MODE) console.error("Homepage Error: User is not authenticated (no token).");
       return;
     }
     
     // Get user info from Knack
     const user = Knack.getUserAttributes();
     if (!user || !user.id) {
-      console.error("Homepage Error: Cannot get user attributes.");
+      if (DEBUG_MODE) console.error("Homepage Error: Cannot get user attributes.");
       return;
     }
     
@@ -2561,7 +2621,7 @@
     
     // If still not found, report error
     if (!container) {
-      console.error(`Homepage Error: Container not found using selector: ${config.elementSelector} or alternatives`);
+      debugLog(`Homepage Error: Container not found using selector: ${config.elementSelector} or alternatives`);
       
       // Dump the DOM structure to help debug
       debugLog(`DOM structure for debugging`, 
@@ -2569,7 +2629,7 @@
       
       // Last resort - just use the body
       container = document.body;
-      console.warn(`Using document.body as last resort container`);
+      debugLog(`Using document.body as last resort container`);
     }
     
     // Show loading indicator
@@ -2612,7 +2672,7 @@
           }
           debugLog('Flashcard Counts After Processing:', flashcardReviewCounts); // Explicit log
         } catch (fcError) {
-          console.error("[Homepage] Error fetching or processing flashcard data:", fcError);
+          debugLog("[Homepage] Error fetching or processing flashcard data", { error: fcError.message });
           // Keep default counts (all zeros) if there's an error
         }
         
@@ -2625,7 +2685,7 @@
           }
           debugLog('Study Planner Data After Processing:', studyPlannerNotificationData); // Explicit log
         } catch (spError) {
-          console.error("[Homepage] Error fetching or processing Study Planner data:", spError);
+          debugLog("[Homepage] Error fetching or processing Study Planner data", { error: spError.message });
         }
         
         // Fetch and process Taskboard data
@@ -2637,7 +2697,7 @@
           }
           debugLog('Taskboard Data After Processing:', taskboardNotificationData); // Explicit log
         } catch (tbError) {
-          console.error("[Homepage] Error fetching or processing Taskboard data:", tbError);
+          debugLog("[Homepage] Error fetching or processing Taskboard data", { error: tbError.message });
         }
 
         // Fetch VESPA Scores
@@ -2646,7 +2706,7 @@
           vespaScoresData = await fetchVespaScores(user.email);
           debugLog('VESPA Scores Data After Processing:', vespaScoresData);
         } catch (vsError) {
-          console.error("[Homepage] Error fetching or processing VESPA scores:", vsError);
+          debugLog("[Homepage] Error fetching or processing VESPA scores", { error: vsError.message });
         }
         
         // Render the homepage UI with all data
@@ -2661,7 +2721,7 @@
         `;
       }
     } catch (error) {
-      console.error("Homepage Error during initialization:", error);
+      debugLog("Homepage Error during initialization", { error: error.message, stack: error.stack });
       container.innerHTML = `
         <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Homepage</h3>
@@ -2678,6 +2738,73 @@
       debugLog("Knack page render detected (knack-page-render.any), cleaning up tooltips.");
       cleanupTooltips();
     }
+    // Also remove profile info tooltip if it exists
+    const profileTooltip = document.getElementById('profileGradeInfoTooltip');
+    if (profileTooltip && profileTooltip.parentNode) {
+        profileTooltip.parentNode.removeChild(profileTooltip);
+    }
   });
 
+  // NEW: Setup for profile information tooltip
+  function setupProfileInfoTooltip() {
+    const infoButton = document.querySelector('.profile-info-button');
+    const container = document.querySelector(window.HOMEPAGE_CONFIG.elementSelector) || document.body;
+
+    if (infoButton) {
+      infoButton.addEventListener('click', () => {
+        // Remove existing tooltip if any
+        const existingTooltip = document.getElementById('profileGradeInfoTooltip');
+        if (existingTooltip) {
+          existingTooltip.remove();
+        }
+
+        const tooltipHTML = `
+          <div id="profileGradeInfoTooltip" class="profile-info-tooltip">
+            <span class="profile-info-tooltip-close">&times;</span>
+            <h4>Understanding Your Grades:</h4>
+            <p><strong>1) EXG (Expected Grade):</strong><br>
+            This is what your previous grades suggest you might achieve in this subject. It's calculated using your GCSE results (or other previous grades) and comparing them to how students with similar grades have done in the past. Think of it as a starting point based on your academic history, not a limit on what you can achieve.</p>
+            <p><strong>2) Current Grade:</strong><br>
+            This is the grade you're working at right now, based on your recent work, tests, and classroom performance. Your teachers look at everything you've done so far in this subject to determine where you currently stand. This helps you see your progress and identify areas where you might need to focus.</p>
+            <p><strong>3) Target Grade:</strong><br>
+            This is the grade your teachers believe you can realistically achieve with consistent effort. It's challenging but possible, based on your teachers' experience with students like you and their understanding of your personal potential. This target gives you something specific to aim for as you continue your studies.</p>
+          </div>
+        `;
+        
+        // Append to the main container or body to ensure it's not clipped
+        container.insertAdjacentHTML('beforeend', tooltipHTML);
+        const tooltipElement = document.getElementById('profileGradeInfoTooltip');
+        
+        // Make it visible with a slight delay for transition
+        setTimeout(() => {
+          if (tooltipElement) tooltipElement.classList.add('visible');
+        }, 10);
+
+        const closeButton = tooltipElement.querySelector('.profile-info-tooltip-close');
+        if (closeButton) {
+          closeButton.addEventListener('click', () => {
+            tooltipElement.classList.remove('visible');
+            // Remove after transition
+            setTimeout(() => {
+              if (tooltipElement && tooltipElement.parentNode) {
+                 tooltipElement.parentNode.removeChild(tooltipElement);
+              }
+            }, 300);
+          });
+        }
+        
+        // Optional: Close tooltip if clicking outside of it
+        // document.addEventListener('click', function hideTooltipOnClickOutside(event) {
+        //   if (tooltipElement && tooltipElement.classList.contains('visible') && !tooltipElement.contains(event.target) && event.target !== infoButton) {
+        //     tooltipElement.classList.remove('visible');
+        //     setTimeout(() => { if (tooltipElement.parentNode) tooltipElement.parentNode.removeChild(tooltipElement); }, 300);
+        //     document.removeEventListener('click', hideTooltipOnClickOutside);
+        //   }
+        // });
+
+      });
+    } else {
+      debugLog("Profile info button not found for tooltip setup.");
+    }
+  }
 })(); // End of IIFE
