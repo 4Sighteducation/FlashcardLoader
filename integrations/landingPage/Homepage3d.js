@@ -4,7 +4,7 @@
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
-  const DEBUG_MODE = false; // Enable console logging
+  const DEBUG_MODE = true; // Enable console logging
 
   // Flashcard specific constants
   const FLASHCARD_DATA_OBJECT = 'object_102';
@@ -522,6 +522,9 @@
       
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found ${response.records.length} subject records in Object_113`, response.records);
+        // ---- ADD EXTRA LOGGING HERE ----
+        console.log('[Homepage DEBUG] Raw subject records fetched from object_113:', JSON.parse(JSON.stringify(response.records)));
+        // ---------------------------------
         return response.records;
       }
       
@@ -538,7 +541,7 @@
       return [];
     }
     
-    return records.map(record => {
+    const builtRecords = records.map(record => {
       return {
         originalRecordId: record.id, 
         subject: sanitizeField(record.field_3109 || ''), // Corrected to field_3109 for subject name
@@ -551,6 +554,11 @@
         behaviourGrade: sanitizeField(record.field_3134 || '')
       };
     });
+
+    // ---- ADD EXTRA LOGGING HERE ----
+    console.log('[Homepage DEBUG] Built subject data for object_112 update:', JSON.parse(JSON.stringify(builtRecords))); 
+    // ---------------------------------
+    return builtRecords; 
   }
   
   // Update subject fields in user profile
@@ -559,6 +567,9 @@
       console.error('[Homepage] Cannot update subjects: Invalid parameters');
       return false;
     }
+    // ---- ADD EXTRA LOGGING HERE ----
+    console.log('[Homepage DEBUG] updateUserProfileSubjects received subjectDataArray:', JSON.parse(JSON.stringify(subjectDataArray)));
+    // ---------------------------------
     
     // Limit to 15 subjects max
     const maxSubjects = Math.min(subjectDataArray.length, 15);
@@ -570,9 +581,12 @@
       const fieldId = `field_${3080 + i}`; // field_3080 for index 0, field_3081 for index 1, etc.
       updateData[fieldId] = JSON.stringify(subjectDataArray[i]);
     }
+    // ---- ADD EXTRA LOGGING HERE ----
+    console.log('[Homepage DEBUG] Data prepared for PUT to object_112:', JSON.parse(JSON.stringify(updateData)));
+    // ---------------------------------
     
     try {
-      await retryApiCall(() => {
+      const response = await retryApiCall(() => { // Capture the response
         return new Promise((resolve, reject) => {
           $.ajax({
             url: `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records/${recordId}`,
@@ -585,10 +599,17 @@
           });
         });
       });
-      
+      // ---- ADD EXTRA LOGGING HERE ----
+      console.log('[Homepage DEBUG] Successfully updated subjects in object_112. Response:', response);
+      // ---------------------------------
       return true;
     } catch (error) {
-      console.error('[Homepage] Error updating user profile subjects:', error);
+      // ---- ADD EXTRA LOGGING HERE ----
+      console.error('[Homepage DEBUG] Error updating user profile subjects in object_112:', error);
+      if (error.responseText) {
+        console.error('[Homepage DEBUG] Error responseText:', error.responseText);
+      }
+      // ---------------------------------
       return false;
     }
   }
