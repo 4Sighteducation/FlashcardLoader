@@ -7,7 +7,8 @@ let REPORTPROFILE_CONFIG = null;
 
 // Guard to prevent re-initialization
 if (window.reportProfilesInitialized) {
-  console.warn("[ReportProfiles] Attempted to re-initialize, but already initialized. Skipping.");
+  // console.warn("[ReportProfiles] Attempted to re-initialize, but already initialized. Skipping.");
+  if (DEBUG_MODE) console.warn("[ReportProfiles] Attempted to re-initialize, but already initialized. Skipping.");
   // Potentially throw an error or just return to stop further execution if this script is loaded multiple times.
   // For now, we'll rely on the loader to fix multiple loads, this just prevents re-running initialize.
 } else {
@@ -19,7 +20,7 @@ if (window.reportProfilesInitialized) {
   // Constants
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
-  const DEBUG_MODE = false; // Enable console logging
+  const DEBUG_MODE = true; // Enable console logging
   const CHECK_INTERVAL = 500; // Check every 500ms
   const MAX_CHECKS = 20; // Give up after 10 seconds (20 checks)
 
@@ -167,7 +168,8 @@ if (window.reportProfilesInitialized) {
         checkCount++;
         if (checkCount >= MAX_CHECKS) {
           clearInterval(checkInterval);
-          console.error("[ReportProfiles] Could not find report containers after maximum attempts");
+          // console.error("[ReportProfiles] Could not find report containers after maximum attempts");
+          if (DEBUG_MODE) console.error("[ReportProfiles] Could not find report containers after maximum attempts");
         }
       }
     }, CHECK_INTERVAL);
@@ -320,23 +322,21 @@ if (window.reportProfilesInitialized) {
     const id = profileData.id || ''; // ID of the object_112 record
 
     let subjectStrings = "";
-    debugLog("[hashProfileData] Starting. Profile Name:", name, "Profile ID:", id);
-    // debugLog("[hashProfileData] Full profileData:", JSON.stringify(profileData).substring(0, 500)); 
+    // Removed: debugLog("[hashProfileData] Starting. Profile Name:", name, "Profile ID:", id);
+    // Removed: debugLog("[hashProfileData] Full profileData:", JSON.stringify(profileData).substring(0, 500)); 
 
     for (let i = 1; i <= 15; i++) {
       const fieldKey = `sub${i}`;
       const fieldId = FIELD_MAPPING[fieldKey];
       const subjectValue = profileData[fieldId];
-      // Log the field ID and its value before the check
-      debugLog(`[hashProfileData] Checking subject field: ${fieldId}, Value:`, subjectValue ? String(subjectValue).substring(0,100) + (String(subjectValue).length > 100 ? '...':'') : subjectValue);
+      // Removed: debugLog(`[hashProfileData] Checking subject field: ${fieldId}, Value:`, subjectValue ? String(subjectValue).substring(0,100) + (String(subjectValue).length > 100 ? '...':'') : subjectValue);
       if (subjectValue) { // Check if subjectValue is truthy
-        // profileData[fieldId] is a JSON string from object_112
         subjectStrings += String(subjectValue); // Concatenate all subject JSON strings
-        // debugLog(`[hashProfileData] Added to subjectStrings from ${fieldId}`);
+        // Removed: debugLog(`[hashProfileData] Added to subjectStrings from ${fieldId}`);
       }
     }
     const finalHash = `${name}-${id}-${subjectStrings}`;
-    debugLog("[hashProfileData] Final hash:", finalHash, "SubjectStrings length:", subjectStrings.length);
+    // Removed: debugLog("[hashProfileData] Final hash:", finalHash, "SubjectStrings length:", subjectStrings.length);
     return finalHash;
   }
 
@@ -480,6 +480,12 @@ if (window.reportProfilesInitialized) {
     if (profileContainer) {
       profileContainer.innerHTML = '';
       debugLog("Profile view cleared");
+    }
+    // Also remove the info tooltip if it exists in the body
+    const tooltipElement = document.getElementById('reportProfileGradeInfoTooltip');
+    if (tooltipElement && tooltipElement.parentNode) {
+      tooltipElement.parentNode.removeChild(tooltipElement);
+      debugLog("Report profile info tooltip removed");
     }
   }
 
@@ -1053,17 +1059,20 @@ if (window.reportProfilesInitialized) {
       if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
       return JSON.parse(jsonString);
     } catch (error) {
-      console.warn("[ReportProfiles] JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
+      // console.warn("[ReportProfiles] JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
+      debugLog("[ReportProfiles] JSON parse failed", { error: error.message, stringSample: String(jsonString).substring(0,100) });
       try {
         const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
         const recovered = cleanedString
           .replace(/\\"/g, '"')
           .replace(/,\s*([}\]])/g, '$1');
         const result = JSON.parse(recovered);
-        console.log("[ReportProfiles] JSON recovery successful.");
+        // console.log("[ReportProfiles] JSON recovery successful.");
+        debugLog("[ReportProfiles] JSON recovery successful", result);
         return result;
       } catch (secondError) {
-        console.error("[ReportProfiles] JSON recovery failed:", secondError);
+        // console.error("[ReportProfiles] JSON recovery failed:", secondError);
+        debugLog("[ReportProfiles] JSON recovery failed", { error: secondError.message });
         return defaultVal;
       }
     }
@@ -1148,11 +1157,11 @@ if (window.reportProfilesInitialized) {
       }
       debugLog("Active profile cache key for save/update:", activeProfileCacheKey);
 
-      // Log a sample subject field from cache BEFORE modification
-      if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
-        const sampleFieldIdBefore = FIELD_MAPPING.sub1; // Example: sub1
-        debugLog("[toggleMasterEditMode] Value of cache field", sampleFieldIdBefore, "BEFORE update loop:", profileCache[activeProfileCacheKey].data[sampleFieldIdBefore]);
-      }
+      // Removed: Detailed logging of cache field BEFORE update loop
+      // if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
+      //   const sampleFieldIdBefore = FIELD_MAPPING.sub1;
+      //   debugLog("[toggleMasterEditMode] Value of cache field", sampleFieldIdBefore, "BEFORE update loop:", profileCache[activeProfileCacheKey].data[sampleFieldIdBefore]);
+      // }
 
       if (inputs.length === 0) {
           debugLog("No input fields found. Aborting save all.");
@@ -1222,36 +1231,37 @@ if (window.reportProfilesInitialized) {
               for (let i = 1; i <= 15; i++) {
                 const fieldKey = `sub${i}`;
                 const subjectFieldIdInProfile = FIELD_MAPPING[fieldKey];
-                if (profileToUpdate[subjectFieldIdInProfile]) {
-                  let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]);
-                  if (subject && subject.originalRecordId === change.originalRecordId) {
+                if (profileToUpdate[subjectFieldIdInProfile]) { // Check if "field_3080" exists in the profile
+                  let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]); // Parse the JSON string "{\"originalRecordId\":\"xyz\", ...}"
+                  if (subject && subject.originalRecordId === change.originalRecordId) { // Match originalRecordId
                     if (change.fieldId === 'field_3132') subject.currentGrade = change.newValue;
                     if (change.fieldId === 'field_3135') subject.targetGrade = change.newValue;
-                    profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject);
-                    // Log the NEW value of the updated field in cache
-                    debugLog("[toggleMasterEditMode] Value of cache field", subjectFieldIdInProfile, "AFTER update to:", profileToUpdate[subjectFieldIdInProfile]);
-                    break; 
+                    profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject); // Update "field_3080" with new stringified JSON
+                    // Removed: Detailed logging of cache field AFTER update to
+                    // debugLog("[toggleMasterEditMode] Value of cache field", subjectFieldIdInProfile, "AFTER update to:", profileToUpdate[subjectFieldIdInProfile]);
+                    break;
                   }
                 }
               }
             });
             debugLog("Profile cache updated with all changes.");
-            // Log the state of all subject fields in the cache AFTER all updates, before render
-            if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
-                let cachedSubjectsState = {};
-                for (let i = 1; i <=15; i++) {
-                    const fk = `sub${i}`;
-                    const fid = FIELD_MAPPING[fk];
-                    cachedSubjectsState[fid] = profileCache[activeProfileCacheKey].data[fid];
-                }
-                debugLog("[toggleMasterEditMode] Cached subject fields state AFTER all updates:", cachedSubjectsState);
-            }
+            // Removed: Detailed logging of cached subject fields state AFTER all updates
+            // if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
+            //     let cachedSubjectsState = {};
+            //     for (let i = 1; i <=15; i++) {
+            //         const fk = `sub${i}`;
+            //         const fid = FIELD_MAPPING[fk];
+            //         cachedSubjectsState[fid] = profileCache[activeProfileCacheKey].data[fid];
+            //     }
+            //     debugLog("[toggleMasterEditMode] Cached subject fields state AFTER all updates:", cachedSubjectsState);
+            // }
           }
         } else {
           const failedCount = results.filter(r => r === false).length;
           saveMessage = `Error: ${failedCount} grade(s) failed to save. Please check console.`;
           messageType = 'error';
-          console.error("[ReportProfiles] One or more grade updates failed.", results);
+          // console.error("[ReportProfiles] One or more grade updates failed.", results);
+          debugLog("[ReportProfiles] One or more grade updates failed.", results);
         }
         // Directly re-render from the updated cache to ensure UI reflects changes immediately
         // and to set the lastRenderedProfileHash correctly based on the new state.
@@ -1268,7 +1278,8 @@ if (window.reportProfilesInitialized) {
         showTemporaryMessage(saveMessage, messageType);
 
       } catch (error) {
-        console.error("[ReportProfiles] Error during Promise.all for grade updates:", error);
+        // console.error("[ReportProfiles] Error during Promise.all for grade updates:", error);
+        debugLog("[ReportProfiles] Error during Promise.all for grade updates", { error: error.message, stack: error.stack });
         // Attempt to re-render in display mode even after a critical error
         isProfileInEditMode = false; // Ensure we are out of edit mode
         if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
@@ -1447,7 +1458,8 @@ if (window.reportProfilesInitialized) {
             subjectData.push(subject);
           }
         } catch (e) {
-          console.warn(`[ReportProfiles] Error parsing subject data for ${fieldKey}:`, e);
+          // console.warn(`[ReportProfiles] Error parsing subject data for ${fieldKey}:`, e);
+          debugLog(`[ReportProfiles] Error parsing subject data for ${fieldKey}`, { error: e.message });
         }
       }
     }
@@ -1504,8 +1516,8 @@ if (window.reportProfilesInitialized) {
             </div>
             <div class="grades-container">
               <div class="grade-item">
-                <div class="grade-label">MEG</div>
-                <div class="grade-value grade-meg grade-value-display"><span class="grade-text">${megGrade}</span></div>
+                <div class="grade-label">EXG</div> <!-- Changed MEG to EXG -->
+                <div class="grade-value grade-exg grade-value-display"><span class="grade-text">${megGrade}</span></div>
               </div>
               <div class="grade-item current-grade-item">
                 <div class="grade-label">Current</div>
@@ -1528,7 +1540,11 @@ if (window.reportProfilesInitialized) {
     const profileHTML = `
       <div id="vespa-profile">
         <section class="vespa-section profile-section">
-          <h2 class="vespa-section-title">Student Profile ${masterEditIconHTML}</h2>
+          <h2 class="vespa-section-title">
+            Student Profile 
+            <span class="profile-info-button report-profile-info-button" title="Understanding These Grades">i</span>
+            ${masterEditIconHTML}
+          </h2>
           <div class="profile-info">
             <div class="profile-details">
               <div class="profile-name">${name}</div>
@@ -1582,6 +1598,9 @@ if (window.reportProfilesInitialized) {
           masterIcon.addEventListener('click', toggleMasterEditMode); // New function to be created
       }
       
+      // NEW: Add event listener for the profile info button
+      setupReportProfileInfoTooltip(profileContainer);
+      
       // REMOVE event listeners for individual grade-edit-icons as they are gone
       // if (isEditableByStaff()) { // staffCanEdit variable was used before, ensure consistency
       //     profileContainer.querySelectorAll('.grade-edit-icon').forEach(icon => {
@@ -1599,6 +1618,73 @@ if (window.reportProfilesInitialized) {
     }, 50);
     
     debugLog("Profile rendered successfully", { name, subjects: subjectData.length });
+  }
+
+  // NEW: Setup for profile information tooltip in ReportProfiles
+  function setupReportProfileInfoTooltip(profileContainer) {
+    const infoButton = profileContainer.querySelector('.report-profile-info-button');
+    // The container for the tooltip will be the body to ensure it overlays everything
+    const tooltipContainer = document.body; 
+
+    if (infoButton) {
+      infoButton.addEventListener('click', () => {
+        // Remove existing tooltip if any
+        const existingTooltip = document.getElementById('reportProfileGradeInfoTooltip');
+        if (existingTooltip) {
+          existingTooltip.remove();
+        }
+
+        const tooltipHTML = `
+          <div id="reportProfileGradeInfoTooltip" class="profile-info-tooltip report-profile-tooltip-styling">
+            <span class="profile-info-tooltip-close">&times;</span>
+            <h4>Understanding Student Grades (Teacher View):</h4>
+            <p><strong>1) EXG (Expected Grade):</strong><br>
+            This statistically projected outcome is automatically calculated based on the student's prior attainment (primarily GCSE results). Following the same methodology as the MEG (Minimum Expected Grade) in ALPS, this provides an objective baseline for your reference. No input required - this value is system-generated.</p>
+            <p><strong>2) Current Grade (Teacher Input Required):</strong><br>
+            When entering this grade, assess the student's present performance level based on:
+            <ul>
+              <li>Recent formal and informal assessments</li>
+              <li>Quality and consistency of classwork and homework</li>
+              <li>Participation and demonstration of subject knowledge</li>
+              <li>Your professional judgment of their current mastery of content</li>
+            </ul>
+            This should reflect where the student is genuinely performing now, not where you hope they will be by the end of the course.</p>
+            <p><strong>3) Target Grade (Teacher Input Required):</strong><br>
+            When setting this grade, consider:
+            <ul>
+              <li>The student's EXG as a starting reference point</li>
+              <li>Their demonstrated potential and engagement in each subject</li>
+              <li>Any contextual factors affecting their performance</li>
+              <li>Historical progression patterns of similar students</li>
+              <li>Department expectations and benchmarks</li>
+            </ul>
+            The target should be ambitious yet achievable with appropriate effort and support.</p>
+          </div>
+        `;
+        
+        tooltipContainer.insertAdjacentHTML('beforeend', tooltipHTML);
+        const tooltipElement = document.getElementById('reportProfileGradeInfoTooltip');
+        
+        // Make it visible
+        setTimeout(() => {
+          if (tooltipElement) tooltipElement.classList.add('visible');
+        }, 10);
+
+        const closeButton = tooltipElement.querySelector('.profile-info-tooltip-close');
+        if (closeButton) {
+          closeButton.addEventListener('click', () => {
+            tooltipElement.classList.remove('visible');
+            setTimeout(() => {
+              if (tooltipElement && tooltipElement.parentNode) {
+                 tooltipElement.parentNode.removeChild(tooltipElement);
+              }
+            }, 300); // Corresponds to CSS transition time
+          });
+        }
+      });
+    } else {
+      debugLog("Report Profile info button not found for tooltip setup.");
+    }
   }
 
   function addStyles() {
@@ -1701,6 +1787,90 @@ if (window.reportProfilesInitialized) {
         border-bottom: 2px solid #079baa;
         position: relative;
         overflow: hidden;
+        display: flex; /* For aligning title and info button */
+        align-items: center; /* For aligning title and info button */
+        justify-content: space-between; /* Pushes master edit icon to the right */
+      }
+      
+      /* Styles for the (i) info button next to "Student Profile" */
+      #vespa-profile .profile-info-button { /* Generic style for the button */
+        font-size: 16px;
+        color: #00e5db;
+        cursor: pointer;
+        border: 1px solid #00e5db;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-left: 10px; /* Space from title text */
+        /* margin-right will be auto if it's between title and master-edit */
+      }
+      #vespa-profile .profile-info-button:hover {
+        background-color: #00e5db;
+        color: #23356f;
+      }
+      
+      /* Tooltip styles (can be shared or distinct if needed) */
+      .profile-info-tooltip { /* Modal style tooltip */
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #1c2b5f; /* Darker background for modal */
+        color: #ffffff;
+        border: 1px solid #00e5db;
+        border-radius: 8px;
+        padding: 25px; /* More padding for modal */
+        box-shadow: 0 8px 25px rgba(0,0,0,0.6); /* Stronger shadow */
+        z-index: 10002; /* Higher z-index for report profiles, ensure it's above other elements */
+        max-width: 600px; /* Wider for more content */
+        width: 90%;
+        font-size: 0.95em;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+      }
+      .profile-info-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      .profile-info-tooltip h4 {
+        color: #00e5db;
+        font-size: 1.3em; /* Larger title for modal */
+        margin-top: 0;
+        margin-bottom: 20px; /* More space */
+        border-bottom: 1px solid rgba(0, 229, 219, 0.4);
+        padding-bottom: 12px;
+      }
+      .profile-info-tooltip p, .profile-info-tooltip ul {
+        margin-bottom: 15px; /* More space between paragraphs/lists */
+        line-height: 1.7; /* More line height */
+      }
+      .profile-info-tooltip strong {
+        color: #00e5db; /* Keep strong color */
+      }
+      .profile-info-tooltip ul {
+        list-style-position: outside;
+        padding-left: 20px; /* Standard list padding */
+      }
+      .profile-info-tooltip ul li {
+        margin-bottom: 8px; /* Space between list items */
+      }
+      .profile-info-tooltip-close {
+        position: absolute;
+        top: 15px; /* Adjust for more padding */
+        right: 20px; /* Adjust for more padding */
+        font-size: 28px; /* Larger close button */
+        color: #00e5db;
+        cursor: pointer;
+        font-weight: bold;
+        line-height: 1; /* Ensure it doesn't take too much vertical space */
+      }
+      .profile-info-tooltip-close:hover {
+        color: #ffffff;
       }
       
       /* Profile Section - more compact */
@@ -1819,7 +1989,7 @@ if (window.reportProfilesInitialized) {
         font-size: 1em;
       }
       
-      #vespa-profile .grade-meg {
+      #vespa-profile .grade-exg { /* Changed from grade-meg */
         color: #00e5db;
       }
       
@@ -2007,13 +2177,25 @@ if (window.reportProfilesInitialized) {
       }
       #vespa-profile .master-edit-icon.edit-icon {
           color: #00e5db; /* Teal for edit */
+          margin-left: auto; /* Push to the far right if no info button */
       }
       #vespa-profile .master-edit-icon.save-icon {
           color: #4caf50; /* Green for save */
+          margin-left: auto; /* Push to the far right if no info button */
       }
       #vespa-profile .master-edit-icon:hover {
           background-color: #334285; /* Darker background on hover */
           border-color: #079baa;
+      }
+      /* If profile-info-button is present, master-edit-icon will be after it */
+      #vespa-profile .profile-info-button + .master-edit-icon {
+         margin-left: 10px; /* Space between info button and master edit icon */
+      }
+
+      #vespa-profile .vespa-section-title > .master-edit-icon {
+        /* Ensures master edit icon is pushed to the end of the flex container */
+        /* margin-left: auto; /* This is key if it's the last item */
+        /* If there is an info button, the above CSS for profile-info-button + master-edit-icon handles spacing */
       }
     `;
   }
@@ -2036,7 +2218,8 @@ if (window.reportProfilesInitialized) {
   // Function to update a specific grade field in Object_113
   async function updateSubjectGradeInObject113(subjectRecordId, fieldId, value) {
     if (!subjectRecordId || !fieldId) {
-      console.error('[ReportProfiles] Cannot update grade: Missing subjectRecordId or fieldId');
+      // console.error('[ReportProfiles] Cannot update grade: Missing subjectRecordId or fieldId');
+      debugLog('[ReportProfiles] Cannot update grade: Missing subjectRecordId or fieldId');
       return false;
     }
     // Ensure value is a string, even if empty, as Knack expects
@@ -2059,14 +2242,14 @@ if (window.reportProfilesInitialized) {
       debugLog(`Successfully submitted update for ${fieldId} on record ${subjectRecordId}`);
       return true;
     } catch (error) {
-      console.error(`[ReportProfiles] Error updating grade in Object_113 (Record: ${subjectRecordId}, Field: ${fieldId}):`, error);
-      if (error.responseText) {
-          console.error("Error response:", error.responseText);
+      // console.error(`[ReportProfiles] Error updating grade in Object_113 (Record: ${subjectRecordId}, Field: ${fieldId}):`, error);
+      debugLog(`[ReportProfiles] Error updating grade in Object_113 (Record: ${subjectRecordId}, Field: ${fieldId})`, { error: error.message, responseText: error.responseText });
+      if (DEBUG_MODE && error.responseText) { // Keep this specific console.error if DEBUG_MODE is on, as it's extra detail
+          console.error("Error responseText:", error.responseText);
       }
       return false;
     }
   }
 } // End of the main initialization guard
-
 
 
