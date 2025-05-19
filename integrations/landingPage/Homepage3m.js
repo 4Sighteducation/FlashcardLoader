@@ -250,6 +250,17 @@
     return sanitized.trim();
   }
 
+  // NEW HELPER: Format number as percentage string
+  function formatAsPercentage(value) {
+    if (value === null || value === undefined || String(value).trim() === '' || String(value).trim().toLowerCase() === 'n/a') return 'N/A';
+    const num = parseFloat(String(value));
+    if (isNaN(num)) {
+      // If it's not a number but not empty/NA, return sanitized original (e.g., if it was some error text)
+      return sanitizeField(String(value)); 
+    }
+    return `${Math.round(num * 100)}%`;
+  }
+
   // Generic retry function for API calls
   function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
     return new Promise((resolve, reject) => {
@@ -2259,7 +2270,7 @@
           optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Beh:</span>${subject.behaviourGrade}</div>`;
         }
         if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
-          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Att:</span>${subject.subjectAttendance}</div>`;
+          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Att:</span>${formatAsPercentage(subject.subjectAttendance)}</div>`; // Format as percentage
         }
         
         subjectsHTML += `
