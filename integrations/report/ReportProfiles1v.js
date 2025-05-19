@@ -1051,6 +1051,16 @@ if (window.reportProfilesInitialized) {
     return sanitized.trim();
   }
 
+  // NEW HELPER: Format number as percentage string (consistent with homepage)
+  function formatAsPercentage(value) {
+    if (value === null || value === undefined || String(value).trim() === '' || String(value).trim().toLowerCase() === 'n/a') return 'N/A';
+    const num = parseFloat(String(value));
+    if (isNaN(num)) {
+      return sanitizeField(String(value));
+    }
+    return `${Math.round(num * 100)}%`;
+  }
+
   // Safe JSON parsing function
   function safeParseJSON(jsonString, defaultVal = null) {
     if (!jsonString) return defaultVal;
@@ -1143,8 +1153,11 @@ if (window.reportProfilesInitialized) {
 
       // showLoadingIndicator(profileContainer); // We'll use a modal or finer-grained feedback
 
-      const inputs = Array.from(profileContainer.querySelectorAll('input.grade-input-dynamic'));
-      debugLog(`Found ${inputs.length} grade input fields to process for saving.`);
+      const gradeInputs = Array.from(profileContainer.querySelectorAll('input.grade-input-dynamic'));
+      const optionalGradeInputs = Array.from(profileContainer.querySelectorAll('input.optional-grade-input'));
+      const allInputs = [...gradeInputs, ...optionalGradeInputs]; // Combine both types of inputs
+
+      debugLog(`Found ${gradeInputs.length} main grade inputs and ${optionalGradeInputs.length} optional grade inputs. Total: ${allInputs.length}`);
       const updatePromises = [];
       const changesToCache = [];
 
@@ -1163,7 +1176,7 @@ if (window.reportProfilesInitialized) {
       //   debugLog("[toggleMasterEditMode] Value of cache field", sampleFieldIdBefore, "BEFORE update loop:", profileCache[activeProfileCacheKey].data[sampleFieldIdBefore]);
       // }
 
-      if (inputs.length === 0) {
+      if (allInputs.length === 0) {
           debugLog("No input fields found. Aborting save all.");
           isProfileInEditMode = false; // Ensure mode is reset
           // Re-render to show text and correct icon, even if no changes
@@ -1179,10 +1192,21 @@ if (window.reportProfilesInitialized) {
       }
 
       // Proceed with saving if inputs were found
-      inputs.forEach(input => {
+      allInputs.forEach(input => { // Iterate over allInputs
           const originalRecordId = input.dataset.originalRecordId;
           const fieldId = input.dataset.fieldId;
-          const newValue = input.value.trim();
+          let newValue = input.value.trim();
+
+          // Special handling for attendance percentage
+          if (fieldId === 'field_3186') { // Subject Attendance field ID
+            const numValue = parseFloat(newValue);
+            if (!isNaN(numValue)) {
+              newValue = (numValue / 100).toString(); // Convert to decimal string, e.g., "89" -> "0.89"
+            } else {
+              newValue = ''; // Or handle as an error / N/A if input is not a valid number
+            }
+          }
+
           debugLog(`Processing input for save: oRID=${originalRecordId}, fID=${fieldId}, newVal=${newValue}`);
           if (originalRecordId && fieldId) {
               updatePromises.push(
@@ -1217,7 +1241,7 @@ if (window.reportProfilesInitialized) {
         debugLog("Active profile cache key for save/update:", activeProfileCacheKey);
 
 
-        if (inputs.length === 0) {
+        if (allInputs.length === 0) {
           saveMessage = "No changes detected to save.";
           debugLog(saveMessage);
         } else if (allSucceeded) {
@@ -1231,14 +1255,17 @@ if (window.reportProfilesInitialized) {
               for (let i = 1; i <= 15; i++) {
                 const fieldKey = `sub${i}`;
                 const subjectFieldIdInProfile = FIELD_MAPPING[fieldKey];
-                if (profileToUpdate[subjectFieldIdInProfile]) { // Check if "field_3080" exists in the profile
-                  let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]); // Parse the JSON string "{\"originalRecordId\":\"xyz\", ...}"
-                  if (subject && subject.originalRecordId === change.originalRecordId) { // Match originalRecordId
+                if (profileToUpdate[subjectFieldIdInProfile]) { 
+                  let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]); 
+                  if (subject && subject.originalRecordId === change.originalRecordId) { 
                     if (change.fieldId === 'field_3132') subject.currentGrade = change.newValue;
                     if (change.fieldId === 'field_3135') subject.targetGrade = change.newValue;
-                    profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject); // Update "field_3080" with new stringified JSON
-                    // Removed: Detailed logging of cache field AFTER update to
-                    // debugLog("[toggleMasterEditMode] Value of cache field", subjectFieldIdInProfile, "AFTER update to:", profileToUpdate[subjectFieldIdInProfile]);
+                    if (change.fieldId === 'field_3133') subject.effortGrade = change.newValue; // Add Effort
+                    if (change.fieldId === 'field_3134') subject.behaviourGrade = change.newValue; // Add Behaviour
+                    if (change.fieldId === 'field_3186') subject.subjectAttendance = change.newValue; // Add Subject Attendance (decimal form)
+                    
+                    profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject); 
+                    debugLog(`[toggleMasterEditMode] Cache updated for oRID ${change.originalRecordId}, field ${change.fieldId} in ${subjectFieldIdInProfile} with new value ${change.newValue}`);
                     break;
                   }
                 }
@@ -1513,14 +1540,42 @@ if (window.reportProfilesInitialized) {
 
         // NEW: Optional Grades (Effort, Behaviour, Subject Attendance)
         let optionalGradesHTML = '';
-        if (subject.effortGrade && subject.effortGrade !== 'N/A') {
-          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Eff:</span>${sanitizeField(subject.effortGrade)}</div>`;
-        }
-        if (subject.behaviourGrade && subject.behaviourGrade !== 'N/A') {
-          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Beh:</span>${sanitizeField(subject.behaviourGrade)}</div>`;
-        }
-        if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
-          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Att:</span>${sanitizeField(subject.subjectAttendance)}</div>`;
+        if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
+          // EDIT MODE: Render inputs for optional fields
+          optionalGradesHTML += `<div class="optional-grade-item">`;
+          optionalGradesHTML += `<span class="optional-grade-label">Eff:</span>`;
+          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.effortGrade && subject.effortGrade !== 'N/A' ? sanitizeField(subject.effortGrade) : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3133" placeholder="-">`;
+          optionalGradesHTML += `</div>`;
+
+          optionalGradesHTML += `<div class="optional-grade-item">`;
+          optionalGradesHTML += `<span class="optional-grade-label">Beh:</span>`;
+          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.behaviourGrade && subject.behaviourGrade !== 'N/A' ? sanitizeField(subject.behaviourGrade) : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3134" placeholder="-">`;
+          optionalGradesHTML += `</div>`;
+          
+          optionalGradesHTML += `<div class="optional-grade-item">`;
+          optionalGradesHTML += `<span class="optional-grade-label">Att:</span>`;
+          // For attendance input, show the number part of percentage e.g. 89 from 0.89
+          let attValueForInput = '';
+          if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
+            const numAtt = parseFloat(String(subject.subjectAttendance));
+            if (!isNaN(numAtt)) {
+              attValueForInput = Math.round(numAtt * 100);
+            }
+          }
+          optionalGradesHTML += `<input type="text" class="optional-grade-input attendance-input" value="${attValueForInput}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3186" placeholder="%">`;
+          optionalGradesHTML += `</div>`;
+
+        } else {
+          // DISPLAY MODE: Render text for optional fields
+          if (subject.effortGrade && subject.effortGrade !== 'N/A') {
+            optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Eff:</span>${sanitizeField(subject.effortGrade)}</div>`;
+          }
+          if (subject.behaviourGrade && subject.behaviourGrade !== 'N/A') {
+            optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Beh:</span>${sanitizeField(subject.behaviourGrade)}</div>`;
+          }
+          if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
+            optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Att:</span>${formatAsPercentage(subject.subjectAttendance)}</div>`;
+          }
         }
 
         subjectsHTML += `
@@ -2237,6 +2292,33 @@ if (window.reportProfilesInitialized) {
         font-weight: 600;
         color: #00e5db; /* Match other labels like EXG, Current */
         margin-right: 3px;
+        display: block; /* Make label take full width or appear above input */
+        margin-bottom: 2px; /* Space between label and input */
+      }
+
+      /* NEW: Styles for optional grade inputs */
+      #vespa-profile .optional-grade-input {
+        width: 40px; /* Smaller width for these inputs */
+        padding: 3px;
+        font-size: 0.85em; /* Slightly smaller font */
+        text-align: center;
+        border: 1px solid #079baa;
+        background-color: #23356f;
+        color: #ffffff;
+        border-radius: 3px;
+      }
+      #vespa-profile .optional-grade-input:focus {
+        outline: none;
+        border-color: #00e5db;
+        box-shadow: 0 0 4px rgba(0, 229, 219, 0.4);
+      }
+      /* Adjust optional-grade-item if labels are above inputs now */
+      #vespa-profile .optional-grade-item {
+        display: flex;
+        flex-direction: column; /* Stack label and input vertically */
+        align-items: center; /* Center them */
+        /* text-align: center; */ /* Already there */
+        /* color: #e0e0e0; */ /* Already there */
       }
     `;
   }
@@ -2292,4 +2374,6 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
+
+
 
