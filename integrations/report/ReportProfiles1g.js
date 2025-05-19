@@ -258,33 +258,10 @@ if (window.reportProfilesInitialized) {
     // Clear any existing interval
     if (activityButtonPollInterval) {
       clearInterval(activityButtonPollInterval);
+      activityButtonPollInterval = null; // Ensure it's reset
     }
-    
-    // Start a new polling interval
-    let attempts = 0;
-    activityButtonPollInterval = setInterval(() => {
-      attempts++;
-      
-      // Look for the button
-      const activityButton = document.querySelector('#view-activities-button a') || 
-                            document.querySelector('[data-v-7636e366] a');
-      
-      if (activityButton) {
-        debugLog(`Activity button found after ${attempts} attempts!`, activityButton);
-        // Process the report
-        handleReportChanges(reportContainer, profileContainer);
-        // Stop polling
-        clearInterval(activityButtonPollInterval);
-        activityButtonPollInterval = null;
-      } else if (attempts >= BUTTON_POLL_MAX_ATTEMPTS) {
-        // Give up after max attempts
-        debugLog(`Activity button polling stopped after ${attempts} attempts without finding the button.`);
-        clearInterval(activityButtonPollInterval);
-        activityButtonPollInterval = null;
-      }
-    }, BUTTON_POLL_INTERVAL);
-    
-    debugLog(`Started activity button polling with ${BUTTON_POLL_INTERVAL}ms interval`);
+    debugLog("Activity button poller is now disabled as primary load trigger. Observers should handle it.");
+    return; // Temporarily disable this poller to see if observers are sufficient
   }
 
   function checkForIndividualReport(reportContainer, profileContainer) {
@@ -343,158 +320,125 @@ if (window.reportProfilesInitialized) {
 
   function handleReportChanges(reportContainer, profileContainer) {
     // If we're already processing a student or updating the DOM, don't proceed
-    if (isProcessingStudent || isUpdatingDOM) {
+    if (isUpdatingDOM) { // Combined isProcessingStudent and isUpdatingDOM here
       debugLog("Already processing a student or updating DOM, skipping redundant processing");
       return;
     }
-    
-    // Enforce a minimum time between renderings to prevent flickering
-    const now = Date.now();
-    if (now - lastRenderTime < RENDER_COOLDOWN) {
-      debugLog(`Skipping re-render - too soon (${now - lastRenderTime}ms since last render)`);
-      return;
-    }
-    
-    // First check if we're in the group view - enhanced with multiple detection methods
-    const groupViewTable = document.querySelector('#studentReports .p-datatable');
-    const backButton = document.querySelector('a.p-button[aria-label="BACK"]') || 
-                      document.querySelector('button[aria-label="BACK"]');
+
+    // Enforce a minimum time between renderings to prevent flickering IF a re-render is actually contemplated
+    // const now = Date.now();
+    // if (now - lastRenderTime < RENDER_COOLDOWN && lastRenderedProfileHash !== null) {
+    //   debugLog(`Skipping re-render - too soon (${now - lastRenderTime}ms since last render)`);
+    //   return;
+    // }
+
     const reportText = reportContainer.textContent || '';
-    const hasStudentText = reportText.includes('STUDENT:');
-    
-    // First, directly extract student name from the content if possible
-    let studentNameFromReport = null;
     const studentNameMatch = reportText.match(/STUDENT:\s*([^\n]+)/);
+    let studentNameFromReport = null;
     if (studentNameMatch && studentNameMatch[1]) {
       studentNameFromReport = studentNameMatch[1].trim();
-      debugLog(`Directly extracted student name from report: "${studentNameFromReport}"`);
     }
-    
-    // Check for the VIEW STUDENT ACTIVITIES button (direct evidence we're on student view)
+
     const viewActivitiesButton = document.querySelector('#view-activities-button a') || 
                                 document.querySelector('a.p-button[aria-label="VIEW STUDENT ACTIVITIES"]') ||
                                 document.querySelector('button[aria-label="VIEW STUDENT ACTIVITIES"]') ||
                                 document.querySelector('a[href*="view-student-details"]') ||
                                 document.querySelector('a[href*="student-details"]');
-                                
-    // Determine if we're on student view or group view
-    const isOnStudentView = studentNameFromReport || viewActivitiesButton || backButton || hasStudentText;
-    let isGroupView = !isOnStudentView || !!groupViewTable;
     
-    let studentId = null;
+    const backButton = document.querySelector('a.p-button[aria-label="BACK"]') || 
+                       document.querySelector('button[aria-label="BACK"]');
+    const groupViewTable = document.querySelector('#studentReports .p-datatable');
+
+    const isOnStudentView = studentNameFromReport || viewActivitiesButton || backButton || (reportText.includes('STUDENT:') && !groupViewTable);
     
-    // If we detect group view, clear any existing profile
-    if (isGroupView) {
-      debugLog("Detected group view, clearing profile");
-      clearProfileView(profileContainer);
+    if (!isOnStudentView || groupViewTable) {
+      if (currentStudentId !== null || profileContainer.innerHTML !== '') {
+          debugLog("Detected group view or non-student view, clearing profile");
+          clearProfileView(profileContainer);
+          currentStudentId = null; // Reset current student ID
+          lastRenderedProfileHash = null; // Reset hash
+      }
       return;
     }
-    
-    // If we're not in the group view, try to find a student ID
-    if (!isGroupView) {
-      debugLog("Not in group view, looking for student ID...");
-      
-      // Try multiple approaches to find the student ID
-      
-      // Approach 1: Try to find the activity button using multiple selectors and methods
-      let activityButton = viewActivitiesButton;
-      
-      if (activityButton) {
-        debugLog("Found activity button:", activityButton);
-        const buttonHref = activityButton.getAttribute('href') || '';
-        const idMatch = buttonHref.match(/\/([^\/]+)\/?$/);
-        studentId = idMatch && idMatch[1];
-        
-        if (studentId) {
-          debugLog(`Extracted student ID from button: ${studentId}`);
-        } else {
-          debugLog(`Could not extract ID from button URL: ${buttonHref}`);
-        }
-      } else {
-        debugLog("Could not find activity button with any selector");
-      }
-      
-      // Approach 2: Look for student name in the report content and parse it
-      if (!studentId && studentNameMatch) {
-        debugLog(`Found student name in report: "${studentNameFromReport}"`);
-        
-        // Use the name to find the student ID
-        studentId = "USE_NAME:" + studentNameFromReport;
-      }
-      
-      // If we found a student ID, process it
-      if (studentId) {
-        // Show loading indicator immediately
-        showLoadingIndicator(profileContainer);
-        
-        // Check if this is a new student (different from the current one)
-        const isNewStudent = currentStudentId !== null && currentStudentId !== studentId;
-        
-        if (isNewStudent) {
-          debugLog(`Student changed from ${currentStudentId} to ${studentId}`);
-          previousStudentId = currentStudentId;
-          
-          // Cancel any active requests for the previous student
-          cancelActiveRequests(previousStudentId);
-          
-          // Always clear the profile view when changing students
-          clearProfileView(profileContainer);
-          
-          // Reset the rendered profile hash to force a new render when changing students
-          lastRenderedProfileHash = null;
-          debugLog("Reset profile hash due to student change");
-        }
-        
-        // Update current student
-        currentStudentId = studentId;
-        
-        // Set the processing flag
-        isProcessingStudent = true;
-        
-        try {
-          if (studentId.startsWith("USE_NAME:")) {
-            // Special case: we found a name but not an ID
-            const studentName = studentId.substr(9);
-            debugLog(`Processing student by name: ${studentName}`);
-            
-            // Check if we have a cached profile for this name
-            const cacheKey = `name_${studentName}`;
-            if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
-              debugLog(`Using cached profile for student name: ${studentName}`);
-              renderStudentProfile(profileCache[cacheKey].data, profileContainer);
-              isProcessingStudent = false;
-            } else {
-              processStudentProfile(studentName, profileContainer)
-                .finally(() => {
-                  isProcessingStudent = false;
-                });
-            }
-          } else {
-            // Normal case: we found an ID
-            debugLog(`Processing student by ID: ${studentId}`);
-            
-            // Check if we have a cached profile for this ID
-            const cacheKey = `id_${studentId}`;
-            if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
-              debugLog(`Using cached profile for student ID: ${studentId}`);
-              renderStudentProfile(profileCache[cacheKey].data, profileContainer);
-              isProcessingStudent = false;
-            } else {
-              processStudentProfileById(studentId, profileContainer)
-                .finally(() => {
-                  isProcessingStudent = false;
-                });
-            }
-          }
-        } catch (error) {
-          console.error("[ReportProfiles] Error during student processing:", error);
-          isProcessingStudent = false;
-        }
-      } else {
-        debugLog("Could not determine student ID or name from the report");
-        clearProfileView(profileContainer);
+
+    let potentialStudentId = null;
+    if (viewActivitiesButton) {
+      const buttonHref = viewActivitiesButton.getAttribute('href') || '';
+      const idMatch = buttonHref.match(/\/([^\/]+)\/?$/);
+      if (idMatch && idMatch[1]) {
+        potentialStudentId = idMatch[1];
       }
     }
+    if (!potentialStudentId && studentNameFromReport) {
+      potentialStudentId = "USE_NAME:" + studentNameFromReport;
+    }
+
+    if (!potentialStudentId) {
+      debugLog("Could not determine student ID or name from the report, clearing profile if necessary.");
+      if (currentStudentId !== null || profileContainer.innerHTML !== '') {
+          clearProfileView(profileContainer);
+          currentStudentId = null;
+          lastRenderedProfileHash = null;
+      }
+      return;
+    }
+
+    // If the student ID hasn't actually changed, and we've rendered before, don't reprocess unless forced.
+    // This is a key check to prevent flicker from rapid observer calls on the same student view.
+    if (potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) {
+      // debugLog("Student ID is the same and profile was already rendered. Skipping full process.");
+      // We can add a more nuanced check here if needed, e.g., only re-render if certain DOM elements are missing.
+      return; 
+    }
+    
+    // Only show loading and proceed if student ID has changed or it's the first load for this student context
+    debugLog(`Processing detected student: ${potentialStudentId}. Current was: ${currentStudentId}`);
+    showLoadingIndicator(profileContainer);
+
+    // Store previous student ID if changing
+    if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
+        debugLog(`Student changed from ${currentStudentId} to ${potentialStudentId}`);
+        previousStudentId = currentStudentId;
+        cancelActiveRequests(previousStudentId); // Cancel requests for old student
+        lastRenderedProfileHash = null; // Force re-render for new student
+    }
+    currentStudentId = potentialStudentId;
+    
+    isProcessingStudent = true; // Set flag
+
+    // Debounced processing to prevent overwhelming API calls if this function is somehow still called rapidly
+    // Using a new debounced function here for the actual processing logic
+    const debouncedProcess = debounce(async (studentIdentifier) => {
+      try {
+        if (studentIdentifier.startsWith("USE_NAME:")) {
+          const studentName = studentIdentifier.substr(9);
+          debugLog(`Processing student by name (debounced): ${studentName}`);
+          const cacheKey = `name_${studentName}`;
+          if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
+            debugLog(`Using cached profile for student name: ${studentName}`);
+            renderStudentProfile(profileCache[cacheKey].data, profileContainer);
+          } else {
+            await processStudentProfile(studentName, profileContainer); // processStudentProfile already handles loading indicator
+          }
+        } else {
+          debugLog(`Processing student by ID (debounced): ${studentIdentifier}`);
+          const cacheKey = `id_${studentIdentifier}`;
+          if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
+            debugLog(`Using cached profile for student ID: ${studentIdentifier}`);
+            renderStudentProfile(profileCache[cacheKey].data, profileContainer);
+          } else {
+            await processStudentProfileById(studentIdentifier, profileContainer); // processStudentProfileById already handles loading indicator
+          }
+        }
+      } catch (error) {
+        console.error("[ReportProfiles] Error during debounced student processing:", error);
+      } finally {
+        isProcessingStudent = false; // Clear flag
+        // lastRenderTime = Date.now(); // Update last render time AFTER processing is done
+      }
+    }, 750); // Increased debounce for processing logic
+
+    debouncedProcess(currentStudentId);
   }
 
   function clearProfileView(profileContainer) {
