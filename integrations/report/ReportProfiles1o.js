@@ -424,7 +424,7 @@ if (window.reportProfilesInitialized) {
         if (studentIdentifier.startsWith("USE_NAME:")) {
           const studentName = studentIdentifier.substr(9);
           // debugLog(`Processing student by name (debounced): ${studentName}`);
-          const cacheKey = `name_${studentName}`;
+          const cacheKey = `profile_name_${studentName}`; // Standardized cache key
           if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
             debugLog(`Using cached profile for student name: ${studentName}`);
             renderStudentProfile(profileCache[cacheKey].data, profileContainer);
@@ -433,7 +433,7 @@ if (window.reportProfilesInitialized) {
           }
         } else {
           // debugLog(`Processing student by ID (debounced): ${studentIdentifier}`);
-          const cacheKey = `id_${studentIdentifier}`;
+          const cacheKey = `profile_id_${studentIdentifier}`; // Standardized cache key
           if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
             debugLog(`Using cached profile for student ID: ${studentIdentifier}`);
             renderStudentProfile(profileCache[cacheKey].data, profileContainer);
@@ -607,13 +607,17 @@ if (window.reportProfilesInitialized) {
       debugLog(`Found student record: ${studentName} (${studentEmail})`);
       
       // Step 3: Find profile using student email or name
-      const profileCacheKey = `profile_${studentId}`;
+      const profileIdCacheKey = `profile_id_${studentId}`; // Standardized cache key
+      const profileNameCacheKey = studentName ? `profile_name_${studentName}` : null;
       let profileRecord = null;
       
-      // Check cache for profile record
-      if (profileCache[profileCacheKey] && (Date.now() - profileCache[profileCacheKey].timestamp < CACHE_TTL)) {
-        profileRecord = profileCache[profileCacheKey].data;
-        debugLog(`Using cached profile for student ID: ${studentId}`);
+      // Check cache for profile record (try ID first, then name if available)
+      if (profileCache[profileIdCacheKey] && (Date.now() - profileCache[profileIdCacheKey].timestamp < CACHE_TTL)) {
+        profileRecord = profileCache[profileIdCacheKey].data;
+        debugLog(`Using cached profile for student ID: ${studentId} via key ${profileIdCacheKey}`);
+      } else if (profileNameCacheKey && profileCache[profileNameCacheKey] && (Date.now() - profileCache[profileNameCacheKey].timestamp < CACHE_TTL)) {
+        profileRecord = profileCache[profileNameCacheKey].data;
+        debugLog(`Using cached profile for student name: ${studentName} via key ${profileNameCacheKey} (fallback in processStudentProfileById)`);
       } else {
         // First try to get profile by direct student ID connection
         profileRecord = await findProfileByStudentId(studentId);
@@ -649,17 +653,19 @@ if (window.reportProfilesInitialized) {
         
         // Cache the profile
         if (profileRecord) {
-          profileCache[profileCacheKey] = {
+          profileCache[profileIdCacheKey] = { // Standardized cache key
             data: profileRecord,
             timestamp: Date.now()
           };
+          debugLog(`Cached profile for student ID ${studentId} under key ${profileIdCacheKey}`);
           
-          // Also cache by name for future lookups
-          if (studentName) {
-            profileCache[`name_${studentName}`] = {
+          // Also cache by name for future lookups, if name is available
+          if (profileNameCacheKey) {
+            profileCache[profileNameCacheKey] = { // Standardized cache key
               data: profileRecord,
               timestamp: Date.now()
             };
+            debugLog(`Also cached profile for student name ${studentName} under key ${profileNameCacheKey}`);
           }
         }
       }
@@ -720,12 +726,12 @@ if (window.reportProfilesInitialized) {
       debugLog(`Found student email: ${studentEmail}`);
       
       // Step 3: Get profile data using the email or name
-      const profileCacheKey = `profile_name_${studentName}`;
+      const profileNameCacheKey = `profile_name_${studentName}`; // Standardized cache key
       let profileRecord = null;
       
       // Check cache for profile record
-      if (profileCache[profileCacheKey] && (Date.now() - profileCache[profileCacheKey].timestamp < CACHE_TTL)) {
-        profileRecord = profileCache[profileCacheKey].data;
+      if (profileCache[profileNameCacheKey] && (Date.now() - profileCache[profileNameCacheKey].timestamp < CACHE_TTL)) {
+        profileRecord = profileCache[profileNameCacheKey].data;
         debugLog(`Using cached profile for student name: ${studentName}`);
       } else {
         profileRecord = await findProfileUsingEmail(studentEmail);
@@ -736,7 +742,7 @@ if (window.reportProfilesInitialized) {
         
         if (profileRecord) {
           // Cache the profile
-          profileCache[profileCacheKey] = {
+          profileCache[profileNameCacheKey] = { // Standardized cache key
             data: profileRecord,
             timestamp: Date.now()
           };
@@ -1105,7 +1111,7 @@ if (window.reportProfilesInitialized) {
       // --- CURRENTLY IN EDIT MODE, SO SAVE ALL --- 
       // Icon change is now handled by re-render after save ensures correct state display
       debugLog("Attempting to SAVE ALL grade changes.");
-      if(masterIcon) masterIcon.innerHTML = '💾 Saving...'; // Immediate feedback on save click
+      if(masterIcon) masterIcon.innerHTML = '\uD83D\uDCBE Saving...'; // Immediate feedback on save click
 
       // showLoadingIndicator(profileContainer); // We'll use a modal or finer-grained feedback
 
@@ -1149,6 +1155,16 @@ if (window.reportProfilesInitialized) {
         let saveMessage = '';
         let messageType = 'info';
 
+        // Determine the correct cache key for the current profile
+        let activeProfileCacheKey;
+        if (currentStudentId.startsWith("USE_NAME:")) {
+            activeProfileCacheKey = `profile_name_${currentStudentId.substr(9)}`;
+        } else {
+            activeProfileCacheKey = `profile_id_${currentStudentId}`;
+        }
+        debugLog("Active profile cache key for save/update:", activeProfileCacheKey);
+
+
         if (inputs.length === 0) {
           saveMessage = "No changes detected to save.";
           debugLog(saveMessage);
@@ -1156,8 +1172,9 @@ if (window.reportProfilesInitialized) {
           saveMessage = "All grades saved successfully!";
           messageType = 'success';
           debugLog(saveMessage);
-          if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
-            const profileToUpdate = profileCache[currentStudentId].data;
+          // Update the local cache with successfully saved changes
+          if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
+            const profileToUpdate = profileCache[activeProfileCacheKey].data;
             changesToCache.forEach(change => {
               for (let i = 1; i <= 15; i++) {
                 const fieldKey = `sub${i}`;
@@ -1183,15 +1200,15 @@ if (window.reportProfilesInitialized) {
         }
         // Directly re-render from the updated cache to ensure UI reflects changes immediately
         // and to set the lastRenderedProfileHash correctly based on the new state.
-        if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
-          renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
-          debugLog("Master save: UI updated directly from cache. lastRenderedProfileHash should now be based on NEW data."); // Added granular logging
+        if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
+          renderStudentProfile(profileCache[activeProfileCacheKey].data, profileContainer);
+          debugLog("Master save: UI updated directly from cache using key:", activeProfileCacheKey, ". lastRenderedProfileHash should now be based on NEW data.");
         } else {
           // Fallback: if cache is somehow gone, force a full re-fetch and render.
           // This should be rare here as we just updated the cache.
-          debugLog("Cache missing unexpectedly after save, forcing re-fetch.");
+          debugLog("Cache missing unexpectedly after save (key:", activeProfileCacheKey,"), forcing re-fetch. Current student ID:", currentStudentId);
           lastRenderedProfileHash = null;
-          await processStudentProfileById(currentStudentId, profileContainer);
+          await processStudentProfileById(currentStudentId, profileContainer); // currentStudentId is the ID or USE_NAME: string
         }
         showTemporaryMessage(saveMessage, messageType);
 
@@ -1214,9 +1231,19 @@ if (window.reportProfilesInitialized) {
       debugLog("Switching to EDIT ALL grades mode.");
       // Re-render the profile; renderStudentProfile will now create inputs
       // Ensure we use existing data if possible to avoid unnecessary fetches just for mode switch
-      if (profileCache[currentStudentId] && profileCache[currentStudentId].data && lastRenderedProfileHash) {
-          debugLog("Using cached data to switch to master edit mode.");
-          renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
+      
+      // Determine the correct cache key for the current profile
+      let activeProfileCacheKeyForEdit;
+      if (currentStudentId.startsWith("USE_NAME:")) {
+          activeProfileCacheKeyForEdit = `profile_name_${currentStudentId.substr(9)}`;
+      } else {
+          activeProfileCacheKeyForEdit = `profile_id_${currentStudentId}`;
+      }
+      debugLog("Active profile cache key for switching to edit mode:", activeProfileCacheKeyForEdit);
+
+      if (profileCache[activeProfileCacheKeyForEdit] && profileCache[activeProfileCacheKeyForEdit].data && lastRenderedProfileHash) {
+          debugLog("Using cached data to switch to master edit mode via key:", activeProfileCacheKeyForEdit);
+          renderStudentProfile(profileCache[activeProfileCacheKeyForEdit].data, profileContainer);
       } else {
         // This case should be rare if profile is already loaded, but as a fallback, 
         // or if profile wasn't fully rendered before (lastRenderedProfileHash is null)
@@ -1313,7 +1340,7 @@ if (window.reportProfilesInitialized) {
     let masterEditIconHTML = '';
     if (isEditableByStaff()) { // Only show master edit icon if staff can edit
       if (isProfileInEditMode) {
-        masterEditIconHTML = `<span class="master-edit-icon save-icon" title="Save All Changes">&#128190; Save All</span>`; // Changed to HTML entity
+        masterEditIconHTML = `<span class="master-edit-icon save-icon" title="Save All Changes">\uD83D\uDCBE Save All</span>`; // Changed to Unicode escape
       } else {
         masterEditIconHTML = `<span class="master-edit-icon edit-icon" title="Edit All Grades">✏️ Edit Grades</span>`;
       }
@@ -1983,7 +2010,6 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
-
 
 
 
