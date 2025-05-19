@@ -1076,6 +1076,80 @@ function safeParseJSON(jsonString, defaultVal = null) {
   }
 }
 
+// Function to handle grade edits from input fields
+async function handleGradeEdit(event) {
+  const inputElement = event.target;
+  const originalRecordId = inputElement.dataset.originalRecordId;
+  const fieldId = inputElement.dataset.fieldId;
+  const newValue = inputElement.value.trim();
+  const subjectCard = inputElement.closest('.subject-card');
+  let feedbackElement = subjectCard ? subjectCard.querySelector('.grade-edit-feedback') : null;
+
+  if (!originalRecordId || !fieldId) {
+    console.error("[ReportProfiles] Missing data attributes for grade edit.");
+    if (feedbackElement) feedbackElement.textContent = 'Error: Missing data.';
+    return;
+  }
+
+  if (feedbackElement) {
+    feedbackElement.textContent = 'Saving...';
+    feedbackElement.className = 'grade-edit-feedback saving';
+  } else if (subjectCard) {
+    feedbackElement = document.createElement('div');
+    feedbackElement.className = 'grade-edit-feedback saving';
+    feedbackElement.textContent = 'Saving...';
+    // Insert feedback after grades container or at the end of card
+    const gradesContainer = subjectCard.querySelector('.grades-container');
+    if (gradesContainer && gradesContainer.nextSibling) {
+        gradesContainer.parentNode.insertBefore(feedbackElement, gradesContainer.nextSibling);
+    } else if (gradesContainer) {
+        gradesContainer.parentNode.appendChild(feedbackElement);
+    } else {
+        subjectCard.appendChild(feedbackElement);
+    }
+  }
+  
+  debugLog(`Handling grade edit: RecordID=${originalRecordId}, FieldID=${fieldId}, NewValue='${newValue}'`);
+
+  const success = await updateSubjectGradeInObject113(originalRecordId, fieldId, newValue);
+
+  if (feedbackElement) {
+    if (success) {
+      feedbackElement.textContent = 'Saved!';
+      feedbackElement.className = 'grade-edit-feedback success';
+      // Update the non-input display if needed, or simply let it be until next full render.
+      // For now, we assume a page refresh or re-render will show the latest data.
+      // To avoid data mismatch, we can also update the profileCache and re-render locally.
+      if (profileCache[`profile_${currentStudentId}`] && profileCache[`profile_${currentStudentId}`].data) {
+        const profileToUpdate = profileCache[`profile_${currentStudentId}`].data;
+        for (let i = 1; i <= 15; i++) {
+            const fieldKey = `sub${i}`;
+            const subjectFieldId = FIELD_MAPPING[fieldKey];
+            if (profileToUpdate[subjectFieldId]) {
+                let subject = safeParseJSON(profileToUpdate[subjectFieldId]);
+                if (subject && subject.originalRecordId === originalRecordId) {
+                    if (fieldId === 'field_3132') subject.currentGrade = newValue;
+                    if (fieldId === 'field_3135') subject.targetGrade = newValue;
+                    profileToUpdate[subjectFieldId] = JSON.stringify(subject);
+                    debugLog("Updated profile cache locally after successful grade edit.");
+                    break;
+                }
+            }
+        }
+      }
+
+    } else {
+      feedbackElement.textContent = 'Error saving!';
+      feedbackElement.className = 'grade-edit-feedback error';
+      // Optionally revert input to original value or prompt user
+      // For now, we leave the input as is, user can retry or correct.
+    }
+    setTimeout(() => { // Clear feedback after a few seconds
+        if (feedbackElement) feedbackElement.textContent = '';
+    }, 3000);
+  }
+}
+
 function renderStudentProfile(profileData, profileContainer) {
   if (!profileData) {
     debugLog("Cannot render profile: No profile data provided");
@@ -1215,18 +1289,41 @@ function renderStudentProfile(profileData, profileContainer) {
   
   // Render subjects
   let subjectsHTML = '';
+  const staffCanEdit = isEditableByStaff(); // Check if user can edit
+  debugLog("Staff can edit grades:", staffCanEdit);
+
   if (subjectData && subjectData.length > 0) {
     subjectData.forEach(subject => {
+      // IMPORTANT: Check if originalRecordId exists, needed for editing.
+      const originalSubjectRecordId = subject.originalRecordId; 
+      if (!originalSubjectRecordId && staffCanEdit) {
+        console.warn(`[ReportProfiles] Subject '${subject.subject}' is missing originalRecordId. Editing will not be possible for this subject.`);
+      }
+
+      const currentGrade = sanitizeField(subject.currentGrade || 'N/A');
+      const targetGrade = sanitizeField(subject.targetGrade || 'N/A');
+      const megGrade = sanitizeField(subject.minimumExpectedGrade || 'N/A');
+
       const currentGradeClass = getGradeColorClass(
-        subject.currentGrade, 
-        subject.minimumExpectedGrade
+        currentGrade, 
+        megGrade
       );
       
       const targetGradeClass = getGradeColorClass(
-        subject.targetGrade,
-        subject.minimumExpectedGrade
+        targetGrade,
+        megGrade
       );
       
+      let currentGradeDisplay, targetGradeDisplay;
+
+      if (staffCanEdit && originalSubjectRecordId) {
+        currentGradeDisplay = `<input type="text" class="grade-input" value="${currentGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132" placeholder="N/A">`;
+        targetGradeDisplay = `<input type="text" class="grade-input" value="${targetGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135" placeholder="N/A">`;
+      } else {
+        currentGradeDisplay = `<div class="grade-value ${currentGradeClass}">${currentGrade}</div>`;
+        targetGradeDisplay = `<div class="grade-value ${targetGradeClass}">${targetGrade}</div>`;
+      }
+
       subjectsHTML += `
         <div class="subject-card">
           <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
@@ -1237,17 +1334,18 @@ function renderStudentProfile(profileData, profileContainer) {
           <div class="grades-container">
             <div class="grade-item">
               <div class="grade-label">MEG</div>
-              <div class="grade-value grade-meg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
+              <div class="grade-value grade-meg">${megGrade}</div>
             </div>
             <div class="grade-item">
               <div class="grade-label">Current</div>
-              <div class="grade-value ${currentGradeClass}">${sanitizeField(subject.currentGrade || 'N/A')}</div>
+              ${currentGradeDisplay}
             </div>
             <div class="grade-item">
               <div class="grade-label">Target</div>
-              <div class="grade-value ${targetGradeClass}">${sanitizeField(subject.targetGrade || 'N/A')}</div>
+              ${targetGradeDisplay}
             </div>
           </div>
+          <div class="grade-edit-feedback"></div>
         </div>
       `;
     });
@@ -1306,6 +1404,20 @@ function renderStudentProfile(profileData, profileContainer) {
     // Clear container and add content
     profileContainer.innerHTML = profileHTML;
     
+    // Add event listeners to newly created input fields
+    if (staffCanEdit) {
+        profileContainer.querySelectorAll('.grade-input').forEach(input => {
+            input.addEventListener('change', handleGradeEdit); // Or 'blur' if preferred
+            // Prevent enter key from submitting forms if any are implicitly present
+            input.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    input.blur(); // Trigger change/blur event
+                }
+            });
+        });
+    }
+
     debugLog("Profile rendered with delay to ensure DOM stability");
     
     // Reset the DOM update flag after a slight delay to ensure rendering completes
@@ -1619,9 +1731,92 @@ function addStyles() {
         font-size: 1em;
       }
     }
+
+    /* Styles for editable grade inputs */
+    #vespa-profile .grade-input {
+      width: 70px; /* Adjust as needed */
+      padding: 4px;
+      font-size: 1em;
+      text-align: center;
+      border: 1px solid #079baa;
+      background-color: #23356f;
+      color: #ffffff;
+      border-radius: 4px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    #vespa-profile .grade-input:focus {
+      outline: none;
+      border-color: #00e5db;
+      box-shadow: 0 0 5px rgba(0, 229, 219, 0.5);
+    }
+
+    /* Styles for grade edit feedback messages */
+    #vespa-profile .grade-edit-feedback {
+      font-size: 0.75em;
+      text-align: center;
+      padding-top: 4px;
+      min-height: 1.2em; /* Reserve space to prevent layout jumps */
+    }
+    #vespa-profile .grade-edit-feedback.saving {
+      color: #00e5db; /* Vespa teal for saving */
+    }
+    #vespa-profile .grade-edit-feedback.success {
+      color: #4caf50; /* Green for success */
+    }
+    #vespa-profile .grade-edit-feedback.error {
+      color: #f44336; /* Red for error */
+    }
   `;
 }
 
 // Expose initializer to global scope so the Multi-App Loader can access it
 window.initializeReportProfiles = initializeReportProfiles;
+
+// Helper function to check if the current user is NOT a "Student"
+function isEditableByStaff() {
+  if (typeof Knack !== 'undefined' && Knack.getUserRoles) {
+    const userRoles = Knack.getUserRoles();
+    // True if 'Student' role is NOT present.
+    // Assumes role name is 'Student'. Adjust if the actual name or ID is different.
+    return !userRoles.some(role => role.name === 'Student');
+  }
+  debugLog("Knack user roles not available, defaulting to not editable.");
+  return false; // Default to not editable if roles can't be determined
+}
+
+// Function to update a specific grade field in Object_113
+async function updateSubjectGradeInObject113(subjectRecordId, fieldId, value) {
+  if (!subjectRecordId || !fieldId) {
+    console.error('[ReportProfiles] Cannot update grade: Missing subjectRecordId or fieldId');
+    return false;
+  }
+  // Ensure value is a string, even if empty, as Knack expects
+  const sanitizedValue = value === null || value === undefined ? "" : String(value);
+  debugLog(`Updating grade in Object_113: RecordID=${subjectRecordId}, FieldID=${fieldId}, Value='${sanitizedValue}'`);
+
+  const updateData = { [fieldId]: sanitizedValue };
+
+  try {
+    await makeRequest( // Using the existing makeRequest for consistency
+      `${KNACK_API_URL}/objects/object_113/records/${subjectRecordId}`,
+      {
+        type: 'PUT',
+        headers: getKnackHeaders(), // Assumes getKnackHeaders is correctly defined
+        data: JSON.stringify(updateData),
+        contentType: 'application/json', // Knack requires this for PUT
+      },
+      `update_grade_${subjectRecordId}_${fieldId}` // Unique key for makeRequest
+    );
+    debugLog(`Successfully submitted update for ${fieldId} on record ${subjectRecordId}`);
+    return true;
+  } catch (error) {
+    console.error(`[ReportProfiles] Error updating grade in Object_113 (Record: ${subjectRecordId}, Field: ${fieldId}):`, error);
+    if (error.responseText) {
+        console.error("Error response:", error.responseText);
+    }
+    return false;
+  }
+}
+
 
