@@ -1120,33 +1120,51 @@ if (window.reportProfilesInitialized) {
       const updatePromises = [];
       const changesToCache = [];
 
+      // Determine the correct cache key for the current profile before input check
+      let activeProfileCacheKey;
+      if (currentStudentId.startsWith("USE_NAME:")) {
+          activeProfileCacheKey = `profile_name_${currentStudentId.substr(9)}`;
+      } else {
+          activeProfileCacheKey = `profile_id_${currentStudentId}`;
+      }
+      debugLog("Active profile cache key for save/update:", activeProfileCacheKey);
+
       if (inputs.length === 0) {
           debugLog("No input fields found. Aborting save all.");
-          //isProfileInEditMode = false; // Still switch mode
-          //await reRenderProfile(profileContainer, "No changes to save."); // Re-render to show text
-          //return;
-      } else {
-          inputs.forEach(input => {
-              const originalRecordId = input.dataset.originalRecordId;
-              const fieldId = input.dataset.fieldId;
-              const newValue = input.value.trim();
-              debugLog(`Processing input for save: oRID=${originalRecordId}, fID=${fieldId}, newVal=${newValue}`);
-              if (originalRecordId && fieldId) {
-                  updatePromises.push(
-                  updateSubjectGradeInObject113(originalRecordId, fieldId, newValue)
-                      .then(success => {
-                      if (success) {
-                          debugLog(`Successfully saved: oRID=${originalRecordId}, fID=${fieldId}, Val=${newValue}`);
-                          changesToCache.push({ originalRecordId, fieldId, newValue });
-                      } else {
-                          debugLog(`Failed to save: oRID=${originalRecordId}, fID=${fieldId}`);
-                      }
-                      return success;
-                      })
-                  );
-              }
-          });
+          isProfileInEditMode = false; // Ensure mode is reset
+          // Re-render to show text and correct icon, even if no changes
+          if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
+              renderStudentProfile(profileCache[activeProfileCacheKey].data, profileContainer);
+          } else {
+              // If cache is somehow gone, try to force a re-fetch in display mode.
+              lastRenderedProfileHash = null; 
+              processStudentProfileById(currentStudentId, profileContainer); 
+          }
+          showTemporaryMessage("No changes detected to save.", 'info');
+          return; // Exit save process
       }
+
+      // Proceed with saving if inputs were found
+      inputs.forEach(input => {
+          const originalRecordId = input.dataset.originalRecordId;
+          const fieldId = input.dataset.fieldId;
+          const newValue = input.value.trim();
+          debugLog(`Processing input for save: oRID=${originalRecordId}, fID=${fieldId}, newVal=${newValue}`);
+          if (originalRecordId && fieldId) {
+              updatePromises.push(
+              updateSubjectGradeInObject113(originalRecordId, fieldId, newValue)
+                  .then(success => {
+                  if (success) {
+                      debugLog(`Successfully saved: oRID=${originalRecordId}, fID=${fieldId}, Val=${newValue}`);
+                      changesToCache.push({ originalRecordId, fieldId, newValue });
+                  } else {
+                      debugLog(`Failed to save: oRID=${originalRecordId}, fID=${fieldId}`);
+                  }
+                  return success;
+                  })
+              );
+          }
+      });
       isProfileInEditMode = false; // Switch mode before async operations that might re-render
 
       try {
@@ -1231,7 +1249,9 @@ if (window.reportProfilesInitialized) {
       debugLog("Switching to EDIT ALL grades mode.");
       // Re-render the profile; renderStudentProfile will now create inputs
       // Ensure we use existing data if possible to avoid unnecessary fetches just for mode switch
-      
+      isProfileInEditMode = true; // Set mode first
+      lastRenderedProfileHash = null; // FORCE re-render for mode switch
+
       // Determine the correct cache key for the current profile
       let activeProfileCacheKeyForEdit;
       if (currentStudentId.startsWith("USE_NAME:")) {
@@ -1241,14 +1261,14 @@ if (window.reportProfilesInitialized) {
       }
       debugLog("Active profile cache key for switching to edit mode:", activeProfileCacheKeyForEdit);
 
-      if (profileCache[activeProfileCacheKeyForEdit] && profileCache[activeProfileCacheKeyForEdit].data && lastRenderedProfileHash) {
+      if (profileCache[activeProfileCacheKeyForEdit] && profileCache[activeProfileCacheKeyForEdit].data) { // Removed lastRenderedProfileHash check here as we force re-render
           debugLog("Using cached data to switch to master edit mode via key:", activeProfileCacheKeyForEdit);
           renderStudentProfile(profileCache[activeProfileCacheKeyForEdit].data, profileContainer);
       } else {
         // This case should be rare if profile is already loaded, but as a fallback, 
         // or if profile wasn't fully rendered before (lastRenderedProfileHash is null)
-        debugLog("Cache/hash miss or forcing re-fetch for master edit mode.");
-        lastRenderedProfileHash = null; // Ensure re-fetch happens if needed, or re-render from new state
+        debugLog("Cache/hash miss or forcing re-fetch for master edit mode. Key:", activeProfileCacheKeyForEdit);
+        // lastRenderedProfileHash is already null, ensuring re-fetch/re-render
         // We need to ensure isProfileInEditMode is true BEFORE processStudentProfileById might call renderStudentProfile
         await processStudentProfileById(currentStudentId, profileContainer); 
       }
@@ -2010,6 +2030,8 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
+
+
 
 
 
