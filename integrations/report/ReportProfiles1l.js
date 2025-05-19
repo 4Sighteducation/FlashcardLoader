@@ -1090,54 +1090,68 @@ if (window.reportProfilesInitialized) {
 
   // NEW function to handle MASTER edit/save mode for the entire profile
   async function toggleMasterEditMode() {
-    if (!isEditableByStaff()) return; // Should not be callable if not staff, but a good check
+    if (!isEditableByStaff()) return;
 
     const profileContainer = document.querySelector('#view_3015 .kn-rich_text__content');
     if (!profileContainer) {
       console.error("[ReportProfiles] Profile container not found for master edit toggle.");
       return;
     }
-    // Find the master icon, which should exist if this function is called
     const masterIcon = profileContainer.querySelector('.master-edit-icon'); 
 
     if (isProfileInEditMode) {
       // --- CURRENTLY IN EDIT MODE, SO SAVE ALL --- 
-      isProfileInEditMode = false; // Switch mode first, so re-render shows text
-      if (masterIcon) masterIcon.innerHTML = '✏️ Edit Grades'; // Visually indicate change immediately
-      
+      // Icon change is now handled by re-render after save ensures correct state display
       debugLog("Attempting to SAVE ALL grade changes.");
-      showLoadingIndicator(profileContainer); // Show general loading/saving indicator for the profile section
+      if(masterIcon) masterIcon.innerHTML = '💾 Saving...'; // Immediate feedback on save click
 
-      const inputs = profileContainer.querySelectorAll('input.grade-input-dynamic');
+      // showLoadingIndicator(profileContainer); // We'll use a modal or finer-grained feedback
+
+      const inputs = Array.from(profileContainer.querySelectorAll('input.grade-input-dynamic'));
+      debugLog(`Found ${inputs.length} grade input fields to process for saving.`);
       const updatePromises = [];
       const changesToCache = [];
 
-      inputs.forEach(input => {
-        const originalRecordId = input.dataset.originalRecordId;
-        const fieldId = input.dataset.fieldId;
-        const newValue = input.value.trim();
-        // Optional: Add a check here to see if the value actually changed from an original state if we stored it.
-        // For now, we save any value present in an input field.
-        if (originalRecordId && fieldId) {
-          updatePromises.push(
-            updateSubjectGradeInObject113(originalRecordId, fieldId, newValue)
-              .then(success => {
-                if (success) {
-                  changesToCache.push({ originalRecordId, fieldId, newValue });
-                }
-                return success; // Pass success status along
-              })
-          );
-        }
-      });
+      if (inputs.length === 0) {
+          debugLog("No input fields found. Aborting save all.");
+          //isProfileInEditMode = false; // Still switch mode
+          //await reRenderProfile(profileContainer, "No changes to save."); // Re-render to show text
+          //return;
+      } else {
+          inputs.forEach(input => {
+              const originalRecordId = input.dataset.originalRecordId;
+              const fieldId = input.dataset.fieldId;
+              const newValue = input.value.trim();
+              debugLog(`Processing input for save: oRID=${originalRecordId}, fID=${fieldId}, newVal=${newValue}`);
+              if (originalRecordId && fieldId) {
+                  updatePromises.push(
+                  updateSubjectGradeInObject113(originalRecordId, fieldId, newValue)
+                      .then(success => {
+                      if (success) {
+                          debugLog(`Successfully saved: oRID=${originalRecordId}, fID=${fieldId}, Val=${newValue}`);
+                          changesToCache.push({ originalRecordId, fieldId, newValue });
+                      } else {
+                          debugLog(`Failed to save: oRID=${originalRecordId}, fID=${fieldId}`);
+                      }
+                      return success;
+                      })
+                  );
+              }
+          });
+      }
+      isProfileInEditMode = false; // Switch mode before async operations that might re-render
 
       try {
         const results = await Promise.all(updatePromises);
         const allSucceeded = results.every(res => res === true);
+        let saveMessage = '';
 
-        if (allSucceeded) {
-          debugLog("All grade updates successful.");
-          // Update the local cache with all successful changes
+        if (inputs.length === 0) {
+          saveMessage = "No changes detected to save.";
+          debugLog(saveMessage);
+        } else if (allSucceeded) {
+          saveMessage = "All grades saved successfully!";
+          debugLog(saveMessage);
           if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
             const profileToUpdate = profileCache[currentStudentId].data;
             changesToCache.forEach(change => {
@@ -1157,45 +1171,75 @@ if (window.reportProfilesInitialized) {
             });
             debugLog("Profile cache updated with all changes.");
           }
-          // No individual feedback elements, could add a general success message if desired
         } else {
-          console.error("[ReportProfiles] One or more grade updates failed.");
-          // Could add a general error message
+          const failedCount = results.filter(r => r === false).length;
+          saveMessage = `Error: ${failedCount} grade(s) failed to save. Please check console.`;
+          console.error("[ReportProfiles] One or more grade updates failed.", results);
         }
+        await reRenderProfile(profileContainer, saveMessage, allSucceeded && inputs.length > 0 ? 'success' : (inputs.length > 0 ? 'error' : 'info'));
+
       } catch (error) {
         console.error("[ReportProfiles] Error during Promise.all for grade updates:", error);
-        // General error message
-      } finally {
-        // Re-render the profile to show text and new values (or old ones if save failed and cache not updated)
-        // The renderStudentProfile will use the (potentially updated) profileCache or fetch if cache is stale/empty.
-        if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
-           // Force re-render with updated cache. We set lastRenderedProfileHash to null before calling
-           // processStudentProfileById to ensure it bypasses the same-hash check.
-          lastRenderedProfileHash = null; 
-          await processStudentProfileById(currentStudentId, profileContainer); //This will re-render with latest from cache or fresh fetch
-        } else {
-          // Fallback if cache somehow got cleared, trigger full refresh for current student
-          lastRenderedProfileHash = null; 
-          await processStudentProfileById(currentStudentId, profileContainer);
-        }
-         // The showLoadingIndicator was for the save process, re-rendering will clear it or show its own.
+        await reRenderProfile(profileContainer, "A critical error occurred during save.", 'error');
       }
 
     } else {
       // --- CURRENTLY IN DISPLAY MODE, SO SWITCH TO EDIT ALL --- 
       isProfileInEditMode = true;
       debugLog("Switching to EDIT ALL grades mode.");
-      // No need to show loading indicator just for switching mode
       // Re-render the profile; renderStudentProfile will now create inputs
-      if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
-        renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
+      // Ensure we use existing data if possible to avoid unnecessary fetches just for mode switch
+      if (profileCache[currentStudentId] && profileCache[currentStudentId].data && lastRenderedProfileHash) {
+          debugLog("Using cached data to switch to master edit mode.");
+          renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
       } else {
-        // This case should be rare if profile is already loaded, but as a fallback:
-        console.warn("[ReportProfiles] Profile data not in cache when switching to master edit mode. Re-fetching.");
-        lastRenderedProfileHash = null; // Ensure re-fetch happens
-        await processStudentProfileById(currentStudentId, profileContainer); // This will fetch and then render in edit mode
+        // This case should be rare if profile is already loaded, but as a fallback, 
+        // or if profile wasn't fully rendered before (lastRenderedProfileHash is null)
+        debugLog("Cache/hash miss or forcing re-fetch for master edit mode.");
+        lastRenderedProfileHash = null; // Ensure re-fetch happens if needed, or re-render from new state
+        // We need to ensure isProfileInEditMode is true BEFORE processStudentProfileById might call renderStudentProfile
+        await processStudentProfileById(currentStudentId, profileContainer); 
       }
     }
+  }
+
+  // Helper function to re-render profile and optionally show a temporary message
+  async function reRenderProfile(profileContainer, message = null, messageType = 'info') {
+      debugLog(`Re-rendering profile. Message: ${message}`);
+      if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
+          renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
+      } else {
+          lastRenderedProfileHash = null; // Force fetch if cache is missing
+          await processStudentProfileById(currentStudentId, profileContainer);
+      }
+      if (message) {
+          showTemporaryMessage(message, messageType);
+      }
+  }
+
+  // Placeholder for a more sophisticated modal/messaging system
+  function showTemporaryMessage(message, type = 'info') { // type can be 'success', 'error', 'info'
+      let messageContainer = document.getElementById('report-profile-message-area');
+      if (!messageContainer) {
+          messageContainer = document.createElement('div');
+          messageContainer.id = 'report-profile-message-area';
+          // Style it to be noticeable, e.g., fixed or absolutely positioned overlay
+          Object.assign(messageContainer.style, {
+              position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+              padding: '10px 20px', backgroundColor: '#333', color: 'white',
+              borderRadius: '5px', zIndex: '10001', boxShadow: '0 0 10px rgba(0,0,0,0.5)'
+          });
+          document.body.appendChild(messageContainer);
+      }
+      messageContainer.textContent = message;
+      if (type === 'success') messageContainer.style.backgroundColor = '#28a745';
+      else if (type === 'error') messageContainer.style.backgroundColor = '#dc3545';
+      else messageContainer.style.backgroundColor = '#17a2b8'; // Info
+
+      messageContainer.style.display = 'block';
+      setTimeout(() => {
+          messageContainer.style.display = 'none';
+      }, 4000); // Hide after 4 seconds
   }
 
   function renderStudentProfile(profileData, profileContainer) {
@@ -1912,5 +1956,4 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
-
 
