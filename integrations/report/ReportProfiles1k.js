@@ -13,6 +13,9 @@ if (window.reportProfilesInitialized) {
 } else {
   window.reportProfilesInitialized = true;
 
+  // NEW: Global state for profile edit mode
+  let isProfileInEditMode = false;
+
   // Constants
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
@@ -62,7 +65,7 @@ if (window.reportProfilesInitialized) {
   // Request management
   let activeRequests = {}; // Track active AJAX requests
   let profileCache = {}; // Cache for student profile data
-  const CACHE_TTL = 0; // Cache TTL: 5 minutes
+  const CACHE_TTL = 5 * 60 * 1000; // Cache TTL: 5 minutes
   const API_COOLDOWN = 1000; // 1 second cooldown between API requests for the same resource
   let lastRequestTimes = {}; // Track timestamps of last requests by resource type
   let isProcessingStudent = false; // Flag to prevent concurrent student processing
@@ -1085,88 +1088,113 @@ if (window.reportProfilesInitialized) {
     return ''; // Default no class if no specific logic matches
   }
 
-  async function toggleGradeEditMode(iconElement) {
-    const gradeItem = iconElement.closest('.grade-item');
-    if (!gradeItem) return;
+  // NEW function to handle MASTER edit/save mode for the entire profile
+  async function toggleMasterEditMode() {
+    if (!isEditableByStaff()) return; // Should not be callable if not staff, but a good check
 
-    const originalRecordId = iconElement.dataset.originalRecordId;
-    const fieldId = iconElement.dataset.fieldId;
-    const isCurrentlyEditing = iconElement.classList.contains('save-icon');
-    const feedbackElement = gradeItem.closest('.subject-card').querySelector('.grade-edit-feedback');
-
-    if (!originalRecordId || !fieldId) {
-      console.error("[ReportProfiles] Missing data attributes for grade edit toggle.");
-      if (feedbackElement) feedbackElement.textContent = 'Error: Data missing.';
+    const profileContainer = document.querySelector('#view_3015 .kn-rich_text__content');
+    if (!profileContainer) {
+      console.error("[ReportProfiles] Profile container not found for master edit toggle.");
       return;
     }
+    // Find the master icon, which should exist if this function is called
+    const masterIcon = profileContainer.querySelector('.master-edit-icon'); 
 
-    const gradeValueContainer = gradeItem.querySelector('.grade-value-display'); // Element holding text or input
-
-    if (isCurrentlyEditing) {
-      // --- SAVE ACTION --- 
-      const inputElement = gradeValueContainer.querySelector('input.grade-input-dynamic');
-      if (!inputElement) return;
-      const newValue = inputElement.value.trim();
-
-      if (feedbackElement) {
-        feedbackElement.textContent = 'Saving...';
-        feedbackElement.className = 'grade-edit-feedback saving';
-      }
-
-      const success = await updateSubjectGradeInObject113(originalRecordId, fieldId, newValue);
-
-      if (success) {
-        if (feedbackElement) {
-          feedbackElement.textContent = 'Saved!';
-          feedbackElement.className = 'grade-edit-feedback success';
-        }
-        // Revert to text display
-        const megGradeText = gradeItem.closest('.grades-container').querySelector('.grade-meg').textContent;
-        const newColorClass = getGradeColorClass(newValue, megGradeText);
-        gradeValueContainer.innerHTML = `<span class="grade-text ${newColorClass}">${sanitizeField(newValue || 'N/A')}</span>`;
-        iconElement.innerHTML = '✏️'; // Pencil icon
-        iconElement.classList.remove('save-icon');
-        iconElement.classList.add('edit-icon');
-        iconElement.title = 'Edit grade';
-        
-        // Update cache
-        if (profileCache[`profile_${currentStudentId}`] && profileCache[`profile_${currentStudentId}`].data) {
-          const profileToUpdate = profileCache[`profile_${currentStudentId}`].data;
-          for (let i = 1; i <= 15; i++) {
-              const fieldKey = `sub${i}`;
-              const subjectFieldIdInProfile = FIELD_MAPPING[fieldKey];
-              if (profileToUpdate[subjectFieldIdInProfile]) {
-                  let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]);
-                  if (subject && subject.originalRecordId === originalRecordId) {
-                      if (fieldId === 'field_3132') subject.currentGrade = newValue;
-                      if (fieldId === 'field_3135') subject.targetGrade = newValue;
-                      profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject);
-                      break;
-                  }
-              }
-          }
-        }
-      } else {
-        if (feedbackElement) {
-          feedbackElement.textContent = 'Error saving!';
-          feedbackElement.className = 'grade-edit-feedback error';
-        }
-        // Keep input active for correction
-      }
-      if (feedbackElement) {
-          setTimeout(() => { feedbackElement.textContent = ''; }, 3000);
-      }
-    } else {
-      // --- SWITCH TO EDIT MODE --- 
-      const gradeTextSpan = gradeValueContainer.querySelector('span.grade-text');
-      const currentValue = gradeTextSpan ? (gradeTextSpan.textContent === 'N/A' ? '' : gradeTextSpan.textContent) : '';
+    if (isProfileInEditMode) {
+      // --- CURRENTLY IN EDIT MODE, SO SAVE ALL --- 
+      isProfileInEditMode = false; // Switch mode first, so re-render shows text
+      if (masterIcon) masterIcon.innerHTML = '✏️ Edit Grades'; // Visually indicate change immediately
       
-      gradeValueContainer.innerHTML = `<input type="text" class="grade-input-dynamic" value="${currentValue}" style="width: 60px; text-align: center;">`;
-      iconElement.innerHTML = '💾'; // Save icon (floppy disk)
-      iconElement.classList.remove('edit-icon');
-      iconElement.classList.add('save-icon');
-      iconElement.title = 'Save grade';
-      gradeValueContainer.querySelector('input.grade-input-dynamic').focus();
+      debugLog("Attempting to SAVE ALL grade changes.");
+      showLoadingIndicator(profileContainer); // Show general loading/saving indicator for the profile section
+
+      const inputs = profileContainer.querySelectorAll('input.grade-input-dynamic');
+      const updatePromises = [];
+      const changesToCache = [];
+
+      inputs.forEach(input => {
+        const originalRecordId = input.dataset.originalRecordId;
+        const fieldId = input.dataset.fieldId;
+        const newValue = input.value.trim();
+        // Optional: Add a check here to see if the value actually changed from an original state if we stored it.
+        // For now, we save any value present in an input field.
+        if (originalRecordId && fieldId) {
+          updatePromises.push(
+            updateSubjectGradeInObject113(originalRecordId, fieldId, newValue)
+              .then(success => {
+                if (success) {
+                  changesToCache.push({ originalRecordId, fieldId, newValue });
+                }
+                return success; // Pass success status along
+              })
+          );
+        }
+      });
+
+      try {
+        const results = await Promise.all(updatePromises);
+        const allSucceeded = results.every(res => res === true);
+
+        if (allSucceeded) {
+          debugLog("All grade updates successful.");
+          // Update the local cache with all successful changes
+          if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
+            const profileToUpdate = profileCache[currentStudentId].data;
+            changesToCache.forEach(change => {
+              for (let i = 1; i <= 15; i++) {
+                const fieldKey = `sub${i}`;
+                const subjectFieldIdInProfile = FIELD_MAPPING[fieldKey];
+                if (profileToUpdate[subjectFieldIdInProfile]) {
+                  let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]);
+                  if (subject && subject.originalRecordId === change.originalRecordId) {
+                    if (change.fieldId === 'field_3132') subject.currentGrade = change.newValue;
+                    if (change.fieldId === 'field_3135') subject.targetGrade = change.newValue;
+                    profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject);
+                    break; 
+                  }
+                }
+              }
+            });
+            debugLog("Profile cache updated with all changes.");
+          }
+          // No individual feedback elements, could add a general success message if desired
+        } else {
+          console.error("[ReportProfiles] One or more grade updates failed.");
+          // Could add a general error message
+        }
+      } catch (error) {
+        console.error("[ReportProfiles] Error during Promise.all for grade updates:", error);
+        // General error message
+      } finally {
+        // Re-render the profile to show text and new values (or old ones if save failed and cache not updated)
+        // The renderStudentProfile will use the (potentially updated) profileCache or fetch if cache is stale/empty.
+        if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
+           // Force re-render with updated cache. We set lastRenderedProfileHash to null before calling
+           // processStudentProfileById to ensure it bypasses the same-hash check.
+          lastRenderedProfileHash = null; 
+          await processStudentProfileById(currentStudentId, profileContainer); //This will re-render with latest from cache or fresh fetch
+        } else {
+          // Fallback if cache somehow got cleared, trigger full refresh for current student
+          lastRenderedProfileHash = null; 
+          await processStudentProfileById(currentStudentId, profileContainer);
+        }
+         // The showLoadingIndicator was for the save process, re-rendering will clear it or show its own.
+      }
+
+    } else {
+      // --- CURRENTLY IN DISPLAY MODE, SO SWITCH TO EDIT ALL --- 
+      isProfileInEditMode = true;
+      debugLog("Switching to EDIT ALL grades mode.");
+      // No need to show loading indicator just for switching mode
+      // Re-render the profile; renderStudentProfile will now create inputs
+      if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
+        renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
+      } else {
+        // This case should be rare if profile is already loaded, but as a fallback:
+        console.warn("[ReportProfiles] Profile data not in cache when switching to master edit mode. Re-fetching.");
+        lastRenderedProfileHash = null; // Ensure re-fetch happens
+        await processStudentProfileById(currentStudentId, profileContainer); // This will fetch and then render in edit mode
+      }
     }
   }
 
@@ -1208,9 +1236,19 @@ if (window.reportProfilesInitialized) {
     isUpdatingDOM = true;
     
     // Update our timestamp and hash tracking
-    lastRenderTime = Date.now();
+    // lastRenderTime = Date.now(); // Not strictly needed with current hash logic
     lastRenderedProfileHash = profileHash;
     
+    // Master edit/save icon logic
+    let masterEditIconHTML = '';
+    if (isEditableByStaff()) { // Only show master edit icon if staff can edit
+      if (isProfileInEditMode) {
+        masterEditIconHTML = `<span class="master-edit-icon save-icon" title="Save All Changes">�� Save All</span>`;
+      } else {
+        masterEditIconHTML = `<span class="master-edit-icon edit-icon" title="Edit All Grades">✏️ Edit Grades</span>`;
+      }
+    }
+
     // Extract profile data
     const name = sanitizeField(profileData[FIELD_MAPPING.studentName]) || 'Student';
     
@@ -1262,13 +1300,13 @@ if (window.reportProfilesInitialized) {
     
     // Render subjects
     let subjectsHTML = '';
-    const staffCanEdit = isEditableByStaff(); // Check if user can edit
-    debugLog("Staff can edit grades:", staffCanEdit);
+    // const staffCanEdit = isEditableByStaff(); // Already checked for masterEditIconHTML, and used for isProfileInEditMode logic
+    // debugLog("Staff can edit grades:", staffCanEdit);
 
     if (subjectData && subjectData.length > 0) {
       subjectData.forEach(subject => {
         const originalSubjectRecordId = subject.originalRecordId; 
-        if (!originalSubjectRecordId && staffCanEdit) {
+        if (!originalSubjectRecordId && isEditableByStaff()) {
           console.warn(`[ReportProfiles] Subject '${subject.subject}' is missing originalRecordId. Editing will not be possible for this subject.`);
         }
 
@@ -1282,16 +1320,26 @@ if (window.reportProfilesInitialized) {
         let currentGradeDisplay, targetGradeDisplay;
 
         // Current Grade Display
-        currentGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${currentGradeColorClass}">${currentGrade}</span></div>`;
-        if (staffCanEdit && originalSubjectRecordId) {
-          currentGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Current Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132">✏️</span>`;
+        if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
+          currentGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${currentGrade === 'N/A' ? '' : currentGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132" placeholder="N/A"></div>`;
+        } else {
+          currentGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${currentGradeColorClass}">${currentGrade}</span></div>`;
         }
+        // Remove individual edit icon for current grade
+        // if (isEditableByStaff() && originalSubjectRecordId) {
+        //   currentGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Current Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132">✏️</span>`;
+        // }
 
         // Target Grade Display
-        targetGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${targetGradeColorClass}">${targetGrade}</span></div>`;
-        if (staffCanEdit && originalSubjectRecordId) {
-          targetGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Target Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135">✏️</span>`;
+        if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
+          targetGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${targetGrade === 'N/A' ? '' : targetGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135" placeholder="N/A"></div>`;
+        } else {
+          targetGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${targetGradeColorClass}">${targetGrade}</span></div>`;
         }
+        // Remove individual edit icon for target grade
+        // if (isEditableByStaff() && originalSubjectRecordId) {
+        //   targetGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Target Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135">✏️</span>`;
+        // }
 
         subjectsHTML += `
           <div class="subject-card">
@@ -1326,7 +1374,7 @@ if (window.reportProfilesInitialized) {
     const profileHTML = `
       <div id="vespa-profile">
         <section class="vespa-section profile-section">
-          <h2 class="vespa-section-title">Student Profile</h2>
+          <h2 class="vespa-section-title">Student Profile ${masterEditIconHTML}</h2>
           <div class="profile-info">
             <div class="profile-details">
               <div class="profile-name">${name}</div>
@@ -1373,14 +1421,20 @@ if (window.reportProfilesInitialized) {
       // Clear container and add content
       profileContainer.innerHTML = profileHTML;
       
-      // Add event listeners to newly created edit icons
-      if (staffCanEdit) {
-          profileContainer.querySelectorAll('.grade-edit-icon').forEach(icon => {
-              icon.addEventListener('click', (event) => toggleGradeEditMode(event.currentTarget));
-          });
+      // Add event listener to the new master edit/save icon
+      const masterIcon = profileContainer.querySelector('.master-edit-icon');
+      if (masterIcon) {
+          masterIcon.addEventListener('click', toggleMasterEditMode); // New function to be created
       }
+      
+      // REMOVE event listeners for individual grade-edit-icons as they are gone
+      // if (isEditableByStaff()) { // staffCanEdit variable was used before, ensure consistency
+      //     profileContainer.querySelectorAll('.grade-edit-icon').forEach(icon => {
+      //         icon.addEventListener('click', (event) => toggleGradeEditMode(event.currentTarget));
+      //     });
+      // }
 
-      debugLog("Profile rendered with delay to ensure DOM stability");
+      debugLog("Profile rendered with master edit icon logic");
       
       // Reset the DOM update flag after a slight delay to ensure rendering completes
       setTimeout(() => {
@@ -1783,6 +1837,28 @@ if (window.reportProfilesInitialized) {
         outline: none;
         border-color: #00e5db;
         box-shadow: 0 0 5px rgba(0, 229, 219, 0.5);
+      }
+
+      /* Style for the master edit/save icon */
+      #vespa-profile .master-edit-icon {
+          cursor: pointer;
+          font-size: 0.7em; /* Smaller than section title */
+          margin-left: 15px;
+          padding: 3px 7px;
+          border-radius: 4px;
+          border: 1px solid transparent; /* For spacing, or make it visible */
+          transition: background-color 0.2s, border-color 0.2s;
+          vertical-align: middle; /* Align with title text */
+      }
+      #vespa-profile .master-edit-icon.edit-icon {
+          color: #00e5db; /* Teal for edit */
+      }
+      #vespa-profile .master-edit-icon.save-icon {
+          color: #4caf50; /* Green for save */
+      }
+      #vespa-profile .master-edit-icon:hover {
+          background-color: #334285; /* Darker background on hover */
+          border-color: #079baa;
       }
     `;
   }
