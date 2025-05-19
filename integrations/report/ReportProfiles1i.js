@@ -1039,7 +1039,52 @@ if (window.reportProfilesInitialized) {
     }
   }
 
-  // NEW function to handle toggling edit mode and saving
+  // Helper function to compare grades and return appropriate CSS class
+  function getGradeColorClass(grade, minExpected) {
+    if (!grade || !minExpected || grade === 'N/A' || minExpected === 'N/A') {
+      return '';
+    }
+    
+    // Ensure grade and minExpected are treated as strings for comparison robustness, 
+    // especially if they might be numbers stored as strings or actual numbers.
+    const gradeStr = String(grade);
+    const minExpectedStr = String(minExpected);
+
+    // A-Level specific logic (example: A*, A, B, C...)
+    // This is a simplified example; a more robust solution would map grades to numerical values.
+    const gradeOrder = ['A*', 'A', 'B', 'C', 'D', 'E', 'U']; // Highest to lowest
+    const gradeVal = gradeOrder.indexOf(gradeStr.toUpperCase());
+    const minExpectedVal = gradeOrder.indexOf(minExpectedStr.toUpperCase());
+
+    if (gradeVal !== -1 && minExpectedVal !== -1) { // Both are valid A-Level style grades
+      if (gradeVal < minExpectedVal) return 'grade-exceeding-high'; // e.g. A vs B expected
+      if (gradeVal === minExpectedVal) return 'grade-matching';
+      if (gradeVal > minExpectedVal && gradeVal < minExpectedVal + 2) return 'grade-below'; // e.g. C vs B expected
+      if (gradeVal >= minExpectedVal + 2) return 'grade-below-far'; // e.g. D vs B expected
+      return '';
+    }
+
+    // GCSE/Numerical specific logic (example: 9, 8, 7...)
+    const numGrade = parseFloat(gradeStr);
+    const numMinExpected = parseFloat(minExpectedStr);
+
+    if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
+      const diff = numGrade - numMinExpected;
+      if (diff >= 2) return 'grade-exceeding-high'; // Significantly above
+      if (diff === 1) return 'grade-exceeding';    // Above
+      if (diff === 0) return 'grade-matching';     // Matching
+      if (diff === -1) return 'grade-below';      // Below
+      if (diff <= -2) return 'grade-below-far';  // Significantly below
+      return '';
+    }
+    
+    // Fallback for other types or direct string comparison if needed (less common for grades)
+    // if (gradeStr >= minExpectedStr) return 'grade-exceeding';
+    // if (gradeStr < minExpectedStr) return 'grade-below';
+    
+    return ''; // Default no class if no specific logic matches
+  }
+
   async function toggleGradeEditMode(iconElement) {
     const gradeItem = iconElement.closest('.grade-item');
     if (!gradeItem) return;
@@ -1213,53 +1258,6 @@ if (window.reportProfilesInitialized) {
           console.warn(`[ReportProfiles] Error parsing subject data for ${fieldKey}:`, e);
         }
       }
-    }
-    
-    // Helper function to compare grades and return appropriate CSS class
-    function getGradeColorClass(grade, minExpected) {
-      if (!grade || !minExpected || grade === 'N/A' || minExpected === 'N/A') {
-        return '';
-      }
-      
-      if (/^[A-E][*+-]?$/.test(grade) && /^[A-E][*+-]?$/.test(minExpected)) {
-        const gradeValue = grade.charAt(0);
-        const minExpectedValue = minExpected.charAt(0);
-        
-        if (gradeValue < minExpectedValue) {
-          return 'grade-exceeding-high';
-        } else if (gradeValue === minExpectedValue) {
-          if (grade.includes('+') || minExpected.includes('-')) {
-            return 'grade-exceeding';
-          } else if (grade.includes('-') || minExpected.includes('+')) {
-            return 'grade-below';
-          }
-          return 'grade-matching';
-        } else {
-          const diff = gradeValue.charCodeAt(0) - minExpectedValue.charCodeAt(0);
-          return diff > 1 ? 'grade-below-far' : 'grade-below';
-        }
-      }
-      
-      const numGrade = parseFloat(grade);
-      const numMinExpected = parseFloat(minExpected);
-      
-      if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
-        const diff = numGrade - numMinExpected;
-        
-        if (diff > 1) {
-          return 'grade-exceeding-high';
-        } else if (diff > 0) {
-          return 'grade-exceeding';
-        } else if (diff === 0) {
-          return 'grade-matching';
-        } else if (diff > -2) {
-          return 'grade-below';
-        } else {
-          return 'grade-below-far';
-        }
-      }
-      
-      return grade >= minExpected ? 'grade-exceeding' : 'grade-below';
     }
     
     // Render subjects
@@ -1838,6 +1836,5 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
-
 
 
