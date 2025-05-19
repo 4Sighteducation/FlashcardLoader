@@ -550,8 +550,9 @@
         minimumExpectedGrade: sanitizeField(record.field_3131 || ''),
         currentGrade: sanitizeField(record.field_3132 || ''),
         targetGrade: sanitizeField(record.field_3135 || ''),
-        effortGrade: sanitizeField(record.field_3133 || ''),
-        behaviourGrade: sanitizeField(record.field_3134 || '')
+        effortGrade: sanitizeField(record.field_3133 || ''), // Added Effort
+        behaviourGrade: sanitizeField(record.field_3134 || ''), // Added Behaviour
+        subjectAttendance: sanitizeField(record.field_3186 || '') // Added Subject Attendance
       };
     });
 
@@ -1591,6 +1592,26 @@
         border-top: 1px solid #3d3d3d;
       }
       
+      .optional-grades-container {
+        display: flex;
+        justify-content: space-around; /* Or space-between */
+        margin-top: 6px; /* Space above this new row */
+        padding-top: 6px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.2); /* Faint separator */
+        font-size: 0.75em; /* Smaller font for these details */
+      }
+
+      .optional-grade-item {
+        text-align: center;
+        color: #e0e0e0; /* Lighter text color */
+      }
+
+      .optional-grade-item .optional-grade-label {
+        font-weight: 600;
+        color: #00e5db; /* Match other labels */
+        margin-right: 3px;
+      }
+      
       .grade-item {
         text-align: center;
         flex: 1;
@@ -2230,6 +2251,17 @@
           examType
         );
         
+        let optionalGradesHTML = '';
+        if (subject.effortGrade && subject.effortGrade !== 'N/A') {
+          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Eff:</span>${subject.effortGrade}</div>`;
+        }
+        if (subject.behaviourGrade && subject.behaviourGrade !== 'N/A') {
+          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Beh:</span>${subject.behaviourGrade}</div>`;
+        }
+        if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
+          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Att:</span>${subject.subjectAttendance}</div>`;
+        }
+        
         subjectsHTML += `
           <div class="subject-card ${cardType}">
             <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
@@ -2251,6 +2283,7 @@
                 <div class="grade-value ${targetGradeClass}">${sanitizeField(subject.targetGrade || 'N/A')}</div>
               </div>
             </div>
+            ${ optionalGradesHTML ? `<div class="optional-grades-container">${optionalGradesHTML}</div>` : '' }
           </div>
         `;
       });
