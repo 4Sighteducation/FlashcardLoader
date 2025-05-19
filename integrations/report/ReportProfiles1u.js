@@ -1455,6 +1455,10 @@ if (window.reportProfilesInitialized) {
         try {
           const subject = safeParseJSON(profileData[fieldId]);
           if (subject && subject.subject) {
+            // Ensure new optional fields are carried over or initialized
+            subject.effortGrade = subject.effortGrade || '';
+            subject.behaviourGrade = subject.behaviourGrade || '';
+            subject.subjectAttendance = subject.subjectAttendance || '';
             subjectData.push(subject);
           }
         } catch (e) {
@@ -1507,6 +1511,18 @@ if (window.reportProfilesInitialized) {
         //   targetGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Target Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135">✏️</span>`;
         // }
 
+        // NEW: Optional Grades (Effort, Behaviour, Subject Attendance)
+        let optionalGradesHTML = '';
+        if (subject.effortGrade && subject.effortGrade !== 'N/A') {
+          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Eff:</span>${sanitizeField(subject.effortGrade)}</div>`;
+        }
+        if (subject.behaviourGrade && subject.behaviourGrade !== 'N/A') {
+          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Beh:</span>${sanitizeField(subject.behaviourGrade)}</div>`;
+        }
+        if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
+          optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Att:</span>${sanitizeField(subject.subjectAttendance)}</div>`;
+        }
+
         subjectsHTML += `
           <div class="subject-card">
             <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
@@ -1528,6 +1544,7 @@ if (window.reportProfilesInitialized) {
                 ${targetGradeDisplay}
               </div>
             </div>
+            ${ optionalGradesHTML ? `<div class="optional-grades-container">${optionalGradesHTML}</div>` : '' }
             <div class="grade-edit-feedback"></div>
           </div>
         `;
@@ -1541,8 +1558,10 @@ if (window.reportProfilesInitialized) {
       <div id="vespa-profile">
         <section class="vespa-section profile-section">
           <h2 class="vespa-section-title">
-            Student Profile 
-            <span class="profile-info-button report-profile-info-button" title="Understanding These Grades">i</span>
+            <span style="display: inline-flex; align-items: center;"> <!-- Grouping span -->
+              Student Profile 
+              <span class="profile-info-button report-profile-info-button" title="Understanding These Grades">i</span>
+            </span>
             ${masterEditIconHTML}
           </h2>
           <div class="profile-info">
@@ -1787,9 +1806,9 @@ if (window.reportProfilesInitialized) {
         border-bottom: 2px solid #079baa;
         position: relative;
         overflow: hidden;
-        display: flex; /* For aligning title and info button */
-        align-items: center; /* For aligning title and info button */
-        justify-content: space-between; /* Pushes master edit icon to the right */
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between;
       }
       
       /* Styles for the (i) info button next to "Student Profile" */
@@ -2168,7 +2187,7 @@ if (window.reportProfilesInitialized) {
       #vespa-profile .master-edit-icon {
           cursor: pointer;
           font-size: 0.7em; /* Smaller than section title */
-          margin-left: 15px;
+          /* margin-left: 15px; */ /* Original margin, now handled by flex or specific rules */
           padding: 3px 7px;
           border-radius: 4px;
           border: 1px solid transparent; /* For spacing, or make it visible */
@@ -2177,25 +2196,47 @@ if (window.reportProfilesInitialized) {
       }
       #vespa-profile .master-edit-icon.edit-icon {
           color: #00e5db; /* Teal for edit */
-          margin-left: auto; /* Push to the far right if no info button */
+          /* margin-left: auto; */ /* Removed: Handled by justify-content on parent */
       }
       #vespa-profile .master-edit-icon.save-icon {
           color: #4caf50; /* Green for save */
-          margin-left: auto; /* Push to the far right if no info button */
+          /* margin-left: auto; */ /* Removed: Handled by justify-content on parent */
       }
       #vespa-profile .master-edit-icon:hover {
           background-color: #334285; /* Darker background on hover */
           border-color: #079baa;
       }
       /* If profile-info-button is present, master-edit-icon will be after it */
+      /* REMOVED THIS RULE as it's no longer structured this way and space-between handles it.
       #vespa-profile .profile-info-button + .master-edit-icon {
-         margin-left: 10px; /* Space between info button and master edit icon */
+         margin-left: 10px; 
       }
+      */
 
       #vespa-profile .vespa-section-title > .master-edit-icon {
-        /* Ensures master edit icon is pushed to the end of the flex container */
-        /* margin-left: auto; /* This is key if it's the last item */
-        /* If there is an info button, the above CSS for profile-info-button + master-edit-icon handles spacing */
+        /* This selector might still be useful if specific alignment for the icon itself is needed */
+        /* For now, flex properties on parent should suffice */
+      }
+
+      /* NEW: Styles for optional grades container and items */
+      #vespa-profile .optional-grades-container {
+        display: flex;
+        justify-content: space-around; /* Distributes items evenly */
+        margin-top: 6px; /* Space above this new row */
+        padding-top: 6px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.2); /* Faint separator */
+        font-size: 0.75em; /* Smaller font for these details */
+      }
+
+      #vespa-profile .optional-grade-item {
+        text-align: center;
+        color: #e0e0e0; /* Lighter text color for values */
+      }
+
+      #vespa-profile .optional-grade-item .optional-grade-label {
+        font-weight: 600;
+        color: #00e5db; /* Match other labels like EXG, Current */
+        margin-right: 3px;
       }
     `;
   }
@@ -2251,5 +2292,4 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
-
 
