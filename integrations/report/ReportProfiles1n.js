@@ -65,7 +65,7 @@ if (window.reportProfilesInitialized) {
   // Request management
   let activeRequests = {}; // Track active AJAX requests
   let profileCache = {}; // Cache for student profile data
-  const CACHE_TTL = 5 * 60 * 1000; // Cache TTL: 5 minutes
+  const CACHE_TTL = 10000; // Cache TTL: 10 seconds (was 5 * 60 * 1000 or 0 for debugging)
   const API_COOLDOWN = 1000; // 1 second cooldown between API requests for the same resource
   let lastRequestTimes = {}; // Track timestamps of last requests by resource type
   let isProcessingStudent = false; // Flag to prevent concurrent student processing
@@ -345,6 +345,8 @@ if (window.reportProfilesInitialized) {
     if (!potentialStudentId && studentNameFromReportForId) {
       potentialStudentId = "USE_NAME:" + studentNameFromReportForId;
     }
+
+    debugLog("handleReportChanges triggered. Potential Student ID:", potentialStudentId, "Current lastRenderedProfileHash:", lastRenderedProfileHash); // Added granular logging
 
     // If a processing cycle for the *same student* is already happening, bail out early.
     if (isProcessingStudent && potentialStudentId === currentStudentId) {
@@ -1183,6 +1185,7 @@ if (window.reportProfilesInitialized) {
         // and to set the lastRenderedProfileHash correctly based on the new state.
         if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
           renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
+          debugLog("Master save: UI updated directly from cache. lastRenderedProfileHash should now be based on NEW data."); // Added granular logging
         } else {
           // Fallback: if cache is somehow gone, force a full re-fetch and render.
           // This should be rare here as we just updated the cache.
@@ -1269,6 +1272,7 @@ if (window.reportProfilesInitialized) {
       debugLog("Cannot render profile: No profile data provided");
       return;
     }
+    debugLog("renderStudentProfile called. isProfileInEditMode:", isProfileInEditMode); // Confirm isProfileInEditMode state
     
     if (!profileContainer) {
       debugLog("Cannot render profile: Container element not found");
@@ -1309,7 +1313,7 @@ if (window.reportProfilesInitialized) {
     let masterEditIconHTML = '';
     if (isEditableByStaff()) { // Only show master edit icon if staff can edit
       if (isProfileInEditMode) {
-        masterEditIconHTML = `<span class="master-edit-icon save-icon" title="Save All Changes">�� Save All</span>`;
+        masterEditIconHTML = `<span class="master-edit-icon save-icon" title="Save All Changes">&#128190; Save All</span>`; // Changed to HTML entity
       } else {
         masterEditIconHTML = `<span class="master-edit-icon edit-icon" title="Edit All Grades">✏️ Edit Grades</span>`;
       }
@@ -1486,6 +1490,7 @@ if (window.reportProfilesInitialized) {
     setTimeout(() => {
       // Clear container and add content
       profileContainer.innerHTML = profileHTML;
+      lastRenderedProfileHash = profileHash; // Ensure hash is updated AFTER innerHTML set, before DOM lock release
       
       // Add event listener to the new master edit/save icon
       const masterIcon = profileContainer.querySelector('.master-edit-icon');
@@ -1978,5 +1983,7 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
+
+
 
 
