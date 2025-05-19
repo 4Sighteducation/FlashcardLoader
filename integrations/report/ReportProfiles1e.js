@@ -1076,77 +1076,89 @@ function safeParseJSON(jsonString, defaultVal = null) {
   }
 }
 
-// Function to handle grade edits from input fields
-async function handleGradeEdit(event) {
-  const inputElement = event.target;
-  const originalRecordId = inputElement.dataset.originalRecordId;
-  const fieldId = inputElement.dataset.fieldId;
-  const newValue = inputElement.value.trim();
-  const subjectCard = inputElement.closest('.subject-card');
-  let feedbackElement = subjectCard ? subjectCard.querySelector('.grade-edit-feedback') : null;
+// NEW function to handle toggling edit mode and saving
+async function toggleGradeEditMode(iconElement) {
+  const gradeItem = iconElement.closest('.grade-item');
+  if (!gradeItem) return;
+
+  const originalRecordId = iconElement.dataset.originalRecordId;
+  const fieldId = iconElement.dataset.fieldId;
+  const isCurrentlyEditing = iconElement.classList.contains('save-icon');
+  const feedbackElement = gradeItem.closest('.subject-card').querySelector('.grade-edit-feedback');
 
   if (!originalRecordId || !fieldId) {
-    console.error("[ReportProfiles] Missing data attributes for grade edit.");
-    if (feedbackElement) feedbackElement.textContent = 'Error: Missing data.';
+    console.error("[ReportProfiles] Missing data attributes for grade edit toggle.");
+    if (feedbackElement) feedbackElement.textContent = 'Error: Data missing.';
     return;
   }
 
-  if (feedbackElement) {
-    feedbackElement.textContent = 'Saving...';
-    feedbackElement.className = 'grade-edit-feedback saving';
-  } else if (subjectCard) {
-    feedbackElement = document.createElement('div');
-    feedbackElement.className = 'grade-edit-feedback saving';
-    feedbackElement.textContent = 'Saving...';
-    // Insert feedback after grades container or at the end of card
-    const gradesContainer = subjectCard.querySelector('.grades-container');
-    if (gradesContainer && gradesContainer.nextSibling) {
-        gradesContainer.parentNode.insertBefore(feedbackElement, gradesContainer.nextSibling);
-    } else if (gradesContainer) {
-        gradesContainer.parentNode.appendChild(feedbackElement);
-    } else {
-        subjectCard.appendChild(feedbackElement);
+  const gradeValueContainer = gradeItem.querySelector('.grade-value-display'); // Element holding text or input
+
+  if (isCurrentlyEditing) {
+    // --- SAVE ACTION --- 
+    const inputElement = gradeValueContainer.querySelector('input.grade-input-dynamic');
+    if (!inputElement) return;
+    const newValue = inputElement.value.trim();
+
+    if (feedbackElement) {
+      feedbackElement.textContent = 'Saving...';
+      feedbackElement.className = 'grade-edit-feedback saving';
     }
-  }
-  
-  debugLog(`Handling grade edit: RecordID=${originalRecordId}, FieldID=${fieldId}, NewValue='${newValue}'`);
 
-  const success = await updateSubjectGradeInObject113(originalRecordId, fieldId, newValue);
+    const success = await updateSubjectGradeInObject113(originalRecordId, fieldId, newValue);
 
-  if (feedbackElement) {
     if (success) {
-      feedbackElement.textContent = 'Saved!';
-      feedbackElement.className = 'grade-edit-feedback success';
-      // Update the non-input display if needed, or simply let it be until next full render.
-      // For now, we assume a page refresh or re-render will show the latest data.
-      // To avoid data mismatch, we can also update the profileCache and re-render locally.
+      if (feedbackElement) {
+        feedbackElement.textContent = 'Saved!';
+        feedbackElement.className = 'grade-edit-feedback success';
+      }
+      // Revert to text display
+      const megGradeText = gradeItem.closest('.grades-container').querySelector('.grade-meg').textContent;
+      const newColorClass = getGradeColorClass(newValue, megGradeText);
+      gradeValueContainer.innerHTML = `<span class="grade-text ${newColorClass}">${sanitizeField(newValue || 'N/A')}</span>`;
+      iconElement.innerHTML = '✏️'; // Pencil icon
+      iconElement.classList.remove('save-icon');
+      iconElement.classList.add('edit-icon');
+      iconElement.title = 'Edit grade';
+      
+      // Update cache
       if (profileCache[`profile_${currentStudentId}`] && profileCache[`profile_${currentStudentId}`].data) {
         const profileToUpdate = profileCache[`profile_${currentStudentId}`].data;
         for (let i = 1; i <= 15; i++) {
             const fieldKey = `sub${i}`;
-            const subjectFieldId = FIELD_MAPPING[fieldKey];
-            if (profileToUpdate[subjectFieldId]) {
-                let subject = safeParseJSON(profileToUpdate[subjectFieldId]);
+            const subjectFieldIdInProfile = FIELD_MAPPING[fieldKey];
+            if (profileToUpdate[subjectFieldIdInProfile]) {
+                let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]);
                 if (subject && subject.originalRecordId === originalRecordId) {
                     if (fieldId === 'field_3132') subject.currentGrade = newValue;
                     if (fieldId === 'field_3135') subject.targetGrade = newValue;
-                    profileToUpdate[subjectFieldId] = JSON.stringify(subject);
-                    debugLog("Updated profile cache locally after successful grade edit.");
+                    profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject);
                     break;
                 }
             }
         }
       }
-
     } else {
-      feedbackElement.textContent = 'Error saving!';
-      feedbackElement.className = 'grade-edit-feedback error';
-      // Optionally revert input to original value or prompt user
-      // For now, we leave the input as is, user can retry or correct.
+      if (feedbackElement) {
+        feedbackElement.textContent = 'Error saving!';
+        feedbackElement.className = 'grade-edit-feedback error';
+      }
+      // Keep input active for correction
     }
-    setTimeout(() => { // Clear feedback after a few seconds
-        if (feedbackElement) feedbackElement.textContent = '';
-    }, 3000);
+    if (feedbackElement) {
+        setTimeout(() => { feedbackElement.textContent = ''; }, 3000);
+    }
+  } else {
+    // --- SWITCH TO EDIT MODE --- 
+    const gradeTextSpan = gradeValueContainer.querySelector('span.grade-text');
+    const currentValue = gradeTextSpan ? (gradeTextSpan.textContent === 'N/A' ? '' : gradeTextSpan.textContent) : '';
+    
+    gradeValueContainer.innerHTML = `<input type="text" class="grade-input-dynamic" value="${currentValue}" style="width: 60px; text-align: center;">`;
+    iconElement.innerHTML = '💾'; // Save icon (floppy disk)
+    iconElement.classList.remove('edit-icon');
+    iconElement.classList.add('save-icon');
+    iconElement.title = 'Save grade';
+    gradeValueContainer.querySelector('input.grade-input-dynamic').focus();
   }
 }
 
@@ -1294,7 +1306,6 @@ function renderStudentProfile(profileData, profileContainer) {
 
   if (subjectData && subjectData.length > 0) {
     subjectData.forEach(subject => {
-      // IMPORTANT: Check if originalRecordId exists, needed for editing.
       const originalSubjectRecordId = subject.originalRecordId; 
       if (!originalSubjectRecordId && staffCanEdit) {
         console.warn(`[ReportProfiles] Subject '${subject.subject}' is missing originalRecordId. Editing will not be possible for this subject.`);
@@ -1304,24 +1315,21 @@ function renderStudentProfile(profileData, profileContainer) {
       const targetGrade = sanitizeField(subject.targetGrade || 'N/A');
       const megGrade = sanitizeField(subject.minimumExpectedGrade || 'N/A');
 
-      const currentGradeClass = getGradeColorClass(
-        currentGrade, 
-        megGrade
-      );
-      
-      const targetGradeClass = getGradeColorClass(
-        targetGrade,
-        megGrade
-      );
+      const currentGradeColorClass = getGradeColorClass(currentGrade, megGrade);
+      const targetGradeColorClass = getGradeColorClass(targetGrade, megGrade);
       
       let currentGradeDisplay, targetGradeDisplay;
 
+      // Current Grade Display
+      currentGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${currentGradeColorClass}">${currentGrade}</span></div>`;
       if (staffCanEdit && originalSubjectRecordId) {
-        currentGradeDisplay = `<input type="text" class="grade-input" value="${currentGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132" placeholder="N/A">`;
-        targetGradeDisplay = `<input type="text" class="grade-input" value="${targetGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135" placeholder="N/A">`;
-      } else {
-        currentGradeDisplay = `<div class="grade-value ${currentGradeClass}">${currentGrade}</div>`;
-        targetGradeDisplay = `<div class="grade-value ${targetGradeClass}">${targetGrade}</div>`;
+        currentGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Current Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132">✏️</span>`;
+      }
+
+      // Target Grade Display
+      targetGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${targetGradeColorClass}">${targetGrade}</span></div>`;
+      if (staffCanEdit && originalSubjectRecordId) {
+        targetGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Target Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135">✏️</span>`;
       }
 
       subjectsHTML += `
@@ -1334,13 +1342,13 @@ function renderStudentProfile(profileData, profileContainer) {
           <div class="grades-container">
             <div class="grade-item">
               <div class="grade-label">MEG</div>
-              <div class="grade-value grade-meg">${megGrade}</div>
+              <div class="grade-value grade-meg grade-value-display"><span class="grade-text">${megGrade}</span></div>
             </div>
-            <div class="grade-item">
+            <div class="grade-item current-grade-item">
               <div class="grade-label">Current</div>
               ${currentGradeDisplay}
             </div>
-            <div class="grade-item">
+            <div class="grade-item target-grade-item">
               <div class="grade-label">Target</div>
               ${targetGradeDisplay}
             </div>
@@ -1404,17 +1412,10 @@ function renderStudentProfile(profileData, profileContainer) {
     // Clear container and add content
     profileContainer.innerHTML = profileHTML;
     
-    // Add event listeners to newly created input fields
+    // Add event listeners to newly created edit icons
     if (staffCanEdit) {
-        profileContainer.querySelectorAll('.grade-input').forEach(input => {
-            input.addEventListener('change', handleGradeEdit); // Or 'blur' if preferred
-            // Prevent enter key from submitting forms if any are implicitly present
-            input.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    input.blur(); // Trigger change/blur event
-                }
-            });
+        profileContainer.querySelectorAll('.grade-edit-icon').forEach(icon => {
+            icon.addEventListener('click', (event) => toggleGradeEditMode(event.currentTarget));
         });
     }
 
@@ -1645,9 +1646,7 @@ function addStyles() {
     }
     
     #vespa-profile .grade-value {
-      font-size: 1.1em;
-      font-weight: 600;
-      transition: transform 0.2s;
+      font-size: 1em;
     }
     
     #vespa-profile .grade-meg {
@@ -1732,7 +1731,7 @@ function addStyles() {
       }
     }
 
-    /* Styles for editable grade inputs */
+    /* Styles for editable grade inputs (old, can be removed or repurposed if .grade-input-dynamic is styled differently) */
     #vespa-profile .grade-input {
       width: 70px; /* Adjust as needed */
       padding: 4px;
@@ -1766,6 +1765,63 @@ function addStyles() {
     }
     #vespa-profile .grade-edit-feedback.error {
       color: #f44336; /* Red for error */
+    }
+
+    /* New styles for icon-based editing */
+    #vespa-profile .grade-item > div[class*="-grade-item"] {
+      display: flex; /* Align grade text/input and icon */
+      align-items: center;
+      justify-content: center; /* Center content within the item space */
+      position: relative; /* For positioning icon if needed, or feedback */
+    }
+
+    #vespa-profile .grade-value-display {
+      display: inline-block; /* Allows text to flow naturally but can be targeted */
+      margin-right: 5px; /* Space between grade and icon */
+      min-width: 40px; /* Ensure some space for the grade text */
+      text-align: center;
+    }
+    
+    #vespa-profile .grade-text {
+        /* Styles for the grade text itself, color is applied by getGradeColorClass */
+        padding: 4px;
+    }
+
+    #vespa-profile .grade-edit-icon {
+      cursor: pointer;
+      font-size: 0.9em; /* Adjust icon size */
+      padding: 2px 4px;
+      margin-left: 4px; /* Space from the grade value */
+      border-radius: 3px;
+      display: inline-flex; /* Helps with vertical alignment if needed */
+      align-items: center;
+      justify-content: center;
+      min-width: 20px; /* Ensure clickable area */
+      min-height: 20px;
+    }
+
+    #vespa-profile .grade-edit-icon:hover {
+      background-color: #3a4b90; /* Hover effect */
+    }
+
+    #vespa-profile input.grade-input-dynamic {
+      /* Styles for the dynamically created input */
+      padding: 4px;
+      font-size: 1em;
+      border: 1px solid #079baa;
+      background-color: #23356f;
+      color: #ffffff;
+      border-radius: 4px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+      width: 60px; /* Or adjust as needed */
+      text-align: center;
+      margin-right: 5px; /* If icon is outside the grade-value-display */
+    }
+
+    #vespa-profile input.grade-input-dynamic:focus {
+      outline: none;
+      border-color: #00e5db;
+      box-shadow: 0 0 5px rgba(0, 229, 219, 0.5);
     }
   `;
 }
@@ -1818,5 +1874,6 @@ async function updateSubjectGradeInObject113(subjectRecordId, fieldId, value) {
     return false;
   }
 }
+
 
 
