@@ -540,6 +540,7 @@
     
     return records.map(record => {
       return {
+        originalRecordId: record.id, 
         subject: sanitizeField(record.field_3109 || ''), // Corrected to field_3109 for subject name
         examType: sanitizeField(record.field_3103 || ''),
         examBoard: sanitizeField(record.field_3102 || ''),
