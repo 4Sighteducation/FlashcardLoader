@@ -1145,12 +1145,14 @@ if (window.reportProfilesInitialized) {
         const results = await Promise.all(updatePromises);
         const allSucceeded = results.every(res => res === true);
         let saveMessage = '';
+        let messageType = 'info';
 
         if (inputs.length === 0) {
           saveMessage = "No changes detected to save.";
           debugLog(saveMessage);
         } else if (allSucceeded) {
           saveMessage = "All grades saved successfully!";
+          messageType = 'success';
           debugLog(saveMessage);
           if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
             const profileToUpdate = profileCache[currentStudentId].data;
@@ -1174,13 +1176,33 @@ if (window.reportProfilesInitialized) {
         } else {
           const failedCount = results.filter(r => r === false).length;
           saveMessage = `Error: ${failedCount} grade(s) failed to save. Please check console.`;
+          messageType = 'error';
           console.error("[ReportProfiles] One or more grade updates failed.", results);
         }
-        await reRenderProfile(profileContainer, saveMessage, allSucceeded && inputs.length > 0 ? 'success' : (inputs.length > 0 ? 'error' : 'info'));
+        // Directly re-render from the updated cache to ensure UI reflects changes immediately
+        // and to set the lastRenderedProfileHash correctly based on the new state.
+        if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
+          renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
+        } else {
+          // Fallback: if cache is somehow gone, force a full re-fetch and render.
+          // This should be rare here as we just updated the cache.
+          debugLog("Cache missing unexpectedly after save, forcing re-fetch.");
+          lastRenderedProfileHash = null;
+          await processStudentProfileById(currentStudentId, profileContainer);
+        }
+        showTemporaryMessage(saveMessage, messageType);
 
       } catch (error) {
         console.error("[ReportProfiles] Error during Promise.all for grade updates:", error);
-        await reRenderProfile(profileContainer, "A critical error occurred during save.", 'error');
+        // Attempt to re-render in display mode even after a critical error
+        isProfileInEditMode = false; // Ensure we are out of edit mode
+        if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
+          renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
+        } else {
+          lastRenderedProfileHash = null;
+          await processStudentProfileById(currentStudentId, profileContainer); // Re-fetch if cache empty
+        }
+        showTemporaryMessage("A critical error occurred during save.", 'error');
       }
 
     } else {
@@ -1956,4 +1978,5 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
+
 
