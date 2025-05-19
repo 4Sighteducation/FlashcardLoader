@@ -317,8 +317,27 @@ if (window.reportProfilesInitialized) {
   function hashProfileData(profileData) {
     if (!profileData) return "empty";
     const name = profileData[FIELD_MAPPING.studentName] || '';
-    const id = profileData.id || '';
-    return `${name}-${id}`;
+    const id = profileData.id || ''; // ID of the object_112 record
+
+    let subjectStrings = "";
+    debugLog("[hashProfileData] Starting. Profile Name:", name, "Profile ID:", id);
+    // debugLog("[hashProfileData] Full profileData:", JSON.stringify(profileData).substring(0, 500)); 
+
+    for (let i = 1; i <= 15; i++) {
+      const fieldKey = `sub${i}`;
+      const fieldId = FIELD_MAPPING[fieldKey];
+      const subjectValue = profileData[fieldId];
+      // Log the field ID and its value before the check
+      debugLog(`[hashProfileData] Checking subject field: ${fieldId}, Value:`, subjectValue ? String(subjectValue).substring(0,100) + (String(subjectValue).length > 100 ? '...':'') : subjectValue);
+      if (subjectValue) { // Check if subjectValue is truthy
+        // profileData[fieldId] is a JSON string from object_112
+        subjectStrings += String(subjectValue); // Concatenate all subject JSON strings
+        // debugLog(`[hashProfileData] Added to subjectStrings from ${fieldId}`);
+      }
+    }
+    const finalHash = `${name}-${id}-${subjectStrings}`;
+    debugLog("[hashProfileData] Final hash:", finalHash, "SubjectStrings length:", subjectStrings.length);
+    return finalHash;
   }
 
   function handleReportChanges(reportContainer, profileContainer) {
@@ -1129,6 +1148,12 @@ if (window.reportProfilesInitialized) {
       }
       debugLog("Active profile cache key for save/update:", activeProfileCacheKey);
 
+      // Log a sample subject field from cache BEFORE modification
+      if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
+        const sampleFieldIdBefore = FIELD_MAPPING.sub1; // Example: sub1
+        debugLog("[toggleMasterEditMode] Value of cache field", sampleFieldIdBefore, "BEFORE update loop:", profileCache[activeProfileCacheKey].data[sampleFieldIdBefore]);
+      }
+
       if (inputs.length === 0) {
           debugLog("No input fields found. Aborting save all.");
           isProfileInEditMode = false; // Ensure mode is reset
@@ -1203,12 +1228,24 @@ if (window.reportProfilesInitialized) {
                     if (change.fieldId === 'field_3132') subject.currentGrade = change.newValue;
                     if (change.fieldId === 'field_3135') subject.targetGrade = change.newValue;
                     profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject);
+                    // Log the NEW value of the updated field in cache
+                    debugLog("[toggleMasterEditMode] Value of cache field", subjectFieldIdInProfile, "AFTER update to:", profileToUpdate[subjectFieldIdInProfile]);
                     break; 
                   }
                 }
               }
             });
             debugLog("Profile cache updated with all changes.");
+            // Log the state of all subject fields in the cache AFTER all updates, before render
+            if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
+                let cachedSubjectsState = {};
+                for (let i = 1; i <=15; i++) {
+                    const fk = `sub${i}`;
+                    const fid = FIELD_MAPPING[fk];
+                    cachedSubjectsState[fid] = profileCache[activeProfileCacheKey].data[fid];
+                }
+                debugLog("[toggleMasterEditMode] Cached subject fields state AFTER all updates:", cachedSubjectsState);
+            }
           }
         } else {
           const failedCount = results.filter(r => r === false).length;
@@ -2030,8 +2067,6 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
-
-
 
 
 
