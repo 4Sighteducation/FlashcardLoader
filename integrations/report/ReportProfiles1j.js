@@ -62,7 +62,7 @@ if (window.reportProfilesInitialized) {
   // Request management
   let activeRequests = {}; // Track active AJAX requests
   let profileCache = {}; // Cache for student profile data
-  const CACHE_TTL = 5 * 60 * 1000; // Cache TTL: 5 minutes
+  const CACHE_TTL = 0; // Cache TTL: 5 minutes
   const API_COOLDOWN = 1000; // 1 second cooldown between API requests for the same resource
   let lastRequestTimes = {}; // Track timestamps of last requests by resource type
   let isProcessingStudent = false; // Flag to prevent concurrent student processing
