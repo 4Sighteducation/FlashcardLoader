@@ -1148,42 +1148,38 @@ if (window.reportProfilesInitialized) {
       return '';
     }
     
-    // Ensure grade and minExpected are treated as strings for comparison robustness, 
-    // especially if they might be numbers stored as strings or actual numbers.
     const gradeStr = String(grade);
     const minExpectedStr = String(minExpected);
 
-    // A-Level specific logic (example: A*, A, B, C...)
-    // This is a simplified example; a more robust solution would map grades to numerical values.
-    const gradeOrder = ['A*', 'A', 'B', 'C', 'D', 'E', 'U']; // Highest to lowest
+    const gradeOrder = ['A*', 'A', 'B', 'C', 'D', 'E', 'U'];
     const gradeVal = gradeOrder.indexOf(gradeStr.toUpperCase());
     const minExpectedVal = gradeOrder.indexOf(minExpectedStr.toUpperCase());
 
-    if (gradeVal !== -1 && minExpectedVal !== -1) { // Both are valid A-Level style grades
-      if (gradeVal < minExpectedVal) return 'grade-exceeding-high'; // e.g. A vs B expected
+    if (gradeVal !== -1 && minExpectedVal !== -1) { // A-Level style grades
+      if (gradeVal < minExpectedVal) { // Grade is better than expected
+        return (minExpectedVal - gradeVal >= 2) ? 'grade-significantly-above' : 'grade-above';
+      }
       if (gradeVal === minExpectedVal) return 'grade-matching';
-      if (gradeVal > minExpectedVal && gradeVal < minExpectedVal + 2) return 'grade-below'; // e.g. C vs B expected
-      if (gradeVal >= minExpectedVal + 2) return 'grade-below-far'; // e.g. D vs B expected
-      return '';
+      // Grade is below expected
+      if (gradeVal - minExpectedVal === 1) return 'grade-one-below';
+      if (gradeVal - minExpectedVal === 2) return 'grade-two-below';
+      if (gradeVal - minExpectedVal >= 3) return 'grade-far-below';
+      return ''; // Should not be reached if logic is correct
     }
 
-    // GCSE/Numerical specific logic (example: 9, 8, 7...)
     const numGrade = parseFloat(gradeStr);
     const numMinExpected = parseFloat(minExpectedStr);
 
-    if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
+    if (!isNaN(numGrade) && !isNaN(numMinExpected)) { // GCSE/Numerical grades
       const diff = numGrade - numMinExpected;
-      if (diff >= 2) return 'grade-exceeding-high'; // Significantly above
-      if (diff === 1) return 'grade-exceeding';    // Above
-      if (diff === 0) return 'grade-matching';     // Matching
-      if (diff === -1) return 'grade-below';      // Below
-      if (diff <= -2) return 'grade-below-far';  // Significantly below
-      return '';
+      if (diff >= 2) return 'grade-significantly-above';
+      if (diff === 1) return 'grade-above';
+      if (diff === 0) return 'grade-matching';
+      if (diff === -1) return 'grade-one-below';
+      if (diff === -2) return 'grade-two-below';
+      if (diff <= -3) return 'grade-far-below';
+      return ''; // Should not be reached
     }
-    
-    // Fallback for other types or direct string comparison if needed (less common for grades)
-    // if (gradeStr >= minExpectedStr) return 'grade-exceeding';
-    // if (gradeStr < minExpectedStr) return 'grade-below';
     
     return ''; // Default no class if no specific logic matches
   }
@@ -2223,24 +2219,28 @@ if (window.reportProfilesInitialized) {
       }
       
       /* Grade indicators */
-      #vespa-profile .grade-exceeding {
-        color: #4caf50; /* Was #4caf50 */
+      #vespa-profile .grade-significantly-above {
+        color: #00E676; /* Vivid Green/Teal */
       }
-      
-      #vespa-profile .grade-exceeding-high {
-        color: #00C853; /* Was #2e7d32 - Bright Green */
+
+      #vespa-profile .grade-above {
+        color: #4CAF50; /* Standard Green */
       }
       
       #vespa-profile .grade-matching {
-        color: #FFD600; /* Was #ff9800 - Vivid Yellow */
+        color: #2196F3; /* Blue */
       }
       
-      #vespa-profile .grade-below {
-        color: #FF1744; /* Was #f44336 - Bright Red */
+      #vespa-profile .grade-one-below {
+        color: #FF9800; /* Orange */
+      }
+
+      #vespa-profile .grade-two-below {
+        color: #F44336; /* Standard Red */
       }
       
-      #vespa-profile .grade-below-far {
-        color: #D50000; /* Was #b71c1c - Strong Red */
+      #vespa-profile .grade-far-below {
+        color: #C62828; /* Darker/Strong Red */
       }
       
       /* Responsive adjustments */
