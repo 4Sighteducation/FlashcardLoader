@@ -510,7 +510,7 @@ if (window.reportProfilesInitialized) {
         profileLoadingOverlayElement.className = 'vespa-profile-loader-overlay'; // Use existing overlay styles
         profileLoadingOverlayElement.innerHTML = `
             <div class="profile-loading-spinner"></div>
-            <div class="profile-loading-text">Loading student profile...</div>
+            <div class="profile-loading-text">loading academic profile...</div>
         `;
         document.body.appendChild(profileLoadingOverlayElement);
     }
@@ -2224,23 +2224,23 @@ if (window.reportProfilesInitialized) {
       
       /* Grade indicators */
       #vespa-profile .grade-exceeding {
-        color: #4caf50;
+        color: #4caf50; /* Was #4caf50 */
       }
       
       #vespa-profile .grade-exceeding-high {
-        color: #2e7d32;
+        color: #00C853; /* Was #2e7d32 - Bright Green */
       }
       
       #vespa-profile .grade-matching {
-        color: #ff9800;
+        color: #FFD600; /* Was #ff9800 - Vivid Yellow */
       }
       
       #vespa-profile .grade-below {
-        color: #f44336;
+        color: #FF1744; /* Was #f44336 - Bright Red */
       }
       
       #vespa-profile .grade-below-far {
-        color: #b71c1c;
+        color: #D50000; /* Was #b71c1c - Strong Red */
       }
       
       /* Responsive adjustments */
