@@ -1656,24 +1656,23 @@
       }
       
       /* Grade indicators - will be dynamically applied in the rendering function */
-      .grade-exceeding {
-        color: #4caf50;
+      .grade-significantly-above {
+        color: #00E676; /* Vivid Green/Teal */
       }
-      
-      .grade-exceeding-high {
-        color: #2e7d32;
+      .grade-above {
+        color: #4CAF50; /* Standard Green */
       }
-      
       .grade-matching {
-        color: #ff9800;
+        color: #2196F3; /* Blue */
       }
-      
-      .grade-below {
-        color: #f44336;
+      .grade-one-below {
+        color: #FF9800; /* Orange */
       }
-      
-      .grade-below-far {
-        color: #b71c1c;
+      .grade-two-below {
+        color: #F44336; /* Standard Red */
+      }
+      .grade-far-below {
+        color: #C62828; /* Darker/Strong Red */
       }
       
       /* App Hubs */
@@ -2128,36 +2127,47 @@
     
     // Helper function to compare grades and return appropriate CSS class
     function getGradeColorClass(grade, minExpected, examType) {
-      // Handle cases where grades are not available
       if (!grade || !minExpected || grade === 'N/A' || minExpected === 'N/A') {
         return '';
       }
-      
-      // GCSE grades are numeric 1-9 (9 is highest)
-      if (examType === 'GCSE') {
-        // GCSE uses numeric grades 1-9 where 9 is highest
-        const numGrade = parseInt(grade, 10);
-        const numMinExpected = parseInt(minExpected, 10);
-        
-        if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
-          const diff = numGrade - numMinExpected;
-          
-          if (diff >= 2) {
-            return 'grade-exceeding-high';
-          } else if (diff === 1) {
-            return 'grade-exceeding';
-          } else if (diff === 0) {
-            return 'grade-matching';
-          } else if (diff === -1) {
-            return 'grade-below';
-          } else {
-            return 'grade-below-far';
-          }
+
+      const gradeStr = String(grade);
+      const minExpectedStr = String(minExpected);
+
+      // A-Level specific logic
+      const gradeOrder = ['A*', 'A', 'B', 'C', 'D', 'E', 'U'];
+      const gradeVal = gradeOrder.indexOf(gradeStr.toUpperCase());
+      const minExpectedVal = gradeOrder.indexOf(minExpectedStr.toUpperCase());
+
+      if (gradeVal !== -1 && minExpectedVal !== -1) { // A-Level style grades
+        if (gradeVal < minExpectedVal) { // Grade is better than expected
+          return (minExpectedVal - gradeVal >= 2) ? 'grade-significantly-above' : 'grade-above';
         }
+        if (gradeVal === minExpectedVal) return 'grade-matching';
+        // Grade is below expected
+        if (gradeVal - minExpectedVal === 1) return 'grade-one-below';
+        if (gradeVal - minExpectedVal === 2) return 'grade-two-below';
+        if (gradeVal - minExpectedVal >= 3) return 'grade-far-below';
+        return '';
+      }
+
+      // GCSE/Numerical specific logic
+      const numGrade = parseFloat(gradeStr);
+      const numMinExpected = parseFloat(minExpectedStr);
+
+      if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
+        const diff = numGrade - numMinExpected;
+        if (diff >= 2) return 'grade-significantly-above';
+        if (diff === 1) return 'grade-above';
+        if (diff === 0) return 'grade-matching';
+        if (diff === -1) return 'grade-one-below';
+        if (diff === -2) return 'grade-two-below';
+        if (diff <= -3) return 'grade-far-below';
+        return '';
       }
       
-      // Vocational grades handling (Distinction*, Distinction, Merit, Pass)
-      else if (examType === 'Vocational') {
+      // Vocational grades handling (reinstated and updated for 6-tier RAG)
+      if (examType === 'Vocational') {
         const vocationGradeValues = {
           'D*': 4, 'D*D*': 8, 'D*D*D*': 12,
           'D': 3, 'DD': 6, 'DDD': 9,
@@ -2166,74 +2176,32 @@
           'D*D': 7, 'D*DD': 10, 
           'DM': 5, 'DMM': 7,
           'MP': 3, 'MPP': 4
+          // Add any other combined grades if necessary
         };
-        
-        const gradeValue = vocationGradeValues[grade] || 0;
-        const minExpectedValue = vocationGradeValues[minExpected] || 0;
-        
-        if (gradeValue && minExpectedValue) {
-          const diff = gradeValue - minExpectedValue;
-          
-          if (diff >= 2) {
-            return 'grade-exceeding-high';
-          } else if (diff > 0) {
-            return 'grade-exceeding';
-          } else if (diff === 0) {
-            return 'grade-matching';
-          } else if (diff > -2) {
-            return 'grade-below';
-          } else {
-            return 'grade-below-far';
-          }
+
+        const currentGradeValue = vocationGradeValues[gradeStr.toUpperCase()] || 0;
+        const expectedGradeValue = vocationGradeValues[minExpectedStr.toUpperCase()] || 0;
+
+        if (currentGradeValue && expectedGradeValue) {
+          const diff = currentGradeValue - expectedGradeValue;
+          if (diff >= 2) return 'grade-significantly-above';
+          if (diff === 1) return 'grade-above';
+          if (diff === 0) return 'grade-matching';
+          if (diff === -1) return 'grade-one-below';
+          if (diff === -2) return 'grade-two-below';
+          if (diff <= -3) return 'grade-far-below';
+          return '';
         }
       }
       
-      // A-Level letter grades (A, B, C, etc.) handling
-      else if (/^[A-E][*+-]?$/.test(grade) && /^[A-E][*+-]?$/.test(minExpected)) {
-        // Extract the base grade letter
-        const gradeValue = grade.charAt(0);
-        const minExpectedValue = minExpected.charAt(0);
-        
-        // Compare (A is better than B, etc.)
-        if (gradeValue < minExpectedValue) {
-          return 'grade-exceeding-high'; // Much better (e.g. A vs C expected)
-        } else if (gradeValue === minExpectedValue) {
-          // Check for + or - modifiers
-          if (grade.includes('+') || minExpected.includes('-')) {
-            return 'grade-exceeding';
-          } else if (grade.includes('-') || minExpected.includes('+')) {
-            return 'grade-below';
-          }
-          return 'grade-matching';
-        } else {
-          // Grade is below expected
-          const diff = gradeValue.charCodeAt(0) - minExpectedValue.charCodeAt(0);
-          return diff > 1 ? 'grade-below-far' : 'grade-below';
-        }
-      }
-      
-      // Fallback numeric grade comparison (percentages or other numerical formats)
-      const numGrade = parseFloat(grade);
-      const numMinExpected = parseFloat(minExpected);
-      
-      if (!isNaN(numGrade) && !isNaN(numMinExpected)) {
-        const diff = numGrade - numMinExpected;
-        
-        if (diff > 1) {
-          return 'grade-exceeding-high';
-        } else if (diff > 0) {
-          return 'grade-exceeding';
-        } else if (diff === 0) {
-          return 'grade-matching';
-        } else if (diff > -2) {
-          return 'grade-below';
-        } else {
-          return 'grade-below-far';
-        }
-      }
-      
-      // For other formats, just do a basic string comparison
-      return grade >= minExpected ? 'grade-exceeding' : 'grade-below';
+      // Fallback if examType doesn't match or for other types not explicitly handled
+      if (gradeStr === minExpectedStr) return 'grade-matching';
+      // Basic comparison if no other rules hit - consider if this is too simple
+      // For example, if grade > minExpected, it could be 'grade-above'
+      // but without knowing the scale, it's hard to determine significance.
+      // Defaulting to no class or a simple match is safer here.
+
+      return ''; // Default no class
     }
     
     // Render all subjects in a single grid with color coding by type
