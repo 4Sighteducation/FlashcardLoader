@@ -70,7 +70,7 @@ if (window.reportProfilesInitialized) {
   let activeRequests = {}; // Track active AJAX requests
   let profileCache = {}; // Cache for student profile data
   const CACHE_TTL = 10000; // Cache TTL: 10 seconds (was 5 * 60 * 1000 or 0 for debugging)
-  const API_COOLDOWN = 1000; // 1 second cooldown between API requests for the same resource
+  const API_COOLDOWN = 1250; // MODIFIED: Increased from 1000ms to 1250ms
   let lastRequestTimes = {}; // Track timestamps of last requests by resource type
   let isProcessingStudent = false; // Flag to prevent concurrent student processing
 
@@ -413,12 +413,16 @@ if (window.reportProfilesInitialized) {
     // If student context hasn't changed AND profile is already rendered, skip.
     if (potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) {
       // debugLog("Student ID same, profile rendered. Skipping.");
-      return; 
+      // Ensure loading class is removed if we bail here, though it shouldn't have been added.
+      document.body.classList.remove('report-profile-loading');
+      return;
     }
 
-    // --- New student context or first render for this student --- 
+    // --- New student context or first render for this student ---
+    // Show loading indicator immediately if we are proceeding
+    showLoadingIndicator(profileContainer);
     debugLog(`New student context or first render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
-    showLoadingIndicator(profileContainer); // Explicitly show loading indicator here
+    // showLoadingIndicator(profileContainer); // MOVED UP - Explicitly show loading indicator here
 
     // Cancel requests for previous student if ID is actually changing.
     if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
@@ -494,7 +498,11 @@ if (window.reportProfilesInitialized) {
 
   // Show a loading indicator in the profile container
   function showLoadingIndicator(profileContainer) {
-    if (!profileContainer) return;
+    if (!profileContainer) {
+      document.body.classList.remove('report-profile-loading'); // Ensure class is removed if container gone
+      return;
+    }
+    document.body.classList.add('report-profile-loading'); // Add class to body
     
     // Create a loading indicator with VESPA styling
     const loadingHTML = `
@@ -506,7 +514,6 @@ if (window.reportProfilesInitialized) {
     
     // Add the loading indicator to the container
     profileContainer.innerHTML = loadingHTML;
-    document.body.classList.add('report-profile-loading'); // Add class to body
     debugLog("Loading indicator displayed");
   }
 
@@ -1180,7 +1187,9 @@ if (window.reportProfilesInitialized) {
       if(masterIcon) masterIcon.innerHTML = '💾 Saving...'; // Unicode for floppy disk
       showSavingOverlay(); // Show saving overlay
 
-      // showLoadingIndicator(profileContainer); // We'll use a modal or finer-grained feedback
+      // Update overlay text for the first major step
+      const savingOverlayTextElement = document.getElementById('report-profile-saving-overlay')?.querySelector('.profile-loading-text');
+      if (savingOverlayTextElement) savingOverlayTextElement.textContent = 'Saving subject details (1/2)...';
 
       const gradeInputs = Array.from(profileContainer.querySelectorAll('input.grade-input-dynamic'));
       const optionalGradeInputs = Array.from(profileContainer.querySelectorAll('input.optional-grade-input'));
@@ -1309,6 +1318,8 @@ if (window.reportProfilesInitialized) {
             const mainProfileRecordId = profileToUpdateInCache.id; // ID of the object_112 record
             if (mainProfileRecordId) {
               debugLog(`Attempting to update main profile (object_112) record ID: ${mainProfileRecordId}`);
+              if (savingOverlayTextElement) savingOverlayTextElement.textContent = 'Updating student summary (2/2)...';
+
               const dataToUpdateInObject112 = {};
               let hasSubjectFieldsToUpdate = false;
               for (let i = 1; i <= 15; i++) {
@@ -1338,6 +1349,7 @@ if (window.reportProfilesInitialized) {
                   );
                   debugLog(`Successfully updated main profile (object_112) record ID: ${mainProfileRecordId} with new subject JSONs.`);
                   saveMessage += " Main profile updated.";
+                  if (savingOverlayTextElement) savingOverlayTextElement.textContent = 'Finalizing...'; // Brief message before hide
                 } catch (obj112Error) {
                   console.error(`[ReportProfiles] Error updating main profile (object_112) record ID ${mainProfileRecordId}:`, obj112Error);
                   debugLog(`[ReportProfiles] Error updating main profile (object_112) record ID ${mainProfileRecordId}`, { error: obj112Error.message, responseText: obj112Error.responseText });
@@ -1482,7 +1494,9 @@ if (window.reportProfilesInitialized) {
   function renderStudentProfile(profileData, profileContainer) {
     if (!profileData) {
       debugLog("Cannot render profile: No profile data provided");
-      document.body.classList.remove('report-profile-loading'); // Remove loading class
+      document.body.classList.remove('report-profile-loading'); // Remove loading class from body
+      // Also ensure profile container is cleared if it was showing a loader
+      if(profileContainer) profileContainer.innerHTML = '<div class="no-profile-data">No profile data available.</div>';
       return;
     }
     debugLog("renderStudentProfile called. isProfileInEditMode:", isProfileInEditMode); // Confirm isProfileInEditMode state
