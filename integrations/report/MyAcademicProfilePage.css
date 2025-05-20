@@ -1,1 +1,381 @@
+/* MyAcademicProfilePage.css */
+/* Styles for the academic profile display, adapted from copyofHomepage.js CSS */
 
+.vespa-profile-display {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #ffffff;
+  background-color: #23356f;
+  line-height: 1.4;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 0 auto; /* Optional: if you want to center it like the homepage, but depends on parent container */
+}
+
+.vespa-profile-display .vespa-section {
+  background-color: #2a3c7a;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 16px;
+  margin-bottom: 24px;
+  border: 2px solid #079baa;
+}
+
+.vespa-profile-display .vespa-section-title {
+  color: #00e5db !important; /* Ensure Knack doesn't override */
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #079baa;
+  display: flex;
+  align-items: center;
+}
+
+.vespa-profile-display .profile-info-button {
+  margin-left: 10px;
+  font-size: 16px;
+  color: #00e5db;
+  cursor: pointer;
+  border: 1px solid #00e5db;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.vespa-profile-display .profile-info-button:hover {
+  background-color: #00e5db;
+  color: #23356f;
+}
+
+/* Tooltip specific to this instance - ensure positioning context if changed from fixed */
+.vespa-profile-display #profileGradeInfoTooltipContainer .profile-info-tooltip {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #1c2b5f;
+  color: #ffffff;
+  border: 1px solid #00e5db;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+  z-index: 10002; /* High z-index to appear on top */
+  max-width: 500px;
+  width: 90%; /* Responsive width */
+  font-size: 0.95em;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+}
+
+.vespa-profile-display #profileGradeInfoTooltipContainer .profile-info-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.vespa-profile-display #profileGradeInfoTooltipContainer .profile-info-tooltip h4 {
+  color: #00e5db;
+  font-size: 1.2em;
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(0, 229, 219, 0.3);
+  padding-bottom: 10px;
+}
+
+.vespa-profile-display #profileGradeInfoTooltipContainer .profile-info-tooltip p {
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.vespa-profile-display #profileGradeInfoTooltipContainer .profile-info-tooltip strong {
+  color: #00e5db;
+}
+
+.vespa-profile-display #profileGradeInfoTooltipContainer .profile-info-tooltip-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  color: #00e5db;
+  cursor: pointer;
+  font-weight: bold;
+  transition: color 0.2s;
+}
+
+.vespa-profile-display #profileGradeInfoTooltipContainer .profile-info-tooltip-close:hover {
+  color: #ffffff;
+}
+
+.vespa-profile-display .profile-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vespa-profile-display .profile-details {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 4px;
+  background-color: #334285;
+  border-radius: 8px;
+  border: 1px solid rgba(7, 155, 170, 0.3);
+}
+
+.vespa-profile-display .profile-name {
+  font-size: 22px;
+  color: #00e5db;
+  margin-bottom: 8px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(7, 155, 170, 0.3);
+}
+
+.vespa-profile-display .profile-item {
+  margin-bottom: 3px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.vespa-profile-display .profile-label {
+  font-weight: 600;
+  color: #00e5db;
+  margin-right: 4px;
+  min-width: 80px; /* Ensures alignment */
+}
+
+.vespa-profile-display .profile-value {
+  color: #f0f0f0;
+}
+
+.vespa-profile-display .subjects-container {
+  flex: 2;
+  min-width: 280px;
+}
+
+.vespa-profile-display .subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.vespa-profile-display .subject-card {
+  background-color: #334285;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(7, 155, 170, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.vespa-profile-display .subject-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+
+.vespa-profile-display .subject-card.gcse {
+  background-color: #4B7F3D; /* Green from original theme */
+  border-color: rgba(170, 185, 7, 0.3);
+}
+
+.vespa-profile-display .subject-card.vocational {
+  background-color: #742a85; /* Purple from original theme */
+  border-color: rgba(170, 7, 185, 0.3);
+}
+
+.vespa-profile-display .subject-name {
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 4px;
+  font-size: 0.95em;
+}
+
+.vespa-profile-display .subject-meta {
+  font-size: 0.75em;
+  color: #e0e0e0; /* Slightly lighter than pure white for meta text */
+  margin-bottom: 3px;
+}
+
+.vespa-profile-display .grades-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #58639c; /* Lighter border for visibility on dark bg */
+}
+
+.vespa-profile-display .optional-grades-container {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+  font-size: 0.75em;
+}
+
+.vespa-profile-display .optional-grade-item {
+  text-align: center;
+  color: #e0e0e0;
+}
+
+.vespa-profile-display .optional-grade-item .optional-grade-label {
+  font-weight: 600;
+  color: #00e5db;
+  margin-right: 3px;
+}
+
+.vespa-profile-display .grade-item {
+  text-align: center;
+  flex: 1;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.vespa-profile-display .grade-label {
+  font-size: 0.7em;
+  color: #bdc1c6; /* Lighter gray for labels */
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.vespa-profile-display .grade-value {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #ffffff; /* Ensure grade values are white by default */
+}
+
+.vespa-profile-display .grade-exg { color: #00e5db; } /* EXG is a specific color */
+
+/* RAG Rating Colors */
+.vespa-profile-display .grade-significantly-above { color: #00E676 !important; }
+.vespa-profile-display .grade-above { color: #00C853 !important; }
+.vespa-profile-display .grade-matching { color: #4CAF50 !important; }
+.vespa-profile-display .grade-one-below { color: #FF9800 !important; }
+.vespa-profile-display .grade-two-below { color: #F44336 !important; }
+.vespa-profile-display .grade-far-below { color: #C62828 !important; }
+
+/* VESPA Scores Section */
+.vespa-profile-display .profile-vespa-scores-container {
+  padding: 15px 0px 10px 0px;
+  margin-top: 15px;
+}
+
+.vespa-profile-display .profile-vespa-scores-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #00e5db !important;
+  margin-bottom: 15px;
+  text-align: left;
+  padding-left: 8px; /* Align with profile item labels */
+  padding-bottom: 5px;
+  border-bottom: 2px solid #079baa;
+}
+
+.vespa-profile-display .vespa-scores-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 10px;
+  padding: 0px 8px; /* Align with profile items */
+}
+
+.vespa-profile-display .vespa-score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px; /* Adjusted min-width */
+  flex-basis: calc(100% / 6 - 10px); /* Aim for 6 items per row */
+  max-width: 90px;
+}
+
+.vespa-profile-display .vespa-score-circle {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 1.2em;
+  color: #ffffff; /* Default text color, overridden for yellow if needed */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease-out;
+}
+.vespa-profile-display .vespa-score-circle:hover {
+    transform: scale(1.05);
+}
+
+.vespa-profile-display .vespa-score-label {
+  font-size: 0.7em;
+  color: #00e5db;
+  text-transform: uppercase;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .vespa-profile-display .profile-info {
+    flex-direction: column;
+  }
+  .vespa-profile-display .subjects-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px; /* Slightly reduce gap */
+  }
+  .vespa-profile-display .profile-vespa-scores-container {
+    padding: 10px 0;
+  }
+  .vespa-profile-display .vespa-scores-grid {
+    gap: 5px;
+  }
+   .vespa-profile-display .vespa-score-item {
+    min-width: 60px;
+    flex-basis: calc(100% / 3 - 10px); /* 3 items per row on smaller screens */
+    max-width: 80px;
+  }
+  .vespa-profile-display .vespa-score-circle {
+    width: 50px;
+    height: 50px;
+    font-size: 1.1em;
+  }
+}
+
+@media (max-width: 480px) {
+  .vespa-profile-display .subjects-grid {
+    grid-template-columns: 1fr; /* Single column */
+  }
+  .vespa-profile-display .grade-item {
+    padding: 2px;
+  }
+  .vespa-profile-display .grade-value {
+    font-size: 1em;
+  }
+   .vespa-profile-display .profile-name {
+    font-size: 20px;
+  }
+  .vespa-profile-display .vespa-section-title {
+    font-size: 20px;
+  }
+  .vespa-profile-display .vespa-score-item {
+    min-width: 50px;
+    flex-basis: calc(100% / 3 - 8px); /* Still aim for 3, adjust gap if needed */
+  }
+  .vespa-profile-display .vespa-score-circle {
+    width: 45px;
+    height: 45px;
+    font-size: 1em;
+  }
+  .vespa-profile-display .profile-vespa-scores-title {
+    font-size: 15px;
+  }
+}
