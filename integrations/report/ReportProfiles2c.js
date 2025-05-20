@@ -359,6 +359,7 @@ if (window.reportProfilesInitialized) {
     let potentialStudentId = null;
     if (viewActivitiesButtonForId) {
       const buttonHref = viewActivitiesButtonForId.getAttribute('href') || '';
+      // CORRECTED REGEX:
       const idMatch = buttonHref.match(/\/([^\/]+)\/?$/);
       if (idMatch && idMatch[1]) {
         potentialStudentId = idMatch[1];
@@ -368,20 +369,22 @@ if (window.reportProfilesInitialized) {
       potentialStudentId = "USE_NAME:" + studentNameFromReportForId;
     }
 
-    debugLog("handleReportChanges triggered. Potential Student ID:", potentialStudentId, "Current lastRenderedProfileHash:", lastRenderedProfileHash); // Added granular logging
-
-    // If a processing cycle for the *same student* is already happening, bail out early.
-    if (isProcessingStudent && potentialStudentId === currentStudentId) {
-      debugLog("Skipping due to active processing for the same student.");
-      return;
+    // --- MODIFIED GUARDING LOGIC ---
+    if (isProcessingStudent) {
+        if (potentialStudentId === currentStudentId) {
+            debugLog("handleReportChanges: Already processing this student. Skipping.", { potentialStudentId });
+            return;
+        }
+        // If a new student trigger comes while processing an old one, the subsequent logic
+        // (cancelling old requests, setting new currentStudentId) will handle the transition.
+        debugLog("handleReportChanges: Currently processing another student. New trigger for:", { newStudent: potentialStudentId, oldStudent: currentStudentId });
     }
+    // --- END MODIFIED GUARDING LOGIC ---
 
     if (isUpdatingDOM) {
       debugLog("Skipping due to DOM update in progress.");
       return;
     }
-
-    // --- The rest of the logic proceeds if not caught by the above guards ---
 
     const backButton = document.querySelector('a.p-button[aria-label="BACK"]') || 
                        document.querySelector('button[aria-label="BACK"]');
@@ -391,10 +394,7 @@ if (window.reportProfilesInitialized) {
     if (!isOnStudentView || groupViewTable) {
       if (currentStudentId !== null || (profileContainer && profileContainer.innerHTML !== '')) {
           debugLog("Detected group view or non-student view, clearing profile");
-          clearProfileView(profileContainer); // This will also set currentStudentId = null and lastRenderedProfileHash = null
-          // currentStudentId = null; // Already handled by clearProfileView
-          // lastRenderedProfileHash = null; // Already handled by clearProfileView
-          isProcessingStudent = false; // Ensure flag is clear if we bail here
+          clearProfileView(profileContainer); 
       }
       return;
     }
@@ -402,20 +402,15 @@ if (window.reportProfilesInitialized) {
     if (!potentialStudentId) {
       debugLog("Could not determine student ID, clearing profile if necessary.");
       if (currentStudentId !== null || (profileContainer && profileContainer.innerHTML !== '')) {
-          clearProfileView(profileContainer); // Also handles currentStudentId and lastRenderedProfileHash
-          // currentStudentId = null;
-          // lastRenderedProfileHash = null;
-          isProcessingStudent = false; // Ensure flag is clear
+          clearProfileView(profileContainer);
       }
       return;
     }
 
-    // If student context hasn't changed AND profile is already rendered, skip.
-    // However, if profileContainer is not in DOM, we MUST re-render.
     let forceReRender = !document.contains(profileContainer);
     if (forceReRender) {
         debugLog("Profile container no longer in DOM. Forcing re-render.");
-        profileContainer = document.querySelector('#view_3015 .kn-rich_text__content'); // Re-acquire
+        profileContainer = document.querySelector('#view_3015 .kn-rich_text__content'); 
         if (!profileContainer) {
             debugLog("Failed to re-acquire profile container. Aborting render.");
             document.body.classList.remove('report-profile-loading');
@@ -424,78 +419,30 @@ if (window.reportProfilesInitialized) {
     }
 
     if (!forceReRender && potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) {
-      document.body.classList.remove('report-profile-loading');
-      return;
-    }
-
-    // --- New student context or first render for this student ---
-    // Show loading indicator immediately if we are proceeding
-    showLoadingIndicator(profileContainer); // Pass the potentially re-acquired container
-    debugLog(`New student context or (forced) re-render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
-
-    // Cancel requests for previous student if ID is actually changing.
-    if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
-      debugLog(`Student ID changed from ${currentStudentId} to ${potentialStudentId}. Cancelling old requests.`);
-      cancelActiveRequests(currentStudentId); // Use the actual old ID
+        document.body.classList.remove('report-profile-loading');
+        debugLog("handleReportChanges: Same student, not forced, hash matches. Skipping render.", { potentialStudentId });
+        return;
     }
     
-    currentStudentId = potentialStudentId;
-    isProcessingStudent = true; // Set flag: we are now officially processing this student
-    lastRenderedProfileHash = null; // Reset hash, forcing a new render if data is fetched
+    showLoadingIndicator(profileContainer);
+    debugLog(`New student context or (forced) re-render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
 
-    // Debounced processing logic remains the same
-    const debouncedProcess = debounce(async (studentIdentifier) => {
-      try {
-        // Reset isProcessingStudent if the debounced call is for an outdated studentId
-        // This can happen if user navigates quickly
-        if (studentIdentifier !== currentStudentId) {
-            debugLog(`Debounced call for ${studentIdentifier} is outdated (current is ${currentStudentId}). Halting this debounced path.`);
-            // Do not clear isProcessingStudent here, let the active currentStudentId process complete or clear it.
-            return;
-        }
-        debugLog(`Debounced processing for current student: ${studentIdentifier}`);
-        
-        // ... (rest of the try block from previous version: finding from cache or calling processStudentProfile/ById)
-        if (studentIdentifier.startsWith("USE_NAME:")) {
-          const studentName = studentIdentifier.substr(9);
-          // debugLog(`Processing student by name (debounced): ${studentName}`);
-          const cacheKey = `profile_name_${studentName}`; // Standardized cache key
-          if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
-            debugLog(`Using cached profile for student name: ${studentName}`);
-            renderStudentProfile(profileCache[cacheKey].data, profileContainer);
-          } else {
-            await processStudentProfile(studentName, profileContainer); 
-          }
-        } else {
-          // debugLog(`Processing student by ID (debounced): ${studentIdentifier}`);
-          const cacheKey = `profile_id_${studentIdentifier}`; // Standardized cache key
-          if (profileCache[cacheKey] && (Date.now() - profileCache[cacheKey].timestamp < CACHE_TTL)) {
-            debugLog(`Using cached profile for student ID: ${studentIdentifier}`);
-            renderStudentProfile(profileCache[cacheKey].data, profileContainer);
-          } else {
-            await processStudentProfileById(studentIdentifier, profileContainer); 
-          }
-        }
-      } catch (error) {
-        console.error("[ReportProfiles] Error during debounced student processing:", error);
-      } finally {
-        // Only clear isProcessingStudent if this debounced call was for the *still current* student
-        if (studentIdentifier === currentStudentId) {
-          isProcessingStudent = false; 
-          debugLog(`Processing finished for student: ${studentIdentifier}`);
-        } else {
-          debugLog(`Debounced call for ${studentIdentifier} finished, but current student is ${currentStudentId}. isProcessingStudent not cleared by this path.`);
-        }
-      }
-    }, 750);
+    if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
+      debugLog(`Student ID changed from ${currentStudentId} to ${potentialStudentId}. Cancelling old requests for ${currentStudentId}.`);
+      cancelActiveRequests(currentStudentId);
+    }
+    
+    previousStudentId = currentStudentId; 
+    currentStudentId = potentialStudentId; 
+    isProcessingStudent = true;         
+    lastRenderedProfileHash = null; 
 
-    debouncedProcess(currentStudentId);
+    debouncedProcess(currentStudentId); 
   }
 
   function clearProfileView(profileContainer) {
     const currentViewProfileContainer = document.querySelector('#view_3015 .kn-rich_text__content'); // Re-acquire
     if (currentViewProfileContainer) {
-      // Check if it's still in the DOM before modifying (though querySelector should give us a live one)
       if (document.contains(currentViewProfileContainer)) {
         currentViewProfileContainer.innerHTML = '';
       }
@@ -504,15 +451,17 @@ if (window.reportProfilesInitialized) {
       debugLog("Profile container not found during clearProfileView.");
     }
 
-    // Also remove the info tooltip if it exists in the body
     const tooltipElement = document.getElementById('reportProfileGradeInfoTooltip');
     if (tooltipElement && tooltipElement.parentNode) {
       tooltipElement.parentNode.removeChild(tooltipElement);
       debugLog("Report profile info tooltip removed");
     }
-    currentStudentId = null; // Reset current student ID
-    lastRenderedProfileHash = null; // IMPORTANT: Reset hash to force re-render next time
-    document.body.classList.remove('report-profile-loading'); // Ensure loading class is removed
+    
+    previousStudentId = currentStudentId; // Store who *was* current
+    currentStudentId = null; 
+    lastRenderedProfileHash = null; 
+    document.body.classList.remove('report-profile-loading'); 
+    // isProcessingStudent = false; // Let debouncedProcess.finally handle this for the specific student it was processing
   }
 
   // Show a loading indicator in the profile container
@@ -2580,5 +2529,6 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
+
 
 
