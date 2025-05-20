@@ -418,7 +418,8 @@ if (window.reportProfilesInitialized) {
 
     // --- New student context or first render for this student --- 
     debugLog(`New student context or first render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
-    
+    showLoadingIndicator(profileContainer); // Explicitly show loading indicator here
+
     // Cancel requests for previous student if ID is actually changing.
     if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
       debugLog(`Student ID changed from ${currentStudentId} to ${potentialStudentId}. Cancelling old requests.`);
@@ -428,7 +429,6 @@ if (window.reportProfilesInitialized) {
     currentStudentId = potentialStudentId;
     isProcessingStudent = true; // Set flag: we are now officially processing this student
     lastRenderedProfileHash = null; // Reset hash, forcing a new render if data is fetched
-    showLoadingIndicator(profileContainer);
 
     // Debounced processing logic remains the same
     const debouncedProcess = debounce(async (studentIdentifier) => {
@@ -498,20 +498,45 @@ if (window.reportProfilesInitialized) {
     
     // Create a loading indicator with VESPA styling
     const loadingHTML = `
-      <div id="vespa-profile">
-        <section class="vespa-section profile-section loading-profile">
-          <h2 class="vespa-section-title">Student Profile</h2>
-          <div class="profile-loading">
-            <div class="profile-loading-spinner"></div>
-            <div class="profile-loading-text">Loading student profile...</div>
-          </div>
-        </section>
+      <div id="vespa-profile-initial-loader" class="vespa-profile-loader-overlay">
+        <div class="profile-loading-spinner"></div>
+        <div class="profile-loading-text">Loading student profile...</div>
       </div>
     `;
     
     // Add the loading indicator to the container
     profileContainer.innerHTML = loadingHTML;
+    document.body.classList.add('report-profile-loading'); // Add class to body
     debugLog("Loading indicator displayed");
+  }
+
+  // NEW: Show a saving overlay
+  function showSavingOverlay() {
+    let savingOverlay = document.getElementById('report-profile-saving-overlay');
+    if (!savingOverlay) {
+      savingOverlay = document.createElement('div');
+      savingOverlay.id = 'report-profile-saving-overlay';
+      savingOverlay.className = 'vespa-profile-loader-overlay visible'; // Initially visible
+      savingOverlay.innerHTML = `
+        <div class="profile-loading-spinner"></div>
+        <div class="profile-loading-text">Saving changes...</div>
+      `;
+      document.body.appendChild(savingOverlay); // Append to body for full page overlay
+    } else {
+      savingOverlay.classList.add('visible');
+    }
+    document.body.classList.add('report-profile-saving');
+    debugLog("Saving overlay displayed");
+  }
+
+  // NEW: Hide the saving overlay
+  function hideSavingOverlay() {
+    const savingOverlay = document.getElementById('report-profile-saving-overlay');
+    if (savingOverlay) {
+      savingOverlay.classList.remove('visible');
+    }
+    document.body.classList.remove('report-profile-saving');
+    debugLog("Saving overlay hidden");
   }
 
   // Helper function to manage API requests with throttling
@@ -1152,7 +1177,8 @@ if (window.reportProfilesInitialized) {
       // --- CURRENTLY IN EDIT MODE, SO SAVE ALL --- 
       // Icon change is now handled by re-render after save ensures correct state display
       debugLog("Attempting to SAVE ALL grade changes.");
-      if(masterIcon) masterIcon.innerHTML = '\uD83D\uDCBE Saving...'; // Immediate feedback on save click
+      if(masterIcon) masterIcon.innerHTML = '💾 Saving...'; // Unicode for floppy disk
+      showSavingOverlay(); // Show saving overlay
 
       // showLoadingIndicator(profileContainer); // We'll use a modal or finer-grained feedback
 
@@ -1192,6 +1218,7 @@ if (window.reportProfilesInitialized) {
               processStudentProfileById(currentStudentId, profileContainer); 
           }
           showTemporaryMessage("No editable fields were found or no changes made.", 'info');
+          hideSavingOverlay(); // Hide overlay regardless of success or failure here
           return; // Exit save process
       }
 
@@ -1345,6 +1372,7 @@ if (window.reportProfilesInitialized) {
           debugLog("Cache missing unexpectedly after save (key:", activeProfileCacheKey,"), forcing re-fetch. Current student ID:", currentStudentId);
           await processStudentProfileById(currentStudentId, profileContainer);
         }
+        hideSavingOverlay(); // Hide overlay regardless of success or failure here
         showTemporaryMessage(saveMessage, messageType);
 
       } catch (error) {
@@ -1352,6 +1380,7 @@ if (window.reportProfilesInitialized) {
         debugLog("[ReportProfiles] Error during Promise.all for grade updates", { error: error.message, stack: error.stack });
         // Attempt to re-render in display mode even after a critical error
         isProfileInEditMode = false; // Ensure we are out of edit mode
+        hideSavingOverlay(); // Hide overlay on critical error too
         if (profileCache[currentStudentId] && profileCache[currentStudentId].data) {
           renderStudentProfile(profileCache[currentStudentId].data, profileContainer);
         } else {
@@ -1453,6 +1482,7 @@ if (window.reportProfilesInitialized) {
   function renderStudentProfile(profileData, profileContainer) {
     if (!profileData) {
       debugLog("Cannot render profile: No profile data provided");
+      document.body.classList.remove('report-profile-loading'); // Remove loading class
       return;
     }
     debugLog("renderStudentProfile called. isProfileInEditMode:", isProfileInEditMode); // Confirm isProfileInEditMode state
@@ -1498,7 +1528,7 @@ if (window.reportProfilesInitialized) {
       if (isProfileInEditMode) {
         masterEditIconHTML = `<span class="master-edit-icon save-icon" title="Save All Changes">\uD83D\uDCBE Save All</span>`; // Changed to Unicode escape
       } else {
-        masterEditIconHTML = `<span class="master-edit-icon edit-icon" title="Edit All Grades">✏️ Edit Grades</span>`;
+        masterEditIconHTML = `<span class="master-edit-icon edit-icon" title="Edit All Grades">✏️ Edit Grades</span>`; // Changed to Unicode escape
       }
     }
 
@@ -1754,6 +1784,7 @@ if (window.reportProfilesInitialized) {
       // Clear container and add content
       profileContainer.innerHTML = profileHTML;
       lastRenderedProfileHash = profileHash; // Ensure hash is updated AFTER innerHTML set, before DOM lock release
+      document.body.classList.remove('report-profile-loading'); // Remove loading class from body
       
       // Add event listener to the new master edit/save icon
       const masterIcon = profileContainer.querySelector('.master-edit-icon');
@@ -2409,6 +2440,44 @@ if (window.reportProfilesInitialized) {
         /* text-align: center; */ /* Already there */
         /* color: #e0e0e0; */ /* Already there */
       }
+
+      /* NEW: Styles for general loading/saving overlay */
+      .vespa-profile-loader-overlay {
+        position: fixed; /* Full page overlay */
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10005; /* High z-index */
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+      }
+      .vespa-profile-loader-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      .vespa-profile-loader-overlay .profile-loading-spinner { /* Reuse spinner style */
+        width: 60px;
+        height: 60px;
+        border-top-color: #00e5db; /* Ensure Vespa color */
+        margin-bottom: 20px;
+      }
+      .vespa-profile-loader-overlay .profile-loading-text { /* Reuse text style */
+        color: #ffffff; /* White text on dark overlay */
+        font-size: 18px;
+      }
+      
+      /* Body class to potentially hide page scroll during full overlay */
+      body.report-profile-loading #knack-body, /* Target Knack's main body wrapper */
+      body.report-profile-saving #knack-body {
+        /* overflow: hidden; /* Optional: prevent scrolling while overlay is active */
+      }
     `;
   }
 
@@ -2463,4 +2532,5 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
+
 
