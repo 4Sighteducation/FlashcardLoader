@@ -20,6 +20,9 @@ if (window.reportProfilesInitialized) {
   // NEW: Global state for profile edit mode
   let isProfileInEditMode = false; // Default to false (display mode)
 
+  // NEW: Global reference for the profile loading overlay
+  let profileLoadingOverlayElement = null;
+
   // Constants
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
@@ -420,7 +423,7 @@ if (window.reportProfilesInitialized) {
 
     // --- New student context or first render for this student ---
     // Show loading indicator immediately if we are proceeding
-    showLoadingIndicator(profileContainer);
+    showLoadingIndicator();
     debugLog(`New student context or first render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
     // showLoadingIndicator(profileContainer); // MOVED UP - Explicitly show loading indicator here
 
@@ -494,27 +497,41 @@ if (window.reportProfilesInitialized) {
       tooltipElement.parentNode.removeChild(tooltipElement);
       debugLog("Report profile info tooltip removed");
     }
+    hideLoadingIndicator(); // Ensure loading overlay is hidden
   }
 
   // Show a loading indicator in the profile container
-  function showLoadingIndicator(profileContainer) {
-    if (!profileContainer) {
-      document.body.classList.remove('report-profile-loading'); // Ensure class is removed if container gone
-      return;
+  function showLoadingIndicator(/* profileContainer no longer needed for overlay logic */) {
+    document.body.classList.add('report-profile-loading'); // General state indicator
+
+    if (!profileLoadingOverlayElement) {
+        profileLoadingOverlayElement = document.createElement('div');
+        profileLoadingOverlayElement.id = 'report-profile-main-loader-overlay'; // New ID for the body-appended overlay
+        profileLoadingOverlayElement.className = 'vespa-profile-loader-overlay'; // Use existing overlay styles
+        profileLoadingOverlayElement.innerHTML = `
+            <div class="profile-loading-spinner"></div>
+            <div class="profile-loading-text">Loading student profile...</div>
+        `;
+        document.body.appendChild(profileLoadingOverlayElement);
     }
-    document.body.classList.add('report-profile-loading'); // Add class to body
-    
-    // Create a loading indicator with VESPA styling
-    const loadingHTML = `
-      <div id="vespa-profile-initial-loader" class="vespa-profile-loader-overlay">
-        <div class="profile-loading-spinner"></div>
-        <div class="profile-loading-text">Loading student profile...</div>
-      </div>
-    `;
-    
-    // Add the loading indicator to the container
-    profileContainer.innerHTML = loadingHTML;
-    debugLog("Loading indicator displayed");
+    profileLoadingOverlayElement.classList.add('visible');
+    debugLog("Full page profile loading overlay displayed via showLoadingIndicator");
+  }
+
+  // NEW: Hide the profile loading overlay
+  function hideLoadingIndicator() {
+    document.body.classList.remove('report-profile-loading'); // General state indicator
+
+    if (profileLoadingOverlayElement) {
+        profileLoadingOverlayElement.classList.remove('visible');
+        // Optional: To clean up the DOM if the overlay is not frequently re-shown immediately.
+        // If it's toggled rapidly, keeping the element might be slightly more performant.
+        // if (profileLoadingOverlayElement.parentNode) {
+        //     document.body.removeChild(profileLoadingOverlayElement);
+        // }
+        // profileLoadingOverlayElement = null;
+    }
+    debugLog("Full page profile loading overlay hidden via hideLoadingIndicator");
   }
 
   // NEW: Show a saving overlay
@@ -612,8 +629,8 @@ if (window.reportProfilesInitialized) {
 
   async function processStudentProfileById(studentId, profileContainer) {
     try {
-      // Show loading indicator immediately
-      showLoadingIndicator(profileContainer);
+      // Show loading indicator immediately - now handled by handleReportChanges
+      // showLoadingIndicator(profileContainer); // REMOVED - handleReportChanges calls global showLoadingIndicator()
       
       // Step 1: Get student record directly by ID
       debugLog(`Looking up student record with ID: ${studentId}`);
@@ -747,14 +764,15 @@ if (window.reportProfilesInitialized) {
       }
     } catch (error) {
       console.error('[ReportProfiles] Error processing student profile by ID:', error);
+      hideLoadingIndicator(); // Ensure overlay is hidden on error
     }
   }
 
   // Legacy function - updated with request management
   async function processStudentProfile(studentName, profileContainer) {
     try {
-      // Show loading indicator immediately
-      showLoadingIndicator(profileContainer);
+      // Show loading indicator immediately - now handled by handleReportChanges
+      // showLoadingIndicator(profileContainer); // REMOVED - handleReportChanges calls global showLoadingIndicator()
       
       // Step 1: Find student record by name to get email
       debugLog(`Looking up student record for: ${studentName}`);
@@ -818,6 +836,7 @@ if (window.reportProfilesInitialized) {
       }
     } catch (error) {
       console.error('[ReportProfiles] Error processing student profile:', error);
+      hideLoadingIndicator(); // Ensure overlay is hidden on error
     }
   }
 
@@ -1494,7 +1513,8 @@ if (window.reportProfilesInitialized) {
   function renderStudentProfile(profileData, profileContainer) {
     if (!profileData) {
       debugLog("Cannot render profile: No profile data provided");
-      document.body.classList.remove('report-profile-loading'); // Remove loading class from body
+      // document.body.classList.remove('report-profile-loading'); // REMOVED - hideLoadingIndicator will handle this
+      hideLoadingIndicator();
       // Also ensure profile container is cleared if it was showing a loader
       if(profileContainer) profileContainer.innerHTML = '<div class="no-profile-data">No profile data available.</div>';
       return;
@@ -1798,7 +1818,8 @@ if (window.reportProfilesInitialized) {
       // Clear container and add content
       profileContainer.innerHTML = profileHTML;
       lastRenderedProfileHash = profileHash; // Ensure hash is updated AFTER innerHTML set, before DOM lock release
-      document.body.classList.remove('report-profile-loading'); // Remove loading class from body
+      // document.body.classList.remove('report-profile-loading'); // REMOVED - hideLoadingIndicator will handle this
+      hideLoadingIndicator();
       
       // Add event listener to the new master edit/save icon
       const masterIcon = profileContainer.querySelector('.master-edit-icon');
@@ -2491,6 +2512,10 @@ if (window.reportProfilesInitialized) {
       body.report-profile-loading #knack-body, /* Target Knack's main body wrapper */
       body.report-profile-saving #knack-body {
         /* overflow: hidden; /* Optional: prevent scrolling while overlay is active */
+      }
+      /* NEW class for when the main profile content is loading, distinct from saving */
+      body.report-profile-content-loading #knack-body { 
+          /* overflow: hidden; /* Optional: prevent scrolling */
       }
     `;
   }
