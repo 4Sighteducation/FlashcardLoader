@@ -1657,13 +1657,13 @@
       
       /* Grade indicators - will be dynamically applied in the rendering function */
       .grade-significantly-above {
-        color: #00E676; /* Vivid Green/Teal */
+        color: #00E676; /* Brightest Green/Teal */
       }
       .grade-above {
-        color: #4CAF50; /* Standard Green */
+        color: #00C853; /* Vivid Green */
       }
       .grade-matching {
-        color: #2196F3; /* Blue */
+        color: #4CAF50; /* Standard Green */
       }
       .grade-one-below {
         color: #FF9800; /* Orange */
