@@ -3,7 +3,7 @@
 // Adapted for Multi-App Loader system
 
 // Global config variable - will be set by loader
-let REPORTPROFILE_CONFIG = null;
+// let REPORTPROFILE_CONFIG = null; // Moved to prevent re-declaration errors
 
 // Guard to prevent re-initialization
 if (window.reportProfilesInitialized) {
@@ -14,13 +14,16 @@ if (window.reportProfilesInitialized) {
 } else {
   window.reportProfilesInitialized = true;
 
+  // Moved REPORTPROFILE_CONFIG declaration here
+  let REPORTPROFILE_CONFIG = null;
+
   // NEW: Global state for profile edit mode
-  let isProfileInEditMode = false;
+  let isProfileInEditMode = true;
 
   // Constants
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
-  const DEBUG_MODE = false; // Enable console logging
+  const DEBUG_MODE = true; // Enable console logging
   const CHECK_INTERVAL = 500; // Check every 500ms
   const MAX_CHECKS = 20; // Give up after 10 seconds (20 checks)
 
@@ -1502,9 +1505,37 @@ if (window.reportProfilesInitialized) {
 
     if (subjectData && subjectData.length > 0) {
       subjectData.forEach(subject => {
-        const originalSubjectRecordId = subject.originalRecordId; 
+        const originalSubjectRecordId = subject.originalRecordId;
         if (!originalSubjectRecordId && isEditableByStaff()) {
           console.warn(`[ReportProfiles] Subject '${subject.subject}' is missing originalRecordId. Editing will not be possible for this subject.`);
+          // ADDED DIAGNOSTIC LOGGING START
+          let foundRawJsonForSubject = false;
+          for (let k = 1; k <= 15; k++) {
+            const checkFieldKey = `sub${k}`;
+            const checkFieldId = FIELD_MAPPING[checkFieldKey];
+            if (profileData[checkFieldId]) {
+                let rawJsonString = profileData[checkFieldId];
+                if (typeof rawJsonString === 'string') {
+                    try {
+                        const tempParsedSubject = safeParseJSON(rawJsonString);
+                        // Check if this parsed object matches the 'subject' object from subjectData
+                        // This check relies on subject.subject being a reasonably unique identifier here.
+                        if (tempParsedSubject && tempParsedSubject.subject === subject.subject) {
+                             debugLog(`[ReportProfiles] Raw JSON for subject '${subject.subject}' (from profile field ${checkFieldId}) which is missing originalRecordId:`, rawJsonString);
+                             foundRawJsonForSubject = true;
+                             break; 
+                        }
+                    } catch (parseError) {
+                        // This specific rawJsonString might not be the one corresponding to the current 'subject' object,
+                        // or it might be malformed. The main parsing loop for subjectData already logs general parsing errors.
+                    }
+                }
+            }
+          }
+          if (!foundRawJsonForSubject) {
+              debugLog(`[ReportProfiles] Could not find raw JSON in profileData corresponding to subject '${subject.subject}' to log its content, though originalRecordId is missing.`);
+          }
+          // ADDED DIAGNOSTIC LOGGING END
         }
 
         const currentGrade = sanitizeField(subject.currentGrade || 'N/A');
@@ -2374,6 +2405,5 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
-
 
 
