@@ -391,9 +391,9 @@ if (window.reportProfilesInitialized) {
     if (!isOnStudentView || groupViewTable) {
       if (currentStudentId !== null || (profileContainer && profileContainer.innerHTML !== '')) {
           debugLog("Detected group view or non-student view, clearing profile");
-          clearProfileView(profileContainer);
-          currentStudentId = null;
-          lastRenderedProfileHash = null;
+          clearProfileView(profileContainer); // This will also set currentStudentId = null and lastRenderedProfileHash = null
+          // currentStudentId = null; // Already handled by clearProfileView
+          // lastRenderedProfileHash = null; // Already handled by clearProfileView
           isProcessingStudent = false; // Ensure flag is clear if we bail here
       }
       return;
@@ -402,27 +402,36 @@ if (window.reportProfilesInitialized) {
     if (!potentialStudentId) {
       debugLog("Could not determine student ID, clearing profile if necessary.");
       if (currentStudentId !== null || (profileContainer && profileContainer.innerHTML !== '')) {
-          clearProfileView(profileContainer);
-          currentStudentId = null;
-          lastRenderedProfileHash = null;
+          clearProfileView(profileContainer); // Also handles currentStudentId and lastRenderedProfileHash
+          // currentStudentId = null;
+          // lastRenderedProfileHash = null;
           isProcessingStudent = false; // Ensure flag is clear
       }
       return;
     }
 
     // If student context hasn't changed AND profile is already rendered, skip.
-    if (potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) {
-      // debugLog("Student ID same, profile rendered. Skipping.");
-      // Ensure loading class is removed if we bail here, though it shouldn't have been added.
+    // However, if profileContainer is not in DOM, we MUST re-render.
+    let forceReRender = !document.contains(profileContainer);
+    if (forceReRender) {
+        debugLog("Profile container no longer in DOM. Forcing re-render.");
+        profileContainer = document.querySelector('#view_3015 .kn-rich_text__content'); // Re-acquire
+        if (!profileContainer) {
+            debugLog("Failed to re-acquire profile container. Aborting render.");
+            document.body.classList.remove('report-profile-loading');
+            return;
+        }
+    }
+
+    if (!forceReRender && potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) {
       document.body.classList.remove('report-profile-loading');
       return;
     }
 
     // --- New student context or first render for this student ---
     // Show loading indicator immediately if we are proceeding
-    showLoadingIndicator(profileContainer);
-    debugLog(`New student context or first render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
-    // showLoadingIndicator(profileContainer); // MOVED UP - Explicitly show loading indicator here
+    showLoadingIndicator(profileContainer); // Pass the potentially re-acquired container
+    debugLog(`New student context or (forced) re-render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
 
     // Cancel requests for previous student if ID is actually changing.
     if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
@@ -484,22 +493,36 @@ if (window.reportProfilesInitialized) {
   }
 
   function clearProfileView(profileContainer) {
-    if (profileContainer) {
-      profileContainer.innerHTML = '';
+    const currentViewProfileContainer = document.querySelector('#view_3015 .kn-rich_text__content'); // Re-acquire
+    if (currentViewProfileContainer) {
+      // Check if it's still in the DOM before modifying (though querySelector should give us a live one)
+      if (document.contains(currentViewProfileContainer)) {
+        currentViewProfileContainer.innerHTML = '';
+      }
       debugLog("Profile view cleared");
+    } else {
+      debugLog("Profile container not found during clearProfileView.");
     }
+
     // Also remove the info tooltip if it exists in the body
     const tooltipElement = document.getElementById('reportProfileGradeInfoTooltip');
     if (tooltipElement && tooltipElement.parentNode) {
       tooltipElement.parentNode.removeChild(tooltipElement);
       debugLog("Report profile info tooltip removed");
     }
+    currentStudentId = null; // Reset current student ID
+    lastRenderedProfileHash = null; // IMPORTANT: Reset hash to force re-render next time
+    document.body.classList.remove('report-profile-loading'); // Ensure loading class is removed
   }
 
   // Show a loading indicator in the profile container
   function showLoadingIndicator(profileContainer) {
-    if (!profileContainer) {
-      document.body.classList.remove('report-profile-loading'); // Ensure class is removed if container gone
+    // Always try to get the freshest container reference inside this function
+    const currentProfileContainer = document.querySelector('#view_3015 .kn-rich_text__content');
+
+    if (!currentProfileContainer) {
+      debugLog("[showLoadingIndicator] Profile container not found. Cannot display loading indicator.");
+      document.body.classList.remove('report-profile-loading'); // Ensure class is removed
       return;
     }
     document.body.classList.add('report-profile-loading'); // Add class to body
@@ -513,7 +536,7 @@ if (window.reportProfilesInitialized) {
     `;
     
     // Add the loading indicator to the container
-    profileContainer.innerHTML = loadingHTML;
+    currentProfileContainer.innerHTML = loadingHTML;
     debugLog("Loading indicator displayed");
   }
 
@@ -1492,11 +1515,22 @@ if (window.reportProfilesInitialized) {
   }
 
   function renderStudentProfile(profileData, profileContainer) {
+    // Always try to get the freshest container reference right before rendering.
+    const currentRenderProfileContainer = document.querySelector('#view_3015 .kn-rich_text__content');
+
+    if (!currentRenderProfileContainer) {
+      debugLog("[renderStudentProfile] Profile container #view_3015 not found. Cannot render profile.");
+      document.body.classList.remove('report-profile-loading');
+      return;
+    }
+    // Use this re-acquired container for all subsequent operations in this function.
+    profileContainer = currentRenderProfileContainer; 
+
     if (!profileData) {
       debugLog("Cannot render profile: No profile data provided");
       document.body.classList.remove('report-profile-loading'); // Remove loading class from body
       // Also ensure profile container is cleared if it was showing a loader
-      if(profileContainer) profileContainer.innerHTML = '<div class="no-profile-data">No profile data available.</div>';
+      profileContainer.innerHTML = '<div class="no-profile-data">No profile data available.</div>';
       return;
     }
     debugLog("renderStudentProfile called. isProfileInEditMode:", isProfileInEditMode); // Confirm isProfileInEditMode state
@@ -1796,7 +1830,7 @@ if (window.reportProfilesInitialized) {
     // Delay rendering slightly to ensure DOM stability
     setTimeout(() => {
       // Clear container and add content
-      profileContainer.innerHTML = profileHTML;
+      profileContainer.innerHTML = profileHTML; // Uses the re-acquired profileContainer from start of function
       lastRenderedProfileHash = profileHash; // Ensure hash is updated AFTER innerHTML set, before DOM lock release
       document.body.classList.remove('report-profile-loading'); // Remove loading class from body
       
