@@ -1094,7 +1094,7 @@ if (window.reportProfilesInitialized) {
     if (value === null || value === undefined) return "";
     const strValue = String(value);
     let sanitized = strValue.replace(/<[^>]*?>/g, "");
-    sanitized = sanitized.replace(/[*_~`#]/g, "");
+    sanitized = sanitized.replace(/[_~`#]/g, ""); // REMOVED asterisk from this regex
     sanitized = sanitized
       .replace(/&amp;/g, "&")
       .replace(/&lt;/g, "<")
@@ -1667,7 +1667,7 @@ if (window.reportProfilesInitialized) {
 
         // Current Grade Display
         if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
-          currentGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${currentGrade === 'N/A' ? '' : currentGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132" placeholder="N/A"></div>`;
+          currentGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${currentGrade === 'N/A' ? '' : subject.currentGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132" placeholder="N/A"></div>`;
         } else {
           currentGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${currentGradeColorClass}">${currentGrade}</span></div>`;
         }
@@ -1678,7 +1678,7 @@ if (window.reportProfilesInitialized) {
 
         // Target Grade Display
         if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
-          targetGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${targetGrade === 'N/A' ? '' : targetGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135" placeholder="N/A"></div>`;
+          targetGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${targetGrade === 'N/A' ? '' : subject.targetGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135" placeholder="N/A"></div>`;
         } else {
           targetGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${targetGradeColorClass}">${targetGrade}</span></div>`;
         }
@@ -1693,12 +1693,12 @@ if (window.reportProfilesInitialized) {
           // EDIT MODE: Render inputs for optional fields
           optionalGradesHTML += `<div class="optional-grade-item">`;
           optionalGradesHTML += `<span class="optional-grade-label">Eff:</span>`;
-          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.effortGrade && subject.effortGrade !== 'N/A' ? sanitizeField(subject.effortGrade) : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3133" placeholder="-">`;
+          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.effortGrade && subject.effortGrade !== 'N/A' ? subject.effortGrade : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3133" placeholder="-">`;
           optionalGradesHTML += `</div>`;
 
           optionalGradesHTML += `<div class="optional-grade-item">`;
           optionalGradesHTML += `<span class="optional-grade-label">Beh:</span>`;
-          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.behaviourGrade && subject.behaviourGrade !== 'N/A' ? sanitizeField(subject.behaviourGrade) : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3134" placeholder="-">`;
+          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.behaviourGrade && subject.behaviourGrade !== 'N/A' ? subject.behaviourGrade : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3134" placeholder="-">`;
           optionalGradesHTML += `</div>`;
           
           optionalGradesHTML += `<div class="optional-grade-item">`;
@@ -2220,15 +2220,15 @@ if (window.reportProfilesInitialized) {
       
       /* Grade indicators */
       #vespa-profile .grade-significantly-above {
-        color: #00E676; /* Vivid Green/Teal */
+        color: #00E676; /* Brightest Green/Teal */
       }
 
       #vespa-profile .grade-above {
-        color: #4CAF50; /* Standard Green */
+        color: #00C853; /* Vivid Green */
       }
       
       #vespa-profile .grade-matching {
-        color: #2196F3; /* Blue */
+        color: #4CAF50; /* Standard Green */
       }
       
       #vespa-profile .grade-one-below {
