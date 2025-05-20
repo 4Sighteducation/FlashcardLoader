@@ -1,5 +1,7 @@
 // MyAcademicProfilePage.js - Student Academic Profile Display Script
 (function() {
+  console.log("[MyAcademicProfile] Script loaded and executing (minimal).");
+
   // --- Configuration (will be populated by the loader) ---
   let SCRIPT_CONFIG = {
     knackAppId: '',
@@ -470,73 +472,36 @@
 
   // --- Main Initialization Function ---
   window.initializeMyAcademicProfilePage = async function() {
-    if (window.MY_ACADEMIC_PROFILE_CONFIG) {
-      SCRIPT_CONFIG = { ...SCRIPT_CONFIG, ...window.MY_ACADEMIC_PROFILE_CONFIG };
-    } else {
-      console.error("[MyAcademicProfile] Error: MY_ACADEMIC_PROFILE_CONFIG not found.");
-      // Try to display error in a fallback container if possible
-      const fallbackContainer = document.querySelector(SCRIPT_CONFIG.elementSelector || '#view_3041 .kn-rich-text');
-      if (fallbackContainer) {
-        fallbackContainer.innerHTML = '<p style="padding:20px; text-align:center; color:#F44336;">Configuration Error: MY_ACADEMIC_PROFILE_CONFIG not found.</p>';
-      }
-      return;
-    }
-    debugLog("Initializing My Academic Profile Page with config", SCRIPT_CONFIG);
+    console.log("[MyAcademicProfile] initializeMyAcademicProfilePage CALLED (minimal).");
+    
+    // All original content of this function is commented out for the minimal test.
+    // We only want to see if this function itself is called by the loader.
 
-    waitForElement(
-      SCRIPT_CONFIG.elementSelector,
-      async function(container) { // Success callback: container is found
-        container.innerHTML = '<p style="padding:20px; text-align:center; color:#079baa;">Loading academic profile...</p>';
-        applyStyles();
+    // let SCRIPT_CONFIG_LOCAL = {}; // Define local to avoid SCRIPT_CONFIG undefined issues if used below
+    // if (window.MY_ACADEMIC_PROFILE_CONFIG) {
+    //   SCRIPT_CONFIG_LOCAL = { ...(window.MY_ACADEMIC_PROFILE_CONFIG || {}) }; // Spread MY_ACADEMIC_PROFILE_CONFIG into local
+    //   console.log("[MyAcademicProfile] Config received (minimal):", SCRIPT_CONFIG_LOCAL);
+    // } else {
+    //   console.error("[MyAcademicProfile] Error: MY_ACADEMIC_PROFILE_CONFIG not found (minimal).");
+    //   return;
+    // }
 
-        if (typeof Knack === 'undefined' || typeof Knack.getUserAttributes !== 'function') {
-          debugLog("Knack context or getUserAttributes not available.");
-          container.innerHTML = '<p style="padding:20px; text-align:center; color:#F44336;">Error: Knack context not available.</p>';
-          return;
-        }
-        const user = Knack.getUserAttributes();
-        if (!user || !user.id) {
-          debugLog("Cannot get Knack user attributes or user ID.");
-          container.innerHTML = '<p style="padding:20px; text-align:center; color:#F44336;">Error: Could not retrieve user information.</p>';
-          return;
-        }
-        debugLog("Current Knack user", user);
+    // const targetSelector = SCRIPT_CONFIG_LOCAL.elementSelector;
+    // if (!targetSelector) {
+    //    console.error("[MyAcademicProfile] No elementSelector in config (minimal).");
+    //    return;
+    // }
 
-        try {
-          const userProfile = await fetchUserProfileFromObject112(user.id);
-          if (!userProfile) {
-            container.innerHTML = '<p style="padding:20px; text-align:center; color:#FF9800;">Could not load academic profile. Please ensure you have visited the homepage first to initialize your profile.</p>';
-            return;
-          }
-          let vespaScores = null;
-          if (user.email) {
-            vespaScores = await fetchVespaScores(user.email);
-          }
-          container.innerHTML = renderProfileSection(userProfile, vespaScores);
-          setupProfileInfoTooltip(SCRIPT_CONFIG.elementSelector); // Pass the selector string
-        } catch (error) {
-          debugLog("Error during academic profile initialization", { error: error.message, stack: error.stack });
-          container.innerHTML = '<p style="padding:20px; text-align:center; color:#F44336;">An error occurred while loading the academic profile.</p>';
-        }
-      },
-      function(errorMessage) { // Error callback: container not found
-        // Attempt to display the error message in a fallback or the initially intended container (if it appears later but was missed)
-        let errorDisplayContainer = document.querySelector(SCRIPT_CONFIG.elementSelector);
-        if (!errorDisplayContainer) {
-            // If the specific selector still isn't found, try a more generic one within the view if possible
-            errorDisplayContainer = document.getElementById(SCRIPT_CONFIG.viewKey || 'view_3041') || document.body;
-            // As a last resort, create a temporary div on the body
-            if (errorDisplayContainer === document.body) {
-                const tempDiv = document.createElement('div');
-                tempDiv.id = "my-academic-profile-error-fallback";
-                document.body.prepend(tempDiv); // Prepend to make it visible
-                errorDisplayContainer = tempDiv;
-            }
-        }
-         if(errorDisplayContainer && typeof errorDisplayContainer.innerHTML !== 'undefined') {
-            errorDisplayContainer.innerHTML = `<p style="padding:20px; text-align:center; color:#F44336;">Initialization Error: ${errorMessage}</p>`;
-        }
-      }
-    );
+    // waitForElement(
+    //   targetSelector,
+    //   async function(container) { 
+    //     console.log("[MyAcademicProfile] Container element found by waitForElement (minimal):", container);
+    //     container.innerHTML = '<p style="padding:20px; text-align:center; color:#079baa;">Minimal Profile Page Loaded!</p>';
+    //     // applyStyles(); // Styles would also be minimal or non-functional here
+    //   },
+    //   function(errorMessage) { 
+    //     console.error(`[MyAcademicProfile] Error in waitForElement (minimal): ${errorMessage}`);
+    //   }
+    // );
   };
 })(); 
