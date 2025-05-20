@@ -18,7 +18,7 @@ if (window.reportProfilesInitialized) {
   let REPORTPROFILE_CONFIG = null;
 
   // NEW: Global state for profile edit mode
-  let isProfileInEditMode = true;
+  let isProfileInEditMode = false; // Default to false (display mode)
 
   // Constants
   const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -1182,15 +1182,16 @@ if (window.reportProfilesInitialized) {
       if (allInputs.length === 0) {
           debugLog("No input fields found. Aborting save all.");
           isProfileInEditMode = false; // Ensure mode is reset
+          lastRenderedProfileHash = null; // Force re-render to reflect mode change
           // Re-render to show text and correct icon, even if no changes
           if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
               renderStudentProfile(profileCache[activeProfileCacheKey].data, profileContainer);
           } else {
               // If cache is somehow gone, try to force a re-fetch in display mode.
-              lastRenderedProfileHash = null; 
+              // lastRenderedProfileHash = null; // Already set above
               processStudentProfileById(currentStudentId, profileContainer); 
           }
-          showTemporaryMessage("No changes detected to save.", 'info');
+          showTemporaryMessage("No editable fields were found or no changes made.", 'info');
           return; // Exit save process
       }
 
@@ -1245,29 +1246,30 @@ if (window.reportProfilesInitialized) {
 
 
         if (allInputs.length === 0) {
-          saveMessage = "No changes detected to save.";
+          saveMessage = "No editable fields were found or no changes made."; // Updated message
           debugLog(saveMessage);
         } else if (allSucceeded) {
-          saveMessage = "All grades saved successfully!";
+          saveMessage = "All grades saved successfully to subject records!";
           messageType = 'success';
           debugLog(saveMessage);
+          
           // Update the local cache with successfully saved changes
           if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
-            const profileToUpdate = profileCache[activeProfileCacheKey].data;
+            const profileToUpdateInCache = profileCache[activeProfileCacheKey].data;
             changesToCache.forEach(change => {
               for (let i = 1; i <= 15; i++) {
                 const fieldKey = `sub${i}`;
                 const subjectFieldIdInProfile = FIELD_MAPPING[fieldKey];
-                if (profileToUpdate[subjectFieldIdInProfile]) { 
-                  let subject = safeParseJSON(profileToUpdate[subjectFieldIdInProfile]); 
+                if (profileToUpdateInCache[subjectFieldIdInProfile]) { 
+                  let subject = safeParseJSON(profileToUpdateInCache[subjectFieldIdInProfile]); 
                   if (subject && subject.originalRecordId === change.originalRecordId) { 
                     if (change.fieldId === 'field_3132') subject.currentGrade = change.newValue;
                     if (change.fieldId === 'field_3135') subject.targetGrade = change.newValue;
-                    if (change.fieldId === 'field_3133') subject.effortGrade = change.newValue; // Add Effort
-                    if (change.fieldId === 'field_3134') subject.behaviourGrade = change.newValue; // Add Behaviour
-                    if (change.fieldId === 'field_3186') subject.subjectAttendance = change.newValue; // Add Subject Attendance (decimal form)
+                    if (change.fieldId === 'field_3133') subject.effortGrade = change.newValue;
+                    if (change.fieldId === 'field_3134') subject.behaviourGrade = change.newValue;
+                    if (change.fieldId === 'field_3186') subject.subjectAttendance = change.newValue;
                     
-                    profileToUpdate[subjectFieldIdInProfile] = JSON.stringify(subject); 
+                    profileToUpdateInCache[subjectFieldIdInProfile] = JSON.stringify(subject); 
                     debugLog(`[toggleMasterEditMode] Cache updated for oRID ${change.originalRecordId}, field ${change.fieldId} in ${subjectFieldIdInProfile} with new value ${change.newValue}`);
                     break;
                   }
@@ -1275,35 +1277,73 @@ if (window.reportProfilesInitialized) {
               }
             });
             debugLog("Profile cache updated with all changes.");
-            // Removed: Detailed logging of cached subject fields state AFTER all updates
-            // if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
-            //     let cachedSubjectsState = {};
-            //     for (let i = 1; i <=15; i++) {
-            //         const fk = `sub${i}`;
-            //         const fid = FIELD_MAPPING[fk];
-            //         cachedSubjectsState[fid] = profileCache[activeProfileCacheKey].data[fid];
-            //     }
-            //     debugLog("[toggleMasterEditMode] Cached subject fields state AFTER all updates:", cachedSubjectsState);
-            // }
+
+            // ---- NEW: Update Object_112 (Homepage Profile) ----
+            const mainProfileRecordId = profileToUpdateInCache.id; // ID of the object_112 record
+            if (mainProfileRecordId) {
+              debugLog(`Attempting to update main profile (object_112) record ID: ${mainProfileRecordId}`);
+              const dataToUpdateInObject112 = {};
+              let hasSubjectFieldsToUpdate = false;
+              for (let i = 1; i <= 15; i++) {
+                const fieldKey = `sub${i}`;
+                const subjectFieldKnackId = FIELD_MAPPING[fieldKey];
+                if (profileToUpdateInCache.hasOwnProperty(subjectFieldKnackId)) {
+                  // Ensure we are sending the stringified JSON back
+                  dataToUpdateInObject112[subjectFieldKnackId] = 
+                    (typeof profileToUpdateInCache[subjectFieldKnackId] === 'string') 
+                    ? profileToUpdateInCache[subjectFieldKnackId] 
+                    : JSON.stringify(profileToUpdateInCache[subjectFieldKnackId]);
+                  hasSubjectFieldsToUpdate = true;
+                }
+              }
+
+              if (hasSubjectFieldsToUpdate) {
+                try {
+                  await makeRequest(
+                    `${KNACK_API_URL}/objects/${HOMEPAGE_OBJECT}/records/${mainProfileRecordId}`,
+                    {
+                      type: 'PUT',
+                      headers: getKnackHeaders(),
+                      data: JSON.stringify(dataToUpdateInObject112),
+                      contentType: 'application/json',
+                    },
+                    `update_object112_${mainProfileRecordId}`
+                  );
+                  debugLog(`Successfully updated main profile (object_112) record ID: ${mainProfileRecordId} with new subject JSONs.`);
+                  saveMessage += " Main profile updated.";
+                } catch (obj112Error) {
+                  console.error(`[ReportProfiles] Error updating main profile (object_112) record ID ${mainProfileRecordId}:`, obj112Error);
+                  debugLog(`[ReportProfiles] Error updating main profile (object_112) record ID ${mainProfileRecordId}`, { error: obj112Error.message, responseText: obj112Error.responseText });
+                  saveMessage += " Failed to update main profile.";
+                  messageType = 'warning'; // Downgrade to warning as subject records were saved
+                }
+              } else {
+                debugLog("No subject fields found in cached profile to update in object_112.");
+              }
+            } else {
+              console.warn("[ReportProfiles] Cannot update object_112: Main profile record ID (profileData.id) is missing from cache.");
+              debugLog("[ReportProfiles] Cannot update object_112: Main profile record ID (profileData.id) is missing from cache.");
+              saveMessage += " Main profile ID missing, cannot update.";
+              messageType = 'warning';
+            }
+            // ---- END NEW: Update Object_112 ----
           }
         } else {
           const failedCount = results.filter(r => r === false).length;
-          saveMessage = `Error: ${failedCount} grade(s) failed to save. Please check console.`;
+          saveMessage = `Error: ${failedCount} grade(s) failed to save to subject records. Please check console.`;
           messageType = 'error';
-          // console.error("[ReportProfiles] One or more grade updates failed.", results);
           debugLog("[ReportProfiles] One or more grade updates failed.", results);
         }
-        // Directly re-render from the updated cache to ensure UI reflects changes immediately
-        // and to set the lastRenderedProfileHash correctly based on the new state.
+        
+        // Always re-render from cache or re-fetch to reflect the latest state.
+        // lastRenderedProfileHash should be null to force this re-render after saves or failures.
+        lastRenderedProfileHash = null; 
         if (profileCache[activeProfileCacheKey] && profileCache[activeProfileCacheKey].data) {
           renderStudentProfile(profileCache[activeProfileCacheKey].data, profileContainer);
-          debugLog("Master save: UI updated directly from cache using key:", activeProfileCacheKey, ". lastRenderedProfileHash should now be based on NEW data.");
+          debugLog("Master save complete: UI updated. LastRenderedProfileHash reset to force refresh.");
         } else {
-          // Fallback: if cache is somehow gone, force a full re-fetch and render.
-          // This should be rare here as we just updated the cache.
           debugLog("Cache missing unexpectedly after save (key:", activeProfileCacheKey,"), forcing re-fetch. Current student ID:", currentStudentId);
-          lastRenderedProfileHash = null;
-          await processStudentProfileById(currentStudentId, profileContainer); // currentStudentId is the ID or USE_NAME: string
+          await processStudentProfileById(currentStudentId, profileContainer);
         }
         showTemporaryMessage(saveMessage, messageType);
 
@@ -1350,6 +1390,24 @@ if (window.reportProfilesInitialized) {
         // We need to ensure isProfileInEditMode is true BEFORE processStudentProfileById might call renderStudentProfile
         await processStudentProfileById(currentStudentId, profileContainer); 
       }
+
+      // After attempting to render in edit mode, check if any inputs were actually created
+      // Need a slight delay for the DOM to update from renderStudentProfile's timeout
+      setTimeout(() => {
+        const anyInputsRendered = profileContainer.querySelector('input.grade-input-dynamic, input.optional-grade-input');
+        if (!anyInputsRendered) {
+            debugLog("Switched to Edit Mode, but no editable fields were rendered (likely due to missing originalRecordIds). Reverting to display mode.");
+            isProfileInEditMode = false; // Revert
+            lastRenderedProfileHash = null; // Force re-render
+            if (profileCache[activeProfileCacheKeyForEdit] && profileCache[activeProfileCacheKeyForEdit].data) {
+                renderStudentProfile(profileCache[activeProfileCacheKeyForEdit].data, profileContainer);
+            } else {
+                // Fallback if cache is gone, should be rare
+                processStudentProfileById(currentStudentId, profileContainer);
+            }
+            showTemporaryMessage("Editing not available: subject data incomplete.", 'warning');
+        }
+      }, 200); // Allow ample time for renderStudentProfile's inner timeout and DOM update
     }
   }
 
@@ -2405,5 +2463,4 @@ if (window.reportProfilesInitialized) {
     }
   }
 } // End of the main initialization guard
-
 
