@@ -1577,6 +1577,54 @@
         border: 1px solid rgba(170, 7, 185, 0.3);
       }
       
+      /* NEW CSS for qualification types */
+      .subject-card.qual-a-level {
+        border-left: 5px solid #FF6347; /* Tomato Red */
+        background-color: #FFE4E1; /* Misty Rose */
+      }
+      .subject-card.qual-btec-2016 {
+        border-left: 5px solid #4682B4; /* Steel Blue */
+        background-color: #E0FFFF; /* Light Cyan */
+      }
+      .subject-card.qual-btec-2010 {
+        border-left: 5px solid #32CD32; /* Lime Green */
+        background-color: #F0FFF0; /* Honeydew */
+      }
+      .subject-card.qual-ib {
+        border-left: 5px solid #FFD700; /* Gold */
+        background-color: #FFFACD; /* Lemon Chiffon */
+      }
+      .subject-card.qual-pre-u {
+        border-left: 5px solid #DA70D6; /* Orchid */
+        background-color: #FFF0F5; /* Lavender Blush */
+      }
+      .subject-card.qual-ual {
+        border-left: 5px solid #FFA500; /* Orange */
+        background-color: #FFFFE0; /* Light Yellow */
+      }
+      .subject-card.qual-wjec {
+        border-left: 5px solid #8A2BE2; /* Blue Violet */
+        background-color: #E6E6FA; /* Lavender */
+      }
+      .subject-card.qual-cache {
+        border-left: 5px solid #00CED1; /* Dark Turquoise */
+        background-color: #AFEEEE; /* Pale Turquoise */
+      }
+      .subject-card.qual-gcse:not(.qual-a-level):not(.qual-btec-2016):not(.qual-btec-2010):not(.qual-ib):not(.qual-pre-u):not(.qual-ual):not(.qual-wjec):not(.qual-cache) { /* Ensure GCSE specific style still applies if no other qual type is present */
+        border-left: 5px solid #DC143C; /* Crimson */
+        background-color: #FFF5EE; /* Sea Shell */
+      }
+      .subject-card.qual-vocational-generic {
+        border-left: 5px solid #778899; /* Light Slate Gray */
+        background-color: #F5F5F5; /* White Smoke */
+      }
+      /* Default for other qual- classes, if any are dynamically generated */
+      #vespa-homepage [class*="qual-"]:not(.qual-a-level):not(.qual-btec-2016):not(.qual-btec-2010):not(.qual-ib):not(.qual-pre-u):not(.qual-ual):not(.qual-wjec):not(.qual-cache):not(.qual-gcse):not(.qual-vocational-generic) {
+        border-left: 5px solid #CCCCCC; /* Default Gray */
+        background-color: #FAFAFA !important; /* Important to override other potential general .subject-card styles if needed */
+      }
+      /* END NEW CSS for qualification types */
+      
       .subject-card:hover {
         transform: translateY(-3px);
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -2209,12 +2257,32 @@
     if (profileData.subjects && profileData.subjects.length > 0) {
       profileData.subjects.forEach(subject => {
         // Determine the card type based on exam type
-        let cardType = '';
-        const examType = (subject.examType || '').trim();
-        if (examType === 'GCSE') {
-          cardType = 'gcse';
-        } else if (examType === 'Vocational') {
-          cardType = 'vocational';
+        let qualTypeClass = '';
+        const examType = (subject.examType || '').trim().toLowerCase(); // Normalize to lowercase for easier matching
+
+        // Map examType to a specific CSS class
+        if (examType === 'a-level') {
+          qualTypeClass = 'qual-a-level';
+        } else if (examType === 'btec (2016)') {
+          qualTypeClass = 'qual-btec-2016';
+        } else if (examType === 'btec (2010)') {
+          qualTypeClass = 'qual-btec-2010';
+        } else if (examType === 'ib') {
+          qualTypeClass = 'qual-ib';
+        } else if (examType === 'pre-u') {
+          qualTypeClass = 'qual-pre-u';
+        } else if (examType === 'ual') {
+          qualTypeClass = 'qual-ual';
+        } else if (examType === 'wjec') {
+          qualTypeClass = 'qual-wjec';
+        } else if (examType === 'cache') {
+          qualTypeClass = 'qual-cache';
+        } else if (examType === 'gcse') {
+          qualTypeClass = 'qual-gcse';
+        } else if (examType === 'vocational') { // Fallback for generic vocational if still used
+          qualTypeClass = 'qual-vocational-generic'; 
+        } else if (examType) { // Fallback for any other non-empty examType
+          qualTypeClass = 'qual-' + examType.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         }
         
         // Get color classes for current and target grades, passing the exam type for proper handling
@@ -2242,7 +2310,7 @@
         }
         
         subjectsHTML += `
-          <div class="subject-card ${cardType}">
+          <div class="subject-card ${qualTypeClass}">
             <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
             <div class="subject-meta">
               ${subject.examType ? sanitizeField(subject.examType) : 'N/A'}
