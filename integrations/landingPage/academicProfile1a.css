@@ -287,23 +287,24 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
 /* --- Qualification Type Specific Styles (Accent Borders) --- */
 /* Base for all qual cards, if different from general .subject-card */
 .subject-card[class*="qual-"] {
-  background-color: #334285; /* Ensuring consistent dark background */
+  background-color: #334285; /* Ensuring consistent dark background - This might be redundant if .subject-card already has it, but good for explicitness */
 }
 
-.subject-card.qual-a-level { border-left: 5px solid #FF6347; } /* Tomato Red */
-.subject-card.qual-btec-2016 { border-left: 5px solid #4682B4; } /* Steel Blue */
-.subject-card.qual-btec-2010 { border-left: 5px solid #32CD32; } /* Lime Green */
-.subject-card.qual-ib { border-left: 5px solid #FFD700; } /* Gold */
-.subject-card.qual-pre-u { border-left: 5px solid #DA70D6; } /* Orchid */
-.subject-card.qual-ual { border-left: 5px solid #FFA500; } /* Orange */
-.subject-card.qual-wjec { border-left: 5px solid #8A2BE2; } /* Blue Violet */
-.subject-card.qual-cache { border-left: 5px solid #00CED1; } /* Dark Turquoise */
-.subject-card.qual-gcse { border-left: 5px solid #DC143C; } /* Crimson */
-.subject-card.qual-vocational-generic { border-left: 5px solid #778899; } /* Light Slate Gray */
+.subject-card.qual-a-level { border-left: 5px solid #FF6347; /* Tomato Red */ }
+.subject-card.qual-btec-2016 { border-left: 5px solid #4682B4; /* Steel Blue */ }
+.subject-card.qual-btec-2010 { border-left: 5px solid #32CD32; /* Lime Green */ }
+.subject-card.qual-ib { border-left: 5px solid #FFD700; /* Gold */ }
+.subject-card.qual-pre-u { border-left: 5px solid #DA70D6; /* Orchid */ }
+.subject-card.qual-ual { border-left: 5px solid #FFA500; /* Orange */ }
+.subject-card.qual-wjec { border-left: 5px solid #8A2BE2; /* Blue Violet */ }
+.subject-card.qual-cache { border-left: 5px solid #00CED1; /* Dark Turquoise */ }
+.subject-card.qual-gcse { border-left: 5px solid #DC143C; /* Crimson */ }
+.subject-card.qual-vocational-generic { border-left: 5px solid #778899; /* Light Slate Gray */ }
 
 /* Fallback for any other dynamically generated qual- class */
 .subject-card[class*="qual-"]:not(.qual-a-level):not(.qual-btec-2016):not(.qual-btec-2010):not(.qual-ib):not(.qual-pre-u):not(.qual-ual):not(.qual-wjec):not(.qual-cache):not(.qual-gcse):not(.qual-vocational-generic) {
   border-left: 5px solid #CCCCCC; /* Default Gray */
+  /* background-color will be inherited from .subject-card or .subject-card[class*="qual-"] */
 }
 
 
