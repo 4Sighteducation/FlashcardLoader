@@ -1,1 +1,524 @@
+/* --- General Styles (Shared across Homepage, ReportProfiles, MyAcademicProfilePage) --- */
+/* Main Container - VESPA Theme */
+#vespa-homepage, /* For Homepage */
+#vespa-profile, /* For ReportProfiles and MyAcademicProfilePage */
+.vespa-profile-display /* For MyAcademicProfilePage outer div */ {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto 20px auto; /* Common margin */
+  padding: 16px;
+  color: #ffffff;
+  background-color: #23356f; /* Main theme background */
+  line-height: 1.4;
+  overflow-x: hidden;
+  border: 3px solid #2a3c7a;
+  border-radius: 10px;
+}
 
+/* Sections */
+.vespa-section {
+  background-color: #2a3c7a; /* Slightly lighter than main bg for depth */
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 16px;
+  margin-bottom: 24px;
+  animation: fadeIn 0.5s ease-out forwards;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid #079baa; /* Theme accent border */
+}
+
+.vespa-section:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.vespa-section-title {
+  color: #00e5db !important; 
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #079baa;
+  position: relative;
+  overflow: hidden;
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; /* For title and icons */
+}
+
+/* Profile Info Button (i) */
+.profile-info-button {
+  font-size: 16px;
+  color: #00e5db;
+  cursor: pointer;
+  border: 1px solid #00e5db;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-left: 10px;
+}
+.profile-info-button:hover {
+  background-color: #00e5db;
+  color: #23356f;
+}
+
+/* Profile Info Tooltip (Modal style) */
+.profile-info-tooltip {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #1c2b5f;
+  color: #ffffff;
+  border: 1px solid #00e5db;
+  border-radius: 8px;
+  padding: 25px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+  z-index: 10002; 
+  max-width: 600px;
+  width: 90%;
+  font-size: 0.95em;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+}
+.profile-info-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+.profile-info-tooltip h4 {
+  color: #00e5db;
+  font-size: 1.3em;
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(0, 229, 219, 0.4);
+  padding-bottom: 12px;
+}
+.profile-info-tooltip p, .profile-info-tooltip ul {
+  margin-bottom: 15px;
+  line-height: 1.7;
+}
+.profile-info-tooltip strong {
+  color: #00e5db;
+}
+.profile-info-tooltip ul {
+  list-style-position: outside;
+  padding-left: 20px;
+}
+.profile-info-tooltip ul li {
+  margin-bottom: 8px;
+}
+.profile-info-tooltip-close {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 28px;
+  color: #00e5db;
+  cursor: pointer;
+  font-weight: bold;
+  line-height: 1;
+}
+.profile-info-tooltip-close:hover {
+  color: #ffffff;
+}
+
+/* Profile Details Layout */
+.profile-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.profile-details {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 4px;
+  background-color: #334285; /* Slightly lighter card background */
+  border-radius: 8px;
+  border: 1px solid rgba(7, 155, 170, 0.3);
+}
+.profile-name {
+  font-size: 22px;
+  color: #00e5db;
+  margin-bottom: 8px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(7, 155, 170, 0.3);
+}
+.profile-item {
+  margin-bottom: 3px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+}
+.profile-item:hover {
+  background-color: #3a4b90;
+}
+.profile-label {
+  font-weight: 600;
+  color: #00e5db;
+  margin-right: 4px;
+  min-width: 80px;
+}
+.profile-value {
+  color: #f0f0f0; /* Light text for values */
+}
+
+/* Subjects Area */
+.subjects-container {
+  flex: 2;
+  min-width: 280px;
+}
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Adjusted minmax for general */
+  gap: 12px;
+}
+
+/* Subject Card Base Styling - for text visibility */
+.subject-card {
+  background-color: #334285; /* Consistent dark background for readability */
+  color: #ffffff; /* Ensure text is light */
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  border: 1px solid rgba(7, 155, 170, 0.3); /* Default border */
+  /* border-left will be overridden by qual- classes */
+}
+.subject-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+.subject-name {
+  font-weight: 600;
+  color: #ffffff; /* Light text */
+  margin-bottom: 4px;
+  font-size: 0.95em;
+}
+.subject-meta {
+  font-size: 0.75em;
+  color: #bdc3c7; /* Lighter grey for meta text */
+  margin-bottom: 3px;
+}
+
+/* Grades within Subject Card */
+.grades-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1); /* Lighter border */
+}
+.grade-item {
+  text-align: center;
+  flex: 1;
+  padding: 4px;
+}
+.grade-label {
+  font-size: 0.7em;
+  color: #bdc3c7; /* Lighter grey for labels */
+  margin-bottom: 3px;
+}
+.grade-value { /* This class is on the container of grade-text or input */
+  font-size: 1em; /* Base size */
+}
+.grade-text { /* Specific for the text display of the grade */
+   font-weight: 600;
+   color: #ffffff; /* Default white, specific colors by grade RAG status */
+}
+.grade-exg .grade-text { /* EXG specific text color */
+  color: #00e5db; /* Theme accent for EXG */
+}
+
+/* Optional Grades (Effort, Behaviour, Attendance) */
+.optional-grades-container {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  font-size: 0.75em;
+}
+.optional-grade-item {
+  text-align: center;
+  color: #e0e0e0;
+}
+.optional-grade-item .optional-grade-label {
+  font-weight: 600;
+  color: #00e5db;
+  margin-right: 3px;
+  display: block;
+  margin-bottom: 2px;
+}
+.optional-grade-input, input.grade-input-dynamic {
+  width: 50px; /* Adjusted for consistency */
+  padding: 3px;
+  font-size: 0.9em;
+  text-align: center;
+  border: 1px solid #079baa;
+  background-color: #23356f; /* Darker input bg */
+  color: #ffffff;
+  border-radius: 3px;
+}
+.optional-grade-input:focus, input.grade-input-dynamic:focus {
+  outline: none;
+  border-color: #00e5db;
+  box-shadow: 0 0 4px rgba(0, 229, 219, 0.4);
+}
+input.attendance-input { width: 40px; } /* Slightly narrower for % */
+
+/* Grade RAG Status Colors (Applied to .grade-text) */
+.grade-significantly-above { color: #00E676 !important; }
+.grade-above { color: #00C853 !important; }
+.grade-matching { color: #4CAF50 !important; } /* Standard Green, consider a less vibrant one for matching on dark bg */
+.grade-one-below { color: #FF9800 !important; }
+.grade-two-below { color: #F44336 !important; }
+.grade-far-below { color: #C62828 !important; }
+
+
+/* --- Qualification Type Specific Styles (Accent Borders) --- */
+/* Base for all qual cards, if different from general .subject-card */
+.subject-card[class*="qual-"] {
+  background-color: #334285; /* Ensuring consistent dark background */
+}
+
+.subject-card.qual-a-level { border-left: 5px solid #FF6347; } /* Tomato Red */
+.subject-card.qual-btec-2016 { border-left: 5px solid #4682B4; } /* Steel Blue */
+.subject-card.qual-btec-2010 { border-left: 5px solid #32CD32; } /* Lime Green */
+.subject-card.qual-ib { border-left: 5px solid #FFD700; } /* Gold */
+.subject-card.qual-pre-u { border-left: 5px solid #DA70D6; } /* Orchid */
+.subject-card.qual-ual { border-left: 5px solid #FFA500; } /* Orange */
+.subject-card.qual-wjec { border-left: 5px solid #8A2BE2; } /* Blue Violet */
+.subject-card.qual-cache { border-left: 5px solid #00CED1; } /* Dark Turquoise */
+.subject-card.qual-gcse { border-left: 5px solid #DC143C; } /* Crimson */
+.subject-card.qual-vocational-generic { border-left: 5px solid #778899; } /* Light Slate Gray */
+
+/* Fallback for any other dynamically generated qual- class */
+.subject-card[class*="qual-"]:not(.qual-a-level):not(.qual-btec-2016):not(.qual-btec-2010):not(.qual-ib):not(.qual-pre-u):not(.qual-ual):not(.qual-wjec):not(.qual-cache):not(.qual-gcse):not(.qual-vocational-generic) {
+  border-left: 5px solid #CCCCCC; /* Default Gray */
+}
+
+
+/* --- Styles Specific to Homepage (copyofHomepage.js) --- */
+#vespa-homepage .app-hubs-container {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+#vespa-homepage .app-hubs-container .vespa-section {
+  flex: 1;
+  margin-bottom: 0;
+  min-width: 0;
+}
+#vespa-homepage .app-hub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+#vespa-homepage .app-card {
+  background-color: #334285;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 210px;
+  transition: transform 0.3s, box-shadow 0.3s;
+  animation: fadeIn 0.5s ease-out forwards;
+  border: 1px solid rgba(7, 155, 170, 0.3);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+#vespa-homepage .app-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  flex-grow: 1;
+  cursor: pointer;
+}
+#vespa-homepage .app-card-header {
+  background-color: #1c2b5f;
+  padding: 10px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 2px solid #079baa;
+}
+#vespa-homepage .app-icon {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  margin-bottom: 6px;
+  transition: transform 0.3s;
+}
+#vespa-homepage .app-card:hover .app-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+#vespa-homepage .app-name {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+/* Notification Badges for Homepage */
+#vespa-homepage .flashcard-notification-badge,
+#vespa-homepage .study-planner-notification-badge,
+#vespa-homepage .taskboard-notification-badge {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  color: white;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+#vespa-homepage .flashcard-notification-badge { background-color: red; }
+#vespa-homepage .study-planner-notification-badge { background-color: #28a745; }
+#vespa-homepage .taskboard-notification-badge { background-color: #ffc107; color: #212529; }
+
+/* VESPA Scores (Homepage specific styling if different, or can be merged) */
+#vespa-homepage .profile-vespa-scores-container {
+  padding: 15px 0px 10px 0px;
+  margin-top: 15px;
+}
+#vespa-homepage .profile-vespa-scores-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #00e5db !important;
+  margin-bottom: 15px;
+  text-align: left;
+  padding-left: 8px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #079baa;
+}
+#vespa-homepage .vespa-scores-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 10px;
+  padding: 0px 8px;
+}
+#vespa-homepage .vespa-score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+  flex-basis: calc(100% / 6 - 10px);
+  max-width: 90px;
+}
+#vespa-homepage .vespa-score-circle {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 1.2em;
+  color: #ffffff; /* Default text color */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease-out;
+}
+#vespa-homepage .vespa-score-circle:hover { transform: scale(1.1); }
+#vespa-homepage .vespa-score-label {
+  font-size: 0.7em;
+  color: #00e5db;
+  text-transform: uppercase;
+  font-weight: 500;
+  text-align: center;
+}
+
+
+/* --- Styles Specific to ReportProfiles (copyofReportProfiles.js) --- */
+/* Master Edit Icon */
+#vespa-profile .master-edit-icon { /* Ensure it's scoped to #vespa-profile if ReportProfile uses that ID */
+  cursor: pointer;
+  font-size: 0.7em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: background-color 0.2s, border-color 0.2s;
+  vertical-align: middle;
+}
+#vespa-profile .master-edit-icon.edit-icon { color: #00e5db; }
+#vespa-profile .master-edit-icon.save-icon { color: #4caf50; }
+#vespa-profile .master-edit-icon:hover {
+  background-color: #334285;
+  border-color: #079baa;
+}
+
+/* Loading and Saving Overlays (used by ReportProfiles) */
+.vespa-profile-loader-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10005;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+}
+.vespa-profile-loader-overlay.visible { opacity: 1; visibility: visible; }
+.vespa-profile-loader-overlay .profile-loading-spinner {
+  width: 60px; height: 60px;
+  border: 4px solid rgba(0, 229, 219, 0.1);
+  border-radius: 50%;
+  border-top-color: #00e5db;
+  margin-bottom: 20px;
+  animation: rotate 1s linear infinite; /* Keyframes defined below if not already */
+}
+.vespa-profile-loader-overlay .profile-loading-text {
+  color: #ffffff;
+  font-size: 18px;
+}
+
+
+/* --- Animations (Shared) --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes rotate { /* For spinners */
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --- Responsive (General, can be overridden by specific file needs if necessary) --- */
+@media (max-width: 992px) {
+  #vespa-homepage, #vespa-profile, .vespa-profile-display { padding: 12px; }
+  .vespa-section { padding: 14px; }
+  .subjects-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+}
+@media (max-width: 768px) {
+  .profile-info { flex-direction: column; }
+  .subjects-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  #vespa-homepage .app-hubs-container { flex-direction: column; gap: 16px; } /* Homepage specific */
+  #vespa-homepage .app-card { max-width: 100%; width: 100%; } /* Homepage specific */
+  .vespa-section-title { font-size: 20px; }
+}
+@media (max-width: 480px) {
+  #vespa-homepage, #vespa-profile, .vespa-profile-display { padding: 10px; }
+  .vespa-section { padding: 12px; margin-bottom: 16px; }
+  .subjects-grid { grid-template-columns: 1fr; }
+  .profile-name { font-size: 22px; } /* If #vespa-profile is used by others, make it general */
+  #vespa-homepage .app-card { max-width: 100%; } /* Homepage specific */
+  .grade-item { padding: 2px; }
+  .grade-value { font-size: 1em; }
+}
