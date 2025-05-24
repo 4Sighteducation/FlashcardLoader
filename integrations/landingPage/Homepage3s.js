@@ -1301,7 +1301,7 @@
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/MyAcademicProfilePage1a.css';
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile.css';
       document.head.appendChild(linkElement);
       debugLog("Linked central stylesheet: academicProfile.css");
     }
