@@ -1656,6 +1656,34 @@ if (window.reportProfilesInitialized) {
           // ADDED DIAGNOSTIC LOGGING END
         }
 
+        let qualTypeClass = '';
+        const examType = (subject.examType || '').trim().toLowerCase(); // Normalize to lowercase
+
+        // Map examType to a specific CSS class
+        if (examType === 'a-level') {
+          qualTypeClass = 'qual-a-level';
+        } else if (examType === 'btec (2016)') {
+          qualTypeClass = 'qual-btec-2016';
+        } else if (examType === 'btec (2010)') {
+          qualTypeClass = 'qual-btec-2010';
+        } else if (examType === 'ib') {
+          qualTypeClass = 'qual-ib';
+        } else if (examType === 'pre-u') {
+          qualTypeClass = 'qual-pre-u';
+        } else if (examType === 'ual') {
+          qualTypeClass = 'qual-ual';
+        } else if (examType === 'wjec') {
+          qualTypeClass = 'qual-wjec';
+        } else if (examType === 'cache') {
+          qualTypeClass = 'qual-cache';
+        } else if (examType === 'gcse') {
+          qualTypeClass = 'qual-gcse';
+        } else if (examType === 'vocational') { // Fallback for generic vocational
+          qualTypeClass = 'qual-vocational-generic';
+        } else if (examType) { // Fallback for any other non-empty examType
+          qualTypeClass = 'qual-' + examType.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        }
+
         const currentGrade = sanitizeField(subject.currentGrade || 'N/A');
         const targetGrade = sanitizeField(subject.targetGrade || 'N/A');
         const megGrade = sanitizeField(subject.minimumExpectedGrade || 'N/A');
@@ -1728,7 +1756,7 @@ if (window.reportProfilesInitialized) {
         }
 
         subjectsHTML += `
-          <div class="subject-card">
+          <div class="subject-card ${qualTypeClass}">
             <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
             <div class="subject-meta">
               ${subject.examType ? sanitizeField(subject.examType) : 'N/A'}
@@ -1914,610 +1942,27 @@ if (window.reportProfilesInitialized) {
 
   function addStyles() {
     // Create the style element if it doesn't exist
-    let styleElement = document.getElementById('report-profiles-styles');
-    if (!styleElement) {
-      styleElement = document.createElement('style');
-      styleElement.id = 'report-profiles-styles';
-      document.head.appendChild(styleElement);
-    }
+    // let styleElement = document.getElementById('report-profiles-styles'); // Old logic
+    // if (!styleElement) {
+    //   styleElement = document.createElement('style');
+    //   styleElement.id = 'report-profiles-styles';
+    //   document.head.appendChild(styleElement);
+    // }
     
-    // Add the CSS
-    styleElement.textContent = `
-      /* Loading Animation for Profile */
-      @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-      
-      @keyframes pulse {
-        0% { opacity: 0.4; }
-        50% { opacity: 1; }
-        100% { opacity: 0.4; }
-      }
-      
-      #vespa-profile .profile-loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 20px;
-        text-align: center;
-      }
-      
-      #vespa-profile .profile-loading-spinner {
-        width: 50px;
-        height: 50px;
-        border: 4px solid rgba(0, 229, 219, 0.1);
-        border-radius: 50%;
-        border-top: 4px solid #00e5db;
-        margin-bottom: 20px;
-        animation: rotate 1s linear infinite;
-      }
-      
-      #vespa-profile .profile-loading-text {
-        color: #00e5db;
-        font-size: 16px;
-        font-weight: 600;
-        animation: pulse 1.5s infinite ease-in-out;
-      }
-      
-      /* Main Container - VESPA Theme */
-      #vespa-profile {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 1200px;
-        margin: 0 auto 20px auto;
-        padding: 16px;
-        color: #ffffff;
-        background-color: #23356f;
-        line-height: 1.4;
-        overflow-x: hidden;
-        border: 3px solid #2a3c7a;
-        border-radius: 10px;
-      }
-      
-      /* Animation Keyframes */
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      @keyframes pulseGlow {
-        0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-        50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.25); }
-        100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
-      }
-      
-      /* Sections */
-      #vespa-profile .vespa-section {
-        background-color: #2a3c7a;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        padding: 16px;
-        margin-bottom: 24px;
-        animation: fadeIn 0.5s ease-out forwards;
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 2px solid #079baa;
-      }
-      
-      #vespa-profile .vespa-section:hover {
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-      }
-      
-      #vespa-profile .vespa-section-title {
-        color: #00e5db !important; /* Added !important to override any competing styles */
-        font-size: 22px;
-        font-weight: 600;
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #079baa;
-        position: relative;
-        overflow: hidden;
-        display: flex; 
-        align-items: center; 
-        justify-content: space-between;
-      }
-      
-      /* Styles for the (i) info button next to "Student Profile" */
-      #vespa-profile .profile-info-button { /* Generic style for the button */
-        font-size: 16px;
-        color: #00e5db;
-        cursor: pointer;
-        border: 1px solid #00e5db;
-        border-radius: 50%;
-        width: 22px;
-        height: 22px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        margin-left: 10px; /* Space from title text */
-        /* margin-right will be auto if it's between title and master-edit */
-      }
-      #vespa-profile .profile-info-button:hover {
-        background-color: #00e5db;
-        color: #23356f;
-      }
-      
-      /* Tooltip styles (can be shared or distinct if needed) */
-      .profile-info-tooltip { /* Modal style tooltip */
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        background-color: #1c2b5f; /* Darker background for modal */
-        color: #ffffff;
-        border: 1px solid #00e5db;
-        border-radius: 8px;
-        padding: 25px; /* More padding for modal */
-        box-shadow: 0 8px 25px rgba(0,0,0,0.6); /* Stronger shadow */
-        z-index: 10002; /* Higher z-index for report profiles, ensure it's above other elements */
-        max-width: 600px; /* Wider for more content */
-        width: 90%;
-        font-size: 0.95em;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
-      }
-      .profile-info-tooltip.visible {
-        opacity: 1;
-        visibility: visible;
-      }
-      .profile-info-tooltip h4 {
-        color: #00e5db;
-        font-size: 1.3em; /* Larger title for modal */
-        margin-top: 0;
-        margin-bottom: 20px; /* More space */
-        border-bottom: 1px solid rgba(0, 229, 219, 0.4);
-        padding-bottom: 12px;
-      }
-      .profile-info-tooltip p, .profile-info-tooltip ul {
-        margin-bottom: 15px; /* More space between paragraphs/lists */
-        line-height: 1.7; /* More line height */
-      }
-      .profile-info-tooltip strong {
-        color: #00e5db; /* Keep strong color */
-      }
-      .profile-info-tooltip ul {
-        list-style-position: outside;
-        padding-left: 20px; /* Standard list padding */
-      }
-      .profile-info-tooltip ul li {
-        margin-bottom: 8px; /* Space between list items */
-      }
-      .profile-info-tooltip-close {
-        position: absolute;
-        top: 15px; /* Adjust for more padding */
-        right: 20px; /* Adjust for more padding */
-        font-size: 28px; /* Larger close button */
-        color: #00e5db;
-        cursor: pointer;
-        font-weight: bold;
-        line-height: 1; /* Ensure it doesn't take too much vertical space */
-      }
-      .profile-info-tooltip-close:hover {
-        color: #ffffff;
-      }
-      
-      /* Profile Section - more compact */
-      #vespa-profile .profile-info {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-      
-      #vespa-profile .profile-details {
-        flex: 1;
-        min-width: 200px;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        padding: 4px;
-        background-color: #334285;
-        border-radius: 8px;
-        border: 1px solid rgba(7, 155, 170, 0.3);
-      }
-      
-      #vespa-profile .profile-name {
-        font-size: 22px;
-        color: #00e5db;
-        margin-bottom: 8px;
-        font-weight: 700;
-        padding: 4px 8px;
-        border-bottom: 1px solid rgba(7, 155, 170, 0.3);
-      }
-      
-      #vespa-profile .profile-item {
-        margin-bottom: 3px;
-        padding: 3px 8px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-        display: flex;
-        align-items: center;
-      }
-      
-      #vespa-profile .profile-item:hover {
-        background-color: #3a4b90;
-      }
-      
-      #vespa-profile .profile-label {
-        font-weight: 600;
-        color: #00e5db;
-        margin-right: 4px;
-        min-width: 80px;
-      }
-      
-      #vespa-profile .profile-value {
-        color: #f0f0f0;
-      }
-      
-      #vespa-profile .subjects-container {
-        flex: 2;
-        min-width: 280px;
-      }
-      
-      #vespa-profile .subjects-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-      }
-      
-      #vespa-profile .subject-card {
-        background-color: #334285;
-        border-radius: 6px;
-        padding: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-        transition: all 0.2s ease;
-        border: 1px solid rgba(7, 155, 170, 0.3);
-      }
-      
-      #vespa-profile .subject-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      }
-      
-      #vespa-profile .subject-name {
-        font-weight: 600;
-        color: #ffffff;
-        margin-bottom: 4px;
-        font-size: 0.95em;
-      }
-      
-      #vespa-profile .subject-meta {
-        font-size: 0.75em;
-        color: #ffffff;
-        margin-bottom: 3px;
-      }
-      
-      #vespa-profile .grades-container {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid #3d3d3d;
-      }
-      
-      #vespa-profile .grade-item {
-        text-align: center;
-        flex: 1;
-        padding: 4px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-      }
-      
-      #vespa-profile .grade-label {
-        font-size: 0.7em;
-        color: #ffffff;
-        margin-bottom: 3px;
-      }
-      
-      #vespa-profile .grade-value {
-        font-size: 1em;
-      }
-      
-      #vespa-profile .grade-exg { /* Changed from grade-meg */
-        color: #00e5db;
-      }
-      
-      /* Grade indicators */
-      #vespa-profile .grade-significantly-above {
-        color: #00E676; /* Brightest Green/Teal */
-      }
+    // // Add the CSS - OLD LOGIC REMOVED
+    // styleElement.textContent = ` ... CSS CONTENT REMOVED ... `;
 
-      #vespa-profile .grade-above {
-        color: #00C853; /* Vivid Green */
-      }
-      
-      #vespa-profile .grade-matching {
-        color: #4CAF50; /* Standard Green */
-      }
-      
-      #vespa-profile .grade-one-below {
-        color: #FF9800; /* Orange */
-      }
-
-      #vespa-profile .grade-two-below {
-        color: #F44336; /* Standard Red */
-      }
-      
-      #vespa-profile .grade-far-below {
-        color: #C62828; /* Darker/Strong Red */
-      }
-      
-      /* Responsive adjustments */
-      @media (max-width: 992px) {
-        #vespa-profile {
-          padding: 12px;
-        }
-        
-        #vespa-profile .vespa-section {
-          padding: 14px;
-        }
-        
-        #vespa-profile .subjects-grid {
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        }
-      }
-      
-      @media (max-width: 768px) {
-        #vespa-profile .profile-info {
-          flex-direction: column;
-        }
-        
-        #vespa-profile .subjects-grid {
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 10px;
-        }
-        
-        #vespa-profile .vespa-section-title {
-          font-size: 20px;
-        }
-      }
-      
-      @media (max-width: 480px) {
-        #vespa-profile {
-          padding: 10px;
-        }
-        
-        #vespa-profile .vespa-section {
-          padding: 12px;
-          margin-bottom: 16px;
-        }
-        
-        #vespa-profile .subjects-grid {
-          grid-template-columns: 1fr;
-        }
-        
-        #vespa-profile .profile-name {
-          font-size: 22px;
-        }
-        
-        #vespa-profile .grade-item {
-          padding: 2px;
-        }
-        
-        #vespa-profile .grade-value {
-          font-size: 1em;
-        }
-      }
-
-      /* Styles for editable grade inputs (old, can be removed or repurposed if .grade-input-dynamic is styled differently) */
-      #vespa-profile .grade-input {
-        width: 70px; /* Adjust as needed */
-        padding: 4px;
-        font-size: 1em;
-        text-align: center;
-        border: 1px solid #079baa;
-        background-color: #23356f;
-        color: #ffffff;
-        border-radius: 4px;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
-      }
-
-      #vespa-profile .grade-input:focus {
-        outline: none;
-        border-color: #00e5db;
-        box-shadow: 0 0 5px rgba(0, 229, 219, 0.5);
-      }
-
-      /* Styles for grade edit feedback messages */
-      #vespa-profile .grade-edit-feedback {
-        font-size: 0.75em;
-        text-align: center;
-        padding-top: 4px;
-        min-height: 1.2em; /* Reserve space to prevent layout jumps */
-      }
-      #vespa-profile .grade-edit-feedback.saving {
-        color: #00e5db; /* Vespa teal for saving */
-      }
-      #vespa-profile .grade-edit-feedback.success {
-        color: #4caf50; /* Green for success */
-      }
-      #vespa-profile .grade-edit-feedback.error {
-        color: #f44336; /* Red for error */
-      }
-
-      /* New styles for icon-based editing */
-      #vespa-profile .grade-item > div[class*="-grade-item"] {
-        display: flex; /* Align grade text/input and icon */
-        align-items: center;
-        justify-content: center; /* Center content within the item space */
-        position: relative; /* For positioning icon if needed, or feedback */
-      }
-
-      #vespa-profile .grade-value-display {
-        display: inline-block; /* Allows text to flow naturally but can be targeted */
-        margin-right: 5px; /* Space between grade and icon */
-        min-width: 40px; /* Ensure some space for the grade text */
-        text-align: center;
-      }
-      
-      #vespa-profile .grade-text {
-          /* Styles for the grade text itself, color is applied by getGradeColorClass */
-          padding: 4px;
-      }
-
-      #vespa-profile .grade-edit-icon {
-        cursor: pointer;
-        font-size: 0.9em; /* Adjust icon size */
-        padding: 2px 4px;
-        margin-left: 4px; /* Space from the grade value */
-        border-radius: 3px;
-        display: inline-flex; /* Helps with vertical alignment if needed */
-        align-items: center;
-        justify-content: center;
-        min-width: 20px; /* Ensure clickable area */
-        min-height: 20px;
-      }
-
-      #vespa-profile .grade-edit-icon:hover {
-        background-color: #3a4b90; /* Hover effect */
-      }
-
-      #vespa-profile input.grade-input-dynamic {
-        /* Styles for the dynamically created input */
-        padding: 4px;
-        font-size: 1em;
-        border: 1px solid #079baa;
-        background-color: #23356f;
-        color: #ffffff;
-        border-radius: 4px;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
-        width: 60px; /* Or adjust as needed */
-        text-align: center;
-        margin-right: 5px; /* If icon is outside the grade-value-display */
-      }
-
-      #vespa-profile input.grade-input-dynamic:focus {
-        outline: none;
-        border-color: #00e5db;
-        box-shadow: 0 0 5px rgba(0, 229, 219, 0.5);
-      }
-
-      /* Style for the master edit/save icon */
-      #vespa-profile .master-edit-icon {
-          cursor: pointer;
-          font-size: 0.7em; /* Smaller than section title */
-          /* margin-left: 15px; */ /* Original margin, now handled by flex or specific rules */
-          padding: 3px 7px;
-          border-radius: 4px;
-          border: 1px solid transparent; /* For spacing, or make it visible */
-          transition: background-color 0.2s, border-color 0.2s;
-          vertical-align: middle; /* Align with title text */
-      }
-      #vespa-profile .master-edit-icon.edit-icon {
-          color: #00e5db; /* Teal for edit */
-          /* margin-left: auto; */ /* Removed: Handled by justify-content on parent */
-      }
-      #vespa-profile .master-edit-icon.save-icon {
-          color: #4caf50; /* Green for save */
-          /* margin-left: auto; */ /* Removed: Handled by justify-content on parent */
-      }
-      #vespa-profile .master-edit-icon:hover {
-          background-color: #334285; /* Darker background on hover */
-          border-color: #079baa;
-      }
-      /* If profile-info-button is present, master-edit-icon will be after it */
-      /* REMOVED THIS RULE as it's no longer structured this way and space-between handles it.
-      #vespa-profile .profile-info-button + .master-edit-icon {
-         margin-left: 10px; 
-      }
-      */
-
-      #vespa-profile .vespa-section-title > .master-edit-icon {
-        /* This selector might still be useful if specific alignment for the icon itself is needed */
-        /* For now, flex properties on parent should suffice */
-      }
-
-      /* NEW: Styles for optional grades container and items */
-      #vespa-profile .optional-grades-container {
-        display: flex;
-        justify-content: space-around; /* Distributes items evenly */
-        margin-top: 6px; /* Space above this new row */
-        padding-top: 6px;
-        border-top: 1px dashed rgba(255, 255, 255, 0.2); /* Faint separator */
-        font-size: 0.75em; /* Smaller font for these details */
-      }
-
-      #vespa-profile .optional-grade-item {
-        text-align: center;
-        color: #e0e0e0; /* Lighter text color for values */
-      }
-
-      #vespa-profile .optional-grade-item .optional-grade-label {
-        font-weight: 600;
-        color: #00e5db; /* Match other labels like EXG, Current */
-        margin-right: 3px;
-        display: block; /* Make label take full width or appear above input */
-        margin-bottom: 2px; /* Space between label and input */
-      }
-
-      /* NEW: Styles for optional grade inputs */
-      #vespa-profile .optional-grade-input {
-        width: 40px; /* Smaller width for these inputs */
-        padding: 3px;
-        font-size: 0.85em; /* Slightly smaller font */
-        text-align: center;
-        border: 1px solid #079baa;
-        background-color: #23356f;
-        color: #ffffff;
-        border-radius: 3px;
-      }
-      #vespa-profile .optional-grade-input:focus {
-        outline: none;
-        border-color: #00e5db;
-        box-shadow: 0 0 4px rgba(0, 229, 219, 0.4);
-      }
-      /* Adjust optional-grade-item if labels are above inputs now */
-      #vespa-profile .optional-grade-item {
-        display: flex;
-        flex-direction: column; /* Stack label and input vertically */
-        align-items: center; /* Center them */
-        /* text-align: center; */ /* Already there */
-        /* color: #e0e0e0; */ /* Already there */
-      }
-
-      /* NEW: Styles for general loading/saving overlay */
-      .vespa-profile-loader-overlay {
-        position: fixed; /* Full page overlay */
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 10005; /* High z-index */
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
-      }
-      .vespa-profile-loader-overlay.visible {
-        opacity: 1;
-        visibility: visible;
-      }
-      .vespa-profile-loader-overlay .profile-loading-spinner { /* Reuse spinner style */
-        width: 60px;
-        height: 60px;
-        border-top-color: #00e5db; /* Ensure Vespa color */
-        margin-bottom: 20px;
-      }
-      .vespa-profile-loader-overlay .profile-loading-text { /* Reuse text style */
-        color: #ffffff; /* White text on dark overlay */
-        font-size: 18px;
-      }
-      
-      /* Body class to potentially hide page scroll during full overlay */
-      body.report-profile-loading #knack-body, /* Target Knack's main body wrapper */
-      body.report-profile-saving #knack-body {
-        /* overflow: hidden; /* Optional: prevent scrolling while overlay is active */
-      }
-      /* NEW class for when the main profile content is loading, distinct from saving */
-      body.report-profile-content-loading #knack-body { 
-          /* overflow: hidden; /* Optional: prevent scrolling */
-      }
-    `;
+    // NEW: Link to the central stylesheet
+    const styleId = 'academic-profile-styles-link';
+    if (!document.getElementById(styleId)) {
+      const linkElement = document.createElement('link');
+      linkElement.id = styleId;
+      linkElement.rel = 'stylesheet';
+      linkElement.type = 'text/css';
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile.css';
+      document.head.appendChild(linkElement);
+      debugLog("Linked central stylesheet: academicProfile.css from ReportProfiles");
+    }
   }
 
   // Expose initializer to global scope so the Multi-App Loader can access it
