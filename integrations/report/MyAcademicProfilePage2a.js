@@ -349,9 +349,9 @@
                 ${subject.examBoard ? ` • ${sanitizeField(subject.examBoard)}` : ''}
               </div>
               <div class="grades-container">
-                <div class="grade-item"><div class="grade-label">EXG</div><div class="grade-value grade-exg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div></div>
-                <div class="grade-item"><div class="grade-label">Current</div><div class="grade-value ${currentGradeClass}">${sanitizeField(subject.currentGrade || 'N/A')}</div></div>
-                <div class="grade-item"><div class="grade-label">Target</div><div class="grade-value ${targetGradeClass}">${sanitizeField(subject.targetGrade || 'N/A')}</div></div>
+                <div class="grade-item"><div class="grade-label">EXG</div><div class="grade-value grade-exg"><span class="grade-text">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</span></div></div>
+                <div class="grade-item"><div class="grade-label">Current</div><div class="grade-value ${currentGradeClass}"><span class="grade-text">${sanitizeField(subject.currentGrade || 'N/A')}</span></div></div>
+                <div class="grade-item"><div class="grade-label">Target</div><div class="grade-value ${targetGradeClass}"><span class="grade-text">${sanitizeField(subject.targetGrade || 'N/A')}</span></div></div>
               </div>
               ${optionalGradesHTML ? `<div class="optional-grades-container">${optionalGradesHTML}</div>` : ''}
             </div>
@@ -454,7 +454,7 @@
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1a.css';
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1b.css';
       
       debugLog("Applying central stylesheet from MyAcademicProfilePage:", linkElement.href);
       document.head.appendChild(linkElement);
