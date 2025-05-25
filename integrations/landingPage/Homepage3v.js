@@ -1301,9 +1301,9 @@
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1a.css';
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1b.css'; // Verified CSS path
       document.head.appendChild(linkElement);
-      debugLog("Linked central stylesheet: academicProfile.css");
+      debugLog("Linked central stylesheet: academicProfile1a.css");
     }
     
     // --- Reinstated subject parsing and profileData creation --- 
@@ -1551,7 +1551,7 @@
             <div class="grades-container">
               <div class="grade-item">
                 <div class="grade-label">EXG</div> <!-- Changed MEG to EXG -->
-                <div class="grade-value grade-exg">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</div>
+                <div class="grade-value grade-exg"><span class="grade-text">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</span></div>
               </div>
               <div class="grade-item">
                 <div class="grade-label">Current</div>
