@@ -1306,15 +1306,40 @@
       debugLog("Linked central stylesheet: academicProfile.css");
     }
     
-    // Remove the old style element creation
-    // const styleElement = document.createElement('style');
-    // styleElement.textContent = ` ... CSS CONTENT REMOVED ... `;
-    
+    // --- Reinstated subject parsing and profileData creation --- 
+    const subjectData = [];
+    if (userProfile) { // Check if userProfile is defined
+        for (let i = 1; i <= 15; i++) {
+            const fieldKey = `sub${i}`;
+            const fieldId = FIELD_MAPPING[fieldKey];
+            if (userProfile[fieldId]) {
+                try {
+                    const subject = safeParseJSON(userProfile[fieldId]);
+                    if (subject && subject.subject) {
+                        subjectData.push(subject);
+                    }
+                } catch (e) {
+                    debugLog(`[Homepage] Error parsing subject data for ${fieldKey}`, { error: e.message });
+                }
+            }
+        }
+    }
+
+    const profileData = {
+        name: userProfile ? (userProfile[FIELD_MAPPING.studentName] || 'Student') : 'Student',
+        school: userProfile ? (userProfile[FIELD_MAPPING.vespaCustomer] || '') : '',
+        tutorGroup: userProfile ? (userProfile[FIELD_MAPPING.tutorGroup] || '') : '',
+        yearGroup: userProfile ? (userProfile[FIELD_MAPPING.yearGroup] || '') : '',
+        attendance: userProfile ? (userProfile[FIELD_MAPPING.attendance] || '') : '',
+        subjects: subjectData // This now contains the parsed subjects
+    };
+    debugLog('Processed profileData for rendering:', profileData);
+    // --- End of reinstated logic ---
+
     // Add content to the container (styleElement is no longer added here)
-    // container.appendChild(styleElement); // This line is removed
     container.innerHTML += `
       <div id="vespa-homepage">
-        ${renderProfileSection(userProfile, vespaScoresData)}
+        ${renderProfileSection(profileData, vespaScoresData)} {/* Ensure profileData is passed */}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
           ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
