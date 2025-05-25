@@ -1765,7 +1765,7 @@ if (window.reportProfilesInitialized) {
             <div class="grades-container">
               <div class="grade-item">
                 <div class="grade-label">EXG</div> <!-- Changed MEG to EXG -->
-                <div class="grade-value grade-exg grade-value-display"><span class="grade-text">${megGrade}</span></div>
+                <div class="grade-value grade-exg"><span class="grade-text">${megGrade}</span></div>
               </div>
               <div class="grade-item current-grade-item">
                 <div class="grade-label">Current</div>
@@ -1941,17 +1941,6 @@ if (window.reportProfilesInitialized) {
   }
 
   function addStyles() {
-    // Create the style element if it doesn't exist
-    // let styleElement = document.getElementById('report-profiles-styles'); // Old logic
-    // if (!styleElement) {
-    //   styleElement = document.createElement('style');
-    //   styleElement.id = 'report-profiles-styles';
-    //   document.head.appendChild(styleElement);
-    // }
-    
-    // // Add the CSS - OLD LOGIC REMOVED
-    // styleElement.textContent = ` ... CSS CONTENT REMOVED ... `;
-
     // NEW: Link to the central stylesheet
     const styleId = 'academic-profile-styles-link';
     if (!document.getElementById(styleId)) {
@@ -1959,9 +1948,9 @@ if (window.reportProfilesInitialized) {
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1a.css';
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1b.css'; // Update CSS path
       document.head.appendChild(linkElement);
-      debugLog("Linked central stylesheet: academicProfile.css from ReportProfiles");
+      debugLog("Linked central stylesheet: academicProfile1a.css from ReportProfiles");
     }
   }
 
