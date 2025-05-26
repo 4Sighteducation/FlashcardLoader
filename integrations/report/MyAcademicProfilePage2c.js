@@ -329,8 +329,8 @@
           qualTypeClass = 'qual-' + examType.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         }
 
-        const currentGradeClass = getGradeColorClass(subject.currentGrade, subject.minimumExpectedGrade, examType);
-        const targetGradeClass = getGradeColorClass(subject.targetGrade, subject.minimumExpectedGrade, examType);
+        const currentGradeClass = getGradeColorClass(subject.currentGrade, subject.subjectTargetGrade || subject.minimumExpectedGrade, examType);
+        const targetGradeClass = getGradeColorClass(subject.targetGrade, subject.subjectTargetGrade || subject.minimumExpectedGrade, examType);
         let optionalGradesHTML = '';
         if (subject.effortGrade && subject.effortGrade !== 'N/A') {
           optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Eff:</span>${subject.effortGrade}</div>`;
@@ -349,7 +349,8 @@
               ${subject.examBoard ? ` • ${sanitizeField(subject.examBoard)}` : ''}
             </div>
             <div class="grades-container">
-              <div class="grade-item"><div class="grade-label">EXG</div><div class="grade-value grade-exg"><span class="grade-text">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</span></div></div>
+              <div class="grade-item"><div class="grade-label">MEG <span class="meg-info-button" title="Understanding MEG">i</span></div><div class="grade-value grade-meg"><span class="grade-text">${sanitizeField(subject.minimumExpectedGrade || 'N/A')}</span></div></div>
+              <div class="grade-item"><div class="grade-label">STG</div><div class="grade-value grade-stg"><span class="grade-text">${sanitizeField(subject.subjectTargetGrade || subject.minimumExpectedGrade || 'N/A')}</span></div></div>
               <div class="grade-item"><div class="grade-label">Current</div><div class="grade-value ${currentGradeClass}"><span class="grade-text">${sanitizeField(subject.currentGrade || 'N/A')}</span></div></div>
               <div class="grade-item"><div class="grade-label">Target</div><div class="grade-value ${targetGradeClass}"><span class="grade-text">${sanitizeField(subject.targetGrade || 'N/A')}</span></div></div>
             </div>
@@ -421,7 +422,7 @@
           <div id="profileGradeInfoTooltip-MyAcademicProfile" class="profile-info-tooltip" style="position: fixed;">
             <span class="profile-info-tooltip-close">&times;</span>
             <h4>Understanding Your Grades:</h4>
-            <p><strong>1) EXG (Expected Grade):</strong><br>This is what your previous grades suggest you might achieve in this subject. It's calculated using your GCSE results (or other previous grades) and comparing them to how students with similar grades have done in the past. Think of it as a starting point based on your academic history, not a limit on what you can achieve.</p>
+            <p><strong>1) Subject Target Grade (STG):</strong><br>Your STG is a more personalized target that considers not just your GCSE results, but also the specific subject you're studying. Different subjects have different levels of difficulty and grade distributions - for example, some subjects tend to award higher grades than others. Your STG takes this into account by applying subject-specific adjustments to give you a more realistic and fair target. Your school may have chosen to set these targets at different levels of ambition to inspire you to achieve your best. This means your STG might be higher or lower than your MEG depending on both the subject and your school's approach to target-setting. The most meaningful targets are those that consider all aspects of your learning journey - your starting point, the subject challenges, and your individual circumstances. Use your STG as a motivating target to work towards, remembering that with dedication and good support, you can absolutely exceed it!</p>
             <p><strong>2) Current Grade:</strong><br>This is the grade you're working at right now, based on your recent work, tests, and classroom performance. Your teachers look at everything you've done so far in this subject to determine where you currently stand. This helps you see your progress and identify areas where you might need to focus.</p>
             <p><strong>3) Target Grade:</strong><br>This is the grade your teachers believe you can realistically achieve with consistent effort. It's challenging but possible, based on your teachers' experience with students like you and their understanding of your personal potential. This target gives you something specific to aim for as you continue your studies.</p>
           </div>
@@ -441,6 +442,75 @@
     } else {
       debugLog("Profile info button or tooltip container not found for tooltip setup.", {infoButton, tooltipContainer});
     }
+    
+    // Setup MEG info buttons
+    setupMEGInfoButtons(containerElementSelector);
+  }
+  
+  // NEW: Setup for MEG information tooltips
+  function setupMEGInfoButtons(containerElementSelector) {
+    const megInfoButtons = document.querySelectorAll(`${containerElementSelector} .meg-info-button`);
+    const tooltipContainer = document.querySelector(`${containerElementSelector} #profileGradeInfoTooltipContainer`);
+    
+    megInfoButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent event bubbling
+        
+        // Remove existing MEG tooltip if any
+        const existingTooltip = document.getElementById('megInfoTooltip-MyAcademicProfile');
+        if (existingTooltip) existingTooltip.remove();
+        
+        const tooltipHTML = `
+          <div id="megInfoTooltip-MyAcademicProfile" class="profile-info-tooltip meg-tooltip" style="position: fixed;">
+            <span class="profile-info-tooltip-close">&times;</span>
+            <h4>Your Minimum Expected Grade (MEG)</h4>
+            <p>Your MEG represents an aspirational grade based on how students with similar GCSE results have performed nationally. Think of it as a starting point - it shows what's typically achievable for someone with your academic background. Your school may set these targets at different levels of ambition - some schools choose highly aspirational targets to encourage you to aim high, while others may set more moderate goals. Remember, this is just one indicator and doesn't account for your individual strengths, interests, or the specific subjects you're studying. Many students exceed their MEG, while others may find it challenging to reach. Your actual potential is influenced by many factors including your effort, teaching quality, and personal circumstances. For a more personalized target, check your Subject Target Grade (STG), which considers the specific subject you're studying and provides a more tailored expectation.</p>
+          </div>
+        `;
+        
+        if (tooltipContainer) {
+          tooltipContainer.insertAdjacentHTML('beforeend', tooltipHTML);
+          const tooltipElement = document.getElementById('megInfoTooltip-MyAcademicProfile');
+          
+          // Position the tooltip near the button
+          const buttonRect = button.getBoundingClientRect();
+          tooltipElement.style.top = `${buttonRect.bottom + 5}px`;
+          tooltipElement.style.left = `${buttonRect.left - 100}px`; // Center it roughly on the button
+          
+          // Make it visible with a slight delay for transition
+          setTimeout(() => {
+            if (tooltipElement) tooltipElement.classList.add('visible');
+          }, 10);
+          
+          const closeButton = tooltipElement.querySelector('.profile-info-tooltip-close');
+          if (closeButton) {
+            closeButton.addEventListener('click', () => {
+              tooltipElement.classList.remove('visible');
+              setTimeout(() => {
+                if (tooltipElement && tooltipElement.parentNode) {
+                  tooltipElement.parentNode.removeChild(tooltipElement);
+                }
+              }, 300);
+            });
+          }
+          
+          // Close on click outside
+          setTimeout(() => {
+            document.addEventListener('click', function closeMEGTooltip(event) {
+              if (tooltipElement && !tooltipElement.contains(event.target) && event.target !== button) {
+                tooltipElement.classList.remove('visible');
+                setTimeout(() => {
+                  if (tooltipElement && tooltipElement.parentNode) {
+                    tooltipElement.parentNode.removeChild(tooltipElement);
+                  }
+                }, 300);
+                document.removeEventListener('click', closeMEGTooltip);
+              }
+            });
+          }, 100);
+        }
+      });
+    });
   }
 
   function applyStyles() {
@@ -453,7 +523,7 @@
     linkElement.id = styleId;
     linkElement.rel = 'stylesheet';
     linkElement.type = 'text/css';
-    linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1b.css';
+    linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1c.css';
     
     debugLog("Applying central stylesheet from MyAcademicProfilePage:", linkElement.href);
     document.head.appendChild(linkElement);
