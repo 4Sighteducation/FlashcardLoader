@@ -497,6 +497,12 @@ if (window.reportProfilesInitialized) {
       tooltipElement.parentNode.removeChild(tooltipElement);
       debugLog("Report profile info tooltip removed");
     }
+    // Remove MEG tooltip if it exists
+    const megTooltipElement = document.getElementById('megInfoTooltip');
+    if (megTooltipElement && megTooltipElement.parentNode) {
+      megTooltipElement.parentNode.removeChild(megTooltipElement);
+      debugLog("MEG info tooltip removed");
+    }
     hideLoadingIndicator(); // Ensure loading overlay is hidden
   }
 
@@ -1687,9 +1693,10 @@ if (window.reportProfilesInitialized) {
         const currentGrade = sanitizeField(subject.currentGrade || 'N/A');
         const targetGrade = sanitizeField(subject.targetGrade || 'N/A');
         const megGrade = sanitizeField(subject.minimumExpectedGrade || 'N/A');
+        const stgGrade = sanitizeField(subject.subjectTargetGrade || subject.minimumExpectedGrade || 'N/A');
 
-        const currentGradeColorClass = getGradeColorClass(currentGrade, megGrade);
-        const targetGradeColorClass = getGradeColorClass(targetGrade, megGrade);
+        const currentGradeColorClass = getGradeColorClass(currentGrade, stgGrade);
+        const targetGradeColorClass = getGradeColorClass(targetGrade, stgGrade);
         
         let currentGradeDisplay, targetGradeDisplay;
 
@@ -1764,8 +1771,12 @@ if (window.reportProfilesInitialized) {
             </div>
             <div class="grades-container">
               <div class="grade-item">
-                <div class="grade-label">EXG</div> <!-- Changed MEG to EXG -->
-                <div class="grade-value grade-exg"><span class="grade-text">${megGrade}</span></div>
+                <div class="grade-label">MEG <span class="meg-info-button" title="Understanding MEG">i</span></div>
+                <div class="grade-value grade-meg"><span class="grade-text">${megGrade}</span></div>
+              </div>
+              <div class="grade-item">
+                <div class="grade-label">STG</div>
+                <div class="grade-value grade-stg"><span class="grade-text">${stgGrade}</span></div>
               </div>
               <div class="grade-item current-grade-item">
                 <div class="grade-label">Current</div>
@@ -1891,8 +1902,8 @@ if (window.reportProfilesInitialized) {
           <div id="reportProfileGradeInfoTooltip" class="profile-info-tooltip report-profile-tooltip-styling">
             <span class="profile-info-tooltip-close">&times;</span>
             <h4>Understanding Student Grades (Teacher View):</h4>
-            <p><strong>1) EXG (Expected Grade):</strong><br>
-            This statistically projected outcome is automatically calculated based on the student's prior attainment (primarily GCSE results). Following the same methodology as the MEG (Minimum Expected Grade) in ALPS, this provides an objective baseline for your reference. No input required - this value is system-generated.</p>
+            <p><strong>1) Subject Target Grade (STG) - Teacher Explainer:</strong><br>
+            The STG provides a more nuanced target by applying subject-specific value-added (VA) factors to the base MEG calculation. These VA factors, derived from national data, reflect the relative difficulty and grade distribution patterns of individual subjects. Schools can select different benchmark levels - while many use standard national benchmarks, some may opt for more aspirational targets to drive higher achievement across their cohorts. The calculation multiplies the student's base expected points by the subject's VA factor, then converts the result back to a grade. For example, subjects that historically award higher grades (like Further Mathematics with a VA factor of 1.05) receive a modest upward adjustment, while subjects known to be more challenging in their grading (like Biology with a VA factor of 0.90) receive a downward adjustment to create fairer, more realistic targets. However, the most effective target-setting considers all contributing factors: prior attainment, subject difficulty, individual student needs, teaching quality, and school context. STGs should inform differentiated target-setting and help identify where students may need additional support or challenge, but should always be contextualized within a broader understanding of each student's potential.</p>
             <p><strong>2) Current Grade (Teacher Input Required):</strong><br>
             When entering this grade, assess the student's present performance level based on:
             <ul>
@@ -1905,7 +1916,7 @@ if (window.reportProfilesInitialized) {
             <p><strong>3) Target Grade (Teacher Input Required):</strong><br>
             When setting this grade, consider:
             <ul>
-              <li>The student's EXG as a starting reference point</li>
+              <li>The student's STG as a starting reference point</li>
               <li>Their demonstrated potential and engagement in each subject</li>
               <li>Any contextual factors affecting their performance</li>
               <li>Historical progression patterns of similar students</li>
@@ -1938,6 +1949,76 @@ if (window.reportProfilesInitialized) {
     } else {
       debugLog("Report Profile info button not found for tooltip setup.");
     }
+    
+    // Setup MEG info buttons
+    setupMEGInfoButtons(profileContainer);
+  }
+  
+  // NEW: Setup for MEG information tooltips
+  function setupMEGInfoButtons(profileContainer) {
+    const megInfoButtons = profileContainer.querySelectorAll('.meg-info-button');
+    const tooltipContainer = document.body;
+    
+    megInfoButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent event bubbling
+        
+        // Remove existing MEG tooltip if any
+        const existingTooltip = document.getElementById('megInfoTooltip');
+        if (existingTooltip) {
+          existingTooltip.remove();
+        }
+        
+        const tooltipHTML = `
+          <div id="megInfoTooltip" class="profile-info-tooltip meg-tooltip">
+            <span class="profile-info-tooltip-close">&times;</span>
+            <h4>Understanding Minimum Expected Grades (MEG) - Teacher Explainer</h4>
+            <p>The MEG is derived from national benchmark data, representing the performance of students with similar prior attainment (GCSE scores). While these benchmarks are typically set at a level where most students should be able to achieve them with good teaching and effort, schools can adjust their ambition level - some may choose to set more aspirational targets to drive higher achievement, while others may prefer more moderate goals. This grade serves as a baseline, calculated by mapping students' average GCSE scores to performance bands and their corresponding expected points. However, MEGs have limitations: they don't account for subject-specific variations, individual student factors, or contextual variables. The most effective targets are those that consider all contributing factors - prior attainment, subject difficulty, student circumstances, and school context. The MEG should be used alongside other indicators, particularly the Subject Target Grade (STG), which applies subject-specific adjustments.</p>
+          </div>
+        `;
+        
+        tooltipContainer.insertAdjacentHTML('beforeend', tooltipHTML);
+        const tooltipElement = document.getElementById('megInfoTooltip');
+        
+        // Position the tooltip near the button
+        const buttonRect = button.getBoundingClientRect();
+        tooltipElement.style.position = 'fixed';
+        tooltipElement.style.top = `${buttonRect.bottom + 5}px`;
+        tooltipElement.style.left = `${buttonRect.left - 100}px`; // Center it roughly on the button
+        
+        // Make it visible with a slight delay for transition
+        setTimeout(() => {
+          if (tooltipElement) tooltipElement.classList.add('visible');
+        }, 10);
+        
+        const closeButton = tooltipElement.querySelector('.profile-info-tooltip-close');
+        if (closeButton) {
+          closeButton.addEventListener('click', () => {
+            tooltipElement.classList.remove('visible');
+            setTimeout(() => {
+              if (tooltipElement && tooltipElement.parentNode) {
+                tooltipElement.parentNode.removeChild(tooltipElement);
+              }
+            }, 300);
+          });
+        }
+        
+        // Close on click outside
+        setTimeout(() => {
+          document.addEventListener('click', function closeMEGTooltip(event) {
+            if (tooltipElement && !tooltipElement.contains(event.target) && event.target !== button) {
+              tooltipElement.classList.remove('visible');
+              setTimeout(() => {
+                if (tooltipElement && tooltipElement.parentNode) {
+                  tooltipElement.parentNode.removeChild(tooltipElement);
+                }
+              }, 300);
+              document.removeEventListener('click', closeMEGTooltip);
+            }
+          });
+        }, 100);
+      });
+    });
   }
 
   function addStyles() {
@@ -1948,7 +2029,7 @@ if (window.reportProfilesInitialized) {
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1b.css'; // Update CSS path
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1c.css'; // Update CSS path
       document.head.appendChild(linkElement);
       debugLog("Linked central stylesheet: academicProfile1a.css from ReportProfiles");
     }
