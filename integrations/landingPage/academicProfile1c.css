@@ -226,6 +226,10 @@
   font-size: 0.7em;
   color: #bdc3c7; /* Lighter grey for labels */
   margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
 }
 .grade-value { /* This class is on the container of grade-text or input */
   font-size: 1em; /* Base size */
@@ -234,8 +238,14 @@
    font-weight: 600;
    color: #ffffff; /* Default white, specific colors by grade RAG status */
 }
-.grade-exg .grade-text { /* EXG specific text color */
+.grade-exg .grade-text { /* EXG specific text color - DEPRECATED, keeping for backward compatibility */
   color: #00e5db; /* Theme accent for EXG */
+}
+.grade-meg .grade-text { /* MEG specific text color */
+  color: #00e5db; /* Theme accent for MEG */
+}
+.grade-stg .grade-text { /* STG specific text color */
+  color: #79d2e6; /* Slightly different shade for STG */
 }
 
 /* Optional Grades (Effort, Behaviour, Attendance) */
@@ -522,4 +532,32 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
   #vespa-homepage .app-card { max-width: 100%; } /* Homepage specific */
   .grade-item { padding: 2px; }
   .grade-value { font-size: 1em; }
+}
+
+/* MEG Info Button (small i) */
+.meg-info-button {
+  font-size: 11px;
+  color: #00e5db;
+  cursor: pointer;
+  border: 1px solid #00e5db;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-style: normal;
+  transition: all 0.2s;
+}
+.meg-info-button:hover {
+  background-color: #00e5db;
+  color: #23356f;
+  transform: scale(1.1);
+}
+
+/* MEG Tooltip specific styling */
+.meg-tooltip {
+  max-width: 500px; /* Slightly smaller than main tooltip */
+  font-size: 0.9em;
 }
