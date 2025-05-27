@@ -394,10 +394,10 @@ if (window.reportProfilesInitialized) {
     if (!isOnStudentView || groupViewTable) {
       if (currentStudentId !== null || (profileContainer && profileContainer.innerHTML !== '')) {
           debugLog("Detected group view or non-student view, clearing profile");
-          clearProfileView(profileContainer); // This will clear window.currentReportStudentObject6Id
+          clearProfileView(profileContainer);
           currentStudentId = null;
           lastRenderedProfileHash = null;
-          isProcessingStudent = false; 
+          isProcessingStudent = false; // Ensure flag is clear if we bail here
       }
       return;
     }
@@ -405,37 +405,39 @@ if (window.reportProfilesInitialized) {
     if (!potentialStudentId) {
       debugLog("Could not determine student ID, clearing profile if necessary.");
       if (currentStudentId !== null || (profileContainer && profileContainer.innerHTML !== '')) {
-          clearProfileView(profileContainer); // This will clear window.currentReportStudentObject6Id
+          clearProfileView(profileContainer);
           currentStudentId = null;
           lastRenderedProfileHash = null;
-          isProcessingStudent = false; 
+          isProcessingStudent = false; // Ensure flag is clear
       }
       return;
     }
 
     // If student context hasn't changed AND profile is already rendered, skip.
-    // if (potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) { // original logic
-    // Simplified: if potentialStudentId is same as current and current is not null (meaning it was set)
-    if (potentialStudentId === currentStudentId && currentStudentId !== null && lastRenderedProfileHash !== null) {
-      debugLog("Student ID same, profile rendered. Skipping.");
+    if (potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) {
+      // debugLog("Student ID same, profile rendered. Skipping.");
+      // Ensure loading class is removed if we bail here, though it shouldn't have been added.
       document.body.classList.remove('report-profile-loading');
       return;
     }
-    
+
+    // --- New student context or first render for this student ---
+    // Show loading indicator immediately if we are proceeding
     showLoadingIndicator();
     debugLog(`New student context or first render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
-    
+    // showLoadingIndicator(profileContainer); // MOVED UP - Explicitly show loading indicator here
+
+    // Cancel requests for previous student if ID is actually changing.
     if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
       debugLog(`Student ID changed from ${currentStudentId} to ${potentialStudentId}. Cancelling old requests.`);
-      cancelActiveRequests(currentStudentId); 
+      cancelActiveRequests(currentStudentId); // Use the actual old ID
     }
     
-    currentStudentId = potentialStudentId; // This is the Object_6 ID
-    window.currentReportStudentObject6Id = currentStudentId; // Set it globally here as well
-    debugLog("[ReportProfiles] Set global window.currentReportStudentObject6Id (in handleReportChanges):", window.currentReportStudentObject6Id);
-    isProcessingStudent = true; 
-    lastRenderedProfileHash = null; 
+    currentStudentId = potentialStudentId;
+    isProcessingStudent = true; // Set flag: we are now officially processing this student
+    lastRenderedProfileHash = null; // Reset hash, forcing a new render if data is fetched
 
+    // Debounced processing logic remains the same
     const debouncedProcess = debounce(async (studentIdentifier) => {
       try {
         // Reset isProcessingStudent if the debounced call is for an outdated studentId
@@ -489,11 +491,6 @@ if (window.reportProfilesInitialized) {
       profileContainer.innerHTML = '';
       debugLog("Profile view cleared");
     }
-    window.currentReportStudentEmail = null; // Keep clearing this too
-    window.currentReportStudentObject6Id = null; // Clear Object_6 ID
-    window.currentReportObject10Id = null; // Clear Object_10 ID as well
-    debugLog("[ReportProfiles] Cleared global student identifiers.");
-
     // Also remove the info tooltip if it exists in the body
     const tooltipElement = document.getElementById('reportProfileGradeInfoTooltip');
     if (tooltipElement && tooltipElement.parentNode) {
@@ -638,62 +635,42 @@ if (window.reportProfilesInitialized) {
 
   async function processStudentProfileById(studentId, profileContainer) {
     try {
-      currentStudentId = studentId; // This is the Object_6 ID
-      window.currentReportStudentObject6Id = currentStudentId; // Keep this for clarity if needed elsewhere
-      debugLog("[ReportProfiles] Set global window.currentReportStudentObject6Id:", window.currentReportStudentObject6Id);
-
-      // Step 1: Get student record (Object_6) directly by ID
-      debugLog(`Looking up student (Object_6) record with ID: ${studentId}`);
-      const studentCacheKey = `student_${studentId}`;
-      let studentRecord = null; // This will be the Object_6 record
+      // Show loading indicator immediately - now handled by handleReportChanges
+      // showLoadingIndicator(profileContainer); // REMOVED - handleReportChanges calls global showLoadingIndicator()
       
+      // Step 1: Get student record directly by ID
+      debugLog(`Looking up student record with ID: ${studentId}`);
+      
+      const studentCacheKey = `student_${studentId}`;
+      let studentRecord = null;
+      
+      // Check cache for student record
       if (profileCache[studentCacheKey] && (Date.now() - profileCache[studentCacheKey].timestamp < CACHE_TTL)) {
         studentRecord = profileCache[studentCacheKey].data;
-        debugLog(`Using cached student (Object_6) record for ID: ${studentId}`);
+        debugLog(`Using cached student record for ID: ${studentId}`);
       } else {
-        // Assuming getKnackHeaders() and makeRequest() are defined and working
-        // This fetches the Object_6 record
         studentRecord = await makeRequest(
           `${KNACK_API_URL}/objects/object_6/records/${studentId}`,
           {
             type: 'GET',
             headers: getKnackHeaders(),
-            data: { format: 'raw' } 
+            data: { format: 'raw' }
           },
           `student_get_${studentId}`
         );
         
         if (studentRecord && studentRecord.id) {
-          profileCache[studentCacheKey] = { data: studentRecord, timestamp: Date.now() };
+          // Cache the student record
+          profileCache[studentCacheKey] = {
+            data: studentRecord,
+            timestamp: Date.now()
+          };
         } else {
-          console.error(`[ReportProfiles] Could not find student (Object_6) record with ID: ${studentId}`);
-          hideLoadingIndicator();
-          return; // Stop if student record can't be fetched
+          console.error(`[ReportProfiles] Could not find student record with ID: ${studentId}`);
+          return;
         }
       }
       
-      // MODIFICATION: Extract Object_10 ID from field_182 of the studentRecord (Object_6)
-      let object10Id = null;
-      if (studentRecord.field_182_raw) {
-        if (typeof studentRecord.field_182_raw === 'string') {
-          object10Id = studentRecord.field_182_raw;
-        } else if (typeof studentRecord.field_182_raw === 'object' && studentRecord.field_182_raw !== null) {
-          if (Array.isArray(studentRecord.field_182_raw) && studentRecord.field_182_raw.length > 0) {
-            object10Id = studentRecord.field_182_raw[0].id; // Take the first ID if it's an array of connection objects
-          } else if (studentRecord.field_182_raw.id) { // If it's a single connection object
-            object10Id = studentRecord.field_182_raw.id;
-          }
-        }
-      }
-
-      if (object10Id) {
-        window.currentReportObject10Id = object10Id;
-        debugLog("[ReportProfiles] Extracted and set global window.currentReportObject10Id:", object10Id);
-      } else {
-        window.currentReportObject10Id = null; // Ensure it's null if not found
-        debugLog("[ReportProfiles] Could not extract Object_10 ID from studentRecord.field_182_raw. Value was:", studentRecord.field_182_raw);
-      }
-
       // Step 2: Get student email and name - handling the complex object structure
       let studentEmail = '';
       if (studentRecord.field_91 && typeof studentRecord.field_91 === 'object') {
@@ -701,9 +678,7 @@ if (window.reportProfilesInitialized) {
       } else {
         studentEmail = studentRecord.field_91 || '';
       }
-      window.currentReportStudentEmail = studentEmail;
-      debugLog("[ReportProfiles] Set global window.currentReportStudentEmail:", studentEmail); 
-
+      
       let studentName = '';
       if (studentRecord.field_90 && typeof studentRecord.field_90 === 'object') {
         studentName = studentRecord.field_90.full || 
@@ -795,8 +770,7 @@ if (window.reportProfilesInitialized) {
       }
     } catch (error) {
       console.error('[ReportProfiles] Error processing student profile by ID:', error);
-      window.currentReportObject10Id = null; // Clear on error too
-      hideLoadingIndicator();
+      hideLoadingIndicator(); // Ensure overlay is hidden on error
     }
   }
 
