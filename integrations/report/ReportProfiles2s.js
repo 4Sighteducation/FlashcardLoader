@@ -414,22 +414,26 @@ if (window.reportProfilesInitialized) {
     }
 
     // If student context hasn't changed AND profile is already rendered, skip.
-    // if (potentialStudentId === currentStudentId && lastRenderedProfileHash !== null) { // original logic
-    // Simplified: if potentialStudentId is same as current and current is not null (meaning it was set)
-    if (potentialStudentId === currentStudentId && currentStudentId !== null && lastRenderedProfileHash !== null) {
-      debugLog("Student ID same, profile rendered. Skipping.");
-      document.body.classList.remove('report-profile-loading');
+    // This condition might be too restrictive if ReportProfiles re-renders but AI coach needs to be certain of Object_10 ID.
+    if (potentialStudentId === currentStudentId && currentStudentId !== null && lastRenderedProfileHash !== null && window.currentReportObject10Id !== null) {
+      debugLog("Student ID same, profile rendered, Object_10 ID present. Skipping ReportProfiles main processing block.");
+      // Even if ReportProfiles skips, AI coach might have been cleared by other logic, so this might need care.
+      // No, if ReportProfiles skips, it won't set a new Object_10 ID. This should be fine.
+      hideLoadingIndicator(); // Ensure loading is hidden if we skip.
       return;
     }
     
     showLoadingIndicator();
     debugLog(`New student context or first render. Processing: ${potentialStudentId}. Previously: ${currentStudentId}`);
     
-    if (currentStudentId !== null && currentStudentId !== potentialStudentId) {
-      debugLog(`Student ID changed from ${currentStudentId} to ${potentialStudentId}. Cancelling old requests.`);
-      cancelActiveRequests(currentStudentId); 
-      window.currentReportObject10Id = null; // Explicitly clear for new student context
-      debugLog("[ReportProfiles] Cleared window.currentReportObject10Id due to new student navigation.");
+    // Critical: If the potential student is different from the current one,
+    // immediately clear the global Object_10 ID. The AI Coach launcher will then wait.
+    if (currentStudentId !== potentialStudentId) {
+      debugLog(`Student ID changing from ${currentStudentId} to ${potentialStudentId}. Clearing global currentReportObject10Id.`);
+      window.currentReportObject10Id = null;
+      if (currentStudentId !== null) { // Only cancel requests if there was a previous student
+        cancelActiveRequests(currentStudentId);
+      }
     }
     
     currentStudentId = potentialStudentId; // This is the Object_6 ID
