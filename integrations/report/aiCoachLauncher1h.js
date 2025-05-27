@@ -95,12 +95,17 @@ if (window.aiCoachLauncherInitialized) {
         }
 
         const observerCallback = function(mutationsList, observer) {
-            // We are looking for changes that indicate navigation to/from an individual report.
-            // A simple check on each mutation might be too frequent.
-            // Debounce or check specific conditions.
             logAICoach("MutationObserver detected DOM change.");
             if (isIndividualReportView()) {
-                initializeCoachUI();
+                const panelIsActive = document.body.classList.contains('ai-coach-active');
+                if (!coachUIInitialized) { // First time UI init for a student view
+                    initializeCoachUI();
+                } else if (panelIsActive) { // UI already initialized AND panel is active, potentially new student
+                    logAICoach("Individual report view, panel active. Re-fetching data for potentially new student.");
+                    // Directly trigger the data fetching part of toggleAICoachPanel(true)
+                    // without toggling visibility, as it's already visible.
+                    refreshAICoachData(); 
+                }
             } else {
                 clearCoachUI();
             }
@@ -262,14 +267,18 @@ if (window.aiCoachLauncherInitialized) {
         logAICoach("Launcher button added to view: " + AI_COACH_LAUNCHER_CONFIG.viewKey);
     }
 
-    async function getStudentObject10RecordId() {
+    async function getStudentObject10RecordId(retryCount = 0) {
         logAICoach("Attempting to get student_object10_record_id from global variable set by ReportProfiles script...");
 
         if (window.currentReportObject10Id) {
             logAICoach("Found student_object10_record_id in window.currentReportObject10Id: " + window.currentReportObject10Id);
             return window.currentReportObject10Id;
+        } else if (retryCount < 5) { // Retry up to 5 times (e.g., 5 * 500ms = 2.5 seconds)
+            logAICoach(`student_object10_record_id not found. Retrying in 500ms (Attempt ${retryCount + 1}/5)`);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return getStudentObject10RecordId(retryCount + 1);
         } else {
-            logAICoach("Warning: student_object10_record_id not found in window.currentReportObject10Id. AI Coach may not function correctly if ReportProfiles hasn't set this.");
+            logAICoach("Warning: student_object10_record_id not found in window.currentReportObject10Id after multiple retries. AI Coach may not function correctly if ReportProfiles hasn't set this.");
             // Display a message in the panel if the ID isn't found.
             const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
             if(panelContent) {
@@ -419,6 +428,33 @@ if (window.aiCoachLauncherInitialized) {
         panelContent.innerHTML = html || '<p>No data to display.</p>';
     }
 
+    // New function to specifically refresh data if panel is already open
+    async function refreshAICoachData() {
+        const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
+        const panelContent = panel ? panel.querySelector('.ai-coach-panel-content') : null;
+
+        if (!panel || !panelContent) {
+            logAICoach("Cannot refresh AI Coach data: panel or panelContent not found.");
+            return;
+        }
+        if (!document.body.classList.contains('ai-coach-active')) {
+            logAICoach("AI Coach panel is not active, refresh not needed.");
+            return;
+        }
+
+        logAICoach("Refreshing AI Coach data...");
+        panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Identifying student report...</p>';
+        
+        const studentObject10Id = await getStudentObject10RecordId(); 
+        
+        if (studentObject10Id) {
+            fetchAICoachingData(studentObject10Id); 
+        } else {
+            logAICoach("Student Object_10 ID not available after getStudentObject10RecordId. AI data fetch will not proceed during refresh.");
+            // getStudentObject10RecordId should handle updating the panel with an error message
+        }
+    }
+
     async function toggleAICoachPanel(show) { 
         const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
         const toggleButton = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId);
@@ -429,16 +465,8 @@ if (window.aiCoachLauncherInitialized) {
             if (toggleButton) toggleButton.textContent = '🙈 Hide AI Coach';
             logAICoach("AI Coach panel activated.");
             
-            if(panelContent) panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Identifying student report...</p>';
-            
-            const studentObject10Id = await getStudentObject10RecordId(); 
-            
-            if (studentObject10Id) {
-                fetchAICoachingData(studentObject10Id); 
-            } else {
-                // If studentObject10Id is null, getStudentObject10RecordId should have already updated the panelContent with a message.
-                logAICoach("Student Object_10 ID not available after getStudentObject10RecordId. AI data fetch will not proceed.");
-            }
+            // Instead of direct call here, refreshAICoachData will be primary way for new/refreshed data
+            await refreshAICoachData(); 
 
         } else {
             document.body.classList.remove('ai-coach-active');
