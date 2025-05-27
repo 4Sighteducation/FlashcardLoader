@@ -6,10 +6,11 @@ if (window.aiCoachLauncherInitialized) {
 } else {
     window.aiCoachLauncherInitialized = true;
 
-    let AI_COACH_LAUNCHER_CONFIG = null; 
+    let AI_COACH_LAUNCHER_CONFIG = null;
     let coachObserver = null;
     let coachUIInitialized = false;
     let debouncedObserverCallback = null; // For debouncing mutation observer
+    let eventListenersAttached = false; // ADDED: Module-scoped flag for event listeners
 
     // --- Configuration ---
     const HEROKU_API_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1/coaching_suggestions';
@@ -44,7 +45,12 @@ if (window.aiCoachLauncherInitialized) {
 
     // Function to initialize the UI elements (button and panel)
     function initializeCoachUI() {
-        if (coachUIInitialized) return;
+        if (coachUIInitialized && document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId)) {
+            logAICoach("Coach UI appears to be already initialized with a button. Skipping full re-initialization.");
+            // If UI is marked initialized and button exists, critical parts are likely fine.
+            // Data refresh is handled by observer logic or toggleAICoachPanel.
+            return;
+        }
 
         logAICoach("Conditions met. Initializing AI Coach UI (button and panel).");
         addAICoachStyles();
@@ -278,18 +284,33 @@ if (window.aiCoachLauncherInitialized) {
             console.error(`[AICoachLauncher] Launcher button target element '${AI_COACH_LAUNCHER_CONFIG.elementSelector}' not found.`);
             return;
         }
-        if (document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId)) {
-            logAICoach("AI Coach launcher button already exists.");
-            return;
+
+        let buttonContainer = document.getElementById('aiCoachLauncherButtonContainer');
+        
+        // If the main button container div doesn't exist within the targetElement, create it.
+        if (!buttonContainer) {
+            buttonContainer = document.createElement('div');
+            buttonContainer.id = 'aiCoachLauncherButtonContainer';
+            // Clear targetElement before appending to ensure it only contains our button container.
+            // This assumes targetElement is designated EXCLUSIVELY for the AI Coach button.
+            // If targetElement can have other dynamic content, this approach needs refinement.
+            targetElement.innerHTML = ''; // Clear previous content from target
+            targetElement.appendChild(buttonContainer);
+            logAICoach("Launcher button container DIV created in target: " + AI_COACH_LAUNCHER_CONFIG.elementSelector);
         }
-        const buttonContainerHTML = `
-            <div id="aiCoachLauncherButtonContainer">
-              <p>Get AI-powered insights and suggestions to enhance your coaching conversation.</p>
-              <button id="${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" class="p-button p-component">🚀 Activate AI Coach</button>
-            </div>
-        `;
-        targetElement.innerHTML = buttonContainerHTML;
-        logAICoach("Launcher button added to view: " + AI_COACH_LAUNCHER_CONFIG.viewKey);
+
+        // Now, populate/repopulate the buttonContainer if the button itself is missing.
+        // clearCoachUI empties buttonContainer.innerHTML.
+        if (!buttonContainer.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`)) {
+            const buttonContentHTML = `
+                <p>Get AI-powered insights and suggestions to enhance your coaching conversation.</p>
+                <button id="${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" class="p-button p-component">🚀 Activate AI Coach</button>
+            `;
+            buttonContainer.innerHTML = buttonContentHTML;
+            logAICoach("Launcher button content added/re-added to container.");
+        } else {
+            logAICoach("Launcher button content already present in container.");
+        }
     }
 
     async function getStudentObject10RecordId(retryCount = 0) {
@@ -515,20 +536,35 @@ if (window.aiCoachLauncherInitialized) {
     }
 
     function setupEventListeners() {
+        if (eventListenersAttached) {
+            logAICoach("Global AI Coach event listeners already attached. Skipping setup.");
+            return;
+        }
+
         document.body.addEventListener('click', function(event) {
-            const toggleButton = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId);
-            const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
+            if (!AI_COACH_LAUNCHER_CONFIG || 
+                !AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId || 
+                !AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId) {
+                // Config might not be ready if an event fires too early, or if script reloaded weirdly.
+                // console.warn("[AICoachLauncher] Event listener fired, but essential config is missing.");
+                return; 
+            }
+
+            const toggleButtonId = AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId;
+            const panelId = AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId;
             
-            if (event.target && event.target.id === AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId) {
+            if (event.target && event.target.id === toggleButtonId) {
                 const isActive = document.body.classList.contains('ai-coach-active');
                 toggleAICoachPanel(!isActive);
             }
             
+            const panel = document.getElementById(panelId);
             if (panel && event.target && event.target.classList.contains('ai-coach-close-btn') && panel.contains(event.target)) {
                 toggleAICoachPanel(false);
             }
         });
-        logAICoach("Event listeners set up.");
+        eventListenersAttached = true;
+        logAICoach("Global AI Coach event listeners set up ONCE.");
     }
 
     window.initializeAICoachLauncher = initializeAICoachLauncher;
