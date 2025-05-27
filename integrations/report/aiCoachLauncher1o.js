@@ -376,34 +376,56 @@ if (window.aiCoachLauncherInitialized) {
     }
 
     function renderAICoachData(data) {
-        logAICoach("renderAICoachData CALLED. Data received:", JSON.parse(JSON.stringify(data))); // Log a deep copy
-        if (data && data.student_name) {
-            logAICoach(`renderAICoachData: Preparing to render for student: ${data.student_name} (Cycle: ${data.current_cycle})`);
-        } else {
-            logAICoach("renderAICoachData: data received is missing student_name or is undefined. Rendering basic message.");
-            // Render a basic message if critical data is missing
-            const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
-            if (panelContent) {
-                panelContent.innerHTML = '<div class="ai-coach-section"><p>No detailed coaching data available. Ensure the student report is fully loaded and the AI Coach is active.</p></div>';
-            }
-            return;
-        }
-
+        logAICoach("renderAICoachData CALLED. Data received:", JSON.parse(JSON.stringify(data)));
         const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
+
         if (!panelContent) {
             logAICoach("renderAICoachData: panelContent element not found. Cannot render.");
             return;
         }
 
-        // Explicitly clear previous content before rendering new data
-        panelContent.innerHTML = ''; 
+        panelContent.innerHTML = ''; // Clear previous content
 
         let html = '';
 
-        // Student Info
+        // 1. Render the AI Student Overview Summary (Always Visible)
+        html += '<div class="ai-coach-section">';
+        html += '<h4>AI Student Snapshot</h4>';
+        if (data.llm_generated_summary_and_suggestions && data.llm_generated_summary_and_suggestions.student_overview_summary) {
+            html += `<p>${data.llm_generated_summary_and_suggestions.student_overview_summary}</p>`;
+        } else if (data.student_name) { // Only show "generating" if we have student context
+            html += '<p>AI summary is being generated or is not available for this student.</p>';
+        } else { // Generic message if no data at all
+             html += '<p>No detailed coaching data available. Ensure the student report is fully loaded and the AI Coach is active.</p>';
+             panelContent.innerHTML = html; // Set basic message and exit
+             return;
+        }
+        html += '</div>';
+        
+        // If primary data like student_name is missing, don't attempt to render details.
+        if (!data.student_name) {
+            logAICoach("renderAICoachData: data received is missing student_name. Rendering only snapshot/error.");
+            panelContent.innerHTML = html; // Render what we have (snapshot or error) and exit.
+            return;
+        }
+
+
+        // 2. Add "Show/Hide Full Details" Button
         html += `
+            <button id="aiCoachToggleDetailsButton" class="p-button p-component" style="margin: 10px 0px 20px 0px; width: 100%; padding: 10px; font-size: 0.9em;">
+                Show Full Details
+            </button>
+        `;
+        
+        // 3. Container for collapsible details
+        html += '<div id="aiCoachDetailedDataContainer" style="display: none;">';
+
+        let detailedHtml = '';
+
+        // Student Info (now part of details)
+        detailedHtml += `
             <div class="ai-coach-section">
-                <h4>Student Overview</h4>
+                <h4>Student Overview (Details)</h4>
                 <p><strong>Name:</strong> ${data.student_name || 'N/A'}</p>
                 <p><strong>Level:</strong> ${data.student_level || 'N/A'}</p>
                 <p><strong>Current VESPA Cycle:</strong> ${data.current_cycle || 'N/A'}</p>
@@ -412,42 +434,45 @@ if (window.aiCoachLauncherInitialized) {
 
         // VESPA Profile - Enhanced to include historical scores and individual insights
         if (data.vespa_profile) {
-            html += '<div class="ai-coach-section"><h4>VESPA Profile</h4>';
+            detailedHtml += '<div class="ai-coach-section"><h4>VESPA Profile (Details)</h4>';
             for (const [element, details] of Object.entries(data.vespa_profile)) {
-                html += `
+                detailedHtml += `
                     <div>
                         <h5>${element} (Score: ${details.score_1_to_10 !== undefined ? details.score_1_to_10 : 'N/A'}) - <em>${details.score_profile_text || 'N/A'}</em></h5>
                         ${details.primary_tutor_coaching_comments ? `<p><strong>Tutor Coaching Comments (Report Gen):</strong> ${details.primary_tutor_coaching_comments}</p>` : ''}
                         ${details.report_text_for_student ? `<p><em>Student Report Text:</em> ${details.report_text_for_student}</p>` : ''}
                         ${details.report_questions_for_student ? `<p><em>Student Report Questions:</em> ${details.report_questions_for_student}</p>` : ''}
                         ${details.report_suggested_tools_for_student ? `<p><em>Student Report Tools:</em> ${details.report_suggested_tools_for_student}</p>` : ''}
-                        ${details.supplementary_tutor_questions && details.supplementary_tutor_questions.length > 0 ? 
+                        ${details.supplementary_tutor_questions && details.supplementary_tutor_questions.length > 0 ?
                             `<div><strong>Supplementary Tutor Questions (KB):</strong><ul>${details.supplementary_tutor_questions.map(q => `<li>${q}</li>`).join('')}</ul></div>` : ''}
-                        ${details.key_individual_question_insights_from_object29 && details.key_individual_question_insights_from_object29.length > 0 ? 
+                        ${details.key_individual_question_insights_from_object29 && details.key_individual_question_insights_from_object29.length > 0 ?
                             `<div><strong>Key Psychometric Insights (Object_29):</strong><ul>${details.key_individual_question_insights_from_object29.map(insight => `<li>${insight}</li>`).join('')}</ul></div>` : ''}
-                        ${details.historical_summary_scores ? 
-                            `<div><strong>Historical Scores:</strong> ${Object.entries(details.historical_summary_scores).map(([cycle, score]) => `Cycle ${cycle.replace('cycle','')}: ${score}`).join(', ') || 'N/A'}</div>` : ''}
+                        ${details.historical_summary_scores ?
+                            `<div><strong>Historical Scores:</strong> ${Object.entries(details.historical_summary_scores).map(([cycle, score]) => `Cycle ${cycle.replace('cycle', '')}: ${score}`).join(', ') || 'N/A'}</div>` : ''}
                     </div>
                 `;
-                 if (element !== "Overall" && Object.keys(data.vespa_profile).indexOf(element) < Object.keys(data.vespa_profile).length - (Object.keys(data.vespa_profile).includes("Overall") ? 2:1) ){
-                    html += '<hr style="border-top: 1px dashed #eee; margin: 10px 0;">';
+                if (element !== "Overall" && Object.keys(data.vespa_profile).indexOf(element) < Object.keys(data.vespa_profile).length - (Object.keys(data.vespa_profile).includes("Overall") ? 2 : 1)) {
+                    detailedHtml += '<hr style="border-top: 1px dashed #eee; margin: 10px 0;">';
                 }
             }
-            html += '</div>';
+            detailedHtml += '</div>';
         }
 
         // Academic Profile Summary
-        if (data.academic_profile_summary && data.academic_profile_summary.length > 0) {
-            html += '<div class="ai-coach-section"><h4>Academic Profile</h4><ul>';
+        if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && 
+            !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))) {
+            detailedHtml += '<div class="ai-coach-section"><h4>Academic Profile (Details)</h4><ul>';
             data.academic_profile_summary.forEach(subject => {
-                html += `<li><strong>${subject.subject || 'N/A'}:</strong> Grade ${subject.currentGrade || 'N/A'} (Target: ${subject.targetGrade || 'N/A'}, Effort: ${subject.effortGrade || 'N/A'})</li>`;
+                detailedHtml += `<li><strong>${subject.subject || 'N/A'}:</strong> Grade ${subject.currentGrade || 'N/A'} (Target: ${subject.targetGrade || 'N/A'}, Effort: ${subject.effortGrade || 'N/A'})</li>`;
             });
-            html += '</ul></div>';
+            detailedHtml += '</ul></div>';
+        } else {
+            detailedHtml += '<div class="ai-coach-section"><h4>Academic Profile (Details)</h4><p>No detailed academic profile available or profile not found.</p></div>';
         }
-        
+
         // Overall Framing Statement for Tutor
-        if(data.overall_framing_statement_for_tutor && data.overall_framing_statement_for_tutor.statement){
-            html += `
+        if (data.overall_framing_statement_for_tutor && data.overall_framing_statement_for_tutor.statement) {
+            detailedHtml += `
             <div class="ai-coach-section">
                 <h4>Overall Framing Statement (KB)</h4>
                 <p>${data.overall_framing_statement_for_tutor.statement}</p>
@@ -456,12 +481,12 @@ if (window.aiCoachLauncherInitialized) {
         }
 
         // General Introductory Questions for Tutor
-        if(data.general_introductory_questions_for_tutor && data.general_introductory_questions_for_tutor.length > 0){
-            html += '<div class="ai-coach-section"><h4>General Introductory Questions (KB)</h4><ul>';
+        if (data.general_introductory_questions_for_tutor && data.general_introductory_questions_for_tutor.length > 0) {
+            detailedHtml += '<div class="ai-coach-section"><h4>General Introductory Questions (KB)</h4><ul>';
             data.general_introductory_questions_for_tutor.forEach(q => {
-                html += `<li>${q}</li>`;
+                detailedHtml += `<li>${q}</li>`;
             });
-            html += '</ul></div>';
+            detailedHtml += '</ul></div>';
         }
 
         // Student Reflections & Goals (from Object_10)
@@ -480,62 +505,64 @@ if (window.aiCoachLauncherInitialized) {
             ];
 
             reflectionsMap.forEach(item => {
-                if (reflections[item.key] && reflections[item.key].trim() !== '') {
+                if (reflections[item.key] && reflections[item.key].trim() !== '' && reflections[item.key].trim() !== 'Not specified') {
                     const isCurrentCycleComment = currentCycle === item.cycle;
-                    const style = isCurrentCycleComment ? 'font-weight: bold; color: #0056b3;' : ''; // Example style for current cycle
+                    const style = isCurrentCycleComment ? 'font-weight: bold; color: #0056b3;' : '';
                     const cycleLabel = isCurrentCycleComment ? ' (Current Cycle)' : ` (Cycle ${item.cycle})`;
                     reflectionsHTML += `<p style="${style}"><strong>${item.label}${cycleLabel}:</strong> ${reflections[item.key]}</p>`;
                 }
             });
 
             if (reflectionsHTML.trim() !== '') {
-                html += `
+                detailedHtml += `
                     <div class="ai-coach-section">
                         <h4>Student Reflections & Goals (Object_10)</h4>
                         ${reflectionsHTML}
                     </div>
                 `;
             } else {
-                 html += `
+                detailedHtml += `
                     <div class="ai-coach-section">
                         <h4>Student Reflections & Goals (Object_10)</h4>
-                        <p>No specific comments or goals recorded by the student in Object_10 for the current cycle.</p>
+                        <p>No specific comments or goals recorded by the student in Object_10.</p>
                     </div>
                 `;
             }
         }
 
-        // LLM Generated Summary & Suggestions
+        // LLM Generated Suggestions (Openers, Key Points, Next Steps - EXCLUDING student_overview_summary)
         if (data.llm_generated_summary_and_suggestions) {
-            html += '<div class="ai-coach-section"><h4>AI Generated Suggestions</h4>';
-            if (data.llm_generated_summary_and_suggestions.conversation_openers && data.llm_generated_summary_and_suggestions.conversation_openers.length > 0) {
-                html += '<h5>Conversation Openers:</h5><ul>';
-                data.llm_generated_summary_and_suggestions.conversation_openers.forEach(o => { html += `<li>${o}</li>`; });
-                html += '</ul>';
+            let suggestionsContent = '';
+            if (data.llm_generated_summary_and_suggestions.conversation_openers && data.llm_generated_summary_and_suggestions.conversation_openers.length > 0 && data.llm_generated_summary_and_suggestions.conversation_openers[0] !== "(Placeholder) How are you feeling about your progress this cycle?") {
+                suggestionsContent += '<h5>Conversation Openers:</h5><ul>';
+                data.llm_generated_summary_and_suggestions.conversation_openers.forEach(o => { suggestionsContent += `<li>${o}</li>`; });
+                suggestionsContent += '</ul>';
             }
-            if (data.llm_generated_summary_and_suggestions.key_discussion_points && data.llm_generated_summary_and_suggestions.key_discussion_points.length > 0) {
-                html += '<h5>Key Discussion Points:</h5><ul>';
-                data.llm_generated_summary_and_suggestions.key_discussion_points.forEach(p => { html += `<li>${p}</li>`; });
-                html += '</ul>';
+            if (data.llm_generated_summary_and_suggestions.key_discussion_points && data.llm_generated_summary_and_suggestions.key_discussion_points.length > 0 && data.llm_generated_summary_and_suggestions.key_discussion_points[0] !== "(Placeholder) Let's look at your VESPA scores and reflections.") {
+                suggestionsContent += '<h5>Key Discussion Points:</h5><ul>';
+                data.llm_generated_summary_and_suggestions.key_discussion_points.forEach(p => { suggestionsContent += `<li>${p}</li>`; });
+                suggestionsContent += '</ul>';
             }
-            if (data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor && data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor.length > 0) {
-                html += '<h5>Suggested Next Steps:</h5><ul>';
-                data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor.forEach(s => { html += `<li>${s}</li>`; });
-                html += '</ul>';
+            if (data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor && data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor.length > 0 && data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor[0] !== "(Placeholder) Explore areas for development and set new goals.") {
+                suggestionsContent += '<h5>Suggested Next Steps:</h5><ul>';
+                data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor.forEach(s => { suggestionsContent += `<li>${s}</li>`; });
+                suggestionsContent += '</ul>';
             }
-            html += '</div>';
+            if (suggestionsContent) {
+                 detailedHtml += `<div class="ai-coach-section"><h4>AI Generated Suggestions (Details)</h4>${suggestionsContent}</div>`;
+            }
         }
-        
+
         // Previous Interaction Summary (from Object_10.field_3271)
-        if(data.previous_interaction_summary && data.previous_interaction_summary.trim() !== ''){
-             html += `
+        if (data.previous_interaction_summary && data.previous_interaction_summary.trim() !== '' && data.previous_interaction_summary.trim() !== "No previous AI coaching summary found.") {
+            detailedHtml += `
             <div class="ai-coach-section">
                 <h4>Previous AI Coach Interaction Summary</h4>
                 <p>${data.previous_interaction_summary}</p>
             </div>
         `;
         } else {
-            html += `
+            detailedHtml += `
             <div class="ai-coach-section">
                 <h4>Previous AI Coach Interaction Summary</h4>
                 <p>No previous interaction summary recorded.</p>
@@ -543,7 +570,36 @@ if (window.aiCoachLauncherInitialized) {
         `;
         }
 
-        panelContent.innerHTML = html || '<p>No coaching data components to display. Check API response.</p>';
+        html += detailedHtml;
+        html += '</div>'; // Close aiCoachDetailedDataContainer
+
+        panelContent.innerHTML = html;
+
+        // Add event listener for the new toggle button
+        const toggleButton = document.getElementById('aiCoachToggleDetailsButton');
+        if (toggleButton) {
+            toggleButton.addEventListener('click', () => {
+                const detailsContainer = document.getElementById('aiCoachDetailedDataContainer');
+                if (detailsContainer) {
+                    if (detailsContainer.style.display === 'none') {
+                        detailsContainer.style.display = 'block';
+                        toggleButton.textContent = 'Hide Full Details';
+                        toggleButton.setAttribute('aria-expanded', 'true');
+                    } else {
+                        detailsContainer.style.display = 'none';
+                        toggleButton.textContent = 'Show Full Details';
+                        toggleButton.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            });
+            // Set initial ARIA state
+            toggleButton.setAttribute('aria-expanded', 'false');
+            toggleButton.setAttribute('aria-controls', 'aiCoachDetailedDataContainer');
+        }
+        logAICoach("renderAICoachData: Successfully rendered data with details toggle.");
+
+        // --- Add Chat Interface --- 
+        addChatInterface(panelContent, data.student_name || "Student");
     }
 
     // New function to specifically refresh data if panel is already open
@@ -626,5 +682,71 @@ if (window.aiCoachLauncherInitialized) {
         logAICoach("Global AI Coach event listeners set up ONCE.");
     }
 
+    // --- Function to add Chat Interface --- 
+    function addChatInterface(panelContentElement, studentNameForContext) {
+        if (!panelContentElement) return;
+
+        logAICoach("Adding chat interface...");
+
+        const chatContainer = document.createElement('div');
+        chatContainer.id = 'aiCoachChatContainer';
+        chatContainer.className = 'ai-coach-section'; // Use existing class for styling consistency
+        chatContainer.style.marginTop = '20px';
+
+        chatContainer.innerHTML = `
+            <h4>AI Chat with ${studentNameForContext}</h4>
+            <div id="aiCoachChatDisplay" style="height: 200px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; margin-bottom: 10px; background-color: #fff;">
+                <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today? (Chat functionality is under development)</p>
+            </div>
+            <div style="display: flex;">
+                <input type="text" id="aiCoachChatInput" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc;" placeholder="Type your message...">
+                <button id="aiCoachChatSendButton" class="p-button p-component" style="margin-left: 10px; padding: 8px 15px;">Send</button>
+            </div>
+        `;
+        panelContentElement.appendChild(chatContainer);
+
+        const chatInput = document.getElementById('aiCoachChatInput');
+        const chatSendButton = document.getElementById('aiCoachChatSendButton');
+        const chatDisplay = document.getElementById('aiCoachChatDisplay');
+
+        function sendChatMessage() {
+            if (!chatInput || !chatDisplay) return;
+            const messageText = chatInput.value.trim();
+            if (messageText === '') return;
+
+            // Display user message
+            const userMessageElement = document.createElement('p');
+            userMessageElement.className = 'ai-chat-message ai-chat-message-user';
+            userMessageElement.textContent = `You: ${messageText}`;
+            chatDisplay.appendChild(userMessageElement);
+
+            chatInput.value = ''; // Clear input
+            chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to bottom
+
+            // Placeholder for LLM response
+            // In the future, this will involve an API call
+            setTimeout(() => {
+                const botMessageElement = document.createElement('p');
+                botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
+                botMessageElement.innerHTML = `<em>AI Coach:</em> Thinking... (response for \"${messageText}\" will appear here)`;
+                chatDisplay.appendChild(botMessageElement);
+                chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to bottom
+            }, 500);
+        }
+
+        if (chatSendButton) {
+            chatSendButton.addEventListener('click', sendChatMessage);
+        }
+        if (chatInput) {
+            chatInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    sendChatMessage();
+                }
+            });
+        }
+        logAICoach("Chat interface added and event listeners set up.");
+    }
+
     window.initializeAICoachLauncher = initializeAICoachLauncher;
 } 
+
