@@ -26,7 +26,7 @@ if (window.reportProfilesInitialized) {
   // Constants
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
-  const DEBUG_MODE = true; // Enable console logging
+  const DEBUG_MODE = false; // Enable console logging
   const CHECK_INTERVAL = 500; // Check every 500ms
   const MAX_CHECKS = 20; // Give up after 10 seconds (20 checks)
 
