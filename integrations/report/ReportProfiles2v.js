@@ -1561,373 +1561,59 @@ if (window.reportProfilesInitialized) {
   function renderStudentProfile(profileData, profileContainer) {
     if (!profileData) {
       debugLog("Cannot render profile: No profile data provided");
-      // document.body.classList.remove('report-profile-loading'); // REMOVED - hideLoadingIndicator will handle this
       hideLoadingIndicator();
-      // Also ensure profile container is cleared if it was showing a loader
-      if(profileContainer) profileContainer.innerHTML = '<div class="no-profile-data">No profile data available.</div>';
+      if(profileContainer) profileContainer.innerHTML = ''; // Clear container
       return;
     }
-    debugLog("renderStudentProfile called. isProfileInEditMode:", isProfileInEditMode); // Confirm isProfileInEditMode state
-    
+    debugLog("renderStudentProfile called. isProfileInEditMode:", isProfileInEditMode, "UI rendering is now MINIMIZED/SKIPPED.");
+
     if (!profileContainer) {
       debugLog("Cannot render profile: Container element not found");
+      hideLoadingIndicator(); // Ensure loading indicator is hidden
       return;
     }
-    
-    // Ensure the container is truly accessible and part of the DOM
+
     if (!document.contains(profileContainer)) {
       debugLog("Container element is no longer in the DOM, attempting to find it again");
-      // Try to find the container again
       const newContainer = document.querySelector('#view_3015 .kn-rich_text__content');
       if (newContainer) {
         profileContainer = newContainer;
         debugLog("Found new container reference");
       } else {
         debugLog("Could not find replacement container, cannot render profile");
+        hideLoadingIndicator(); // Ensure loading indicator is hidden
         return;
       }
     }
-    
-    // Calculate a hash of the current profile data to avoid redundant renders
+
     const profileHash = hashProfileData(profileData);
-    
-    // Check if we're trying to render the exact same content
-    if (profileHash === lastRenderedProfileHash) {
-      debugLog(`Skipping render: Profile data hasn't changed (hash: ${profileHash})`);
+    if (profileHash === lastRenderedProfileHash && profileContainer.innerHTML !== '') {
+      debugLog(`Skipping profile minimal render: Profile data hasn\'t changed (hash: ${profileHash}) and container not empty.`);
+      hideLoadingIndicator(); // Still ensure loading indicator is handled
       return;
     }
-    
-    // Update the DOM update flag to prevent observer reactions
+
     isUpdatingDOM = true;
-    
-    // Update our timestamp and hash tracking
-    // lastRenderTime = Date.now(); // Not strictly needed with current hash logic
     lastRenderedProfileHash = profileHash;
-    
-    // Master edit/save icon logic
-    let masterEditIconHTML = '';
-    if (isEditableByStaff()) { // Only show master edit icon if staff can edit
-      if (isProfileInEditMode) {
-        masterEditIconHTML = `<span class="master-edit-icon save-icon" title="Save All Changes">\uD83D\uDCBE Save All</span>`; // Changed to Unicode escape
-      } else {
-        masterEditIconHTML = `<span class="master-edit-icon edit-icon" title="Edit All Grades">✏️ Edit Grades</span>`; // Changed to Unicode escape
-      }
-    }
 
-    // Extract profile data
-    const name = sanitizeField(profileData[FIELD_MAPPING.studentName]) || 'Student';
-    
-    // Handle school field (connection field)
-    let schoolDisplay = 'N/A';
-    if (profileData[FIELD_MAPPING.vespaCustomer]) {
-      const schoolField = profileData[FIELD_MAPPING.vespaCustomer];
-      
-      if (typeof schoolField === 'object' && schoolField !== null) {
-        // Extract school name from connection field
-        if (schoolField.field_122_raw) {
-          schoolDisplay = sanitizeField(schoolField.field_122_raw.identifier || 
-                        schoolField.field_122_raw.name || 'VESPA ACADEMY');
-        } else if (schoolField.text) {
-          schoolDisplay = sanitizeField(schoolField.text);
-        } else if (schoolField.identifier) {
-          schoolDisplay = sanitizeField(schoolField.identifier);
-        } else if (schoolField.name) {
-          schoolDisplay = sanitizeField(schoolField.name);
-        } else {
-          schoolDisplay = "VESPA ACADEMY";
-        }
-      } else if (typeof schoolField === 'string') {
-        schoolDisplay = sanitizeField(schoolField);
-      }
-    }
-    
-    const tutorGroup = sanitizeField(profileData[FIELD_MAPPING.tutorGroup]);
-    const yearGroup = sanitizeField(profileData[FIELD_MAPPING.yearGroup]);
-    const attendance = sanitizeField(profileData[FIELD_MAPPING.attendance]);
-    
-    // Parse subject data
-    const subjectData = [];
-    for (let i = 1; i <= 15; i++) {
-      const fieldKey = `sub${i}`;
-      const fieldId = FIELD_MAPPING[fieldKey];
-      
-      if (profileData[fieldId]) {
-        try {
-          const subject = safeParseJSON(profileData[fieldId]);
-          if (subject && subject.subject) {
-            // Ensure new optional fields are carried over or initialized
-            subject.effortGrade = subject.effortGrade || '';
-            subject.behaviourGrade = subject.behaviourGrade || '';
-            subject.subjectAttendance = subject.subjectAttendance || '';
-            subjectData.push(subject);
-          }
-        } catch (e) {
-          // console.warn(`[ReportProfiles] Error parsing subject data for ${fieldKey}:`, e);
-          debugLog(`[ReportProfiles] Error parsing subject data for ${fieldKey}`, { error: e.message });
-        }
-      }
-    }
-    
-    // Render subjects
-    let subjectsHTML = '';
-    // const staffCanEdit = isEditableByStaff(); // Already checked for masterEditIconHTML, and used for isProfileInEditMode logic
-    // debugLog("Staff can edit grades:", staffCanEdit);
+    // --- UI Rendering is now skipped --- 
+    // The original HTML construction for profile display is removed.
+    // We will only ensure the container is cleared and loading indicators handled.
 
-    if (subjectData && subjectData.length > 0) {
-      subjectData.forEach(subject => {
-        const originalSubjectRecordId = subject.originalRecordId;
-        if (!originalSubjectRecordId && isEditableByStaff()) {
-          console.warn(`[ReportProfiles] Subject '${subject.subject}' is missing originalRecordId. Editing will not be possible for this subject.`);
-          // ADDED DIAGNOSTIC LOGGING START
-          let foundRawJsonForSubject = false;
-          for (let k = 1; k <= 15; k++) {
-            const checkFieldKey = `sub${k}`;
-            const checkFieldId = FIELD_MAPPING[checkFieldKey];
-            if (profileData[checkFieldId]) {
-                let rawJsonString = profileData[checkFieldId];
-                if (typeof rawJsonString === 'string') {
-                    try {
-                        const tempParsedSubject = safeParseJSON(rawJsonString);
-                        // Check if this parsed object matches the 'subject' object from subjectData
-                        // This check relies on subject.subject being a reasonably unique identifier here.
-                        if (tempParsedSubject && tempParsedSubject.subject === subject.subject) {
-                             debugLog(`[ReportProfiles] Raw JSON for subject '${subject.subject}' (from profile field ${checkFieldId}) which is missing originalRecordId:`, rawJsonString);
-                             foundRawJsonForSubject = true;
-                             break; 
-                        }
-                    } catch (parseError) {
-                        // This specific rawJsonString might not be the one corresponding to the current 'subject' object,
-                        // or it might be malformed. The main parsing loop for subjectData already logs general parsing errors.
-                    }
-                }
-            }
-          }
-          if (!foundRawJsonForSubject) {
-              debugLog(`[ReportProfiles] Could not find raw JSON in profileData corresponding to subject '${subject.subject}' to log its content, though originalRecordId is missing.`);
-          }
-          // ADDED DIAGNOSTIC LOGGING END
-        }
+    profileContainer.innerHTML = ''; // Keep the container clear
+    hideLoadingIndicator(); // Ensure loading indicator is hidden after processing
 
-        let qualTypeClass = '';
-        const examType = (subject.examType || '').trim().toLowerCase(); // Normalize to lowercase
+    // Call to setup tooltips is removed as the UI elements they attach to are no longer rendered.
+    // setupReportProfileInfoTooltip(profileContainer);
+    // setupMEGInfoButtons(profileContainer);
 
-        // Map examType to a specific CSS class
-        if (examType === 'a-level') {
-          qualTypeClass = 'qual-a-level';
-        } else if (examType === 'btec (2016)') {
-          qualTypeClass = 'qual-btec-2016';
-        } else if (examType === 'btec (2010)') {
-          qualTypeClass = 'qual-btec-2010';
-        } else if (examType === 'ib') {
-          qualTypeClass = 'qual-ib';
-        } else if (examType === 'pre-u') {
-          qualTypeClass = 'qual-pre-u';
-        } else if (examType === 'ual') {
-          qualTypeClass = 'qual-ual';
-        } else if (examType === 'wjec') {
-          qualTypeClass = 'qual-wjec';
-        } else if (examType === 'cache') {
-          qualTypeClass = 'qual-cache';
-        } else if (examType === 'gcse') {
-          qualTypeClass = 'qual-gcse';
-        } else if (examType === 'vocational') { // Fallback for generic vocational
-          qualTypeClass = 'qual-vocational-generic';
-        } else if (examType) { // Fallback for any other non-empty examType
-          qualTypeClass = 'qual-' + examType.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-        }
+    debugLog("Profile UI rendering skipped as requested. Container cleared. Data processing and global vars should be unaffected.");
+    debugLog("Profile data that WOULD have been rendered:", { name: sanitizeField(profileData[FIELD_MAPPING.studentName]) || 'Student', subjects: 'Skipped' });
 
-        const currentGrade = sanitizeField(subject.currentGrade || 'N/A');
-        const targetGrade = sanitizeField(subject.targetGrade || 'N/A');
-        const megGrade = sanitizeField(subject.minimumExpectedGrade || 'N/A');
-        const stgGrade = sanitizeField(subject.subjectTargetGrade || subject.minimumExpectedGrade || 'N/A');
-
-        const currentGradeColorClass = getGradeColorClass(currentGrade, stgGrade);
-        const targetGradeColorClass = getGradeColorClass(targetGrade, stgGrade);
-        
-        let currentGradeDisplay, targetGradeDisplay;
-
-        // Current Grade Display
-        if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
-          currentGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${currentGrade === 'N/A' ? '' : subject.currentGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132" placeholder="N/A"></div>`;
-        } else {
-          currentGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${currentGradeColorClass}">${currentGrade}</span></div>`;
-        }
-        // Remove individual edit icon for current grade
-        // if (isEditableByStaff() && originalSubjectRecordId) {
-        //   currentGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Current Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3132">✏️</span>`;
-        // }
-
-        // Target Grade Display
-        if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
-          targetGradeDisplay = `<div class="grade-value-display"><input type="text" class="grade-input-dynamic" value="${targetGrade === 'N/A' ? '' : subject.targetGrade}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135" placeholder="N/A"></div>`;
-        } else {
-          targetGradeDisplay = `<div class="grade-value-display"><span class="grade-text ${targetGradeColorClass}">${targetGrade}</span></div>`;
-        }
-        // Remove individual edit icon for target grade
-        // if (isEditableByStaff() && originalSubjectRecordId) {
-        //   targetGradeDisplay += `<span class="grade-edit-icon edit-icon" title="Edit Target Grade" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3135">✏️</span>`;
-        // }
-
-        // NEW: Optional Grades (Effort, Behaviour, Subject Attendance)
-        let optionalGradesHTML = '';
-        if (isEditableByStaff() && isProfileInEditMode && originalSubjectRecordId) {
-          // EDIT MODE: Render inputs for optional fields
-          optionalGradesHTML += `<div class="optional-grade-item">`;
-          optionalGradesHTML += `<span class="optional-grade-label">Eff:</span>`;
-          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.effortGrade && subject.effortGrade !== 'N/A' ? subject.effortGrade : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3133" placeholder="-">`;
-          optionalGradesHTML += `</div>`;
-
-          optionalGradesHTML += `<div class="optional-grade-item">`;
-          optionalGradesHTML += `<span class="optional-grade-label">Beh:</span>`;
-          optionalGradesHTML += `<input type="text" class="optional-grade-input" value="${(subject.behaviourGrade && subject.behaviourGrade !== 'N/A' ? subject.behaviourGrade : '')}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3134" placeholder="-">`;
-          optionalGradesHTML += `</div>`;
-          
-          optionalGradesHTML += `<div class="optional-grade-item">`;
-          optionalGradesHTML += `<span class="optional-grade-label">Att:</span>`;
-          // For attendance input, show the number part of percentage e.g. 89 from 0.89
-          let attValueForInput = '';
-          if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
-            const numAtt = parseFloat(String(subject.subjectAttendance));
-            if (!isNaN(numAtt)) {
-              attValueForInput = Math.round(numAtt * 100);
-            }
-          }
-          optionalGradesHTML += `<input type="text" class="optional-grade-input attendance-input" value="${attValueForInput}" data-original-record-id="${originalSubjectRecordId}" data-field-id="field_3186" placeholder="%">`;
-          optionalGradesHTML += `</div>`;
-
-        } else {
-          // DISPLAY MODE: Render text for optional fields
-          if (subject.effortGrade && subject.effortGrade !== 'N/A') {
-            optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Eff:</span>${sanitizeField(subject.effortGrade)}</div>`;
-          }
-          if (subject.behaviourGrade && subject.behaviourGrade !== 'N/A') {
-            optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Beh:</span>${sanitizeField(subject.behaviourGrade)}</div>`;
-          }
-          if (subject.subjectAttendance && subject.subjectAttendance !== 'N/A') {
-            optionalGradesHTML += `<div class="optional-grade-item"><span class="optional-grade-label">Att:</span>${formatAsPercentage(subject.subjectAttendance)}</div>`;
-          }
-        }
-
-        subjectsHTML += `
-          <div class="subject-card ${qualTypeClass}">
-            <div class="subject-name">${sanitizeField(subject.subject || '')}</div>
-            <div class="subject-meta">
-              ${subject.examType ? sanitizeField(subject.examType) : 'N/A'}
-              ${subject.examBoard ? ` • ${sanitizeField(subject.examBoard)}` : ''}
-            </div>
-            <div class="grades-container">
-              <div class="grade-item">
-                <div class="grade-label">MEG <span class="meg-info-button" title="Understanding MEG">i</span></div>
-                <div class="grade-value grade-meg"><span class="grade-text">${megGrade}</span></div>
-              </div>
-              <div class="grade-item">
-                <div class="grade-label">STG</div>
-                <div class="grade-value grade-stg"><span class="grade-text">${stgGrade}</span></div>
-              </div>
-              <div class="grade-item current-grade-item">
-                <div class="grade-label">Current</div>
-                ${currentGradeDisplay}
-              </div>
-              <div class="grade-item target-grade-item">
-                <div class="grade-label">Target</div>
-                ${targetGradeDisplay}
-              </div>
-            </div>
-            ${ optionalGradesHTML ? `<div class="optional-grades-container">${optionalGradesHTML}</div>` : '' }
-            <div class="grade-edit-feedback"></div>
-          </div>
-        `;
-      });
-    } else {
-      subjectsHTML = '<div class="no-subjects">No subjects available</div>';
-    }
-    
-    // Create the profile HTML
-    const profileHTML = `
-      <div id="vespa-profile">
-        <section class="vespa-section profile-section">
-          <h2 class="vespa-section-title">
-            <span style="display: inline-flex; align-items: center;"> <!-- Grouping span -->
-              Student Profile 
-              <span class="profile-info-button report-profile-info-button" title="Understanding These Grades">i</span>
-            </span>
-            ${masterEditIconHTML}
-          </h2>
-          <div class="profile-info">
-            <div class="profile-details">
-              <div class="profile-name">${name}</div>
-              
-              <div class="profile-item">
-                <span class="profile-label">School:</span>
-                <span class="profile-value">${schoolDisplay}</span>
-              </div>
-              
-            ${yearGroup ? `
-            <div class="profile-item">
-              <span class="profile-label">Year Group:</span>
-              <span class="profile-value">${yearGroup}</span>
-            </div>
-            ` : ''}
-            
-            ${tutorGroup ? `
-            <div class="profile-item">
-              <span class="profile-label">Tutor Group:</span>
-              <span class="profile-value">${tutorGroup}</span>
-            </div>
-            ` : ''}
-            
-            ${attendance ? `
-            <div class="profile-item">
-              <span class="profile-label">Attendance:</span>
-              <span class="profile-value">${attendance}</span>
-            </div>
-            ` : ''}
-            </div>
-            
-            <div class="subjects-container">
-              <div class="subjects-grid">
-                ${subjectsHTML}
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    `;
-    
-    // Delay rendering slightly to ensure DOM stability
     setTimeout(() => {
-      // Clear container and add content
-      profileContainer.innerHTML = profileHTML;
-      lastRenderedProfileHash = profileHash; // Ensure hash is updated AFTER innerHTML set, before DOM lock release
-      // document.body.classList.remove('report-profile-loading'); // REMOVED - hideLoadingIndicator will handle this
-      hideLoadingIndicator();
-      
-      // Add event listener to the new master edit/save icon
-      const masterIcon = profileContainer.querySelector('.master-edit-icon');
-      if (masterIcon) {
-          masterIcon.addEventListener('click', toggleMasterEditMode); // New function to be created
-      }
-      
-      // NEW: Add event listener for the profile info button
-      setupReportProfileInfoTooltip(profileContainer);
-      
-      // REMOVE event listeners for individual grade-edit-icons as they are gone
-      // if (isEditableByStaff()) { // staffCanEdit variable was used before, ensure consistency
-      //     profileContainer.querySelectorAll('.grade-edit-icon').forEach(icon => {
-      //         icon.addEventListener('click', (event) => toggleGradeEditMode(event.currentTarget));
-      //     });
-      // }
-
-      debugLog("Profile rendered with master edit icon logic");
-      
-      // Reset the DOM update flag after a slight delay to ensure rendering completes
-      setTimeout(() => {
-        isUpdatingDOM = false;
-        debugLog("DOM update lock released");
-      }, 100);
-    }, 50);
-    
-    debugLog("Profile rendered successfully", { name, subjects: subjectData.length });
+      isUpdatingDOM = false;
+      debugLog("DOM update lock released after minimal render.");
+    }, 100);
   }
 
   // NEW: Setup for profile information tooltip in ReportProfiles
