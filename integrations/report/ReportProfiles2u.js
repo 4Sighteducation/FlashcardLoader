@@ -2,7 +2,11 @@
 // This script displays student profile data above individual VESPA reports
 // Adapted for Multi-App Loader system
 
-const DEBUG_MODE = true; // Define DEBUG_MODE early
+// Conditionally define DEBUG_MODE to prevent re-declaration errors if script is loaded multiple times
+if (typeof window.REPORT_PROFILES_DEBUG_MODE === 'undefined') {
+  window.REPORT_PROFILES_DEBUG_MODE = true; 
+}
+const DEBUG_MODE = window.REPORT_PROFILES_DEBUG_MODE;
 
 // Global config variable - will be set by loader
 // let REPORTPROFILE_CONFIG = null; // Moved to prevent re-declaration errors
@@ -414,12 +418,9 @@ if (window.reportProfilesInitialized) {
       return;
     }
 
-    // If student context hasn't changed AND profile is already rendered, skip.
-    // This condition might be too restrictive if ReportProfiles re-renders but AI coach needs to be certain of Object_10 ID.
-    if (potentialStudentId === currentStudentId && currentStudentId !== null && lastRenderedProfileHash !== null && window.currentReportObject10Id !== null) {
-      debugLog("Student ID same, profile rendered, Object_10 ID present. Skipping ReportProfiles main processing block.");
-      // Even if ReportProfiles skips, AI coach might have been cleared by other logic, so this might need care.
-      // No, if ReportProfiles skips, it won't set a new Object_10 ID. This should be fine.
+    // If student context hasn't changed for ReportProfiles own rendering, and its profile is already rendered, skip.
+    if (potentialStudentId === currentStudentId && currentStudentId !== null && lastRenderedProfileHash !== null) {
+      debugLog("ReportProfiles: Student ID and profile hash are the same. Skipping main processing block for ReportProfiles.");
       hideLoadingIndicator(); // Ensure loading is hidden if we skip.
       return;
     }
