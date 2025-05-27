@@ -380,7 +380,13 @@ if (window.aiCoachLauncherInitialized) {
         if (data && data.student_name) {
             logAICoach(`renderAICoachData: Preparing to render for student: ${data.student_name} (Cycle: ${data.current_cycle})`);
         } else {
-            logAICoach("renderAICoachData: data received is missing student_name or is undefined.");
+            logAICoach("renderAICoachData: data received is missing student_name or is undefined. Rendering basic message.");
+            // Render a basic message if critical data is missing
+            const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
+            if (panelContent) {
+                panelContent.innerHTML = '<div class="ai-coach-section"><p>No detailed coaching data available. Ensure the student report is fully loaded and the AI Coach is active.</p></div>';
+            }
+            return;
         }
 
         const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
@@ -400,22 +406,27 @@ if (window.aiCoachLauncherInitialized) {
                 <h4>Student Overview</h4>
                 <p><strong>Name:</strong> ${data.student_name || 'N/A'}</p>
                 <p><strong>Level:</strong> ${data.student_level || 'N/A'}</p>
-                <p><strong>Current Cycle:</strong> ${data.current_cycle || 'N/A'}</p>
+                <p><strong>Current VESPA Cycle:</strong> ${data.current_cycle || 'N/A'}</p>
             </div>
         `;
 
-        // VESPA Profile
+        // VESPA Profile - Enhanced to include historical scores and individual insights
         if (data.vespa_profile) {
             html += '<div class="ai-coach-section"><h4>VESPA Profile</h4>';
             for (const [element, details] of Object.entries(data.vespa_profile)) {
                 html += `
                     <div>
                         <h5>${element} (Score: ${details.score_1_to_10 !== undefined ? details.score_1_to_10 : 'N/A'}) - <em>${details.score_profile_text || 'N/A'}</em></h5>
-                        ${details.primary_tutor_coaching_comments ? `<p><strong>Coaching Comments:</strong> ${details.primary_tutor_coaching_comments}</p>` : ''}
-                        ${details.report_text_for_student ? `<p><em>Report Text:</em> ${details.report_text_for_student}</p>` : ''}
-                        ${details.report_questions_for_student ? `<p><em>Student Questions:</em> ${details.report_questions_for_student}</p>` : ''}
-                        ${details.report_suggested_tools_for_student ? `<p><em>Suggested Tools:</em> ${details.report_suggested_tools_for_student}</p>` : ''}
-                        <!-- TODO: Display historical scores, supplementary questions, individual insights -->
+                        ${details.primary_tutor_coaching_comments ? `<p><strong>Tutor Coaching Comments (Report Gen):</strong> ${details.primary_tutor_coaching_comments}</p>` : ''}
+                        ${details.report_text_for_student ? `<p><em>Student Report Text:</em> ${details.report_text_for_student}</p>` : ''}
+                        ${details.report_questions_for_student ? `<p><em>Student Report Questions:</em> ${details.report_questions_for_student}</p>` : ''}
+                        ${details.report_suggested_tools_for_student ? `<p><em>Student Report Tools:</em> ${details.report_suggested_tools_for_student}</p>` : ''}
+                        ${details.supplementary_tutor_questions && details.supplementary_tutor_questions.length > 0 ? 
+                            `<div><strong>Supplementary Tutor Questions (KB):</strong><ul>${details.supplementary_tutor_questions.map(q => `<li>${q}</li>`).join('')}</ul></div>` : ''}
+                        ${details.key_individual_question_insights_from_object29 && details.key_individual_question_insights_from_object29.length > 0 ? 
+                            `<div><strong>Key Psychometric Insights (Object_29):</strong><ul>${details.key_individual_question_insights_from_object29.map(insight => `<li>${insight}</li>`).join('')}</ul></div>` : ''}
+                        ${details.historical_summary_scores ? 
+                            `<div><strong>Historical Scores:</strong> ${Object.entries(details.historical_summary_scores).map(([cycle, score]) => `Cycle ${cycle.replace('cycle','')}: ${score}`).join(', ') || 'N/A'}</div>` : ''}
                     </div>
                 `;
                  if (element !== "Overall" && Object.keys(data.vespa_profile).indexOf(element) < Object.keys(data.vespa_profile).length - (Object.keys(data.vespa_profile).includes("Overall") ? 2:1) ){
@@ -434,23 +445,64 @@ if (window.aiCoachLauncherInitialized) {
             html += '</ul></div>';
         }
         
-        // Overall Framing Statement
+        // Overall Framing Statement for Tutor
         if(data.overall_framing_statement_for_tutor && data.overall_framing_statement_for_tutor.statement){
             html += `
             <div class="ai-coach-section">
-                <h4>Overall Framing Statement</h4>
+                <h4>Overall Framing Statement (KB)</h4>
                 <p>${data.overall_framing_statement_for_tutor.statement}</p>
             </div>
         `;
         }
 
-        // General Introductory Questions
+        // General Introductory Questions for Tutor
         if(data.general_introductory_questions_for_tutor && data.general_introductory_questions_for_tutor.length > 0){
-            html += '<div class="ai-coach-section"><h4>General Introductory Questions</h4><ul>';
+            html += '<div class="ai-coach-section"><h4>General Introductory Questions (KB)</h4><ul>';
             data.general_introductory_questions_for_tutor.forEach(q => {
                 html += `<li>${q}</li>`;
             });
             html += '</ul></div>';
+        }
+
+        // Student Reflections & Goals (from Object_10)
+        if (data.student_reflections_and_goals) {
+            const reflections = data.student_reflections_and_goals;
+            const currentCycle = data.current_cycle ? parseInt(data.current_cycle) : null;
+            let reflectionsHTML = '';
+
+            const reflectionsMap = [
+                { key: 'rrc1_comment', label: 'RRC1', cycle: 1 },
+                { key: 'rrc2_comment', label: 'RRC2', cycle: 2 },
+                { key: 'rrc3_comment', label: 'RRC3', cycle: 3 },
+                { key: 'goal1', label: 'Goal 1', cycle: 1 },
+                { key: 'goal2', label: 'Goal 2', cycle: 2 },
+                { key: 'goal3', label: 'Goal 3', cycle: 3 },
+            ];
+
+            reflectionsMap.forEach(item => {
+                if (reflections[item.key] && reflections[item.key].trim() !== '') {
+                    const isCurrentCycleComment = currentCycle === item.cycle;
+                    const style = isCurrentCycleComment ? 'font-weight: bold; color: #0056b3;' : ''; // Example style for current cycle
+                    const cycleLabel = isCurrentCycleComment ? ' (Current Cycle)' : ` (Cycle ${item.cycle})`;
+                    reflectionsHTML += `<p style="${style}"><strong>${item.label}${cycleLabel}:</strong> ${reflections[item.key]}</p>`;
+                }
+            });
+
+            if (reflectionsHTML.trim() !== '') {
+                html += `
+                    <div class="ai-coach-section">
+                        <h4>Student Reflections & Goals (Object_10)</h4>
+                        ${reflectionsHTML}
+                    </div>
+                `;
+            } else {
+                 html += `
+                    <div class="ai-coach-section">
+                        <h4>Student Reflections & Goals (Object_10)</h4>
+                        <p>No specific comments or goals recorded by the student in Object_10 for the current cycle.</p>
+                    </div>
+                `;
+            }
         }
 
         // LLM Generated Summary & Suggestions
@@ -474,17 +526,24 @@ if (window.aiCoachLauncherInitialized) {
             html += '</div>';
         }
         
-        // Previous Interaction Summary
-        if(data.previous_interaction_summary){
+        // Previous Interaction Summary (from Object_10.field_3271)
+        if(data.previous_interaction_summary && data.previous_interaction_summary.trim() !== ''){
              html += `
             <div class="ai-coach-section">
-                <h4>Previous Interaction Summary</h4>
+                <h4>Previous AI Coach Interaction Summary</h4>
                 <p>${data.previous_interaction_summary}</p>
+            </div>
+        `;
+        } else {
+            html += `
+            <div class="ai-coach-section">
+                <h4>Previous AI Coach Interaction Summary</h4>
+                <p>No previous interaction summary recorded.</p>
             </div>
         `;
         }
 
-        panelContent.innerHTML = html || '<p>No data to display.</p>';
+        panelContent.innerHTML = html || '<p>No coaching data components to display. Check API response.</p>';
     }
 
     // New function to specifically refresh data if panel is already open
