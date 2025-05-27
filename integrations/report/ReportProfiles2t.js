@@ -2,6 +2,8 @@
 // This script displays student profile data above individual VESPA reports
 // Adapted for Multi-App Loader system
 
+const DEBUG_MODE = true; // Define DEBUG_MODE early
+
 // Global config variable - will be set by loader
 // let REPORTPROFILE_CONFIG = null; // Moved to prevent re-declaration errors
 
@@ -26,7 +28,6 @@ if (window.reportProfilesInitialized) {
   // Constants
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
-  const DEBUG_MODE = true; // Enable console logging
   const CHECK_INTERVAL = 500; // Check every 500ms
   const MAX_CHECKS = 20; // Give up after 10 seconds (20 checks)
 
