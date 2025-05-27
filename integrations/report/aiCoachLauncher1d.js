@@ -20,18 +20,18 @@ if (window.aiCoachLauncherInitialized) {
 
     // Function to check if we are on the individual student report view
     function isIndividualReportView() {
-        const reportContainer = document.querySelector('#view_2776 .kn-rich_text__content'); // Main VESPA report view
+        const studentNameDiv = document.querySelector('#student-name p'); // More specific selector for the student name paragraph
         const backButton = document.querySelector('a.kn-back-link'); // General Knack back link
         
-        if (reportContainer && reportContainer.textContent && reportContainer.textContent.includes('STUDENT:')) {
-            logAICoach("Individual report view confirmed by STUDENT: text.");
+        if (studentNameDiv && studentNameDiv.textContent && studentNameDiv.textContent.includes('STUDENT:')) {
+            logAICoach("Individual report view confirmed by STUDENT: text in #student-name.");
             return true;
         }
-        if (backButton && document.body.contains(backButton)) { // Check if back button is visible
+        // Fallback to back button if the #student-name structure changes or isn't specific enough
+        if (backButton && document.body.contains(backButton)) { 
              logAICoach("Individual report view confirmed by BACK button presence.");
             return true;
         }
-        // Add any other reliable indicators specific to your individual report page
         logAICoach("Not on individual report view.");
         return false;
     }
