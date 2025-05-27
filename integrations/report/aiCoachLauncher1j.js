@@ -355,6 +355,13 @@ if (window.aiCoachLauncherInitialized) {
     }
 
     function renderAICoachData(data) {
+        logAICoach("renderAICoachData CALLED. Data received:", JSON.parse(JSON.stringify(data))); // Log a deep copy
+        if (data && data.student_name) {
+            logAICoach(`renderAICoachData: Preparing to render for student: ${data.student_name} (Cycle: ${data.current_cycle})`);
+        } else {
+            logAICoach("renderAICoachData: data received is missing student_name or is undefined.");
+        }
+
         const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
         if (!panelContent) return;
 
