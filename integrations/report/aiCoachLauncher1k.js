@@ -363,7 +363,13 @@ if (window.aiCoachLauncherInitialized) {
         }
 
         const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
-        if (!panelContent) return;
+        if (!panelContent) {
+            logAICoach("renderAICoachData: panelContent element not found. Cannot render.");
+            return;
+        }
+
+        // Explicitly clear previous content before rendering new data
+        panelContent.innerHTML = ''; 
 
         let html = '';
 
