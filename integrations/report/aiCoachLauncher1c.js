@@ -11,9 +11,11 @@ if (window.aiCoachLauncherInitialized) {
     let coachUIInitialized = false;
 
     function logAICoach(message, data) {
-        if (AI_COACH_LAUNCHER_CONFIG && AI_COACH_LAUNCHER_CONFIG.debugMode) {
-            console.log(`[AICoachLauncher] ${message}`, data === undefined ? '' : data);
-        }
+        // Temporarily log unconditionally for debugging
+        console.log(`[AICoachLauncher] ${message}`, data === undefined ? '' : data);
+        // if (AI_COACH_LAUNCHER_CONFIG && AI_COACH_LAUNCHER_CONFIG.debugMode) {
+        //     console.log(`[AICoachLauncher] ${message}`, data === undefined ? '' : data);
+        // }
     }
 
     // Function to check if we are on the individual student report view
