@@ -9,6 +9,7 @@ if (window.aiCoachLauncherInitialized) {
     let AI_COACH_LAUNCHER_CONFIG = null; 
     let coachObserver = null;
     let coachUIInitialized = false;
+    let debouncedObserverCallback = null; // For debouncing mutation observer
 
     // --- Configuration ---
     const HEROKU_API_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1/coaching_suggestions';
@@ -94,16 +95,24 @@ if (window.aiCoachLauncherInitialized) {
             return;
         }
 
+        // Debounce utility
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+
         const observerCallback = function(mutationsList, observer) {
-            logAICoach("MutationObserver detected DOM change.");
+            logAICoach("MutationObserver detected DOM change (raw event).");
             if (isIndividualReportView()) {
                 const panelIsActive = document.body.classList.contains('ai-coach-active');
-                if (!coachUIInitialized) { // First time UI init for a student view
+                if (!coachUIInitialized) { 
                     initializeCoachUI();
-                } else if (panelIsActive) { // UI already initialized AND panel is active, potentially new student
-                    logAICoach("Individual report view, panel active. Re-fetching data for potentially new student.");
-                    // Directly trigger the data fetching part of toggleAICoachPanel(true)
-                    // without toggling visibility, as it's already visible.
+                } else if (panelIsActive) { 
+                    logAICoach("Individual report view, panel active. Re-fetching data for potentially new student (debounced).");
                     refreshAICoachData(); 
                 }
             } else {
@@ -111,7 +120,23 @@ if (window.aiCoachLauncherInitialized) {
             }
         };
 
-        coachObserver = new MutationObserver(observerCallback);
+        // Use a debounced version of the observer callback
+        debouncedObserverCallback = debounce(function() {
+            logAICoach("MutationObserver processing (debounced).");
+            if (isIndividualReportView()) {
+                const panelIsActive = document.body.classList.contains('ai-coach-active');
+                if (!coachUIInitialized) { 
+                    initializeCoachUI();
+                } else if (panelIsActive) { 
+                    logAICoach("Individual report view, panel active. Re-fetching data for potentially new student (debounced).");
+                    refreshAICoachData(); 
+                }
+            } else {
+                clearCoachUI();
+            }
+        }, 750); // Debounce for 750ms
+
+        coachObserver = new MutationObserver(debouncedObserverCallback); // Use the debounced version
         coachObserver.observe(targetNode, { childList: true, subtree: true });
 
         // Initial check in case the page loads directly on an individual report
