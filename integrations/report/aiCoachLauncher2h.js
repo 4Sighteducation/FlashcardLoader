@@ -1,4 +1,4 @@
-// AI Coach Launcher Script (aiCoachLauncher.js)
+/// AI Coach Launcher Script (aiCoachLauncher.js)
 
 // Guard to prevent re-initialization
 if (window.aiCoachLauncherInitialized) {
@@ -16,6 +16,7 @@ if (window.aiCoachLauncherInitialized) {
     let observerLastProcessedStudentId = null; // ADD THIS: Tracks ID processed by observer
     let currentlyFetchingStudentId = null; // ADD THIS
     let vespaChartInstance = null; // To keep track of the chart instance for updates/destruction
+    let currentLLMInsightsForChat = null; // ADDED: To store insights for chat context
 
     // --- Configuration ---
     const HEROKU_API_BASE_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1'; // MODIFIED for base path
@@ -637,6 +638,11 @@ if (window.aiCoachLauncherInitialized) {
             logAICoach("AI Coaching data received:", data);
             lastFetchedStudentId = studentId; 
             renderAICoachData(data);
+            if (data && data.llm_generated_insights) { // Store insights for chat
+                currentLLMInsightsForChat = data.llm_generated_insights;
+            } else {
+                currentLLMInsightsForChat = null;
+            }
 
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -1294,16 +1300,27 @@ if (window.aiCoachLauncherInitialized) {
             logAICoach("Current tutor message for API:", originalInput);
 
             try {
-                const response = await fetch(CHAT_TURN_ENDPOINT, { // MODIFIED to use constant
+                const payload = {
+                    student_object10_record_id: currentStudentId,
+                    chat_history: chatHistory, 
+                    current_tutor_message: originalInput
+                };
+
+                if (currentLLMInsightsForChat) {
+                    payload.initial_ai_context = {
+                        student_overview_summary: currentLLMInsightsForChat.student_overview_summary,
+                        academic_benchmark_analysis: currentLLMInsightsForChat.academic_benchmark_analysis,
+                        questionnaire_interpretation_and_reflection_summary: currentLLMInsightsForChat.questionnaire_interpretation_and_reflection_summary
+                    };
+                    logAICoach("Sending chat with initial_ai_context:", payload.initial_ai_context);
+                }
+
+                const response = await fetch(CHAT_TURN_ENDPOINT, { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        student_object10_record_id: currentStudentId,
-                        chat_history: chatHistory, // Send previously displayed messages
-                        current_tutor_message: originalInput // Send the new message
-                    }),
+                    body: JSON.stringify(payload),
                 });
 
                 thinkingIndicator.style.display = 'none';
@@ -1747,4 +1764,5 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
+
 
