@@ -1199,6 +1199,12 @@ if (window.aiCoachLauncherInitialized) {
 
         logAICoach("Adding chat interface...");
 
+        // Remove existing chat container if it exists to prevent duplicates on re-render
+        const oldChatContainer = document.getElementById('aiCoachChatContainer');
+        if (oldChatContainer) {
+            oldChatContainer.remove();
+        }
+
         const chatContainer = document.createElement('div');
         chatContainer.id = 'aiCoachChatContainer';
         chatContainer.className = 'ai-coach-section'; // Use existing class for styling consistency
@@ -1207,42 +1213,125 @@ if (window.aiCoachLauncherInitialized) {
         chatContainer.innerHTML = `
             <h4>AI Chat with ${studentNameForContext}</h4>
             <div id="aiCoachChatDisplay" style="height: 200px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; margin-bottom: 10px; background-color: #fff;">
-                <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today? (Chat functionality is under development)</p>
+                <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today?</p>
             </div>
             <div style="display: flex;">
                 <input type="text" id="aiCoachChatInput" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc;" placeholder="Type your message...">
                 <button id="aiCoachChatSendButton" class="p-button p-component" style="margin-left: 10px; padding: 8px 15px;">Send</button>
             </div>
+            <div id="aiCoachChatThinkingIndicator" style="font-size:0.8em; color: #777; text-align:center; margin-top:5px; display:none;">AI Coach is thinking...</div>
         `;
         panelContentElement.appendChild(chatContainer);
 
         const chatInput = document.getElementById('aiCoachChatInput');
         const chatSendButton = document.getElementById('aiCoachChatSendButton');
         const chatDisplay = document.getElementById('aiCoachChatDisplay');
+        const thinkingIndicator = document.getElementById('aiCoachChatThinkingIndicator');
 
-        function sendChatMessage() {
-            if (!chatInput || !chatDisplay) return;
+        async function sendChatMessage() {
+            if (!chatInput || !chatDisplay || !thinkingIndicator) return;
             const messageText = chatInput.value.trim();
             if (messageText === '') return;
+
+            const currentStudentId = lastFetchedStudentId; // Use the ID from the last successful main data fetch
+            if (!currentStudentId) {
+                logAICoach("Cannot send chat message: student ID not available.");
+                // Optionally display an error to the user in the chat window
+                const errorMessageElement = document.createElement('p');
+                errorMessageElement.className = 'ai-chat-message ai-chat-message-bot';
+                errorMessageElement.innerHTML = `<em>AI Coach:</em> Sorry, I can't process this message as the student context is missing. Please ensure student data is loaded.`;
+                chatDisplay.appendChild(errorMessageElement);
+                chatDisplay.scrollTop = chatDisplay.scrollHeight;
+                return;
+            }
 
             // Display user message
             const userMessageElement = document.createElement('p');
             userMessageElement.className = 'ai-chat-message ai-chat-message-user';
+            userMessageElement.setAttribute('data-role', 'user'); // For history reconstruction
             userMessageElement.textContent = `You: ${messageText}`;
             chatDisplay.appendChild(userMessageElement);
-
+            const originalInput = chatInput.value; // Keep original input for history
             chatInput.value = ''; // Clear input
-            chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to bottom
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+            thinkingIndicator.style.display = 'block';
+            chatSendButton.disabled = true;
+            chatInput.disabled = true;
 
-            // Placeholder for LLM response
-            // In the future, this will involve an API call
-            setTimeout(() => {
+            // Construct chat history from displayed messages
+            const chatHistory = [];
+            const messages = chatDisplay.querySelectorAll('.ai-chat-message');
+            messages.forEach(msgElement => {
+                // Don't include the user message we just added to the DOM in the history sent to API
+                // as it's sent separately as current_tutor_message.
+                // Only include messages *before* the one just sent by the user.
+                if (msgElement === userMessageElement) return; 
+
+                let role = msgElement.getAttribute('data-role');
+                let content = '';
+
+                if (!role) { // Infer role if data-role is not set (e.g. initial bot message)
+                    if (msgElement.classList.contains('ai-chat-message-bot')) {
+                         role = 'assistant';
+                         content = msgElement.innerHTML.replace(/<em>AI Coach:<\/em>\\s*/, '');
+                    } else if (msgElement.classList.contains('ai-chat-message-user')) {
+                         role = 'user';
+                         content = msgElement.textContent.replace(/You:\\s*/, '');
+                    } else {
+                        return; // Skip if role cannot be determined
+                    }
+                } else {
+                     content = msgElement.textContent.replace(/^(You:|<em>AI Coach:\\s*)/, '');
+                }
+                chatHistory.push({ role: role, content: content });
+            });
+            // The user's current message isn't part of displayed history yet for the API call
+            // It will be added to the LLM prompt as the latest user message on the backend.
+
+            logAICoach("Sending chat turn with history:", chatHistory);
+            logAICoach("Current tutor message for API:", originalInput);
+
+            try {
+                const response = await fetch(`${HEROKU_API_URL}/chat_turn`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_object10_record_id: currentStudentId,
+                        chat_history: chatHistory, // Send previously displayed messages
+                        current_tutor_message: originalInput // Send the new message
+                    }),
+                });
+
+                thinkingIndicator.style.display = 'none';
+                chatSendButton.disabled = false;
+                chatInput.disabled = false;
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: "An unknown error occurred communicating with the AI chat."}));
+                    throw new Error(errorData.error || `Chat API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
                 const botMessageElement = document.createElement('p');
                 botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
-                botMessageElement.innerHTML = `<em>AI Coach:</em> Thinking... (response for \"${messageText}\" will appear here)`;
+                botMessageElement.setAttribute('data-role', 'assistant'); // For history reconstruction
+                botMessageElement.innerHTML = `<em>AI Coach:</em> ${data.ai_response}`;
                 chatDisplay.appendChild(botMessageElement);
-                chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to bottom
-            }, 500);
+
+            } catch (error) {
+                logAICoach("Error sending chat message:", error);
+                const errorMessageElement = document.createElement('p');
+                errorMessageElement.className = 'ai-chat-message ai-chat-message-bot';
+                // Don't set data-role for error messages not from AI assistant proper
+                errorMessageElement.innerHTML = `<em>AI Coach:</em> Sorry, I couldn't get a response. ${error.message}`;
+                chatDisplay.appendChild(errorMessageElement);
+                thinkingIndicator.style.display = 'none';
+                chatSendButton.disabled = false;
+                chatInput.disabled = false;
+            }
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
 
         if (chatSendButton) {
