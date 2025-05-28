@@ -4,7 +4,7 @@
 
 // Conditionally define DEBUG_MODE to prevent re-declaration errors if script is loaded multiple times
 if (typeof window.REPORT_PROFILES_DEBUG_MODE === 'undefined') {
-  window.REPORT_PROFILES_DEBUG_MODE = false; 
+  window.REPORT_PROFILES_DEBUG_MODE = true; 
 }
 var DEBUG_MODE = window.REPORT_PROFILES_DEBUG_MODE; // CHANGED from const to var
 
