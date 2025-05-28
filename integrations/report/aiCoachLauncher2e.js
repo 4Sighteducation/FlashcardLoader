@@ -888,9 +888,9 @@ if (window.aiCoachLauncherInitialized) {
                 questionHtml += '<div id="questionnaireResponseDistributionChartContainer" style="height: 300px; margin-top:20px; margin-bottom: 20px; background: #f9f9f9; display:flex; align-items:center; justify-content:center;"><p>Chart loading...</p></div>';
 
                 if (data.llm_generated_insights && data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary) {
-                    questionHtml += `<div style='margin-top:15px;'><h5>AI Interpretation of Questionnaire Responses & Reflections</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p></div>`;
+                    questionHtml += `<div style='margin-top:15px;'><h5>Reflections on the VESPA Questionnaire</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p></div>`;
                 } else {
-                    questionHtml += "<div style='margin-top:15px;'><h5>AI Interpretation of Questionnaire Responses & Reflections</h5><p><em>AI analysis of questionnaire responses and reflections is currently unavailable.</em></p></div>";
+                    questionHtml += "<div style='margin-top:15px;'><h5>Reflections on the VESPA Questionnaire</h5><p><em>AI analysis of questionnaire responses and reflections is currently unavailable.</em></p></div>";
                 }
                 questionHtml += '</div>'; // Close ai-coach-section for Questionnaire Analysis
                 questionContainer.innerHTML = questionHtml;
@@ -1439,11 +1439,11 @@ if (window.aiCoachLauncherInitialized) {
 
         const chartData = {
             labels: [
-                'Response 1 (Strongly Disagree)',
-                'Response 2 (Disagree)',
-                'Response 3 (Neutral)',
-                'Response 4 (Agree)',
-                'Response 5 (Strongly Agree)'
+                'Strongly Disagree',
+                'Disagree',
+                'Neutral',
+                'Agree',
+                'Strongly Agree'
             ],
             datasets: [{
                 label: 'Questionnaire Response Distribution',
@@ -1492,6 +1492,8 @@ if (window.aiCoachLauncherInitialized) {
                         position: 'bottom',
                     },
                     tooltip: {
+                        yAlign: 'bottom', // Position tooltip above the mouse point
+                        caretPadding: 15, // Add more space between cursor and tooltip
                         callbacks: {
                             label: function(context) {
                                 let label = context.label || '';
