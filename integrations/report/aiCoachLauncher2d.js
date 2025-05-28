@@ -861,8 +861,9 @@ if (window.aiCoachLauncherInitialized) {
             let questionHtml = '';
             const questionContainer = document.getElementById('aiCoachQuestionAnalysisContainer');
             if (questionContainer) {
-                questionHtml += '<div class="ai-coach-section"><h4>Questionnaire Statement Analysis (Object_29)</h4>';
-                questionHtml += '<p style="font-size:0.8em; margin-bottom:10px;">(Scale: 1=Strongly Disagree, 2=Disagree, 3=Neutral, 4=Agree, 5=Strongly Agree)</p>';
+                // Incorporate user's latest text changes for title and scale description
+                questionHtml += '<div class="ai-coach-section"><h4>VESPA Questionnaire Analysis</h4>';
+                questionHtml += '<p style="font-size:0.8em; margin-bottom:10px;">(Response Scale: 1=Strongly Disagree, 2=Disagree, 3=Neutral, 4=Agree, 5=Strongly Agree)</p>';
 
                 if (data.object29_question_highlights && (data.object29_question_highlights.top_3 || data.object29_question_highlights.bottom_3)) {
                     const highlights = data.object29_question_highlights;
@@ -884,29 +885,27 @@ if (window.aiCoachLauncherInitialized) {
                     questionHtml += "<p>No specific top/bottom statement response highlights processed from Object_29.</p>";
                 }
 
-                // Placeholder for the new Pie Chart
-                questionHtml += '<div id="questionnaireResponseDistributionChartContainer" style="height: 300px; margin-top:20px; margin-bottom: 20px; background: #f9f9f9; display:flex; align-items:center; justify-content:center;"><p>Questionnaire Response Distribution Chart Area</p></div>';
+                questionHtml += '<div id="questionnaireResponseDistributionChartContainer" style="height: 300px; margin-top:20px; margin-bottom: 20px; background: #f9f9f9; display:flex; align-items:center; justify-content:center;"><p>Chart loading...</p></div>';
 
-                // New AI summary section
                 if (data.llm_generated_insights && data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary) {
                     questionHtml += `<div style='margin-top:15px;'><h5>AI Interpretation of Questionnaire Responses & Reflections</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p></div>`;
                 } else {
                     questionHtml += "<div style='margin-top:15px;'><h5>AI Interpretation of Questionnaire Responses & Reflections</h5><p><em>AI analysis of questionnaire responses and reflections is currently unavailable.</em></p></div>";
                 }
-                questionHtml += '</div>';
+                questionHtml += '</div>'; // Close ai-coach-section for Questionnaire Analysis
                 questionContainer.innerHTML = questionHtml;
 
-                // Call to render the new chart if data is available
-                if (data.all_scored_questionnaire_statements && typeof Chart !== 'undefined') {
-                    ensureChartJsLoaded(() => {
+                // Corrected logic for rendering the pie chart:
+                const chartDiv = document.getElementById('questionnaireResponseDistributionChartContainer');
+                if (data.all_scored_questionnaire_statements && data.all_scored_questionnaire_statements.length > 0) {
+                    ensureChartJsLoaded(() => { // Always use ensureChartJsLoaded
                         renderQuestionnaireDistributionChart(data.all_scored_questionnaire_statements);
                     });
-                } else if (typeof Chart === 'undefined') {
-                    const chartDiv = document.getElementById('questionnaireResponseDistributionChartContainer');
-                    if (chartDiv) chartDiv.innerHTML = '<p style="color:red; text-align:center;">Chart library not loaded.</p>';
                 } else {
-                    const chartDiv = document.getElementById('questionnaireResponseDistributionChartContainer');
-                    if (chartDiv) chartDiv.innerHTML = '<p style="text-align:center;">Questionnaire statement data not available for chart.</p>';
+                    if (chartDiv) {
+                        chartDiv.innerHTML = '<p style="text-align:center;">Questionnaire statement data not available for chart.</p>';
+                        logAICoach("Questionnaire chart not rendered: all_scored_questionnaire_statements is missing or empty.", data.all_scored_questionnaire_statements);
+                    }
                 }
             }
         } else {
@@ -1655,3 +1654,4 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
+
