@@ -18,7 +18,9 @@ if (window.aiCoachLauncherInitialized) {
     let vespaChartInstance = null; // To keep track of the chart instance for updates/destruction
 
     // --- Configuration ---
-    const HEROKU_API_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1/coaching_suggestions';
+    const HEROKU_API_BASE_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1'; // MODIFIED for base path
+    const COACHING_SUGGESTIONS_ENDPOINT = `${HEROKU_API_BASE_URL}/coaching_suggestions`;
+    const CHAT_TURN_ENDPOINT = `${HEROKU_API_BASE_URL}/chat_turn`;
     // Knack App ID and API Key are expected in AI_COACH_LAUNCHER_CONFIG if any client-side Knack calls were needed,
     // but with the new approach, getStudentObject10RecordId will primarily rely on a global variable.
 
@@ -512,7 +514,7 @@ if (window.aiCoachLauncherInitialized) {
         panel.className = 'ai-coach-panel';
         panel.innerHTML = `
             <div class="ai-coach-panel-header">
-                <h3>AI Coaching Assistant</h3>
+                <h3>VESPA AI Coaching Assistant</h3>
                 <button class="ai-coach-close-btn" aria-label="Close AI Coach Panel">&times;</button>
             </div>
             <div class="ai-coach-panel-content">
@@ -617,7 +619,7 @@ if (window.aiCoachLauncherInitialized) {
 
         try {
             logAICoach("Fetching AI Coaching Data for student_object10_record_id: " + studentId);
-            const response = await fetch(HEROKU_API_URL, {
+            const response = await fetch(COACHING_SUGGESTIONS_ENDPOINT, { // MODIFIED to use constant
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1292,7 +1294,7 @@ if (window.aiCoachLauncherInitialized) {
             logAICoach("Current tutor message for API:", originalInput);
 
             try {
-                const response = await fetch(`${HEROKU_API_URL}/chat_turn`, {
+                const response = await fetch(CHAT_TURN_ENDPOINT, { // MODIFIED to use constant
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
