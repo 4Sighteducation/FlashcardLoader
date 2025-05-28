@@ -15,6 +15,7 @@ if (window.aiCoachLauncherInitialized) {
     let lastFetchedStudentId = null; // ADD THIS to track the ID for which data was last fetched
     let observerLastProcessedStudentId = null; // ADD THIS: Tracks ID processed by observer
     let currentlyFetchingStudentId = null; // ADD THIS
+    let vespaChartInstance = null; // To keep track of the chart instance for updates/destruction
 
     // --- Configuration ---
     const HEROKU_API_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1/coaching_suggestions';
@@ -27,6 +28,29 @@ if (window.aiCoachLauncherInitialized) {
         // if (AI_COACH_LAUNCHER_CONFIG && AI_COACH_LAUNCHER_CONFIG.debugMode) {
         //     console.log(`[AICoachLauncher] ${message}`, data === undefined ? '' : data);
         // }
+    }
+
+    // Function to ensure Chart.js is loaded
+    function ensureChartJsLoaded(callback) {
+        if (typeof Chart !== 'undefined') {
+            logAICoach("Chart.js already loaded.");
+            if (callback) callback();
+            return;
+        }
+        logAICoach("Chart.js not found, attempting to load from CDN...");
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
+        script.onload = () => {
+            logAICoach("Chart.js loaded successfully from CDN.");
+            if (callback) callback();
+        };
+        script.onerror = () => {
+            console.error("[AICoachLauncher] Failed to load Chart.js from CDN.");
+            // Optionally, display an error in the chart container
+            const chartContainer = document.getElementById('vespaComparisonChartContainer');
+            if(chartContainer) chartContainer.innerHTML = '<p style="color:red; text-align:center;">Chart library failed to load.</p>';
+        };
+        document.head.appendChild(script);
     }
 
     // Function to check if we are on the individual student report view
@@ -493,91 +517,129 @@ if (window.aiCoachLauncherInitialized) {
             return;
         }
 
-
-        // 2. Add "Show/Hide Full Details" Button
+        // 2. Add New Toggle Buttons for Sections
         html += `
-            <button id="aiCoachToggleDetailsButton" class="p-button p-component" style="margin: 10px 0px 20px 0px; width: 100%; padding: 10px; font-size: 0.9em;">
-                Show Full Details
-            </button>
-        `;
-        
-        // 3. Container for collapsible details
-        html += '<div id="aiCoachDetailedDataContainer" style="display: none;">';
-
-        let detailedHtml = '';
-
-        // Student Info (now part of details)
-        detailedHtml += `
-            <div class="ai-coach-section">
-                <h4>Student Overview (Details)</h4>
-                <p><strong>Name:</strong> ${data.student_name || 'N/A'}</p>
-                <p><strong>Level:</strong> ${data.student_level || 'N/A'}</p>
-                <p><strong>Current VESPA Cycle:</strong> ${data.current_cycle || 'N/A'}</p>
+            <div class="ai-coach-section-toggles" style="margin: 10px 0 15px 0; display: flex; flex-direction: column; gap: 10px;">
+                <button id="aiCoachToggleVespaButton" class="p-button p-component" style="width: 100%; padding: 10px; font-size: 0.9em;" aria-expanded="false" aria-controls="aiCoachVespaProfileContainer">
+                    View VESPA Profile Insights
+                </button>
+                <button id="aiCoachToggleAcademicButton" class="p-button p-component" style="width: 100%; padding: 10px; font-size: 0.9em;" aria-expanded="false" aria-controls="aiCoachAcademicProfileContainer">
+                    View Academic Profile Insights
+                </button>
+                <button id="aiCoachToggleQuestionButton" class="p-button p-component" style="width: 100%; padding: 10px; font-size: 0.9em;" aria-expanded="false" aria-controls="aiCoachQuestionAnalysisContainer">
+                    View Questionnaire Analysis
+                </button>
             </div>
         `;
+        
+        // 3. Containers for collapsible sections
+        html += '<div id="aiCoachVespaProfileContainer" class="ai-coach-details-section" style="display: none;"></div>';
+        html += '<div id="aiCoachAcademicProfileContainer" class="ai-coach-details-section" style="display: none;"></div>';
+        html += '<div id="aiCoachQuestionAnalysisContainer" class="ai-coach-details-section" style="display: none;"></div>';
+        
+        panelContent.innerHTML = html;
 
-        // VESPA Profile - Enhanced to include historical scores and individual insights
+        // --- Populate VESPA Profile Section ---
+        let vespaHtml = '';
         if (data.vespa_profile) {
-            detailedHtml += '<div class="ai-coach-section"><h4>VESPA Profile (Details)</h4>';
+            vespaHtml += '<div class="ai-coach-section"><h4>VESPA Profile Details</h4>';
+            // Placeholder for chart
+            vespaHtml += '<div id="vespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>Comparison Chart Area</p></div>';
+
             for (const [element, details] of Object.entries(data.vespa_profile)) {
-                detailedHtml += `
+                vespaHtml += `
                     <div>
                         <h5>${element} (Score: ${details.score_1_to_10 !== undefined ? details.score_1_to_10 : 'N/A'}) - <em>${details.score_profile_text || 'N/A'}</em></h5>
                         ${details.primary_tutor_coaching_comments ? `<p><strong>Tutor Coaching Comments (Report Gen):</strong> ${details.primary_tutor_coaching_comments}</p>` : ''}
                         ${details.report_text_for_student ? `<p><em>Student Report Text:</em> ${details.report_text_for_student}</p>` : ''}
                         ${details.report_questions_for_student ? `<p><em>Student Report Questions:</em> ${details.report_questions_for_student}</p>` : ''}
                         ${details.report_suggested_tools_for_student ? `<p><em>Student Report Tools:</em> ${details.report_suggested_tools_for_student}</p>` : ''}
-                        ${details.supplementary_tutor_questions && details.supplementary_tutor_questions.length > 0 ?
+                        ${details.supplementary_tutor_questions && details.supplementary_tutor_questions.length > 0 && details.supplementary_tutor_questions[0] !== "No supplementary questions found for this profile." ?
                             `<div><strong>Supplementary Tutor Questions (KB):</strong><ul>${details.supplementary_tutor_questions.map(q => `<li>${q}</li>`).join('')}</ul></div>` : ''}
-                        ${details.key_individual_question_insights_from_object29 && details.key_individual_question_insights_from_object29.length > 0 ?
-                            `<div><strong>Key Psychometric Insights (Object_29):</strong><ul>${details.key_individual_question_insights_from_object29.map(insight => `<li>${insight}</li>`).join('')}</ul></div>` : ''}
                         ${details.historical_summary_scores ?
                             `<div><strong>Historical Scores:</strong> ${Object.entries(details.historical_summary_scores).map(([cycle, score]) => `Cycle ${cycle.replace('cycle', '')}: ${score}`).join(', ') || 'N/A'}</div>` : ''}
                     </div>
                 `;
-                if (element !== "Overall" && Object.keys(data.vespa_profile).indexOf(element) < Object.keys(data.vespa_profile).length - (Object.keys(data.vespa_profile).includes("Overall") ? 2 : 1)) {
-                    detailedHtml += '<hr style="border-top: 1px dashed #eee; margin: 10px 0;">';
+                 // Add a separator, but not after the "Overall" element if it's last
+                const keys = Object.keys(data.vespa_profile);
+                const isLastElement = keys.indexOf(element) === keys.length - 1;
+                if (element !== "Overall" && !isLastElement) {
+                     vespaHtml += '<hr style="border-top: 1px dashed #eee; margin: 10px 0;">';
+                } else if (element === "Overall" && !isLastElement && keys[keys.indexOf(element) +1] !== "Overall"){ // If overall is not last and next is not overall
+                     vespaHtml += '<hr style="border-top: 1px dashed #eee; margin: 10px 0;">';
                 }
             }
-            detailedHtml += '</div>';
-        }
-
-        // Academic Profile Summary
-        if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && 
-            !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))) {
-            detailedHtml += '<div class="ai-coach-section"><h4>Academic Profile (Details)</h4><ul>';
-            data.academic_profile_summary.forEach(subject => {
-                detailedHtml += `<li><strong>${subject.subject || 'N/A'}:</strong> Grade ${subject.currentGrade || 'N/A'} (Target: ${subject.targetGrade || 'N/A'}, Effort: ${subject.effortGrade || 'N/A'})</li>`;
-            });
-            detailedHtml += '</ul></div>';
+            vespaHtml += '</div>';
         } else {
-            detailedHtml += '<div class="ai-coach-section"><h4>Academic Profile (Details)</h4><p>No detailed academic profile available or profile not found.</p></div>';
+            vespaHtml = '<div class="ai-coach-section"><p>VESPA profile data not available.</p></div>';
         }
+        const vespaContainer = document.getElementById('aiCoachVespaProfileContainer');
+        if (vespaContainer) vespaContainer.innerHTML = vespaHtml;
 
-        // Overall Framing Statement for Tutor
-        if (data.overall_framing_statement_for_tutor && data.overall_framing_statement_for_tutor.statement) {
-            detailedHtml += `
+        // After populating vespaHtml, render the chart
+        ensureChartJsLoaded(() => {
+            renderVespaComparisonChart(data.vespa_profile, data.school_vespa_averages);
+        });
+
+        // --- Populate Academic Profile Section ---
+        let academicHtml = '';
+        // Student Info
+        academicHtml += `
             <div class="ai-coach-section">
-                <h4>Overall Framing Statement (KB)</h4>
-                <p>${data.overall_framing_statement_for_tutor.statement}</p>
+                <h4>Student Overview</h4>
+                <p><strong>Name:</strong> ${data.student_name || 'N/A'}</p>
+                <p><strong>Level:</strong> ${data.student_level || 'N/A'}</p>
+                <p><strong>Current VESPA Cycle:</strong> ${data.current_cycle || 'N/A'}</p>
             </div>
         `;
-        }
-
-        // General Introductory Questions for Tutor
-        if (data.general_introductory_questions_for_tutor && data.general_introductory_questions_for_tutor.length > 0) {
-            detailedHtml += '<div class="ai-coach-section"><h4>General Introductory Questions (KB)</h4><ul>';
-            data.general_introductory_questions_for_tutor.forEach(q => {
-                detailedHtml += `<li>${q}</li>`;
+        if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && 
+            !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found")) &&
+            !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("No academic subjects parsed"))) {
+            academicHtml += '<div class="ai-coach-section"><h4>Academic Profile</h4><ul>';
+            data.academic_profile_summary.forEach(subject => {
+                academicHtml += `<li><strong>${subject.subject || 'N/A'}:</strong> Grade ${subject.currentGrade || 'N/A'} (Target: ${subject.targetGrade || 'N/A'}, Effort: ${subject.effortGrade || 'N/A'})</li>`;
             });
-            detailedHtml += '</ul></div>';
+            academicHtml += '</ul></div>';
+        } else {
+            academicHtml += '<div class="ai-coach-section"><h4>Academic Profile</h4><p>No detailed academic profile available or profile not found.</p></div>';
+        }
+        // Placeholder for AI analysis linking VESPA to Academics
+        academicHtml += '<div class="ai-coach-section"><h4>AI Analysis: Linking VESPA to Academics</h4><p><em>(AI will analyze non-cognitive factors affecting academic performance here)</em></p></div>';
+        const academicContainer = document.getElementById('aiCoachAcademicProfileContainer');
+        if (academicContainer) academicContainer.innerHTML = academicHtml;
+
+        // --- Populate Question Level Analysis Section ---
+        let questionHtml = '';
+        // Key Psychometric Insights (Object_29)
+        questionHtml += '<div class="ai-coach-section"><h4>Questionnaire Analysis (Object_29)</h4>';
+        if (data.object29_question_highlights && (data.object29_question_highlights.top_3 || data.object29_question_highlights.bottom_3)) {
+            const highlights = data.object29_question_highlights;
+            if (highlights.top_3 && highlights.top_3.length > 0) {
+                questionHtml += '<h5>Top Scoring Questions:</h5><ul>';
+                highlights.top_3.forEach(q => {
+                    questionHtml += `<li>Score ${q.score}/5 (${q.category}): "${q.text}"</li>`;
+                });
+                questionHtml += '</ul>';
+            }
+            if (highlights.bottom_3 && highlights.bottom_3.length > 0) {
+                questionHtml += '<h5>Bottom Scoring Questions:</h5><ul>';
+                highlights.bottom_3.forEach(q => {
+                    questionHtml += `<li>Score ${q.score}/5 (${q.category}): "${q.text}"</li>`;
+                });
+                questionHtml += '</ul>';
+            }
+             // Placeholder for chart of all question responses
+            questionHtml += '<div id="questionScoresChartContainer" style="height: 300px; margin-top:15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>Question Scores Chart Area</p></div>';
+
+        } else {
+            questionHtml += "<p>No specific top/bottom question highlights processed from Object_29.</p>";
         }
 
         // Student Reflections & Goals (from Object_10)
         if (data.student_reflections_and_goals) {
             const reflections = data.student_reflections_and_goals;
             const currentCycle = data.current_cycle ? parseInt(data.current_cycle) : null;
-            let reflectionsHTML = '';
+            let reflectionsContent = '';
 
             const reflectionsMap = [
                 { key: 'rrc1_comment', label: 'RRC1', cycle: 1 },
@@ -593,97 +655,182 @@ if (window.aiCoachLauncherInitialized) {
                     const isCurrentCycleComment = currentCycle === item.cycle;
                     const style = isCurrentCycleComment ? 'font-weight: bold; color: #0056b3;' : '';
                     const cycleLabel = isCurrentCycleComment ? ' (Current Cycle)' : ` (Cycle ${item.cycle})`;
-                    reflectionsHTML += `<p style="${style}"><strong>${item.label}${cycleLabel}:</strong> ${reflections[item.key]}</p>`;
+                    reflectionsContent += `<p style="${style}"><strong>${item.label}${cycleLabel}:</strong> ${reflections[item.key]}</p>`;
                 }
             });
 
-            if (reflectionsHTML.trim() !== '') {
-                detailedHtml += `
-                    <div class="ai-coach-section">
-                        <h4>Student Reflections & Goals (Object_10)</h4>
-                        ${reflectionsHTML}
+            if (reflectionsContent.trim() !== '') {
+                questionHtml += `
+                    <div style="margin-top:15px;">
+                        <h5>Student Reflections & Goals (Object_10)</h5>
+                        ${reflectionsContent}
                     </div>
                 `;
             } else {
-                detailedHtml += `
-                    <div class="ai-coach-section">
-                        <h4>Student Reflections & Goals (Object_10)</h4>
-                        <p>No specific comments or goals recorded by the student in Object_10.</p>
-                    </div>
-                `;
+                 questionHtml += "<div style='margin-top:15px;'><h5>Student Reflections & Goals (Object_10)</h5><p>No specific comments or goals recorded.</p></div>";
             }
         }
+         questionHtml += "<div style='margin-top:15px;'><h5>General AI Interpretation of Questionnaire</h5><p><em>(AI will provide an overall summary of what the questionnaire responses suggest about the student here)</em></p></div>";
+        questionHtml += '</div>'; // Close main question analysis section
+        const questionContainer = document.getElementById('aiCoachQuestionAnalysisContainer');
+        if (questionContainer) questionContainer.innerHTML = questionHtml;
 
-        // LLM Generated Suggestions (Openers, Key Points, Next Steps - EXCLUDING student_overview_summary)
-        if (data.llm_generated_summary_and_suggestions) {
-            let suggestionsContent = '';
-            if (data.llm_generated_summary_and_suggestions.conversation_openers && data.llm_generated_summary_and_suggestions.conversation_openers.length > 0 && data.llm_generated_summary_and_suggestions.conversation_openers[0] !== "(Placeholder) How are you feeling about your progress this cycle?") {
-                suggestionsContent += '<h5>Conversation Openers:</h5><ul>';
-                data.llm_generated_summary_and_suggestions.conversation_openers.forEach(o => { suggestionsContent += `<li>${o}</li>`; });
-                suggestionsContent += '</ul>';
-            }
-            if (data.llm_generated_summary_and_suggestions.key_discussion_points && data.llm_generated_summary_and_suggestions.key_discussion_points.length > 0 && data.llm_generated_summary_and_suggestions.key_discussion_points[0] !== "(Placeholder) Let's look at your VESPA scores and reflections.") {
-                suggestionsContent += '<h5>Key Discussion Points:</h5><ul>';
-                data.llm_generated_summary_and_suggestions.key_discussion_points.forEach(p => { suggestionsContent += `<li>${p}</li>`; });
-                suggestionsContent += '</ul>';
-            }
-            if (data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor && data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor.length > 0 && data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor[0] !== "(Placeholder) Explore areas for development and set new goals.") {
-                suggestionsContent += '<h5>Suggested Next Steps:</h5><ul>';
-                data.llm_generated_summary_and_suggestions.suggested_next_steps_for_tutor.forEach(s => { suggestionsContent += `<li>${s}</li>`; });
-                suggestionsContent += '</ul>';
-            }
-            if (suggestionsContent) {
-                 detailedHtml += `<div class="ai-coach-section"><h4>AI Generated Suggestions (Details)</h4>${suggestionsContent}</div>`;
-            }
-        }
 
-        // Previous Interaction Summary (from Object_10.field_3271)
-        if (data.previous_interaction_summary && data.previous_interaction_summary.trim() !== '' && data.previous_interaction_summary.trim() !== "No previous AI coaching summary found.") {
-            detailedHtml += `
-            <div class="ai-coach-section">
-                <h4>Previous AI Coach Interaction Summary</h4>
-                <p>${data.previous_interaction_summary}</p>
-            </div>
-        `;
-        } else {
-            detailedHtml += `
-            <div class="ai-coach-section">
-                <h4>Previous AI Coach Interaction Summary</h4>
-                <p>No previous interaction summary recorded.</p>
-            </div>
-        `;
-        }
+        // Add event listeners for the new toggle buttons
+        const toggleButtons = [
+            { id: 'aiCoachToggleVespaButton', containerId: 'aiCoachVespaProfileContainer' },
+            { id: 'aiCoachToggleAcademicButton', containerId: 'aiCoachAcademicProfileContainer' },
+            { id: 'aiCoachToggleQuestionButton', containerId: 'aiCoachQuestionAnalysisContainer' }
+        ];
 
-        html += detailedHtml;
-        html += '</div>'; // Close aiCoachDetailedDataContainer
+        toggleButtons.forEach(btnConfig => {
+            const button = document.getElementById(btnConfig.id);
+            if (button) {
+                button.addEventListener('click', () => {
+                    const detailsContainer = document.getElementById(btnConfig.containerId);
+                    const allDetailSections = document.querySelectorAll('.ai-coach-details-section');
+                    const currentButtonText = button.textContent;
 
-        panelContent.innerHTML = html;
+                    if (detailsContainer) {
+                        const isCurrentlyVisible = detailsContainer.style.display === 'block';
 
-        // Add event listener for the new toggle button
-        const toggleButton = document.getElementById('aiCoachToggleDetailsButton');
-        if (toggleButton) {
-            toggleButton.addEventListener('click', () => {
-                const detailsContainer = document.getElementById('aiCoachDetailedDataContainer');
-                if (detailsContainer) {
-                    if (detailsContainer.style.display === 'none') {
-                        detailsContainer.style.display = 'block';
-                        toggleButton.textContent = 'Hide Full Details';
-                        toggleButton.setAttribute('aria-expanded', 'true');
-                    } else {
-                        detailsContainer.style.display = 'none';
-                        toggleButton.textContent = 'Show Full Details';
-                        toggleButton.setAttribute('aria-expanded', 'false');
+                        // Hide all sections first
+                        allDetailSections.forEach(section => section.style.display = 'none');
+                        // Reset all button texts and ARIA states
+                        toggleButtons.forEach(b => {
+                            const otherBtn = document.getElementById(b.id);
+                            if (otherBtn) {
+                                otherBtn.textContent = `View ${b.id.replace('aiCoachToggle', '').replace('Button','')} Insights`;
+                                otherBtn.setAttribute('aria-expanded', 'false');
+                            }
+                        });
+                        
+                        if (isCurrentlyVisible) {
+                            // If it was visible, it's now hidden (by the loop above), so keep text as "View..."
+                            // Button text already reset by the loop
+                        } else {
+                            detailsContainer.style.display = 'block';
+                            button.textContent = `Hide ${btnConfig.id.replace('aiCoachToggle', '').replace('Button','')} Insights`;
+                            button.setAttribute('aria-expanded', 'true');
+                        }
                     }
-                }
-            });
-            // Set initial ARIA state
-            toggleButton.setAttribute('aria-expanded', 'false');
-            toggleButton.setAttribute('aria-controls', 'aiCoachDetailedDataContainer');
-        }
-        logAICoach("renderAICoachData: Successfully rendered data with details toggle.");
+                });
+            }
+        });
+
+        logAICoach("renderAICoachData: Successfully rendered data with new section toggles.");
 
         // --- Add Chat Interface --- 
         addChatInterface(panelContent, data.student_name || "Student");
+    }
+
+    function renderVespaComparisonChart(studentVespaProfile, schoolVespaAverages) {
+        const chartContainer = document.getElementById('vespaComparisonChartContainer');
+        if (!chartContainer) {
+            logAICoach("VESPA comparison chart container not found.");
+            return;
+        }
+
+        if (typeof Chart === 'undefined') {
+            logAICoach("Chart.js is not loaded. Cannot render VESPA comparison chart.");
+            chartContainer.innerHTML = '<p style="color:red; text-align:center;">Chart library not loaded.</p>';
+            return;
+        }
+
+        // Destroy previous chart instance if it exists
+        if (vespaChartInstance) {
+            vespaChartInstance.destroy();
+            vespaChartInstance = null;
+            logAICoach("Previous VESPA chart instance destroyed.");
+        }
+        
+        // Ensure chartContainer is empty before creating a new canvas
+        chartContainer.innerHTML = '<canvas id="vespaStudentVsSchoolChart"></canvas>';
+        const ctx = document.getElementById('vespaStudentVsSchoolChart').getContext('2d');
+
+        if (!studentVespaProfile) {
+            logAICoach("Student VESPA profile data is missing. Cannot render chart.");
+            chartContainer.innerHTML = '<p style="text-align:center;">Student VESPA data not available for chart.</p>';
+            return;
+        }
+
+        const labels = ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'];
+        const studentScores = labels.map(label => {
+            const elementData = studentVespaProfile[label];
+            return elementData && elementData.score_1_to_10 !== undefined && elementData.score_1_to_10 !== "N/A" ? parseFloat(elementData.score_1_to_10) : 0;
+        });
+
+        const datasets = [
+            {
+                label: 'Student Scores',
+                data: studentScores,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)', // Blue
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }
+        ];
+
+        let chartTitle = 'Student VESPA Scores';
+
+        if (schoolVespaAverages) {
+            const schoolScores = labels.map(label => {
+                return schoolVespaAverages[label] !== undefined && schoolVespaAverages[label] !== "N/A" ? parseFloat(schoolVespaAverages[label]) : 0;
+            });
+            datasets.push({
+                label: 'School Average',
+                data: schoolScores,
+                backgroundColor: 'rgba(255, 159, 64, 0.6)', // Orange
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            });
+            chartTitle = 'Student VESPA Scores vs. School Average';
+            logAICoach("School averages available, adding to chart.", {studentScores, schoolScores});
+        } else {
+            logAICoach("School averages not available for chart.");
+        }
+
+        try {
+            vespaChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: chartTitle,
+                            font: { size: 16, weight: 'bold' },
+                            padding: { top: 10, bottom: 20 }
+                        },
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10,
+                            title: {
+                                display: true,
+                                text: 'Score (1-10)'
+                            }
+                        }
+                    }
+                }
+            });
+            logAICoach("VESPA comparison chart rendered successfully.");
+        } catch (error) {
+            console.error("[AICoachLauncher] Error rendering Chart.js chart:", error);
+            chartContainer.innerHTML = '<p style="color:red; text-align:center;">Error rendering chart.</p>';
+        }
     }
 
     // New function to specifically refresh data if panel is already open
