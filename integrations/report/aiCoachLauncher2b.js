@@ -485,6 +485,7 @@ if (window.aiCoachLauncherInitialized) {
             }
             .percentile-line-marker.standard-meg-marker { /* For the Top25% or general MEG */
                 background-color: #ffc107; /* Yellow, if it's the main MEG marker */
+                z-index: 13; /* Slightly higher z-index to ensure it's visible over other percentiles like P60 if they overlap */
             }
 
             .percentile-line-marker .marker-label {
@@ -1381,3 +1382,4 @@ if (window.aiCoachLauncherInitialized) {
 
     window.initializeAICoachLauncher = initializeAICoachLauncher;
 } 
+
