@@ -11,6 +11,10 @@ if (window.aiCoachLauncherInitialized) {
     let coachUIInitialized = false;
     let debouncedObserverCallback = null; // For debouncing mutation observer
     let eventListenersAttached = false; // ADDED: Module-scoped flag for event listeners
+    let currentFetchAbortController = null; // ADD THIS
+    let lastFetchedStudentId = null; // ADD THIS to track the ID for which data was last fetched
+    let observerLastProcessedStudentId = null; // ADD THIS: Tracks ID processed by observer
+    let currentlyFetchingStudentId = null; // ADD THIS
 
     // --- Configuration ---
     const HEROKU_API_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1/coaching_suggestions';
@@ -74,6 +78,14 @@ if (window.aiCoachLauncherInitialized) {
         // const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
         // if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
         coachUIInitialized = false; // Reset for next individual report view
+        lastFetchedStudentId = null; 
+        observerLastProcessedStudentId = null; // ADD THIS: Reset when UI is cleared
+        currentlyFetchingStudentId = null; // ADD THIS: Clear if ID becomes null
+        if (currentFetchAbortController) { 
+            currentFetchAbortController.abort();
+            currentFetchAbortController = null;
+            logAICoach("Aborted ongoing fetch as UI was cleared (not individual report).");
+        }
     }
 
     function initializeAICoachLauncher() {
@@ -113,36 +125,70 @@ if (window.aiCoachLauncherInitialized) {
 
         const observerCallback = function(mutationsList, observer) {
             logAICoach("MutationObserver detected DOM change (raw event).");
+            const currentStudentIdFromWindow = window.currentReportObject10Id;
+
             if (isIndividualReportView()) {
                 const panelIsActive = document.body.classList.contains('ai-coach-active');
                 if (!coachUIInitialized) { 
                     initializeCoachUI();
                 } else if (panelIsActive) { 
-                    logAICoach("Individual report view, panel active. Re-fetching data for potentially new student (debounced).");
-                    refreshAICoachData(); 
+                    // Only refresh if the student ID has actually changed from the observer's last processed ID
+                    if (currentStudentIdFromWindow && currentStudentIdFromWindow !== observerLastProcessedStudentId) {
+                        logAICoach(`Observer: Student ID changed from ${observerLastProcessedStudentId} to ${currentStudentIdFromWindow}. Triggering refresh.`);
+                        observerLastProcessedStudentId = currentStudentIdFromWindow; // Update before refresh
+                        refreshAICoachData(); 
+                    } else if (!currentStudentIdFromWindow && observerLastProcessedStudentId !== null) {
+                        // Case: Student ID became null (e.g., navigating away from a specific student but still on a report page somehow)
+                        logAICoach(`Observer: Student ID became null. Previously ${observerLastProcessedStudentId}. Clearing UI.`);
+                        observerLastProcessedStudentId = null;
+                        clearCoachUI(); // Or handle as appropriate, maybe refreshAICoachData will show error.
+                    } else if (currentStudentIdFromWindow && currentStudentIdFromWindow === observerLastProcessedStudentId){
+                        logAICoach(`Observer: Student ID ${currentStudentIdFromWindow} is the same as observerLastProcessedStudentId. No refresh from observer.`);
+                    }
                 }
             } else {
-                clearCoachUI();
+                if (observerLastProcessedStudentId !== null) { // Only clear if we were previously tracking a student
+                    logAICoach("Observer: Not on individual report view. Clearing UI and resetting observer ID.");
+                    observerLastProcessedStudentId = null;
+                    clearCoachUI();
+                }
             }
         };
 
         // Use a debounced version of the observer callback
         debouncedObserverCallback = debounce(function() {
             logAICoach("MutationObserver processing (debounced).");
+            const currentStudentIdFromWindow = window.currentReportObject10Id;
+
             if (isIndividualReportView()) {
                 const panelIsActive = document.body.classList.contains('ai-coach-active');
                 if (!coachUIInitialized) { 
                     initializeCoachUI();
                 } else if (panelIsActive) { 
-                    logAICoach("Individual report view, panel active. Re-fetching data for potentially new student (debounced).");
-                    refreshAICoachData(); 
+                    // Only refresh if the student ID has actually changed from the observer's last processed ID
+                    if (currentStudentIdFromWindow && currentStudentIdFromWindow !== observerLastProcessedStudentId) {
+                        logAICoach(`Observer: Student ID changed from ${observerLastProcessedStudentId} to ${currentStudentIdFromWindow}. Triggering refresh.`);
+                        observerLastProcessedStudentId = currentStudentIdFromWindow; // Update before refresh
+                        refreshAICoachData(); 
+                    } else if (!currentStudentIdFromWindow && observerLastProcessedStudentId !== null) {
+                        // Case: Student ID became null (e.g., navigating away from a specific student but still on a report page somehow)
+                        logAICoach(`Observer: Student ID became null. Previously ${observerLastProcessedStudentId}. Clearing UI.`);
+                        observerLastProcessedStudentId = null;
+                        clearCoachUI(); // Or handle as appropriate, maybe refreshAICoachData will show error.
+                    } else if (currentStudentIdFromWindow && currentStudentIdFromWindow === observerLastProcessedStudentId){
+                        logAICoach(`Observer: Student ID ${currentStudentIdFromWindow} is the same as observerLastProcessedStudentId. No refresh from observer.`);
+                    }
                 }
             } else {
-                clearCoachUI();
+                if (observerLastProcessedStudentId !== null) { // Only clear if we were previously tracking a student
+                    logAICoach("Observer: Not on individual report view. Clearing UI and resetting observer ID.");
+                    observerLastProcessedStudentId = null;
+                    clearCoachUI();
+                }
             }
         }, 750); // Debounce for 750ms
 
-        coachObserver = new MutationObserver(debouncedObserverCallback); // Use the debounced version
+        coachObserver = new MutationObserver(observerCallback); // Use the raw, non-debounced one
         coachObserver.observe(targetNode, { childList: true, subtree: true });
 
         // Initial check in case the page loads directly on an individual report
@@ -340,7 +386,8 @@ if (window.aiCoachLauncherInitialized) {
     async function fetchAICoachingData(studentId) {
         const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
         if (!panelContent) return;
-        if (!studentId) { // Double check studentId is not null/undefined before fetching
+
+        if (!studentId) { 
              logAICoach("fetchAICoachingData called with no studentId. Aborting.");
              if(panelContent && !panelContent.querySelector('.ai-coach-section p[style*="color:red"], .ai-coach-section p[style*="color:orange"] ')) {
                 panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Student ID missing, cannot fetch AI coaching data.</p></div>';
@@ -348,7 +395,26 @@ if (window.aiCoachLauncherInitialized) {
              return;
         }
 
-        panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading AI Coach insights...</p>';
+        // If already fetching for this specific studentId, don't start another one.
+        if (currentlyFetchingStudentId === studentId) {
+            logAICoach(`fetchAICoachingData: Already fetching data for student ID ${studentId}. Aborting duplicate call.`);
+            return;
+        }
+
+        // If there's an ongoing fetch for a *different* student, abort it.
+        if (currentFetchAbortController) {
+            currentFetchAbortController.abort();
+            logAICoach("Aborted previous fetchAICoachingData call for a different student.");
+        }
+        currentFetchAbortController = new AbortController(); 
+        const signal = currentFetchAbortController.signal;
+
+        currentlyFetchingStudentId = studentId; // Mark that we are now fetching for this student
+
+        // Set loader text more judiciously
+        if (!panelContent.innerHTML.includes('<div class="loader"></div>')) {
+            panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading AI Coach insights...</p>';
+        }
 
         try {
             logAICoach("Fetching AI Coaching Data for student_object10_record_id: " + studentId);
@@ -357,7 +423,8 @@ if (window.aiCoachLauncherInitialized) {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ student_object10_record_id: studentId })
+                body: JSON.stringify({ student_object10_record_id: studentId }),
+                signal: signal 
             });
 
             if (!response.ok) {
@@ -367,11 +434,28 @@ if (window.aiCoachLauncherInitialized) {
 
             const data = await response.json();
             logAICoach("AI Coaching data received:", data);
+            lastFetchedStudentId = studentId; 
             renderAICoachData(data);
 
         } catch (error) {
-            logAICoach("Error fetching AI Coaching data:", error);
-            panelContent.innerHTML = `<div class="ai-coach-section"><p style="color:red;">Error loading AI Coach insights: ${error.message}</p></div>`;
+            if (error.name === 'AbortError') {
+                logAICoach('Fetch aborted for student ID: ' + studentId);
+            } else {
+                logAICoach("Error fetching AI Coaching data:", error);
+                // Only update panel if this error wasn't for an aborted old fetch
+                if (currentlyFetchingStudentId === studentId) { 
+                    panelContent.innerHTML = `<div class="ai-coach-section"><p style="color:red;">Error loading AI Coach insights: ${error.message}</p></div>`;
+                }
+            }
+        } finally {
+            // If this fetch (for this studentId) was the one being tracked, clear the tracking flag.
+            if (currentlyFetchingStudentId === studentId) {
+                currentlyFetchingStudentId = null;
+            }
+            // If this specific fetch was the one associated with the current controller, nullify it
+            if (currentFetchAbortController && currentFetchAbortController.signal === signal) {
+                currentFetchAbortController = null;
+            }
         }
     }
 
@@ -616,16 +700,29 @@ if (window.aiCoachLauncherInitialized) {
             return;
         }
 
-        logAICoach("Refreshing AI Coach data...");
-        panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Identifying student report...</p>';
+        logAICoach("refreshAICoachData: Attempting to get student ID...");
         
         const studentObject10Id = await getStudentObject10RecordId(); 
         
         if (studentObject10Id) {
-            fetchAICoachingData(studentObject10Id); 
+            if (studentObject10Id !== lastFetchedStudentId || lastFetchedStudentId === null) {
+                logAICoach(`refreshAICoachData: Student ID ${studentObject10Id}. Last fetched ID: ${lastFetchedStudentId}. Condition met for fetching data.`);
+                // Only set loader here if not already fetching this specific ID, fetchAICoachingData will manage its own loader then.
+                if (currentlyFetchingStudentId !== studentObject10Id && panelContent.innerHTML.indexOf('loader') === -1 ){
+                    panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Identifying student report...</p>';
+                }
+                fetchAICoachingData(studentObject10Id); 
+            } else {
+                logAICoach(`refreshAICoachData: Student ID ${studentObject10Id} is same as last fetched (${lastFetchedStudentId}). Data likely current.`);
+            }
         } else {
-            logAICoach("Student Object_10 ID not available after getStudentObject10RecordId. AI data fetch will not proceed during refresh.");
-            // getStudentObject10RecordId should handle updating the panel with an error message
+            logAICoach("refreshAICoachData: Student Object_10 ID not available. Panel will show error from getStudentObject10RecordId.");
+            lastFetchedStudentId = null; 
+            observerLastProcessedStudentId = null; 
+            currentlyFetchingStudentId = null; // ADD THIS: Clear if ID becomes null
+            if (panelContent.innerHTML.includes('loader') && !panelContent.innerHTML.includes('ai-coach-section')){
+                 panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not identify student report. Please ensure the report is fully loaded.</p></div>';
+            }
         }
     }
 
@@ -647,6 +744,14 @@ if (window.aiCoachLauncherInitialized) {
             if (toggleButton) toggleButton.textContent = '🚀 Activate AI Coach';
             if (panelContent) panelContent.innerHTML = '<p>Activate the AI Coach to get insights.</p>';
             logAICoach("AI Coach panel deactivated.");
+            lastFetchedStudentId = null; 
+            observerLastProcessedStudentId = null; 
+            currentlyFetchingStudentId = null; // ADD THIS: Reset when panel is closed
+            if (currentFetchAbortController) { 
+                currentFetchAbortController.abort();
+                currentFetchAbortController = null;
+                logAICoach("Aborted ongoing fetch as panel was closed.");
+            }
         }
     }
 
