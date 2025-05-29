@@ -1437,7 +1437,7 @@ if (window.aiCoachLauncherInitialized) {
                                 'ai-chat-message ai-chat-message-user';
                             msgElement.setAttribute('data-role', msg.role);
                             msgElement.setAttribute('data-message-id', msg.id || ''); // Ensure msg.id is used
-                            msgElement.style.position = 'relative';
+                            msgElement.style.position = 'relative'; // Needed for absolute positioning of like btn
                             
                             // Create message content
                             let messageContent = '';
@@ -1458,6 +1458,7 @@ if (window.aiCoachLauncherInitialized) {
                             
                             // Add like button for assistant messages
                             if (msg.role === 'assistant' && msg.id) { // Ensure msg.id exists
+                                logAICoach('loadChatHistory: Creating like button for historical message ID:', msg.id); // ADDED LOG
                                 const likeButton = createLikeButton(msg.id, msg.is_liked || false); // Pass is_liked status
                                 msgElement.appendChild(likeButton);
                             }
@@ -1822,6 +1823,7 @@ if (window.aiCoachLauncherInitialized) {
                 const botMessageElement = document.createElement('p');
                 botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
                 botMessageElement.setAttribute('data-role', 'assistant'); // For history reconstruction
+                botMessageElement.style.position = 'relative'; // Needed for absolute positioning of like btn
                 
                 // Process the AI response to make activity references clickable
                 let processedResponse = data.ai_response;
@@ -1857,6 +1859,17 @@ if (window.aiCoachLauncherInitialized) {
                 
                 botMessageElement.innerHTML = `<em>AI Coach:</em> ${processedResponse}`;
                 chatDisplay.appendChild(botMessageElement);
+                
+                // Add like button to the new AI message
+                // ASSUMPTION: Backend response 'data' includes 'ai_message_knack_id' for the just-saved AI response.
+                // If not, this ID needs to be provided by the CHAT_TURN_ENDPOINT.
+                if (data.ai_message_knack_id) {
+                    logAICoach('sendChatMessage: Creating like button for new AI message ID:', data.ai_message_knack_id);
+                    const likeButton = createLikeButton(data.ai_message_knack_id, false); // New messages are not liked by default
+                    botMessageElement.appendChild(likeButton);
+                } else {
+                    logAICoach('sendChatMessage: No ai_message_knack_id in response, cannot add like button to new AI message.', data);
+                }
                 
                 // Add click handlers to activity links
                 const activityLinks = botMessageElement.querySelectorAll('.ai-coach-activity-link');
@@ -2679,3 +2692,4 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
+
