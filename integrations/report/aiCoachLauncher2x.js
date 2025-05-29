@@ -1737,22 +1737,31 @@ if (window.aiCoachLauncherInitialized) {
                 
                 // Replace activity mentions with clickable links
                 suggestedActivities.forEach(activity => {
+                    // Escape activity name and ID for use in RegExp
+                    const escapedActivityName = escapeRegExp(activity.name || ''); // Ensure name is a string
+                    const escapedActivityId = escapeRegExp(activity.id || '');     // Ensure id is a string
+
                     // Pattern 1: "Activity Name (ID: XX)"
-                    const pattern1 = new RegExp(`${activity.name}\\s*\\(ID:\\s*${activity.id}\\)`, 'gi');
-                    processedResponse = processedResponse.replace(pattern1, 
-                        `<a href="#" class="ai-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}' style="color: #3498db; text-decoration: underline; font-weight: 500;">${activity.name} (ID: ${activity.id})</a>`
-                    );
-                    
-                    // Pattern 2: Just "Activity Name" if it's clearly in a suggestion context
-                    const pattern2 = new RegExp(`(?:activity:|try the|consider|suggest|recommend)\\s*["']?${activity.name}["']?`, 'gi');
-                    processedResponse = processedResponse.replace(pattern2, (match) => {
-                        // Only replace if not already replaced
-                        if (!match.includes('ai-coach-activity-link')) {
-                            const prefix = match.substring(0, match.indexOf(activity.name));
-                            return `${prefix}<a href="#" class="ai-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}' style="color: #3498db; text-decoration: underline; font-weight: 500;">${activity.name}</a>`;
-                        }
-                        return match;
-                    });
+                    // Ensure activity.name and activity.id are defined and are strings before using them
+                    if (typeof activity.name === 'string' && typeof activity.id === 'string') {
+                        const pattern1 = new RegExp(`${escapedActivityName}\s*\(ID:\s*${escapedActivityId}\)`, 'gi');
+                        processedResponse = processedResponse.replace(pattern1, 
+                            `<a href="#" class="ai-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}' style="color: #3498db; text-decoration: underline; font-weight: 500;">${activity.name} (ID: ${activity.id})</a>`
+                        );
+                        
+                        // Pattern 2: Just "Activity Name" if it's clearly in a suggestion context
+                        const pattern2 = new RegExp(`(?:activity:|try the|consider|suggest|recommend)\s*["']?${escapedActivityName}["']?`, 'gi');
+                        processedResponse = processedResponse.replace(pattern2, (match) => {
+                            // Only replace if not already replaced
+                            if (!match.includes('ai-coach-activity-link')) {
+                                const prefix = match.substring(0, match.indexOf(activity.name)); // Use original activity.name for indexOf
+                                return `${prefix}<a href="#" class="ai-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}' style="color: #3498db; text-decoration: underline; font-weight: 500;">${activity.name}</a>`;
+                            }
+                            return match;
+                        });
+                    } else {
+                        logAICoach("Skipping activity link creation due to invalid name/id:", activity);
+                    }
                 });
                 
                 botMessageElement.innerHTML = `<em>AI Coach:</em> ${processedResponse}`;
@@ -1879,6 +1888,15 @@ if (window.aiCoachLauncherInitialized) {
             });
         }
         logAICoach("Chat interface added and event listeners set up.");
+    }
+
+    // --- NEW: Function to escape special characters for RegExp ---
+    function escapeRegExp(string) {
+      if (typeof string !== 'string') {
+        console.warn('[AICoachLauncher] escapeRegExp called with non-string argument:', string);
+        return ''; // Or handle as appropriate, e.g., convert to string or throw error
+      }
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
     }
 
     // --- NEW: Function to show problem selector modal ---
@@ -2618,4 +2636,3 @@ if (window.aiCoachLauncherInitialized) {
     
     window.initializeAICoachLauncher = initializeAICoachLauncher;
 } 
-
