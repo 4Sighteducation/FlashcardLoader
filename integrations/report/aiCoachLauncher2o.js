@@ -84,8 +84,9 @@ if (window.aiCoachLauncherInitialized) {
         }
 
         logAICoach("Conditions met. Initializing AI Coach UI (button and panel).");
-        addAICoachStyles();
+        loadExternalStyles();
         createAICoachPanel();
+        addPanelResizeHandler(); // ADD THIS LINE
         addLauncherButton();
         setupEventListeners();
         coachUIInitialized = true; // Mark as initialized
@@ -224,284 +225,139 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 
-    function addAICoachStyles() {
-        const styleId = 'ai-coach-styles';
-        if (document.getElementById(styleId)) return;
+    function loadExternalStyles() {
+        const styleId = 'ai-coach-external-styles';
+        if (document.getElementById(styleId)) {
+            logAICoach("AI Coach external styles already loaded.");
+            return;
+        }
 
-        const css = `
+        // Load external CSS from jsdelivr
+        const link = document.createElement('link');
+        link.id = styleId;
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher.css';
+        
+        // Add dynamic CSS for config-specific IDs
+        const dynamicCss = `
             body.ai-coach-active ${AI_COACH_LAUNCHER_CONFIG.mainContentSelector} {
-                width: calc(100% - 450px); /* Increased panel width */
-                margin-right: 450px; /* Increased panel width */
-                transition: width 0.3s ease-in-out, margin-right 0.3s ease-in-out;
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.mainContentSelector} {
-                 transition: width 0.3s ease-in-out, margin-right 0.3s ease-in-out;
+                width: calc(100% - var(--ai-coach-panel-width));
+                margin-right: var(--ai-coach-panel-width);
             }
             #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: 0;
-                opacity: 0;
-                visibility: hidden;
-                position: fixed;
-                top: 0;
-                right: 0;
-                height: 100vh;
-                background-color: #f4f6f8; /* Main panel background */
-                border-left: 1px solid #ddd;
-                padding: 20px;
-                box-sizing: border-box;
-                overflow-y: auto;
-                z-index: 1050;
-                transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0.3s;
-                font-family: Arial, sans-serif; 
-            }
-            body.ai-coach-active #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: 450px; /* Increased panel width */
-                opacity: 1;
-                visibility: visible;
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 15px;
-                border-bottom: 1px solid #ccc;
-                padding-bottom: 10px;
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header h3 {
-                margin: 0;
-                font-size: 1.3em;
-                color: #333; /* Darker text for header */
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-close-btn {
-                background: none;
-                border: none;
-                font-size: 1.6em;
-                cursor: pointer;
-                padding: 5px;
-                color: #555; /* Darker color for close button */
-            }
-            #aiCoachLauncherButtonContainer { /* This is for the main Activate AI Coach button if used from config */
-                 text-align: center; 
-                 padding: 20px; 
-                 border-top: 1px solid #eee;
-            }
-            .ai-coach-section-toggles {
-                display: flex; /* Make buttons appear in a row */
-                flex-direction: row; /* Explicitly row */
-                justify-content: space-between; /* Distribute space */
-                gap: 8px; /* Space between buttons */
-                margin: 10px 0 15px 0 !important; /* Ensure margin is applied */
-            }
-            .ai-coach-section-toggles .p-button {
-                flex-grow: 1; /* Allow buttons to grow and share space */
-                padding: 10px 5px !important; /* Adjust padding */
-                font-size: 0.85em !important; /* Slightly smaller font for row layout */
-                border: none; /* Remove existing p-button border if any */
-                color: white !important; /* Text color */
-                border-radius: 4px;
-                transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
-            }
-            .ai-coach-section-toggles .p-button:hover {
-                opacity: 0.85;
-                transform: translateY(-1px);
-            }
-            #aiCoachToggleVespaButton {
-                background-color: #79A6DC !important; /* Vespa Blue */
-            }
-            #aiCoachToggleAcademicButton {
-                background-color: #77DD77 !important; /* Academic Green */
-            }
-            #aiCoachToggleQuestionButton {
-                background-color: #C3B1E1 !important; /* Question Purple */
-            }
-
-            .ai-coach-section {
-                margin-bottom: 20px;
-                padding: 15px;
-                background-color: #fff; /* White background for content sections */
-                border: 1px solid #e0e0e0;
-                border-radius: 5px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            }
-            .ai-coach-section h4 {
-                font-size: 1.1em;
-                margin-top: 0;
-                margin-bottom: 10px;
-                color: #333;
-                border-bottom: 1px solid #eee;
-                padding-bottom: 5px;
-            }
-            .ai-coach-section h5 {
-                font-size: 1em; /* For sub-headings within sections */
-                color: #444;
-                margin-top: 15px;
-                margin-bottom: 8px;
-            }
-            .ai-coach-section p, .ai-coach-section ul, .ai-coach-section li {
-                font-size: 0.9em;
-                line-height: 1.6;
-                color: #555;
-            }
-            .ai-coach-section ul {
-                padding-left: 20px;
-                margin-bottom: 0;
-            }
-            .loader {
-                border: 5px solid #f3f3f3; 
-                border-top: 5px solid #3498db; 
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                animation: spin 1s linear infinite;
-                margin: 20px auto;
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            /* Style for chart containers if Chart.js fails or data is missing */
-            #vespaComparisonChartContainer p,
-            #questionScoresChartContainer p {
-                color: #777;
-                font-style: italic;
-            }
-            /* Styles for Benchmark Scales */
-            .subject-benchmark-item {
-                padding: 10px 0;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            .subject-benchmark-item:last-child {
-                border-bottom: none;
-            }
-            .subject-benchmark-header {
-                /* display: flex; */ /* Already part of a section, might not need flex here directly */
-                /* justify-content: space-between; */
-                /* align-items: center; */
-                margin-bottom: 8px;
-            }
-            .subject-benchmark-header h5 { /* For subject name, within its own section */
-                margin: 0 0 5px 0;
-                font-size: 1em;
-                font-weight: bold;
-                color: #224466; /* Dark blue for subject names */
-            }
-            .subject-grades-info {
-                font-size: 0.85em;
-                color: #555;
-                margin-bottom: 12px; /* Space before the scale */
-            }
-            .subject-benchmark-scale-container {
-                margin-top: 5px;
-                margin-bottom: 25px; /* Increased space below each scale */
-                padding: 0 5px; 
-            }
-            .scale-labels {
-                display: flex;
-                justify-content: space-between;
-                font-size: 0.75em;
-                color: #777;
-                margin-bottom: 4px;
-            }
-            .scale-bar-wrapper {
-                width: 100%;
-                height: 10px; 
-                background-color: #e9ecef; 
-                border-radius: 5px;
-                position: relative;
-            }
-            .scale-bar { 
-                height: 100%;
-                position: relative; 
-            }
-            .scale-marker {
-                width: 8px; 
-                height: 16px; 
-                border-radius: 2px; 
-                position: absolute;
-                top: 50%;
-                transform: translateY(-50%) translateX(-50%); 
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10; 
-            }
-            .scale-marker .marker-label {
-                position: absolute;
-                bottom: -20px; 
-                left: 50%;
-                transform: translateX(-50%);
-                font-size: 0.7em;
-                color: #333;
-                white-space: nowrap;
-                background-color: rgba(255, 255, 255, 0.9);
-                padding: 1px 3px;
-                border-radius: 3px;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-                z-index: 11;
-            }
-
-            .current-grade-marker { background-color: #28a745; /* Green */ }
-            .standard-meg-marker { background-color: #ffc107; /* Yellow */ }
-            /* A-Level MEG markers will use this base color */
-            .a-level-meg-marker { background-color: #007bff; /* Blue */ }
-            
-            /* Specific label colors for P60, P90, P100 markers for better visual distinction */
-            .a-level-meg-marker.p60 .marker-label { color: #17a2b8; } /* Teal for P60 label */
-            .a-level-meg-marker.p90 .marker-label { color: #fd7e14; } /* Orange for P90 label */
-            .a-level-meg-marker.p100 .marker-label { color: #dc3545; } /* Red for P100 label */
-
-            /* New styles for distinct markers */
-            .current-grade-dot-marker {
-                background-color: #28a745; /* Green - student's actual grade */
-                width: 10px; /* Make it slightly wider for a dot feel */
-                height: 10px; /* Make it a circle/square dot */
-                border-radius: 50%; /* Circle dot */
-                border: 2px solid white; /* White border to stand out */
-                box-shadow: 0 0 3px rgba(0,0,0,0.4);
-                z-index: 15; /* Higher z-index to be on top */
-            }
-            .current-grade-dot-marker .marker-label {
-                bottom: -22px; /* Adjust label position for dot */
-                font-weight: bold; /* Make student name bold */
-            }
-
-            .percentile-line-marker {
-                background-color: #6c757d; /* Grey for percentile lines - can be overridden by specific Px colors */
-                width: 2px; /* Thin line */
-                height: 20px; /* Taller line, extending above and below center */
-                border-radius: 1px; 
-                z-index: 12; /* Below student marker but above bar */
-            }
-            /* Override for A-Level MEG percentiles to use their specific colors */
-            .percentile-line-marker.a-level-meg-marker {
-                 background-color: #007bff; /* Blue for general A-Level percentiles */
-            }
-            .percentile-line-marker.p60 {
-                 background-color: #17a2b8; /* Teal */
-            }
-            .percentile-line-marker.p90 {
-                 background-color: #fd7e14; /* Orange */
-            }
-            .percentile-line-marker.p100 {
-                 background-color: #dc3545; /* Red */
-            }
-            .percentile-line-marker.standard-meg-marker { /* For the Top25% or general MEG */
-                background-color: #ffc107; /* Yellow, if it's the main MEG marker */
-                z-index: 13; /* Slightly higher z-index to ensure it's visible over other percentiles like P60 if they overlap */
-            }
-
-            .percentile-line-marker .marker-label {
-                bottom: -20px; /* Keep labels consistent for lines */
-                 font-size: 0.65em; /* Slightly smaller for percentile labels if needed */
+                /* Use CSS variables from external file */
             }
         `;
+        
         const styleElement = document.createElement('style');
-        styleElement.id = styleId;
-        styleElement.type = 'text/css';
-        styleElement.appendChild(document.createTextNode(css));
+        styleElement.textContent = dynamicCss;
+        
+        // Set CSS variables based on config
+        document.documentElement.style.setProperty('--ai-coach-panel-id', AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
+        document.documentElement.style.setProperty('--ai-coach-main-content', AI_COACH_LAUNCHER_CONFIG.mainContentSelector);
+        
+        document.head.appendChild(link);
         document.head.appendChild(styleElement);
-        logAICoach("AICoachLauncher styles added.");
+        
+        logAICoach("AI Coach external styles loading from CDN...");
+        
+        // Log when styles are loaded
+        link.onload = () => {
+            logAICoach("AI Coach external styles loaded successfully.");
+        };
+        
+        link.onerror = () => {
+            console.error("[AICoachLauncher] Failed to load external styles from CDN.");
+        };
+    }
+
+    // Add resize functionality for the panel
+    function addPanelResizeHandler() {
+        const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
+        if (!panel) return;
+
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        let currentWidth = 450; // Default width
+
+        // Create resize handle
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'ai-coach-resize-handle';
+        resizeHandle.style.cssText = `
+            position: absolute;
+            left: -3px;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+            background: transparent;
+            z-index: 1051;
+        `;
+        panel.appendChild(resizeHandle);
+
+        const startResize = (e) => {
+            e.preventDefault();
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = panel.offsetWidth;
+            document.body.classList.add('ai-coach-resizing');
+            
+            // Store current width
+            currentWidth = startWidth;
+        };
+
+        const doResize = (e) => {
+            if (!isResizing) return;
+            
+            const diff = startX - e.clientX;
+            const newWidth = Math.max(350, Math.min(600, startWidth + diff));
+            
+            // Update CSS variable for smooth transitions
+            document.documentElement.style.setProperty('--ai-coach-panel-width', newWidth + 'px');
+            
+            // Update panel width directly
+            panel.style.width = newWidth + 'px';
+            
+            // Update main content width
+            const mainContent = document.querySelector(AI_COACH_LAUNCHER_CONFIG.mainContentSelector);
+            if (mainContent && document.body.classList.contains('ai-coach-active')) {
+                mainContent.style.width = `calc(100% - ${newWidth}px)`;
+                mainContent.style.marginRight = `${newWidth}px`;
+            }
+            
+            currentWidth = newWidth;
+        };
+
+        const stopResize = () => {
+            if (!isResizing) return;
+            isResizing = false;
+            document.body.classList.remove('ai-coach-resizing');
+            
+            // Save the width preference (optional - could use localStorage)
+            if (window.localStorage) {
+                localStorage.setItem('aiCoachPanelWidth', currentWidth);
+            }
+        };
+
+        // Add event listeners
+        resizeHandle.addEventListener('mousedown', startResize);
+        document.addEventListener('mousemove', doResize);
+        document.addEventListener('mouseup', stopResize);
+        
+        // Load saved width if available
+        const savedWidth = localStorage.getItem('aiCoachPanelWidth');
+        if (savedWidth) {
+            const width = parseInt(savedWidth, 10);
+            if (!isNaN(width) && width >= 350 && width <= 600) {
+                document.documentElement.style.setProperty('--ai-coach-panel-width', width + 'px');
+                panel.style.width = width + 'px';
+                currentWidth = width;
+            }
+        }
+        
+        logAICoach("Panel resize handler added.");
     }
 
     function createAICoachPanel() {
@@ -1220,14 +1076,14 @@ if (window.aiCoachLauncherInitialized) {
 
         chatContainer.innerHTML = `
             <h4>AI Chat with ${studentNameForContext}</h4>
-            <div id="aiCoachChatDisplay" style="height: 200px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; margin-bottom: 10px; background-color: #fff;">
+            <div id="aiCoachChatDisplay">
                 <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today?</p>
             </div>
-            <div style="display: flex;">
-                <input type="text" id="aiCoachChatInput" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc;" placeholder="Type your message...">
-                <button id="aiCoachChatSendButton" class="p-button p-component" style="margin-left: 10px; padding: 8px 15px;">Send</button>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="aiCoachChatInput" placeholder="Type your message...">
+                <button id="aiCoachChatSendButton" class="p-button p-component">Send</button>
             </div>
-            <div id="aiCoachChatThinkingIndicator" style="font-size:0.8em; color: #777; text-align:center; margin-top:5px; display:none;">AI Coach is thinking...</div>
+            <div id="aiCoachChatThinkingIndicator">AI Coach is thinking...</div>
         `;
         panelContentElement.appendChild(chatContainer);
 
