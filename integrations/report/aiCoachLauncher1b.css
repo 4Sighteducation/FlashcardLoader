@@ -1,5 +1,5 @@
 /* AI Coach Launcher Styles */
-/* Version: 2.0 - Extracted and Enhanced */
+/* Version: 2.1 - Enhanced for dynamic IDs */
 
 /* CSS Custom Properties for dynamic values */
 :root {
@@ -69,7 +69,7 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Panel header */
-#aiCoachPanel .ai-coach-panel-header {
+.ai-coach-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -79,13 +79,13 @@ body.ai-coach-active #aiCoachPanel {
     flex-shrink: 0;
 }
 
-#aiCoachPanel .ai-coach-panel-header h3 {
+.ai-coach-panel-header h3 {
     margin: 0;
     font-size: 1.3em;
     color: #333;
 }
 
-#aiCoachPanel .ai-coach-close-btn {
+.ai-coach-close-btn {
     background: none;
     border: none;
     font-size: 1.6em;
@@ -128,6 +128,7 @@ body.ai-coach-active #aiCoachPanel {
     color: white !important;
     border-radius: 4px;
     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    cursor: pointer;
 }
 
 .ai-coach-section-toggles .p-button:hover {
@@ -203,6 +204,16 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Chart containers */
+#vespaComparisonChartContainer,
+#questionnaireResponseDistributionChartContainer {
+    height: 250px;
+    margin-bottom: 15px;
+    background: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 #vespaComparisonChartContainer p,
 #questionScoresChartContainer p {
     color: #777;
@@ -356,14 +367,15 @@ body.ai-coach-active #aiCoachPanel {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-height: 0; /* Important for proper flex behavior */
-    max-height: calc(100vh - 400px); /* Leave space for other elements */
+    min-height: 0;
+    max-height: calc(100vh - 400px);
+    margin-top: 20px;
 }
 
 #aiCoachChatDisplay {
     flex: 1;
-    min-height: 300px; /* Increased from 200px */
-    max-height: 500px; /* Maximum height to prevent it from taking too much space */
+    min-height: 300px;
+    max-height: 500px;
     border: 1px solid #ccc;
     overflow-y: auto;
     padding: 10px;
@@ -459,6 +471,10 @@ body.ai-coach-active #aiCoachPanel {
     #aiCoachPanel {
         width: 100% !important;
     }
+    
+    #aiCoachChatContainer {
+        max-height: calc(100vh - 300px);
+    }
 }
 
 /* Utility class for when panel is being resized */
@@ -469,4 +485,26 @@ body.ai-coach-resizing {
 
 body.ai-coach-resizing #aiCoachPanel {
     transition: none; /* Disable transitions during resize */
+}
+
+/* Ensure proper styling for details sections */
+.ai-coach-details-section {
+    display: none;
+}
+
+/* Additional styles for proper layout */
+#vespaChartComparativeSection,
+#vespaCoachingQuestionsSection,
+#vespaStudentCommentsGoalsSection {
+    margin-bottom: 20px;
+}
+
+/* Fix for p-button styling */
+.p-button {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
 }
