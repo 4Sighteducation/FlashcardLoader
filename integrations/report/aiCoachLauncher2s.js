@@ -307,8 +307,8 @@ if (window.aiCoachLauncherInitialized) {
         
         // Set CSS variables
         document.documentElement.style.setProperty('--ai-coach-panel-width', '450px');
-        document.documentElement.style.setProperty('--ai-coach-panel-min-width', '350px');
-        document.documentElement.style.setProperty('--ai-coach-panel-max-width', '600px');
+        document.documentElement.style.setProperty('--ai-coach-panel-min-width', '300px'); // CHANGED: from 350px
+        document.documentElement.style.setProperty('--ai-coach-panel-max-width', '800px'); // CHANGED: from 600px
         document.documentElement.style.setProperty('--ai-coach-transition-duration', '0.3s');
         
         document.head.appendChild(link);
@@ -384,7 +384,7 @@ if (window.aiCoachLauncherInitialized) {
             if (!isResizing) return;
             
             const diff = startX - e.clientX;
-            const newWidth = Math.max(350, Math.min(600, startWidth + diff));
+            const newWidth = Math.max(300, Math.min(800, startWidth + diff)); // CHANGED: 300px min, 800px max (was 350-600)
             
             // Update CSS variable for smooth transitions
             document.documentElement.style.setProperty('--ai-coach-panel-width', newWidth + 'px');
@@ -446,7 +446,7 @@ if (window.aiCoachLauncherInitialized) {
         const savedWidth = localStorage.getItem('aiCoachPanelWidth');
         if (savedWidth) {
             const width = parseInt(savedWidth, 10);
-            if (!isNaN(width) && width >= 350 && width <= 600) {
+            if (!isNaN(width) && width >= 300 && width <= 800) { // CHANGED: Updated range check
                 document.documentElement.style.setProperty('--ai-coach-panel-width', width + 'px');
                 panel.style.width = width + 'px';
                 currentWidth = width;
