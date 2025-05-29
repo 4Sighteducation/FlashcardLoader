@@ -1520,7 +1520,7 @@ if (window.aiCoachLauncherInitialized) {
                 right: 5px;
                 background: none;
                 border: none;
-                cursor: pointer;
+                cursor: pointer !important; /* ADDED !important HERE */
                 font-size: 1.2em;
                 opacity: ${isLiked ? '1' : '0.3'}; // Set initial opacity based on liked state
                 transition: opacity 0.2s, transform 0.2s;
@@ -2663,4 +2663,3 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
-
