@@ -237,7 +237,7 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1b.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1c.css';
         
         // Add dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -281,21 +281,7 @@ if (window.aiCoachLauncherInitialized) {
                 visibility: visible;
             }
             
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId}::before {
-                content: '';
-                position: absolute;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                width: 5px;
-                cursor: ew-resize;
-                background: transparent;
-                transition: background-color 0.2s;
-            }
-            
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId}:hover::before {
-                background: rgba(0, 0, 0, 0.1);
-            }
+            /* REMOVED ::before pseudo-element to avoid conflict with JavaScript resize handle */
             
             #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header {
                 display: flex;
@@ -355,14 +341,27 @@ if (window.aiCoachLauncherInitialized) {
         resizeHandle.className = 'ai-coach-resize-handle';
         resizeHandle.style.cssText = `
             position: absolute;
-            left: -3px;
+            left: 0;
             top: 0;
             bottom: 0;
-            width: 6px;
+            width: 10px;
             cursor: ew-resize;
             background: transparent;
             z-index: 1051;
+            transition: background-color 0.2s;
         `;
+        
+        // Add hover effect
+        resizeHandle.addEventListener('mouseenter', () => {
+            resizeHandle.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
+        });
+        
+        resizeHandle.addEventListener('mouseleave', () => {
+            if (!isResizing) {
+                resizeHandle.style.backgroundColor = 'transparent';
+            }
+        });
+        
         panel.appendChild(resizeHandle);
 
         const startResize = (e) => {
@@ -372,8 +371,13 @@ if (window.aiCoachLauncherInitialized) {
             startWidth = panel.offsetWidth;
             document.body.classList.add('ai-coach-resizing');
             
+            // Add visual feedback
+            resizeHandle.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+            
             // Store current width
             currentWidth = startWidth;
+            
+            logAICoach(`Starting resize from width: ${startWidth}px`);
         };
 
         const doResize = (e) => {
@@ -403,9 +407,13 @@ if (window.aiCoachLauncherInitialized) {
             isResizing = false;
             document.body.classList.remove('ai-coach-resizing');
             
-            // Save the width preference (optional - could use localStorage)
+            // Reset visual feedback
+            resizeHandle.style.backgroundColor = 'transparent';
+            
+            // Save the width preference
             if (window.localStorage) {
                 localStorage.setItem('aiCoachPanelWidth', currentWidth);
+                logAICoach(`Saved panel width: ${currentWidth}px`);
             }
         };
 
@@ -413,6 +421,26 @@ if (window.aiCoachLauncherInitialized) {
         resizeHandle.addEventListener('mousedown', startResize);
         document.addEventListener('mousemove', doResize);
         document.addEventListener('mouseup', stopResize);
+        
+        // Add touch support for mobile
+        resizeHandle.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            startResize({ preventDefault: () => e.preventDefault(), clientX: touch.clientX });
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (isResizing) {
+                const touch = e.touches[0];
+                doResize({ clientX: touch.clientX });
+            }
+        });
+        
+        document.addEventListener('touchend', stopResize);
+        
+        // Debug: Log when resize handle is clicked
+        resizeHandle.addEventListener('click', () => {
+            logAICoach('Resize handle clicked (debug)');
+        });
         
         // Load saved width if available
         const savedWidth = localStorage.getItem('aiCoachPanelWidth');
