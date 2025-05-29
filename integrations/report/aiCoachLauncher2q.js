@@ -237,25 +237,93 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1a.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1b.css';
         
         // Add dynamic CSS for config-specific IDs
         const dynamicCss = `
             body.ai-coach-active ${AI_COACH_LAUNCHER_CONFIG.mainContentSelector} {
                 width: calc(100% - var(--ai-coach-panel-width));
                 margin-right: var(--ai-coach-panel-width);
+                transition: width var(--ai-coach-transition-duration) ease-in-out, 
+                            margin-right var(--ai-coach-transition-duration) ease-in-out;
             }
+            
+            ${AI_COACH_LAUNCHER_CONFIG.mainContentSelector} {
+                transition: width var(--ai-coach-transition-duration) ease-in-out, 
+                            margin-right var(--ai-coach-transition-duration) ease-in-out;
+            }
+            
             #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                /* Use CSS variables from external file */
+                width: 0;
+                opacity: 0;
+                visibility: hidden;
+                position: fixed !important;
+                top: 0;
+                right: 0;
+                height: 100vh;
+                background-color: #f4f6f8;
+                border-left: 1px solid #ddd;
+                padding: 20px;
+                box-sizing: border-box;
+                overflow-y: auto;
+                z-index: 1050;
+                transition: width var(--ai-coach-transition-duration) ease-in-out, 
+                            opacity var(--ai-coach-transition-duration) ease-in-out, 
+                            visibility var(--ai-coach-transition-duration);
+                font-family: Arial, sans-serif;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            body.ai-coach-active #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
+                width: var(--ai-coach-panel-width);
+                opacity: 1;
+                visibility: visible;
+            }
+            
+            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId}::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 5px;
+                cursor: ew-resize;
+                background: transparent;
+                transition: background-color 0.2s;
+            }
+            
+            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId}:hover::before {
+                background: rgba(0, 0, 0, 0.1);
+            }
+            
+            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 10px;
+                flex-shrink: 0;
+            }
+            
+            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+                min-height: 0;
             }
         `;
         
         const styleElement = document.createElement('style');
         styleElement.textContent = dynamicCss;
         
-        // Set CSS variables based on config
-        document.documentElement.style.setProperty('--ai-coach-panel-id', AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
-        document.documentElement.style.setProperty('--ai-coach-main-content', AI_COACH_LAUNCHER_CONFIG.mainContentSelector);
+        // Set CSS variables
+        document.documentElement.style.setProperty('--ai-coach-panel-width', '450px');
+        document.documentElement.style.setProperty('--ai-coach-panel-min-width', '350px');
+        document.documentElement.style.setProperty('--ai-coach-panel-max-width', '600px');
+        document.documentElement.style.setProperty('--ai-coach-transition-duration', '0.3s');
         
         document.head.appendChild(link);
         document.head.appendChild(styleElement);
