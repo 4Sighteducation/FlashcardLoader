@@ -1361,8 +1361,10 @@ if (window.aiCoachLauncherInitialized) {
             const currentStudentId = lastFetchedStudentId;
             logAICoach("AICoachLauncher: loadChatHistory - currentStudentId (lastFetchedStudentId)", currentStudentId); // ADDED LOG
 
+            if (chatCountElement) chatCountElement.textContent = 'Loading...'; // Explicitly set loading text
+
             if (!currentStudentId) {
-                chatCountElement.textContent = 'No student selected';
+                if (chatCountElement) chatCountElement.textContent = 'No student selected'; // Update if no ID
                 return;
             }
 
@@ -1542,9 +1544,10 @@ if (window.aiCoachLauncherInitialized) {
             
             // Click handler
             likeBtn.addEventListener('click', async () => {
-                logAICoach(`Like button clicked for message ID: ${messageId}. Current liked state before click: ${likeBtn.getAttribute('data-liked') === 'true'}`); // ADD THIS LOG
+                logAICoach(`Like button clicked for message ID: ${messageId}. Current liked state before click: ${likeBtn.getAttribute('data-liked') === 'true'}`); 
                 const currentlyLiked = likeBtn.getAttribute('data-liked') === 'true';
                 const newLikedState = !currentlyLiked;
+                logAICoach(`Like button: messageId=${messageId}, newLikedState=${newLikedState}`); // ADDED LOG
                 
                 // Optimistically update UI
                 likeBtn.setAttribute('data-liked', newLikedState ? 'true' : 'false');
@@ -1564,8 +1567,9 @@ if (window.aiCoachLauncherInitialized) {
                     parentMsg.style.borderLeft = '';
                     parentMsg.style.paddingLeft = '';
                     likedChatCount--;
+                    logAICoach(`Like button: Decremented likedChatCount to: ${likedChatCount}`); // ADDED LOG
                 }
-                updateChatStats();
+                updateChatStats(); // Ensure this is called to update the UI
                 
                 // Send update to backend
                 try {
@@ -1599,12 +1603,12 @@ if (window.aiCoachLauncherInitialized) {
                         }
 
                         if (newLikedState) likedChatCount--; else likedChatCount++; // Revert count
-                        updateChatStats();
+                        updateChatStats(); // Ensure this is called to update the UI after revert
                         const errorData = await response.json().catch(() => ({}));
                         throw new Error(errorData.error || 'Failed to update like status on backend.');
                     }
                     
-                    logAICoach(`Message ${messageId} like status updated to: ${newLikedState}`);
+                    logAICoach(`Message ${messageId} like status updated on backend to: ${newLikedState}`); // ADDED LOG
                 } catch (error) {
                     logAICoach("Error updating like status:", error);
                     // Display a more user-friendly error, e.g., a small toast notification
@@ -2656,3 +2660,4 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
+
