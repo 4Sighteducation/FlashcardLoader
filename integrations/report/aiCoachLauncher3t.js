@@ -2707,4 +2707,3 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
-
