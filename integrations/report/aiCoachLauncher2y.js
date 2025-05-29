@@ -671,8 +671,10 @@ if (window.aiCoachLauncherInitialized) {
             renderAICoachData(data);
             if (data && data.llm_generated_insights) { // Store insights for chat
                 currentLLMInsightsForChat = data.llm_generated_insights;
+                logAICoach("[fetchAICoachingData] currentLLMInsightsForChat SET:", currentLLMInsightsForChat); // <-- ADD THIS LOG
             } else {
                 currentLLMInsightsForChat = null;
+                logAICoach("[fetchAICoachingData] currentLLMInsightsForChat SET TO NULL because no llm_generated_insights in response."); // <-- ADD THIS LOG
             }
 
         } catch (error) {
@@ -1686,14 +1688,22 @@ if (window.aiCoachLauncherInitialized) {
                     current_tutor_message: originalInput
                 };
 
+                // Log currentLLMInsightsForChat before attempting to use it
+                logAICoach("[sendChatMessage] Value of currentLLMInsightsForChat BEFORE adding to payload:", currentLLMInsightsForChat); // <-- ADD THIS LOG
+
                 if (currentLLMInsightsForChat) {
                     payload.initial_ai_context = {
                         student_overview_summary: currentLLMInsightsForChat.student_overview_summary,
                         academic_benchmark_analysis: currentLLMInsightsForChat.academic_benchmark_analysis,
                         questionnaire_interpretation_and_reflection_summary: currentLLMInsightsForChat.questionnaire_interpretation_and_reflection_summary
                     };
-                    logAICoach("Sending chat with initial_ai_context:", payload.initial_ai_context);
+                    logAICoach("[sendChatMessage] Added initial_ai_context to payload based on currentLLMInsightsForChat.");
+                } else {
+                    logAICoach("[sendChatMessage] currentLLMInsightsForChat is NULL or UNDEFINED. initial_ai_context will NOT be added to payload."); // <-- ADD THIS LOG
                 }
+
+                // Log the final payload
+                logAICoach("[sendChatMessage] FINAL PAYLOAD being sent to CHAT_TURN_ENDPOINT:", JSON.parse(JSON.stringify(payload))); // <-- ADD THIS LOG (stringify to deep log)
 
                 const response = await fetch(CHAT_TURN_ENDPOINT, { 
                     method: 'POST',
