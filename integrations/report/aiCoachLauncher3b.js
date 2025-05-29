@@ -1329,16 +1329,22 @@ if (window.aiCoachLauncherInitialized) {
             }
 
             try {
-                const response = await fetch(`${HEROKU_API_BASE_URL}/chat_history`, {
+                // Assuming CHAT_HISTORY_ENDPOINT is defined, e.g., `${HEROKU_API_BASE_URL}/chat_history`
+                // This endpoint needs to be created or confirmed on the backend.
+                // For now, we'll assume it returns the expected structure.
+                const chatHistoryEndpoint = `${HEROKU_API_BASE_URL}/chat_history`; 
+                logAICoach("loadChatHistory: Fetching from endpoint: ", chatHistoryEndpoint);
+
+                const response = await fetch(chatHistoryEndpoint, { // MODIFIED to use a variable
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
                         student_object10_record_id: currentStudentId,
-                        max_messages: 50,
-                        days_back: 30,
-                        include_metadata: true // Request additional metadata
+                        max_messages: 50, // Example: fetch last 50 messages
+                        days_back: 30,    // Example: from last 30 days
+                        include_metadata: true // Request message ID and liked status
                     }),
                 });
 
@@ -1353,9 +1359,9 @@ if (window.aiCoachLauncherInitialized) {
                     });
                     
                     // Update stats
-                    totalChatCount = data.total_count || data.total_messages || 0;
+                    totalChatCount = data.total_count || data.chat_history?.length || 0; // Use chat_history.length as fallback
                     likedChatCount = data.liked_count || 0;
-                    chatMessages = data.messages || [];
+                    chatMessages = data.chat_history || []; // Ensure chatMessages is updated
                     
                     // Update UI counters
                     updateChatStats();
@@ -1382,14 +1388,14 @@ if (window.aiCoachLauncherInitialized) {
                     }
                     
                     // Add previous messages
-                    if (data.chat_history && data.chat_history.length > 0) {
-                        data.chat_history.forEach((msg, index) => {
+                    if (chatMessages && chatMessages.length > 0) {
+                        chatMessages.forEach((msg, index) => { // Iterate over chatMessages
                             const msgElement = document.createElement('div');
                             msgElement.className = msg.role === 'assistant' ? 
                                 'ai-chat-message ai-chat-message-bot' : 
                                 'ai-chat-message ai-chat-message-user';
                             msgElement.setAttribute('data-role', msg.role);
-                            msgElement.setAttribute('data-message-id', msg.id || '');
+                            msgElement.setAttribute('data-message-id', msg.id || ''); // Ensure msg.id is used
                             msgElement.style.position = 'relative';
                             
                             // Create message content
@@ -1401,7 +1407,7 @@ if (window.aiCoachLauncherInitialized) {
                             }
                             
                             // Add liked indicator if message is liked
-                            if (msg.is_liked) {
+                            if (msg.is_liked) { // Check msg.is_liked (boolean expected from backend)
                                 msgElement.style.backgroundColor = '#fff5f5';
                                 msgElement.style.borderLeft = '3px solid #e74c3c';
                                 msgElement.style.paddingLeft = '15px';
@@ -1410,23 +1416,29 @@ if (window.aiCoachLauncherInitialized) {
                             msgElement.innerHTML = messageContent;
                             
                             // Add like button for assistant messages
-                            if (msg.role === 'assistant' && msg.id) {
-                                const likeButton = createLikeButton(msg.id, msg.is_liked);
+                            if (msg.role === 'assistant' && msg.id) { // Ensure msg.id exists
+                                const likeButton = createLikeButton(msg.id, msg.is_liked || false); // Pass is_liked status
                                 msgElement.appendChild(likeButton);
                             }
                             
                             chatDisplay.appendChild(msgElement);
                         });
                         
-                        // Add continuation message
-                        const continuationMsg = document.createElement('p');
-                        continuationMsg.className = 'ai-chat-message ai-chat-message-bot';
-                        continuationMsg.innerHTML = `<em>AI Coach:</em> Let's continue our conversation about ${studentNameForContext}. What would you like to discuss?`;
-                        chatDisplay.appendChild(continuationMsg);
+                        // Add continuation message if needed (or adjust greeting)
+                        const lastMessage = chatDisplay.querySelector('.ai-chat-message:last-child');
+                        if(!(lastMessage && lastMessage.textContent.includes("Let's continue"))){
+                            const continuationMsg = document.createElement('p');
+                            continuationMsg.className = 'ai-chat-message ai-chat-message-bot';
+                            continuationMsg.innerHTML = `<em>AI Coach:</em> Let's continue our conversation about ${studentNameForContext}. What would you like to discuss?`;
+                            chatDisplay.appendChild(continuationMsg);
+                        }
                     }
                     
                     // Scroll to bottom
                     chatDisplay.scrollTop = chatDisplay.scrollHeight;
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: "Failed to load chat history. Unknown error."}));
+                    throw new Error(errorData.error || `Chat History API Error: ${response.status}`);
                 }
             } catch (error) {
                 logAICoach("Error loading chat history:", error);
@@ -1469,18 +1481,14 @@ if (window.aiCoachLauncherInitialized) {
                 border: none;
                 cursor: pointer;
                 font-size: 1.2em;
-                opacity: 0.3;
+                opacity: ${isLiked ? '1' : '0.3'}; // Set initial opacity based on liked state
                 transition: opacity 0.2s, transform 0.2s;
                 padding: 5px;
             `;
             likeBtn.innerHTML = isLiked ? '❤️' : '🤍';
             likeBtn.title = isLiked ? 'Unlike this response' : 'Like this response';
             
-            if (isLiked) {
-                likeBtn.style.opacity = '1';
-            }
-            
-            // Hover effect
+            // Hover effect - no change needed here from original if it was working
             likeBtn.addEventListener('mouseenter', () => {
                 likeBtn.style.opacity = '1';
                 likeBtn.style.transform = 'scale(1.2)';
@@ -1521,13 +1529,14 @@ if (window.aiCoachLauncherInitialized) {
                 
                 // Send update to backend
                 try {
-                    const response = await fetch(`${HEROKU_API_BASE_URL}/update_chat_like`, {
+                    const updateLikeEndpoint = `${HEROKU_API_BASE_URL}/update_chat_like`; // Define endpoint
+                    const response = await fetch(updateLikeEndpoint, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            message_id: messageId,
+                            message_id: messageId, // Knack record ID of the chat message
                             is_liked: newLikedState
                         }),
                     });
@@ -1536,19 +1545,30 @@ if (window.aiCoachLauncherInitialized) {
                         // Revert on error
                         likeBtn.setAttribute('data-liked', currentlyLiked ? 'true' : 'false');
                         likeBtn.innerHTML = currentlyLiked ? '❤️' : '🤍';
+                        likeBtn.style.opacity = currentlyLiked ? '1' : '0.3'; // Revert opacity
+                        likeBtn.title = currentlyLiked ? 'Unlike this response' : 'Like this response';
+                        // Revert parent message styling
                         if (currentlyLiked) {
-                            likedChatCount++;
+                            parentMsg.style.backgroundColor = '#fff5f5';
+                            parentMsg.style.borderLeft = '3px solid #e74c3c';
+                            parentMsg.style.paddingLeft = '15px';
                         } else {
-                            likedChatCount--;
+                            parentMsg.style.backgroundColor = '';
+                            parentMsg.style.borderLeft = '';
+                            parentMsg.style.paddingLeft = '';
                         }
+
+                        if (newLikedState) likedChatCount--; else likedChatCount++; // Revert count
                         updateChatStats();
-                        throw new Error('Failed to update like status');
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error || 'Failed to update like status on backend.');
                     }
                     
                     logAICoach(`Message ${messageId} like status updated to: ${newLikedState}`);
                 } catch (error) {
                     logAICoach("Error updating like status:", error);
-                    // Could show a toast notification here
+                    // Display a more user-friendly error, e.g., a small toast notification
+                    // For now, just log it.
                 }
             });
             
