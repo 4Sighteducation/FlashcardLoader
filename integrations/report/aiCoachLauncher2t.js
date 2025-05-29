@@ -237,7 +237,7 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1c.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1d.css';
         
         // Add dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -299,6 +299,30 @@ if (window.aiCoachLauncherInitialized) {
                 flex-direction: column;
                 overflow-y: auto;
                 min-height: 0;
+            }
+            
+            /* Loader animation */
+            .loader {
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #3498db;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                animation: spin 1s linear infinite;
+                margin: 20px auto;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            /* Ensure ai-coach-resizing body state prevents text selection */
+            body.ai-coach-resizing {
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
             }
         `;
         
@@ -1175,6 +1199,22 @@ if (window.aiCoachLauncherInitialized) {
             <div id="aiCoachChatDisplay">
                 <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today?</p>
             </div>
+            <div style="margin: 10px 0;">
+                <button id="aiCoachProblemButton" class="p-button p-component" style="
+                    width: 100%;
+                    padding: 8px;
+                    font-size: 0.9em;
+                    background: #f8f9fa;
+                    color: #333;
+                    border: 1px solid #ddd;
+                ">
+                    🎯 Tackle a Specific Problem?
+                </button>
+            </div>
+            <div id="aiCoachProblemSelector" style="display: none; margin: 10px 0; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #333;">Select a common challenge:</p>
+                <div id="aiCoachProblemCategories"></div>
+            </div>
             <div style="display: flex; gap: 10px;">
                 <input type="text" id="aiCoachChatInput" placeholder="Type your message...">
                 <button id="aiCoachChatSendButton" class="p-button p-component">Send</button>
@@ -1288,9 +1328,101 @@ if (window.aiCoachLauncherInitialized) {
                 const botMessageElement = document.createElement('p');
                 botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
                 botMessageElement.setAttribute('data-role', 'assistant'); // For history reconstruction
-                botMessageElement.innerHTML = `<em>AI Coach:</em> ${data.ai_response}`;
+                
+                // Process the AI response to make activity references clickable
+                let processedResponse = data.ai_response;
+                const suggestedActivities = data.suggested_activities_in_chat || [];
+                
+                // Create a map of activity names to their data for easy lookup
+                const activityMap = {};
+                suggestedActivities.forEach(activity => {
+                    activityMap[activity.name] = activity;
+                    // Also map with ID for ID-based references
+                    activityMap[`${activity.name} (ID: ${activity.id})`] = activity;
+                });
+                
+                // Replace activity mentions with clickable links
+                suggestedActivities.forEach(activity => {
+                    // Pattern 1: "Activity Name (ID: XX)"
+                    const pattern1 = new RegExp(`${activity.name}\\s*\\(ID:\\s*${activity.id}\\)`, 'gi');
+                    processedResponse = processedResponse.replace(pattern1, 
+                        `<a href="#" class="ai-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}' style="color: #3498db; text-decoration: underline; font-weight: 500;">${activity.name} (ID: ${activity.id})</a>`
+                    );
+                    
+                    // Pattern 2: Just "Activity Name" if it's clearly in a suggestion context
+                    const pattern2 = new RegExp(`(?:activity:|try the|consider|suggest|recommend)\\s*["']?${activity.name}["']?`, 'gi');
+                    processedResponse = processedResponse.replace(pattern2, (match) => {
+                        // Only replace if not already replaced
+                        if (!match.includes('ai-coach-activity-link')) {
+                            const prefix = match.substring(0, match.indexOf(activity.name));
+                            return `${prefix}<a href="#" class="ai-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}' style="color: #3498db; text-decoration: underline; font-weight: 500;">${activity.name}</a>`;
+                        }
+                        return match;
+                    });
+                });
+                
+                botMessageElement.innerHTML = `<em>AI Coach:</em> ${processedResponse}`;
                 chatDisplay.appendChild(botMessageElement);
-
+                
+                // Add click handlers to activity links
+                const activityLinks = botMessageElement.querySelectorAll('.ai-coach-activity-link');
+                activityLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        try {
+                            const activityData = JSON.parse(link.getAttribute('data-activity'));
+                            showActivityModal(activityData);
+                        } catch (error) {
+                            logAICoach("Error parsing activity data:", error);
+                        }
+                    });
+                });
+                
+                // If there are suggested activities, also add a quick links section
+                if (suggestedActivities.length > 0) {
+                    const quickLinksElement = document.createElement('div');
+                    quickLinksElement.style.cssText = `
+                        margin-top: 10px;
+                        padding: 10px;
+                        background: #f0f8ff;
+                        border-radius: 5px;
+                        border-left: 3px solid #3498db;
+                    `;
+                    quickLinksElement.innerHTML = '<strong style="color: #2c3e50; font-size: 0.9em;">📚 Quick Activity Links:</strong>';
+                    
+                    const linksList = document.createElement('ul');
+                    linksList.style.cssText = 'margin: 5px 0 0 0; padding-left: 20px;';
+                    
+                    suggestedActivities.forEach(activity => {
+                        const listItem = document.createElement('li');
+                        listItem.style.cssText = 'margin: 3px 0;';
+                        listItem.innerHTML = `
+                            <a href="#" class="ai-coach-activity-quick-link" 
+                               data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'
+                               style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                                ${activity.name} <span style="color: #666;">(${activity.vespa_element})</span>
+                            </a>
+                        `;
+                        linksList.appendChild(listItem);
+                    });
+                    
+                    quickLinksElement.appendChild(linksList);
+                    chatDisplay.appendChild(quickLinksElement);
+                    
+                    // Add click handlers to quick links
+                    const quickLinks = quickLinksElement.querySelectorAll('.ai-coach-activity-quick-link');
+                    quickLinks.forEach(link => {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            try {
+                                const activityData = JSON.parse(link.getAttribute('data-activity'));
+                                showActivityModal(activityData);
+                            } catch (error) {
+                                logAICoach("Error parsing activity data from quick link:", error);
+                            }
+                        });
+                    });
+                }
             } catch (error) {
                 logAICoach("Error sending chat message:", error);
                 const errorMessageElement = document.createElement('p');
@@ -1303,6 +1435,108 @@ if (window.aiCoachLauncherInitialized) {
                 chatInput.disabled = false;
             }
             chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        }
+
+        // Common problems organized by VESPA element
+        const commonProblems = {
+            "Vision": [
+                { id: "vision_1", text: "Student lacks clear goals or aspirations" },
+                { id: "vision_2", text: "Student seems unmotivated about their future" },
+                { id: "vision_3", text: "Student doesn't see the relevance of their studies" }
+            ],
+            "Effort": [
+                { id: "effort_1", text: "Poor homework completion rates" },
+                { id: "effort_2", text: "Student gives up easily when faced with challenges" },
+                { id: "effort_3", text: "Inconsistent effort across different subjects" }
+            ],
+            "Systems": [
+                { id: "systems_1", text: "Difficulty sticking to deadlines" },
+                { id: "systems_2", text: "Poor organization of notes and materials" },
+                { id: "systems_3", text: "No effective revision system in place" }
+            ],
+            "Practice": [
+                { id: "practice_1", text: "Student doesn't review or practice regularly" },
+                { id: "practice_2", text: "Relies on last-minute cramming" },
+                { id: "practice_3", text: "Doesn't use feedback to improve" }
+            ],
+            "Attitude": [
+                { id: "attitude_1", text: "Fixed mindset - believes ability is unchangeable" },
+                { id: "attitude_2", text: "Negative self-talk affecting performance" },
+                { id: "attitude_3", text: "Blames external factors for poor results" }
+            ]
+        };
+
+        // Handle problem selector button
+        const problemButton = document.getElementById('aiCoachProblemButton');
+        const problemSelector = document.getElementById('aiCoachProblemSelector');
+        const problemCategories = document.getElementById('aiCoachProblemCategories');
+
+        if (problemButton && problemSelector && problemCategories) {
+            // Populate problem categories
+            Object.entries(commonProblems).forEach(([vespaElement, problems]) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.style.cssText = 'margin-bottom: 15px;';
+                
+                const categoryTitle = document.createElement('h5');
+                categoryTitle.style.cssText = 'margin: 0 0 8px 0; color: #555; font-size: 1em;';
+                categoryTitle.textContent = vespaElement;
+                categoryDiv.appendChild(categoryTitle);
+                
+                problems.forEach(problem => {
+                    const problemItem = document.createElement('div');
+                    problemItem.style.cssText = `
+                        padding: 8px 12px;
+                        margin: 4px 0;
+                        background: white;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        font-size: 0.9em;
+                    `;
+                    problemItem.textContent = problem.text;
+                    problemItem.dataset.problemId = problem.id;
+                    problemItem.dataset.vespaElement = vespaElement;
+                    
+                    // Hover effect
+                    problemItem.addEventListener('mouseenter', () => {
+                        problemItem.style.backgroundColor = '#e3f2fd';
+                        problemItem.style.borderColor = '#3498db';
+                    });
+                    problemItem.addEventListener('mouseleave', () => {
+                        problemItem.style.backgroundColor = 'white';
+                        problemItem.style.borderColor = '#e0e0e0';
+                    });
+                    
+                    // Click handler
+                    problemItem.addEventListener('click', () => {
+                        // Populate chat input with the problem
+                        chatInput.value = `I need help with: ${problem.text} (${vespaElement} related)`;
+                        // Hide problem selector
+                        problemSelector.style.display = 'none';
+                        problemButton.textContent = '🎯 Tackle a Different Problem?';
+                        // Focus on input
+                        chatInput.focus();
+                        // Optionally auto-send
+                        // sendChatMessage();
+                    });
+                    
+                    categoryDiv.appendChild(problemItem);
+                });
+                
+                problemCategories.appendChild(categoryDiv);
+            });
+            
+            // Toggle problem selector
+            problemButton.addEventListener('click', () => {
+                if (problemSelector.style.display === 'none') {
+                    problemSelector.style.display = 'block';
+                    problemButton.textContent = '✖ Hide Problem Selector';
+                } else {
+                    problemSelector.style.display = 'none';
+                    problemButton.textContent = '🎯 Tackle a Specific Problem?';
+                }
+            });
         }
 
         if (chatSendButton) {
@@ -1715,4 +1949,229 @@ if (window.aiCoachLauncherInitialized) {
             chartContainer.innerHTML = '<p style="color:red; text-align:center;">Error rendering chart.</p>';
         }
     }
+
+    // --- Function to create and show activity modal with PDF ---
+    function showActivityModal(activity) {
+        logAICoach("Showing activity modal for:", activity);
+        
+        // Remove existing modal if present
+        const existingModal = document.getElementById('aiCoachActivityModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Create modal structure
+        const modal = document.createElement('div');
+        modal.id = 'aiCoachActivityModal';
+        modal.className = 'ai-coach-modal-overlay';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'ai-coach-modal-content';
+        modalContent.style.cssText = `
+            background: white;
+            width: 90%;
+            max-width: 900px;
+            height: 80vh;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        `;
+        
+        // Modal header
+        const modalHeader = document.createElement('div');
+        modalHeader.style.cssText = `
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        `;
+        
+        modalHeader.innerHTML = `
+            <div>
+                <h3 style="margin: 0; color: #333;">${activity.name}</h3>
+                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">
+                    VESPA Element: <strong>${activity.vespa_element}</strong> | Activity ID: <strong>${activity.id}</strong>
+                </p>
+            </div>
+            <button class="ai-coach-modal-close" style="
+                background: none;
+                border: none;
+                font-size: 1.5em;
+                cursor: pointer;
+                padding: 5px 10px;
+                color: #666;
+                transition: color 0.2s;
+            ">&times;</button>
+        `;
+        
+        // Modal body with summary and PDF
+        const modalBody = document.createElement('div');
+        modalBody.style.cssText = `
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        `;
+        
+        // Activity summary section
+        if (activity.short_summary && activity.short_summary !== 'N/A') {
+            const summarySection = document.createElement('div');
+            summarySection.style.cssText = `
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 5px;
+                border-left: 4px solid #3498db;
+            `;
+            summarySection.innerHTML = `
+                <h4 style="margin: 0 0 10px 0; color: #333;">Activity Summary:</h4>
+                <p style="margin: 0; color: #555; line-height: 1.6;">${activity.short_summary}</p>
+            `;
+            modalBody.appendChild(summarySection);
+        }
+        
+        // PDF viewer section
+        const pdfSection = document.createElement('div');
+        pdfSection.style.cssText = `
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            min-height: 400px;
+            background: #f5f5f5;
+            position: relative;
+        `;
+        
+        if (activity.pdf_link && activity.pdf_link !== '#') {
+            // Try to embed PDF
+            const pdfEmbed = document.createElement('iframe');
+            pdfEmbed.src = activity.pdf_link;
+            pdfEmbed.style.cssText = `
+                width: 100%;
+                height: 100%;
+                border: none;
+            `;
+            pdfEmbed.title = `PDF viewer for ${activity.name}`;
+            
+            // Add loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+                color: #666;
+            `;
+            loadingDiv.innerHTML = `
+                <div class="loader" style="margin: 0 auto 10px;"></div>
+                <p>Loading PDF...</p>
+            `;
+            
+            pdfSection.appendChild(loadingDiv);
+            pdfSection.appendChild(pdfEmbed);
+            
+            // Handle PDF load events
+            pdfEmbed.onload = () => {
+                logAICoach("PDF iframe loaded successfully");
+                loadingDiv.style.display = 'none';
+            };
+            
+            pdfEmbed.onerror = () => {
+                logAICoach("PDF iframe failed to load");
+                pdfSection.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <p style="margin-bottom: 20px;">Unable to display PDF in this view.</p>
+                        <a href="${activity.pdf_link}" target="_blank" class="p-button p-component" style="
+                            display: inline-block;
+                            padding: 10px 20px;
+                            text-decoration: none;
+                            background: #3498db;
+                            color: white;
+                            border-radius: 4px;
+                        ">Open PDF in New Tab</a>
+                    </div>
+                `;
+            };
+            
+            // Add fallback link below iframe
+            const fallbackLink = document.createElement('p');
+            fallbackLink.style.cssText = 'text-align: center; margin-top: 10px; font-size: 0.9em;';
+            fallbackLink.innerHTML = `
+                <a href="${activity.pdf_link}" target="_blank" style="color: #3498db; text-decoration: underline;">
+                    Open PDF in new tab if viewer doesn't load
+                </a>
+            `;
+            modalBody.appendChild(fallbackLink);
+        } else {
+            pdfSection.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <p>No PDF available for this activity.</p>
+                </div>
+            `;
+        }
+        
+        modalBody.appendChild(pdfSection);
+        
+        // Assemble modal
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Trigger animations
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modalContent.style.transform = 'scale(1)';
+        }, 10);
+        
+        // Close handlers
+        const closeModal = () => {
+            modal.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+        };
+        
+        modal.querySelector('.ai-coach-modal-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+        
+        // ESC key to close
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    // --- Enhanced sendChatMessage function to handle activity suggestions ---
+    // (This replaces part of the existing sendChatMessage function in addChatInterface)
+    
+    window.initializeAICoachLauncher = initializeAICoachLauncher;
 } 
