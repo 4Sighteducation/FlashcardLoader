@@ -1520,16 +1520,22 @@ if (window.aiCoachLauncherInitialized) {
                 right: 5px;
                 background: none;
                 border: none;
-                cursor: pointer !important; /* ADDED !important HERE */
+                cursor: pointer !important; 
                 font-size: 1.2em;
-                opacity: ${isLiked ? '1' : '0.3'}; // Set initial opacity based on liked state
+                opacity: ${isLiked ? '1' : '0.3'}; 
                 transition: opacity 0.2s, transform 0.2s;
                 padding: 5px;
+                user-select: none; /* ADDED to prevent text selection behavior */
+                -webkit-user-select: none; /* For Safari */
+                -moz-user-select: none;    /* For Firefox */
+                -ms-user-select: none;     /* For Internet Explorer/Edge */
             `;
-            likeBtn.innerHTML = isLiked ? '❤️' : '🤍';
-            likeBtn.title = isLiked ? 'Unlike this response' : 'Like this response';
-            
-            // Hover effect - no change needed here from original if it was working
+            likeBtn.setAttribute('contenteditable', 'false'); // ADDED to explicitly prevent content editing
+            likeBtn.setAttribute('role', 'button'); // Reinforce role
+            likeBtn.setAttribute('aria-pressed', isLiked ? 'true' : 'false'); // For accessibility
+            likeBtn.setAttribute('tabindex', '0'); // Make it focusable
+
+            // Hover effect
             likeBtn.addEventListener('mouseenter', () => {
                 likeBtn.style.opacity = '1';
                 likeBtn.style.transform = 'scale(1.2)';
