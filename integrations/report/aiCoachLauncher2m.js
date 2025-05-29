@@ -226,282 +226,29 @@ if (window.aiCoachLauncherInitialized) {
 
     function addAICoachStyles() {
         const styleId = 'ai-coach-styles';
-        if (document.getElementById(styleId)) return;
+        // Check if the link element or an old style element already exists
+        if (document.getElementById(styleId)) {
+            logAICoach("AI Coach stylesheet link or old style element already exists. Skipping addition.");
+            return;
+        }
 
-        const css = `
-            body.ai-coach-active ${AI_COACH_LAUNCHER_CONFIG.mainContentSelector} {
-                width: calc(100% - 450px); /* Increased panel width */
-                margin-right: 450px; /* Increased panel width */
-                transition: width 0.3s ease-in-out, margin-right 0.3s ease-in-out;
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.mainContentSelector} {
-                 transition: width 0.3s ease-in-out, margin-right 0.3s ease-in-out;
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: 0;
-                opacity: 0;
-                visibility: hidden;
-                position: fixed;
-                top: 0;
-                right: 0;
-                height: 100vh;
-                background-color: #f4f6f8; /* Main panel background */
-                border-left: 1px solid #ddd;
-                padding: 20px;
-                box-sizing: border-box;
-                overflow-y: auto;
-                z-index: 1050;
-                transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out, visibility 0.3s;
-                font-family: Arial, sans-serif; 
-            }
-            body.ai-coach-active #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: 450px; /* Increased panel width */
-                opacity: 1;
-                visibility: visible;
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 15px;
-                border-bottom: 1px solid #ccc;
-                padding-bottom: 10px;
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header h3 {
-                margin: 0;
-                font-size: 1.3em;
-                color: #333; /* Darker text for header */
-            }
-            #${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-close-btn {
-                background: none;
-                border: none;
-                font-size: 1.6em;
-                cursor: pointer;
-                padding: 5px;
-                color: #555; /* Darker color for close button */
-            }
-            #aiCoachLauncherButtonContainer { /* This is for the main Activate AI Coach button if used from config */
-                 text-align: center; 
-                 padding: 20px; 
-                 border-top: 1px solid #eee;
-            }
-            .ai-coach-section-toggles {
-                display: flex; /* Make buttons appear in a row */
-                flex-direction: row; /* Explicitly row */
-                justify-content: space-between; /* Distribute space */
-                gap: 8px; /* Space between buttons */
-                margin: 10px 0 15px 0 !important; /* Ensure margin is applied */
-            }
-            .ai-coach-section-toggles .p-button {
-                flex-grow: 1; /* Allow buttons to grow and share space */
-                padding: 10px 5px !important; /* Adjust padding */
-                font-size: 0.85em !important; /* Slightly smaller font for row layout */
-                border: none; /* Remove existing p-button border if any */
-                color: white !important; /* Text color */
-                border-radius: 4px;
-                transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
-            }
-            .ai-coach-section-toggles .p-button:hover {
-                opacity: 0.85;
-                transform: translateY(-1px);
-            }
-            #aiCoachToggleVespaButton {
-                background-color: #79A6DC !important; /* Vespa Blue */
-            }
-            #aiCoachToggleAcademicButton {
-                background-color: #77DD77 !important; /* Academic Green */
-            }
-            #aiCoachToggleQuestionButton {
-                background-color: #C3B1E1 !important; /* Question Purple */
-            }
+        const coachStylesheetUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher.css';
 
-            .ai-coach-section {
-                margin-bottom: 20px;
-                padding: 15px;
-                background-color: #fff; /* White background for content sections */
-                border: 1px solid #e0e0e0;
-                border-radius: 5px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            }
-            .ai-coach-section h4 {
-                font-size: 1.1em;
-                margin-top: 0;
-                margin-bottom: 10px;
-                color: #333;
-                border-bottom: 1px solid #eee;
-                padding-bottom: 5px;
-            }
-            .ai-coach-section h5 {
-                font-size: 1em; /* For sub-headings within sections */
-                color: #444;
-                margin-top: 15px;
-                margin-bottom: 8px;
-            }
-            .ai-coach-section p, .ai-coach-section ul, .ai-coach-section li {
-                font-size: 0.9em;
-                line-height: 1.6;
-                color: #555;
-            }
-            .ai-coach-section ul {
-                padding-left: 20px;
-                margin-bottom: 0;
-            }
-            .loader {
-                border: 5px solid #f3f3f3; 
-                border-top: 5px solid #3498db; 
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                animation: spin 1s linear infinite;
-                margin: 20px auto;
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            /* Style for chart containers if Chart.js fails or data is missing */
-            #vespaComparisonChartContainer p,
-            #questionScoresChartContainer p {
-                color: #777;
-                font-style: italic;
-            }
-            /* Styles for Benchmark Scales */
-            .subject-benchmark-item {
-                padding: 10px 0;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            .subject-benchmark-item:last-child {
-                border-bottom: none;
-            }
-            .subject-benchmark-header {
-                /* display: flex; */ /* Already part of a section, might not need flex here directly */
-                /* justify-content: space-between; */
-                /* align-items: center; */
-                margin-bottom: 8px;
-            }
-            .subject-benchmark-header h5 { /* For subject name, within its own section */
-                margin: 0 0 5px 0;
-                font-size: 1em;
-                font-weight: bold;
-                color: #224466; /* Dark blue for subject names */
-            }
-            .subject-grades-info {
-                font-size: 0.85em;
-                color: #555;
-                margin-bottom: 12px; /* Space before the scale */
-            }
-            .subject-benchmark-scale-container {
-                margin-top: 5px;
-                margin-bottom: 25px; /* Increased space below each scale */
-                padding: 0 5px; 
-            }
-            .scale-labels {
-                display: flex;
-                justify-content: space-between;
-                font-size: 0.75em;
-                color: #777;
-                margin-bottom: 4px;
-            }
-            .scale-bar-wrapper {
-                width: 100%;
-                height: 10px; 
-                background-color: #e9ecef; 
-                border-radius: 5px;
-                position: relative;
-            }
-            .scale-bar { 
-                height: 100%;
-                position: relative; 
-            }
-            .scale-marker {
-                width: 8px; 
-                height: 16px; 
-                border-radius: 2px; 
-                position: absolute;
-                top: 50%;
-                transform: translateY(-50%) translateX(-50%); 
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10; 
-            }
-            .scale-marker .marker-label {
-                position: absolute;
-                bottom: -20px; 
-                left: 50%;
-                transform: translateX(-50%);
-                font-size: 0.7em;
-                color: #333;
-                white-space: nowrap;
-                background-color: rgba(255, 255, 255, 0.9);
-                padding: 1px 3px;
-                border-radius: 3px;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-                z-index: 11;
-            }
+        const linkElement = document.createElement('link');
+        linkElement.id = styleId; 
+        linkElement.rel = 'stylesheet';
+        linkElement.type = 'text/css';
+        linkElement.href = coachStylesheetUrl;
+        
+        linkElement.onload = () => {
+            logAICoach("AI Coach external stylesheet loaded successfully from: " + coachStylesheetUrl);
+        };
+        linkElement.onerror = () => {
+            console.error("[AICoachLauncher] Failed to load AI Coach external stylesheet from: " + coachStylesheetUrl);
+        };
 
-            .current-grade-marker { background-color: #28a745; /* Green */ }
-            .standard-meg-marker { background-color: #ffc107; /* Yellow */ }
-            /* A-Level MEG markers will use this base color */
-            .a-level-meg-marker { background-color: #007bff; /* Blue */ }
-            
-            /* Specific label colors for P60, P90, P100 markers for better visual distinction */
-            .a-level-meg-marker.p60 .marker-label { color: #17a2b8; } /* Teal for P60 label */
-            .a-level-meg-marker.p90 .marker-label { color: #fd7e14; } /* Orange for P90 label */
-            .a-level-meg-marker.p100 .marker-label { color: #dc3545; } /* Red for P100 label */
-
-            /* New styles for distinct markers */
-            .current-grade-dot-marker {
-                background-color: #28a745; /* Green - student's actual grade */
-                width: 10px; /* Make it slightly wider for a dot feel */
-                height: 10px; /* Make it a circle/square dot */
-                border-radius: 50%; /* Circle dot */
-                border: 2px solid white; /* White border to stand out */
-                box-shadow: 0 0 3px rgba(0,0,0,0.4);
-                z-index: 15; /* Higher z-index to be on top */
-            }
-            .current-grade-dot-marker .marker-label {
-                bottom: -22px; /* Adjust label position for dot */
-                font-weight: bold; /* Make student name bold */
-            }
-
-            .percentile-line-marker {
-                background-color: #6c757d; /* Grey for percentile lines - can be overridden by specific Px colors */
-                width: 2px; /* Thin line */
-                height: 20px; /* Taller line, extending above and below center */
-                border-radius: 1px; 
-                z-index: 12; /* Below student marker but above bar */
-            }
-            /* Override for A-Level MEG percentiles to use their specific colors */
-            .percentile-line-marker.a-level-meg-marker {
-                 background-color: #007bff; /* Blue for general A-Level percentiles */
-            }
-            .percentile-line-marker.p60 {
-                 background-color: #17a2b8; /* Teal */
-            }
-            .percentile-line-marker.p90 {
-                 background-color: #fd7e14; /* Orange */
-            }
-            .percentile-line-marker.p100 {
-                 background-color: #dc3545; /* Red */
-            }
-            .percentile-line-marker.standard-meg-marker { /* For the Top25% or general MEG */
-                background-color: #ffc107; /* Yellow, if it's the main MEG marker */
-                z-index: 13; /* Slightly higher z-index to ensure it's visible over other percentiles like P60 if they overlap */
-            }
-
-            .percentile-line-marker .marker-label {
-                bottom: -20px; /* Keep labels consistent for lines */
-                 font-size: 0.65em; /* Slightly smaller for percentile labels if needed */
-            }
-        `;
-        const styleElement = document.createElement('style');
-        styleElement.id = styleId;
-        styleElement.type = 'text/css';
-        styleElement.appendChild(document.createTextNode(css));
-        document.head.appendChild(styleElement);
-        logAICoach("AICoachLauncher styles added.");
+        document.head.appendChild(linkElement);
+        logAICoach("AICoachLauncher: Attempting to load styles from external stylesheet: " + coachStylesheetUrl);
     }
 
     function createAICoachPanel() {
@@ -1207,7 +954,6 @@ if (window.aiCoachLauncherInitialized) {
 
         logAICoach("Adding chat interface...");
 
-        // Remove existing chat container if it exists to prevent duplicates on re-render
         const oldChatContainer = document.getElementById('aiCoachChatContainer');
         if (oldChatContainer) {
             oldChatContainer.remove();
@@ -1215,13 +961,16 @@ if (window.aiCoachLauncherInitialized) {
 
         const chatContainer = document.createElement('div');
         chatContainer.id = 'aiCoachChatContainer';
-        chatContainer.className = 'ai-coach-section'; // Use existing class for styling consistency
+        chatContainer.className = 'ai-coach-section';
         chatContainer.style.marginTop = '20px';
 
         chatContainer.innerHTML = `
             <h4>AI Chat with ${studentNameForContext}</h4>
             <div id="aiCoachChatDisplay" style="height: 200px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; margin-bottom: 10px; background-color: #fff;">
                 <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today?</p>
+            </div>
+            <div id="aiCoachSuggestedActivities" style="margin-bottom: 10px; padding: 5px; font-size: 0.9em;">
+                {/* Suggested activities will be appended here */}
             </div>
             <div style="display: flex;">
                 <input type="text" id="aiCoachChatInput" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc;" placeholder="Type your message...">
@@ -1241,60 +990,50 @@ if (window.aiCoachLauncherInitialized) {
             const messageText = chatInput.value.trim();
             if (messageText === '') return;
 
-            const currentStudentId = lastFetchedStudentId; // Use the ID from the last successful main data fetch
+            const currentStudentId = lastFetchedStudentId;
             if (!currentStudentId) {
                 logAICoach("Cannot send chat message: student ID not available.");
-                // Optionally display an error to the user in the chat window
                 const errorMessageElement = document.createElement('p');
                 errorMessageElement.className = 'ai-chat-message ai-chat-message-bot';
-                errorMessageElement.innerHTML = `<em>AI Coach:</em> Sorry, I can't process this message as the student context is missing. Please ensure student data is loaded.`;
+                errorMessageElement.innerHTML = `<em>AI Coach:</em> Sorry, I can\'t process this message as the student context is missing. Please ensure student data is loaded.`;
                 chatDisplay.appendChild(errorMessageElement);
                 chatDisplay.scrollTop = chatDisplay.scrollHeight;
                 return;
             }
 
-            // Display user message
             const userMessageElement = document.createElement('p');
             userMessageElement.className = 'ai-chat-message ai-chat-message-user';
-            userMessageElement.setAttribute('data-role', 'user'); // For history reconstruction
+            userMessageElement.setAttribute('data-role', 'user');
             userMessageElement.textContent = `You: ${messageText}`;
             chatDisplay.appendChild(userMessageElement);
-            const originalInput = chatInput.value; // Keep original input for history
-            chatInput.value = ''; // Clear input
+            const originalInput = chatInput.value;
+            chatInput.value = '';
             chatDisplay.scrollTop = chatDisplay.scrollHeight;
             thinkingIndicator.style.display = 'block';
             chatSendButton.disabled = true;
             chatInput.disabled = true;
 
-            // Construct chat history from displayed messages
             const chatHistory = [];
             const messages = chatDisplay.querySelectorAll('.ai-chat-message');
             messages.forEach(msgElement => {
-                // Don't include the user message we just added to the DOM in the history sent to API
-                // as it's sent separately as current_tutor_message.
-                // Only include messages *before* the one just sent by the user.
-                if (msgElement === userMessageElement) return; 
-
+                if (msgElement === userMessageElement) return;
                 let role = msgElement.getAttribute('data-role');
                 let content = '';
-
-                if (!role) { // Infer role if data-role is not set (e.g. initial bot message)
+                if (!role) {
                     if (msgElement.classList.contains('ai-chat-message-bot')) {
                          role = 'assistant';
-                         content = msgElement.innerHTML.replace(/<em>AI Coach:<\/em>\\s*/, '');
+                         content = msgElement.innerHTML.replace(/<em>AI Coach:<\/em>\s*/, '');
                     } else if (msgElement.classList.contains('ai-chat-message-user')) {
                          role = 'user';
-                         content = msgElement.textContent.replace(/You:\\s*/, '');
+                         content = msgElement.textContent.replace(/You:\s*/, '');
                     } else {
-                        return; // Skip if role cannot be determined
+                        return; 
                     }
                 } else {
-                     content = msgElement.textContent.replace(/^(You:|<em>AI Coach:\\s*)/, '');
+                     content = msgElement.textContent.replace(/^(You:|<em>AI Coach:\s*)/, '');
                 }
                 chatHistory.push({ role: role, content: content });
             });
-            // The user's current message isn't part of displayed history yet for the API call
-            // It will be added to the LLM prompt as the latest user message on the backend.
 
             logAICoach("Sending chat turn with history:", chatHistory);
             logAICoach("Current tutor message for API:", originalInput);
@@ -1302,7 +1041,7 @@ if (window.aiCoachLauncherInitialized) {
             try {
                 const payload = {
                     student_object10_record_id: currentStudentId,
-                    chat_history: chatHistory, 
+                    chat_history: chatHistory,
                     current_tutor_message: originalInput
                 };
 
@@ -1315,17 +1054,13 @@ if (window.aiCoachLauncherInitialized) {
                     logAICoach("Sending chat with initial_ai_context:", payload.initial_ai_context);
                 }
 
-                const response = await fetch(CHAT_TURN_ENDPOINT, { 
+                const response = await fetch(CHAT_TURN_ENDPOINT, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(payload),
                 });
-
-                thinkingIndicator.style.display = 'none';
-                chatSendButton.disabled = false;
-                chatInput.disabled = false;
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: "An unknown error occurred communicating with the AI chat."}));
@@ -1335,22 +1070,64 @@ if (window.aiCoachLauncherInitialized) {
                 const data = await response.json();
                 const botMessageElement = document.createElement('p');
                 botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
-                botMessageElement.setAttribute('data-role', 'assistant'); // For history reconstruction
+                botMessageElement.setAttribute('data-role', 'assistant');
                 botMessageElement.innerHTML = `<em>AI Coach:</em> ${data.ai_response}`;
                 chatDisplay.appendChild(botMessageElement);
+
+                // --- Render Suggested Activities ---
+                const suggestedActivitiesContainer = document.getElementById('aiCoachSuggestedActivities');
+                if (suggestedActivitiesContainer) {
+                    suggestedActivitiesContainer.innerHTML = ''; // Clear previous suggestions
+                    if (data.suggested_activities_in_chat && data.suggested_activities_in_chat.length > 0) {
+                        const activitiesTitle = document.createElement('p');
+                        activitiesTitle.innerHTML = '<strong>Suggested Activities (click to open):</strong>';
+                        activitiesTitle.style.marginBottom = '5px';
+                        suggestedActivitiesContainer.appendChild(activitiesTitle);
+
+                        const listElement = document.createElement('ul');
+                        listElement.style.listStyleType = 'disc';
+                        listElement.style.paddingLeft = '20px';
+                        listElement.style.margin = '0';
+
+                        data.suggested_activities_in_chat.forEach(activity => {
+                            if (activity.name && activity.pdf_link) {
+                                const listItem = document.createElement('li');
+                                const link = document.createElement('a');
+                                link.href = activity.pdf_link;
+                                link.target = '_blank';
+                                link.textContent = `${activity.name} (ID: ${activity.id || 'N/A'})`;
+                                link.style.textDecoration = 'underline';
+                                link.style.cursor = 'pointer';
+                                listItem.appendChild(link);
+                                if (activity.short_summary) {
+                                    const summarySpan = document.createElement('span');
+                                    summarySpan.textContent = ` - ${activity.short_summary.substring(0, 50)}...`;
+                                    summarySpan.style.fontSize = '0.9em';
+                                    summarySpan.style.color = '#555';
+                                    listItem.appendChild(summarySpan);
+                                }
+                                listElement.appendChild(listItem);
+                            }
+                        });
+                        suggestedActivitiesContainer.appendChild(listElement);
+                    }
+                } else {
+                    logAICoach("Suggested activities container (#aiCoachSuggestedActivities) not found.");
+                }
+                // --- End Render Suggested Activities ---
 
             } catch (error) {
                 logAICoach("Error sending chat message:", error);
                 const errorMessageElement = document.createElement('p');
                 errorMessageElement.className = 'ai-chat-message ai-chat-message-bot';
-                // Don't set data-role for error messages not from AI assistant proper
-                errorMessageElement.innerHTML = `<em>AI Coach:</em> Sorry, I couldn't get a response. ${error.message}`;
+                errorMessageElement.innerHTML = `<em>AI Coach:</em> Sorry, I couldn\'t get a response. ${error.message}`;
                 chatDisplay.appendChild(errorMessageElement);
+            } finally {
                 thinkingIndicator.style.display = 'none';
                 chatSendButton.disabled = false;
                 chatInput.disabled = false;
+                chatDisplay.scrollTop = chatDisplay.scrollHeight;
             }
-            chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
 
         if (chatSendButton) {
