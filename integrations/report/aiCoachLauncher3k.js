@@ -1547,11 +1547,14 @@ if (window.aiCoachLauncherInitialized) {
                 logAICoach(`Like button clicked for message ID: ${messageId}. Current liked state before click: ${likeBtn.getAttribute('data-liked') === 'true'}`); 
                 const currentlyLiked = likeBtn.getAttribute('data-liked') === 'true';
                 const newLikedState = !currentlyLiked;
-                logAICoach(`Like button: messageId=${messageId}, newLikedState=${newLikedState}`); // ADDED LOG
+                logAICoach(`Like button: messageId=${messageId}, newLikedState=${newLikedState}`); 
                 
                 // Optimistically update UI
+                logAICoach(`Like button: About to set attribute data-liked to ${newLikedState}`); // NEW LOG
                 likeBtn.setAttribute('data-liked', newLikedState ? 'true' : 'false');
+                logAICoach(`Like button: About to change innerHTML. Current: ${likeBtn.innerHTML}, New state: ${newLikedState}`); // NEW LOG
                 likeBtn.innerHTML = newLikedState ? '❤️' : '🤍';
+                logAICoach(`Like button: Changed innerHTML to: ${likeBtn.innerHTML}`); // NEW LOG
                 likeBtn.title = newLikedState ? 'Unlike this response' : 'Like this response';
                 likeBtn.style.opacity = newLikedState ? '1' : '0.3';
                 
