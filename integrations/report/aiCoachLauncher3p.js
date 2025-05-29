@@ -1535,6 +1535,13 @@ if (window.aiCoachLauncherInitialized) {
             likeBtn.setAttribute('aria-pressed', isLiked ? 'true' : 'false'); // For accessibility
             likeBtn.setAttribute('tabindex', '0'); // Make it focusable
 
+            // Set initial content with a span wrapper for the icon
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'ai-chat-like-icon';
+            iconSpan.style.pointerEvents = 'none'; // Make the icon itself not intercept clicks
+            iconSpan.innerHTML = isLiked ? '❤️' : '🤍';
+            likeBtn.appendChild(iconSpan);
+
             // Hover effect
             likeBtn.addEventListener('mouseenter', () => {
                 likeBtn.style.opacity = '1';
@@ -1556,11 +1563,11 @@ if (window.aiCoachLauncherInitialized) {
                 logAICoach(`Like button: messageId=${messageId}, newLikedState=${newLikedState}`); 
                 
                 // Optimistically update UI
-                logAICoach(`Like button: About to set attribute data-liked to ${newLikedState}`); // NEW LOG
+                logAICoach(`Like button: About to set attribute data-liked to ${newLikedState}`); 
                 likeBtn.setAttribute('data-liked', newLikedState ? 'true' : 'false');
-                logAICoach(`Like button: About to change innerHTML. Current: ${likeBtn.innerHTML}, New state: ${newLikedState}`); // NEW LOG
-                likeBtn.innerHTML = newLikedState ? '❤️' : '🤍';
-                logAICoach(`Like button: Changed innerHTML to: ${likeBtn.innerHTML}`); // NEW LOG
+                logAICoach(`Like button: About to change innerHTML. Current: ${likeBtn.querySelector('.ai-chat-like-icon').innerHTML}, New state: ${newLikedState}`); 
+                likeBtn.querySelector('.ai-chat-like-icon').innerHTML = newLikedState ? '❤️' : '🤍'; // Update the span
+                logAICoach(`Like button: Changed innerHTML to: ${likeBtn.querySelector('.ai-chat-like-icon').innerHTML}`); 
                 likeBtn.title = newLikedState ? 'Unlike this response' : 'Like this response';
                 likeBtn.style.opacity = newLikedState ? '1' : '0.3';
                 
@@ -1597,7 +1604,10 @@ if (window.aiCoachLauncherInitialized) {
                     if (!response.ok) {
                         // Revert on error
                         likeBtn.setAttribute('data-liked', currentlyLiked ? 'true' : 'false');
-                        likeBtn.innerHTML = currentlyLiked ? '❤️' : '🤍';
+                        // likeBtn.innerHTML = currentlyLiked ? '❤️' : '🤍';
+                        if (likeBtn.querySelector('.ai-chat-like-icon')) {
+                            likeBtn.querySelector('.ai-chat-like-icon').innerHTML = currentlyLiked ? '❤️' : '🤍';
+                        }
                         likeBtn.style.opacity = currentlyLiked ? '1' : '0.3'; // Revert opacity
                         likeBtn.title = currentlyLiked ? 'Unlike this response' : 'Like this response';
                         // Revert parent message styling
