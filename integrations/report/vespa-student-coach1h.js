@@ -461,19 +461,17 @@ if (window.studentCoachLauncherInitialized) {
         // AI Student Snapshot section
         htmlShell += '<div class="ai-coach-section">';
         htmlShell += '<h4>My AI Snapshot</h4>';
-        // Check if data and llm_generated_insights exist before accessing student_overview_summary
         if (data && data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
             htmlShell += `<p>${data.llm_generated_insights.student_overview_summary}</p>`;
         } else if (data && data.student_name && data.student_name !== "N/A") {
             htmlShell += '<p>Your AI summary is being prepared. Please check back shortly!</p>';
         } else {
-            // Generic message if no data at all (e.g. initial load before successful fetch)
-            htmlShell += '<p>Welcome! Explore your insights once your data is loaded.</p>';
+            htmlShell += '<p>Welcome! Activate the coach to see your insights. (Content will load once backend is ready)</p>';
         }
         htmlShell += '</div>';
 
         // Toggle Buttons for different insight sections
-        // Using IDs that match the tutor CSS for styling consistency, assuming student CSS also targets these or similar classes.
+        // Using IDs that match the tutor CSS for styling consistency, assuming student CSS also targets these.
         // The class student-coach-section-toggles is from your student CSS.
         htmlShell += `
             <div class="student-coach-section-toggles ai-coach-section-toggles"> 
@@ -491,7 +489,7 @@ if (window.studentCoachLauncherInitialized) {
         
         panelContent.innerHTML = htmlShell;
 
-        // Add Chat Interface (always add the container, content conditional on student_name)
+        // Add Chat Interface (always add the container, content conditional on student_name from data)
         addChatInterface(panelContent, (data && data.student_name) ? data.student_name : "My AI Coach");
 
         // Add event listeners for the new toggle buttons
@@ -523,7 +521,7 @@ if (window.studentCoachLauncherInitialized) {
                     });
 
                     if (isVisible) {
-                        // container.style.display = 'none'; // Already handled by the loop above
+                        // container.style.display = 'none'; // Already handled by the loop above hiding all sections
                         button.textContent = config.defaultText;
                         button.setAttribute('aria-expanded', 'false');
                     } else {
@@ -531,9 +529,9 @@ if (window.studentCoachLauncherInitialized) {
                         button.textContent = `Hide ${config.defaultText.replace('My ', '')}`;
                         button.setAttribute('aria-expanded', 'true');
                         // TODO: Populate these sections with actual data from `data` object later
-                        // when the backend provides it.
-                        // Example: if (config.containerId === 'studentCoachVespaProfileContainer' && data && data.vespa_profile) { 
-                        //    populateStudentVespaSection(container, data.vespa_profile);
+                        // when the backend provides it for students.
+                        // Example: if (config.containerId === 'studentCoachVespaProfileContainer' && data && data.student_vespa_data) { 
+                        //    populateStudentVespaSection(container, data.student_vespa_data);
                         // }
                     }
                 });
@@ -541,7 +539,7 @@ if (window.studentCoachLauncherInitialized) {
                 logStudentCoach(`Error setting up toggle: Button '${config.buttonId}' or Container '${config.containerId}' not found.`);
             }
         });
-        logStudentCoach("Student AI Coach data rendered with toggle buttons and event listeners.");
+        logStudentCoach("Student AI Coach data rendered with new UI (snapshot, toggle buttons, placeholders) and event listeners.");
     }
     
     // Note: renderVespaComparisonChart, createSubjectBenchmarkScale, renderQuestionnaireDistributionChart
