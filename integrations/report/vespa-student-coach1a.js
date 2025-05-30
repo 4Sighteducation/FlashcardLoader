@@ -55,6 +55,13 @@ if (window.studentCoachLauncherInitialized) {
     // Function to check if we are on the correct student coach page
     function isStudentCoachPageView() {
         if (!STUDENT_COACH_LAUNCHER_CONFIG) return false;
+        
+        // Defensive check for Knack.scene
+        if (typeof Knack === 'undefined' || typeof Knack.scene === 'undefined' || Knack.scene === null) {
+            logStudentCoach("isStudentCoachPageView: Knack.scene object is not available yet.");
+            return false;
+        }
+
         // Check if the specific view for the student coach is present on the configured scene
         const targetView = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
         if (Knack.scene.key === STUDENT_COACH_LAUNCHER_CONFIG.sceneKey && targetView) {
