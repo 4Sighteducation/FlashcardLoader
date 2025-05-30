@@ -40,25 +40,29 @@ function initializeCoachSummaryApp() {
     };
 
     const ROLE_CONFIGS = {
-        'Tutor': {
-            roleObjectKey: 'object_7', // Tutor Object
-            emailFieldKey: 'field_96', // Email field in Tutor Object
-            object10ConnectionField: 'field_145' // Connection field in Object_10 for Tutors
+        'object_7': { // Was 'Tutor'
+            roleNameForLog: 'Tutor', // Optional: for clearer logging
+            roleObjectKey: 'object_7', 
+            emailFieldKey: 'field_96', 
+            object10ConnectionField: 'field_145' 
         },
-        'Staff Admin': {
-            roleObjectKey: 'object_5', // Staff Admin Object
-            emailFieldKey: 'field_86', // Email field in Staff Admin Object
-            object10ConnectionField: 'field_439' // Connection field in Object_10 for Staff Admins
+        'object_5': { // Was 'Staff Admin'
+            roleNameForLog: 'Staff Admin',
+            roleObjectKey: 'object_5', 
+            emailFieldKey: 'field_86', 
+            object10ConnectionField: 'field_439' 
         },
-        'Head of Year': { // Assuming 'Head of Department' from your description might map to 'Head of Year' role name
-            roleObjectKey: 'object_25', // Head of Department/Year Object
-            emailFieldKey: 'field_553', // Email field in HOD/HOY Object
-            object10ConnectionField: 'field_429' // Connection field in Object_10 for HOY
+        'object_25': { // Was 'Head of Year'
+            roleNameForLog: 'Head of Year/Dept',
+            roleObjectKey: 'object_25', 
+            emailFieldKey: 'field_553', 
+            object10ConnectionField: 'field_429' 
         },
-        'Subject Teacher': {
-            roleObjectKey: 'object_78', // Subject Teacher Object
-            emailFieldKey: 'field_1879',// Email field in Subject Teacher Object
-            object10ConnectionField: 'field_2191' // Connection field in Object_10 for Subject Teachers
+        'object_78': { // Was 'Subject Teacher'
+            roleNameForLog: 'Subject Teacher',
+            roleObjectKey: 'object_78', 
+            emailFieldKey: 'field_1879',
+            object10ConnectionField: 'field_2191' 
         }
     };
 
@@ -99,12 +103,13 @@ function initializeCoachSummaryApp() {
     }
 
     async function getRoleRecordIds(userEmail, userRoles) {
-        const roleRecordIdsMap = {}; // To store found IDs, e.g., { field_145: ['id1', 'id2'] }
+        const roleRecordIdsMap = {}; 
 
-        for (const roleName of userRoles) {
-            const roleConfig = ROLE_CONFIGS[roleName];
+        for (const roleObjectKeyFromKnack of userRoles) { // Iterate using the object key from Knack.getUserRoles()
+            const roleConfig = ROLE_CONFIGS[roleObjectKeyFromKnack]; // Lookup using the object key
             if (roleConfig) {
-                if (debugMode) console.log(`[CoachSummaryApp] Checking role: ${roleName}`);
+                const roleNameToLog = roleConfig.roleNameForLog || roleObjectKeyFromKnack;
+                if (debugMode) console.log(`[CoachSummaryApp] Checking role config for: ${roleNameToLog} (using key ${roleObjectKeyFromKnack})`);
                 try {
                     const roleRecordData = await makeKnackApiRequest(
                         `objects/${roleConfig.roleObjectKey}/records`,
@@ -112,18 +117,17 @@ function initializeCoachSummaryApp() {
                     );
                     if (roleRecordData.records && roleRecordData.records.length > 0) {
                         const recordId = roleRecordData.records[0].id;
-                        if (debugMode) console.log(`[CoachSummaryApp] Found ${roleName} record ID: ${recordId} for email ${userEmail}`);
+                        if (debugMode) console.log(`[CoachSummaryApp] Found ${roleNameToLog} record ID: ${recordId} for email ${userEmail}`);
                         
-                        // Store the ID against the Object_10 connection field it corresponds to
                         if (!roleRecordIdsMap[roleConfig.object10ConnectionField]) {
                             roleRecordIdsMap[roleConfig.object10ConnectionField] = [];
                         }
                         roleRecordIdsMap[roleConfig.object10ConnectionField].push(recordId);
                     } else {
-                        if (debugMode) console.log(`[CoachSummaryApp] No record found for ${roleName} with email ${userEmail}`);
+                        if (debugMode) console.log(`[CoachSummaryApp] No record found for ${roleNameToLog} with email ${userEmail}`);
                     }
                 } catch (error) {
-                    console.error(`[CoachSummaryApp] Error fetching record ID for role ${roleName}:`, error);
+                    console.error(`[CoachSummaryApp] Error fetching record ID for role ${roleNameToLog}:`, error);
                 }
             }
         }
@@ -278,6 +282,10 @@ function initializeCoachSummaryApp() {
     }
 
     main(); // Start the application logic
+}
+
+window.initializeCoachSummaryApp = initializeCoachSummaryApp;
+
 }
 
 window.initializeCoachSummaryApp = initializeCoachSummaryApp;
