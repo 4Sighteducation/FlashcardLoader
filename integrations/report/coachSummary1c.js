@@ -286,7 +286,4 @@ function initializeCoachSummaryApp() {
 
 window.initializeCoachSummaryApp = initializeCoachSummaryApp;
 
-}
-
-window.initializeCoachSummaryApp = initializeCoachSummaryApp;
 
