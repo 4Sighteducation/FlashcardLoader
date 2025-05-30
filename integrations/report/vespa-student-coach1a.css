@@ -151,10 +151,16 @@ body.ai-coach-active #studentCoachSlidePanel { /* UPDATED ID */
     transform: translateY(-1px);
 }
 
-/* Example: Student-specific toggle button IDs if different */
-/* #studentCoachToggleVespaButton { background-color: #79A6DC !important; } */
-/* #studentCoachToggleAcademicButton { background-color: #77DD77 !important; } */
-/* #studentCoachToggleReflectionButton { background-color: #C3B1E1 !important; } */
+/* Corrected and Uncommented Toggle Button Styles for Student Coach */
+#aiCoachToggleVespaButton { 
+    background-color: #79A6DC !important; /* Blueish */
+}
+#aiCoachToggleAcademicButton { 
+    background-color: #77DD77 !important; /* Greenish */
+}
+#aiCoachToggleQuestionButton { /* Corrected ID from ReflectionButton */
+    background-color: #C3B1E1 !important; /* Purplish */
+}
 
 /* Content sections - can remain generic or be namespaced */
 .ai-coach-section { /* This class can be reused if styling is identical */
@@ -502,3 +508,4 @@ body.ai-coach-resizing * { /* ... */ }
 /* Remove or adapt styles for externally controlled Student Report Table */
 /* These are tutor-specific and likely not relevant for student coach CSS */
 /* div.card[data-v-7afa4eb2] { ... } */
+
