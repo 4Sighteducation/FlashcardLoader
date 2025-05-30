@@ -200,7 +200,7 @@ if (window.studentCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach.css'; // Ensure this is the correct CSS file for students
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1a.css'; // Ensure this is the correct CSS file for students
         
         // Dynamic CSS for config-specific IDs
         // Uses STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector (e.g., #kn-scene_43)
