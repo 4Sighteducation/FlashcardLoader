@@ -450,55 +450,98 @@ if (window.studentCoachLauncherInitialized) {
     }
 
     function renderAICoachData(data) {
-        logStudentCoach("renderAICoachData (Student) CALLED. Data:", JSON.parse(JSON.stringify(data)));
+        logStudentCoach("renderAICoachData (Student) CALLED. Data:", data ? JSON.parse(JSON.stringify(data)) : 'No data provided');
         const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
         stopLoadingMessageRotator();
         if (!panelContent) return;
         panelContent.innerHTML = ''; 
 
-        // --- STUDENT VERSION of renderAICoachData ---
-        // This will be simpler initially, focusing on student-facing text and less on tutor analysis tools.
-        // Charts, detailed breakdowns, and LLM prompt content will be different.
-
         let htmlShell = '';
+
+        // AI Student Snapshot section
         htmlShell += '<div class="ai-coach-section">';
-        htmlShell += '<h4>My VESPA Snapshot</h4>'; // Student-centric title
-        if (data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
-            // This summary needs to be tailored for the student by the backend LLM call
+        htmlShell += '<h4>My AI Snapshot</h4>';
+        // Check if data and llm_generated_insights exist before accessing student_overview_summary
+        if (data && data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
             htmlShell += `<p>${data.llm_generated_insights.student_overview_summary}</p>`;
+        } else if (data && data.student_name && data.student_name !== "N/A") {
+            htmlShell += '<p>Your AI summary is being prepared. Please check back shortly!</p>';
         } else {
-             htmlShell += '<p>Let\'s explore your VESPA profile together!</p>';
+            // Generic message if no data at all (e.g. initial load before successful fetch)
+            htmlShell += '<p>Welcome! Explore your insights once your data is loaded.</p>';
         }
         htmlShell += '</div>';
-        
-        // Example: Displaying current VESPA scores simply
-        if (data.vespa_profile) {
-            htmlShell += '<div class="ai-coach-section"><h5>My Current VESPA Scores</h5><ul>';
-            for (const element in data.vespa_profile) {
-                if (element !== "Overall" && data.vespa_profile[element]) {
-                    htmlShell += `<li><strong>${element}:</strong> ${data.vespa_profile[element].score_1_to_10 || 'N/A'}/10 (${data.vespa_profile[element].score_profile_text || 'N/A'})</li>`;
-                }
-            }
-            htmlShell += '</ul></div>';
-        }
 
-        // Placeholder for student-specific questionnaire insights (if applicable)
-        // htmlShell += '<div id="aiCoachQuestionAnalysisContainer" class="ai-coach-details-section" style="display: none;"></div>';
+        // Toggle Buttons for different insight sections
+        // Using IDs that match the tutor CSS for styling consistency, assuming student CSS also targets these or similar classes.
+        // The class student-coach-section-toggles is from your student CSS.
+        htmlShell += `
+            <div class="student-coach-section-toggles ai-coach-section-toggles"> 
+                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false">My VESPA Insights</button>
+                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false">My Academic Insights</button>
+                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false">My Questionnaire Insights</button>
+            </div>
+        `;
+
+        // Content Divs for each toggle button - initially hidden
+        // Using student-coach-details-section class as per your student CSS.
+        htmlShell += '<div id="studentCoachVespaProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your VESPA profile insights will appear here when available.</p></div></div>';
+        htmlShell += '<div id="studentCoachAcademicProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your academic insights will appear here when available.</p></div></div>';
+        htmlShell += '<div id="studentCoachQuestionAnalysisContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your questionnaire analysis will appear here when available.</p></div></div>';
         
         panelContent.innerHTML = htmlShell;
 
-        // Add student-centric chat interface
-        if (data.student_name && data.student_name !== "N/A") { // Or use a flag if student data is confirmed
-            addChatInterface(panelContent, "My AI Coach"); // Chat with "My AI Coach"
-        } else {
-             // Fallback if student context for chat isn't fully confirmed
-            const chatPlaceholder = document.createElement('div');
-            chatPlaceholder.id = 'aiCoachChatContainer'; // Keep ID for consistency if CSS targets it
-            chatPlaceholder.className = 'ai-coach-section';
-            chatPlaceholder.innerHTML = '<p>Chat will be available once your profile is fully loaded.</p>';
-            panelContent.appendChild(chatPlaceholder);
-        }
-        logStudentCoach("Student AI Coach data rendered.");
+        // Add Chat Interface (always add the container, content conditional on student_name)
+        addChatInterface(panelContent, (data && data.student_name) ? data.student_name : "My AI Coach");
+
+        // Add event listeners for the new toggle buttons
+        const toggleButtonsConfig = [
+            { buttonId: 'aiCoachToggleVespaButton',          containerId: 'studentCoachVespaProfileContainer',       defaultText: 'My VESPA Insights' },
+            { buttonId: 'aiCoachToggleAcademicButton',       containerId: 'studentCoachAcademicProfileContainer',    defaultText: 'My Academic Insights' },
+            { buttonId: 'aiCoachToggleQuestionButton',       containerId: 'studentCoachQuestionAnalysisContainer', defaultText: 'My Questionnaire Insights' }
+        ];
+
+        toggleButtonsConfig.forEach(config => {
+            const button = document.getElementById(config.buttonId);
+            const container = document.getElementById(config.containerId);
+
+            if (button && container) {
+                button.addEventListener('click', () => {
+                    const isVisible = container.style.display === 'block';
+                    
+                    // Hide all detail sections first
+                    document.querySelectorAll('.student-coach-details-section').forEach(section => {
+                        section.style.display = 'none';
+                    });
+                     // Reset all button texts and ARIA states
+                    toggleButtonsConfig.forEach(btnConf => {
+                        const btn = document.getElementById(btnConf.buttonId);
+                        if (btn && btn.id !== config.buttonId) { 
+                            btn.textContent = btnConf.defaultText;
+                            btn.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+
+                    if (isVisible) {
+                        // container.style.display = 'none'; // Already handled by the loop above
+                        button.textContent = config.defaultText;
+                        button.setAttribute('aria-expanded', 'false');
+                    } else {
+                        container.style.display = 'block';
+                        button.textContent = `Hide ${config.defaultText.replace('My ', '')}`;
+                        button.setAttribute('aria-expanded', 'true');
+                        // TODO: Populate these sections with actual data from `data` object later
+                        // when the backend provides it.
+                        // Example: if (config.containerId === 'studentCoachVespaProfileContainer' && data && data.vespa_profile) { 
+                        //    populateStudentVespaSection(container, data.vespa_profile);
+                        // }
+                    }
+                });
+            } else {
+                logStudentCoach(`Error setting up toggle: Button '${config.buttonId}' or Container '${config.containerId}' not found.`);
+            }
+        });
+        logStudentCoach("Student AI Coach data rendered with toggle buttons and event listeners.");
     }
     
     // Note: renderVespaComparisonChart, createSubjectBenchmarkScale, renderQuestionnaireDistributionChart
