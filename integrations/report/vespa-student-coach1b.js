@@ -126,7 +126,7 @@ if (window.studentCoachLauncherInitialized) {
             return;
         }
 
-        const targetNode = document.querySelector('#kn-scene_43'); // Target scene_43
+        const targetNode = document.querySelector('#kn-scene_43'); 
 
         if (!targetNode) {
             console.error("[StudentCoachLauncher] Target node for MutationObserver not found (#kn-scene_43).");
@@ -143,43 +143,44 @@ if (window.studentCoachLauncherInitialized) {
         }
 
         const observerCallback = function(mutationsList, observer) {
-            // logStudentCoach("MutationObserver detected DOM change (raw event).");
-            const currentStudentUser = Knack.getUserAttributes();
-            const studentKnackId = currentStudentUser ? currentStudentUser.id : null; // Example: use Knack user ID
-
-            if (isStudentCoachPageView()) {
-                const panelIsActive = document.body.classList.contains('ai-coach-active'); // Generic class, might need namespacing
-                if (!coachUIInitialized) { 
+            // logStudentCoach("MutationObserver detected DOM change (raw event)."); // Can be noisy
+            
+            if (isStudentCoachPageView()) { // Check if we are on the correct page
+                if (!coachUIInitialized) { // Only initialize UI if not already done
                     initializeCoachUI();
-                } else if (panelIsActive) { 
+                }
+                // If UI is initialized and panel is active, you might want to refresh data
+                // This part is similar to the tutor coach, adapt as needed
+                const panelIsActive = document.body.classList.contains('ai-coach-active'); 
+                if (coachUIInitialized && panelIsActive) {
+                    const currentStudentUser = Knack.getUserAttributes();
+                    const studentKnackId = currentStudentUser ? currentStudentUser.id : null;
                     if (studentKnackId && studentKnackId !== observerLastProcessedStudentKnackId) {
-                        logStudentCoach(`Observer: Student Knack ID changed from ${observerLastProcessedStudentKnackId} to ${studentKnackId}. Triggering refresh.`);
+                        logStudentCoach(`Observer: Student Knack ID changed or identified: ${studentKnackId}. Triggering refresh.`);
                         observerLastProcessedStudentKnackId = studentKnackId;
                         refreshAICoachData(); 
-                    } else if (!studentKnackId && observerLastProcessedStudentKnackId !== null) {
-                        logStudentCoach(`Observer: Student Knack ID became null. Previously ${observerLastProcessedStudentKnackId}. Clearing UI.`);
-                        observerLastProcessedStudentKnackId = null;
-                        clearCoachUI();
                     }
                 }
-            } else {
-                if (observerLastProcessedStudentKnackId !== null) {
-                    logStudentCoach("Observer: Not on Student Coach page. Clearing UI and resetting observer ID.");
-                    observerLastProcessedStudentKnackId = null;
+            } else { // Not on the student coach page (or Knack.scene not ready)
+                if (coachUIInitialized) { // If UI was initialized, clear it
+                    logStudentCoach("Observer: Not on Student Coach page view or Knack.scene not ready. Clearing UI if initialized.");
                     clearCoachUI();
+                    observerLastProcessedStudentKnackId = null; 
                 }
             }
         };
         
-        debouncedObserverCallback = debounce(observerCallback, 750);
+        debouncedObserverCallback = debounce(observerCallback, 300); // Reduced debounce slightly
 
         coachObserver = new MutationObserver(debouncedObserverCallback);
         coachObserver.observe(targetNode, { childList: true, subtree: true });
 
-        if (isStudentCoachPageView()) {
-            initializeCoachUI();
-        }
-        logStudentCoach("StudentCoachLauncher: initializeStudentCoachLauncher END");
+        // REMOVED: Initial direct call to initializeCoachUI via isStudentCoachPageView()
+        // We now rely on the MutationObserver to make the first call when ready.
+        // if (isStudentCoachPageView()) {
+        //     initializeCoachUI();
+        // }
+        logStudentCoach("StudentCoachLauncher: Initializer setup complete. Observer is active.");
     }
 
     function loadExternalStyles() {
@@ -754,4 +755,3 @@ if (window.studentCoachLauncherInitialized) {
     // Expose the initializer function to be called by the Knack Bridge
     window.initializeStudentCoachLauncher = initializeStudentCoachLauncher;
 }
-
