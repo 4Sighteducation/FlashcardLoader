@@ -20,10 +20,9 @@ if (window.studentCoachLauncherInitialized) {
     let loadingMessageIntervalId = null; 
 
     // --- Configuration ---
-    // TODO: Update these to point to your new vespa-student-coach Heroku app API
-    const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach.herokuapp.com/api/v1'; // Placeholder
-    const COACHING_DATA_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/student_coaching_data`; // Example endpoint
-    const CHAT_TURN_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_turn`; // Example endpoint
+    const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach.herokuapp.com/api/v1'; // Ensure this is correct
+    const COACHING_DATA_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/student_coaching_data`; 
+    const CHAT_TURN_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_turn`; 
 
     function logStudentCoach(message, data) {
         if (STUDENT_COACH_LAUNCHER_CONFIG && STUDENT_COACH_LAUNCHER_CONFIG.debugMode) {
@@ -363,56 +362,36 @@ if (window.studentCoachLauncherInitialized) {
     }
 
     async function getLoggedInStudentDataForCoach() {
-        // This function will replace getStudentObject10RecordId
-        // It needs to:
-        // 1. Get logged-in Knack user attributes.
-        // 2. From those attributes (e.g., email or user ID), determine the student's Object_10 record ID.
-        //    This might involve a call to your *new* backend API if the link isn't direct.
-        //    For example: POST to /api/v1/get_student_object10_id with Knack user ID.
         logStudentCoach("Attempting to get logged-in student data for coach...");
         const user = Knack.getUserAttributes();
-        if (user && user.id) { // Using user.id as an example, could be user.email
-            logStudentCoach("Logged-in Knack User:", user);
-            // Placeholder: Assume for now the user.id IS the student_object10_record_id or can be directly used.
-            // In reality, you'll need a mapping or a backend call here.
-            // This function should ultimately return the student's Object_10 record ID.
-            // For MVP, if scene_43 is ONLY for logged-in students viewing their OWN profile,
-            // and if view_3055 directly relates to THEIR Object_10 record, there might be a way
-            // Knack makes this Object_10 ID available in the context of view_3055.
-            // This needs more info on how view_3055 is populated.
-            
-            // For now, let's assume a global var like in tutor version for simplicity,
-            // but this needs to be specific to the student context.
-            if (window.currentStudentProfileObject10Id) { // Expecting this to be set by the page context of scene_43/view_3055
-                 logStudentCoach("Found student's Object_10 ID in window.currentStudentProfileObject10Id: " + window.currentStudentProfileObject10Id);
-                return window.currentStudentProfileObject10Id;
-            } else {
-                logStudentCoach("Warning: window.currentStudentProfileObject10Id not found. Student AI Coach needs this to be set by the page context of view_3055.");
-                // Fallback: Try to get it from user attributes if there's a known field
-                // This is highly speculative and depends on your Knack setup
-                // For example, if user.values.field_XXX contains the Object_10 ID
-                // const object10IdFromUser = user.values.field_YOUR_OBJECT_10_ID_FIELD;
-                // if(object10IdFromUser) return object10IdFromUser;
-                return null;
-            }
+        if (user && user.id) { 
+            logStudentCoach("Logged-in Knack User (Object_3) ID:", user.id);
+            // This user.id is the student's Object_3 record ID.
+            // The backend will take this, find the email, then find the Object_10 record if needed.
+            return user.id; 
         } else {
-            logStudentCoach("Knack user attributes not available or no ID found.");
+            logStudentCoach("Knack user attributes (Object_3 ID) not available.");
+            const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
+            if (panelContent) {
+                 panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not identify you. Please ensure you are logged in correctly.</p></div>';
+            }
+            stopLoadingMessageRotator(); // Stop rotator if user ID can't be found
             return null;
         }
     }
 
-    async function fetchAICoachingData(studentObject10Id) {
+    async function fetchAICoachingData(studentObject3Id) { // Parameter is student's Object_3 ID
         const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
         if (!panelContent) return;
 
-        if (!studentObject10Id) { 
-             logStudentCoach("fetchAICoachingData called with no studentObject10Id. Aborting.");
-             if(panelContent) panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Your data ID is missing, cannot fetch AI coaching data.</p></div>';
+        if (!studentObject3Id) { 
+             logStudentCoach("fetchAICoachingData called with no studentObject3Id. Aborting.");
+             if(panelContent) panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Your user ID is missing, cannot fetch AI coaching data.</p></div>';
              return;
         }
 
-        if (currentlyFetchingStudentKnackId === studentObject10Id) {
-            logStudentCoach(`fetchAICoachingData: Already fetching data for student ID ${studentObject10Id}. Aborting.`);
+        if (currentlyFetchingStudentKnackId === studentObject3Id) {
+            logStudentCoach(`fetchAICoachingData: Already fetching data for student Object_3 ID ${studentObject3Id}. Aborting.`);
             return;
         }
 
@@ -422,17 +401,16 @@ if (window.studentCoachLauncherInitialized) {
         }
         currentFetchAbortController = new AbortController(); 
         const signal = currentFetchAbortController.signal;
-        currentlyFetchingStudentKnackId = studentObject10Id;
+        currentlyFetchingStudentKnackId = studentObject3Id; // Track by Object_3 ID
 
-        startLoadingMessageRotator(panelContent, "student"); // Pass context
+        startLoadingMessageRotator(panelContent, "student"); 
 
         try {
-            logStudentCoach("Fetching Student AI Coaching Data for student_object10_id: " + studentObject10Id);
-            // TODO: Use COACHING_DATA_ENDPOINT and ensure backend is ready for student data requests
+            logStudentCoach("Fetching Student AI Coaching Data for student_object3_id: " + studentObject3Id);
             const response = await fetch(COACHING_DATA_ENDPOINT, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ student_object10_record_id: studentObject10Id }), // Backend needs to handle this
+                body: JSON.stringify({ student_object3_id: studentObject3Id }), // Send Object_3 ID
                 signal: signal 
             });
 
@@ -443,8 +421,8 @@ if (window.studentCoachLauncherInitialized) {
 
             const data = await response.json();
             logStudentCoach("Student AI Coaching data received:", data);
-            lastFetchedStudentKnackId = studentObject10Id; 
-            renderAICoachData(data); // This function will need significant adaptation for student view
+            lastFetchedStudentKnackId = studentObject3Id; // Store the Object_3 ID
+            renderAICoachData(data); 
             if (data && data.llm_generated_insights) { 
                 currentLLMInsightsForChat = data.llm_generated_insights;
             } else {
@@ -453,16 +431,16 @@ if (window.studentCoachLauncherInitialized) {
 
         } catch (error) {
             if (error.name === 'AbortError') {
-                logStudentCoach('Fetch aborted for student ID: ' + studentObject10Id);
+                logStudentCoach('Fetch aborted for student Object_3 ID: ' + studentObject3Id);
             } else {
                 logStudentCoach("Error fetching Student AI Coaching data:", error);
-                if (currentlyFetchingStudentKnackId === studentObject10Id && panelContent) { 
+                if (currentlyFetchingStudentKnackId === studentObject3Id && panelContent) { 
                     panelContent.innerHTML = `<div class="ai-coach-section"><p style="color:red;">Error loading your AI Coach insights: ${error.message}</p></div>`;
                 }
             }
         } finally {
             stopLoadingMessageRotator();
-            if (currentlyFetchingStudentKnackId === studentObject10Id) {
+            if (currentlyFetchingStudentKnackId === studentObject3Id) {
                 currentlyFetchingStudentKnackId = null;
             }
             if (currentFetchAbortController && currentFetchAbortController.signal === signal) {
@@ -537,23 +515,23 @@ if (window.studentCoachLauncherInitialized) {
         }
 
         logStudentCoach("refreshAICoachData (Student): Attempting to get student data...");
-        const studentObject10Id = await getLoggedInStudentDataForCoach(); 
+        const studentObject3Id = await getLoggedInStudentDataForCoach(); 
         
-        if (studentObject10Id) {
-            if (studentObject10Id !== lastFetchedStudentKnackId || lastFetchedStudentKnackId === null) {
-                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject10Id}. Last fetched: ${lastFetchedStudentKnackId}. Fetching data.`);
-                if (currentlyFetchingStudentKnackId !== studentObject10Id && panelContent.innerHTML.indexOf('loader') === -1 ){
+        if (studentObject3Id) {
+            if (studentObject3Id !== lastFetchedStudentKnackId || lastFetchedStudentKnackId === null) {
+                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id}. Last fetched: ${lastFetchedStudentKnackId}. Fetching data.`);
+                if (currentlyFetchingStudentKnackId !== studentObject3Id && panelContent.innerHTML.indexOf('loader') === -1 ){
                     panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your AI Coach...</p>';
                 }
-                fetchAICoachingData(studentObject10Id); 
+                fetchAICoachingData(studentObject3Id); 
             } else {
-                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject10Id} is same as last fetched. Data likely current.`);
+                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id} is same as last fetched. Data likely current.`);
                 if (panelContent && panelContent.querySelector('.loader') && !panelContent.querySelector('.ai-coach-section')) {
                     panelContent.innerHTML = '<p>Activate My AI Coach to get personalized insights!</p>';
                 }
             }
         } else {
-            logStudentCoach("refreshAICoachData (Student): Student Object_10 ID not available.");
+            logStudentCoach("refreshAICoachData (Student): Student Object_3 ID not available.");
             lastFetchedStudentKnackId = null; 
             observerLastProcessedStudentKnackId = null; 
             currentlyFetchingStudentKnackId = null;
@@ -658,7 +636,8 @@ if (window.studentCoachLauncherInitialized) {
 
         async function sendChatMessage() {
             const messageText = chatInput.value.trim();
-            if (messageText === '' || !lastFetchedStudentKnackId) return; // Ensure student context is there
+            // lastFetchedStudentKnackId now holds student's Object_3 ID
+            if (messageText === '' || !lastFetchedStudentKnackId) return; 
 
             const userMessageElement = document.createElement('p');
             userMessageElement.className = 'ai-chat-message ai-chat-message-user';
@@ -685,9 +664,9 @@ if (window.studentCoachLauncherInitialized) {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        student_knack_id: lastFetchedStudentKnackId, // Or student_object10_id
+                        student_knack_id: lastFetchedStudentKnackId, // Send student's Object_3 ID
                         chat_history: chatHistory,
-                        current_user_message: originalInput, // current_tutor_message becomes current_user_message
+                        current_user_message: originalInput, 
                         // Backend needs to know this is a student context for different prompting
                         context_type: 'student' 
                     }),
