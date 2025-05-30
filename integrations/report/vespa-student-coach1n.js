@@ -23,7 +23,7 @@ if (window.studentCoachLauncherInitialized) {
     let coachDataCurrentlyRefreshing = false; // Flag to prevent re-entrant data refresh
 
     // --- Configuration ---
-    const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach-8116bb380fbd.herokuapp.com/api/v1'; // UPDATED to new Heroku app URL
+    const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach-8116bb380fbd.herokuapp.com/api/v1'; // Corrected to the deployed Heroku app URL
     const COACHING_DATA_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/student_coaching_data`; 
     const CHAT_TURN_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_turn`; 
     const CHAT_HISTORY_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_history`; // Added for student chat history
