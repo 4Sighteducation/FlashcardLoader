@@ -1,5 +1,4 @@
 /// Student Coach Launcher Script (vespa-student-coach.js)
-/// Student Coach Launcher Script (vespa-student-coach.js)
 
 // Guard to prevent re-initialization
 if (window.studentCoachLauncherInitialized) {
@@ -20,6 +19,8 @@ if (window.studentCoachLauncherInitialized) {
     let currentLLMInsightsForChat = null; 
     let loadingMessageIntervalId = null; 
     let questionnairePieChartInstance = null; // Added for questionnaire chart
+    let uiCurrentlyInitializing = false; // Flag to prevent re-entrant UI initialization
+    let coachDataCurrentlyRefreshing = false; // Flag to prevent re-entrant data refresh
 
     // --- Configuration ---
     const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach.herokuapp.com/api/v1'; // Ensure this is correct
@@ -91,9 +92,14 @@ if (window.studentCoachLauncherInitialized) {
     function initializeCoachUI() {
         logStudentCoach("StudentCoachLauncher: initializeCoachUI START");
         if (coachUIInitialized && document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId)) {
-            logStudentCoach("Student Coach UI appears to be already initialized. Skipping full re-initialization.");
+            logStudentCoach("Student Coach UI appears to be already initialized. Skipping.");
             return;
         }
+        if (uiCurrentlyInitializing) {
+            logStudentCoach("Student Coach UI is already in the process of initializing. Skipping.");
+            return;
+        }
+        uiCurrentlyInitializing = true;
 
         logStudentCoach("Conditions met. Initializing Student Coach UI (button and panel).");
         loadExternalStyles(); 
@@ -103,6 +109,7 @@ if (window.studentCoachLauncherInitialized) {
         setupEventListeners(); 
         coachUIInitialized = true;
         logStudentCoach("StudentCoachLauncher UI initialization complete.");
+        uiCurrentlyInitializing = false;
     }
     
     function clearCoachUI() {
@@ -159,22 +166,22 @@ if (window.studentCoachLauncherInitialized) {
         }
 
         const observerCallback = function(mutationsList, observer) {
-            // logStudentCoach("MutationObserver detected DOM change (raw event)."); // Can be noisy
+            // logStudentCoach("MutationObserver detected DOM change (raw event)."S); // Can be noisy
             
             if (isStudentCoachPageView()) { // Check if we are on the correct page
-                if (!coachUIInitialized) { // Only initialize UI if not already done
+                if (!coachUIInitialized && !uiCurrentlyInitializing) { // Only initialize UI if not already done and not in process
                     initializeCoachUI();
                 }
-                // If UI is initialized and panel is active, you might want to refresh data
-                // This part is similar to the tutor coach, adapt as needed
                 const panelIsActive = document.body.classList.contains('ai-coach-active'); 
                 if (coachUIInitialized && panelIsActive) {
                     const currentStudentUser = Knack.getUserAttributes();
                     const studentKnackId = currentStudentUser ? currentStudentUser.id : null;
                     if (studentKnackId && studentKnackId !== observerLastProcessedStudentKnackId) {
                         logStudentCoach(`Observer: Student Knack ID changed or identified: ${studentKnackId}. Triggering refresh.`);
-                        observerLastProcessedStudentKnackId = studentKnackId;
+                        observerLastProcessedStudentKnackId = studentKnackId; // Update last processed ID *before* refresh call
                         refreshAICoachData(); 
+                    } else if (studentKnackId && studentKnackId === observerLastProcessedStudentKnackId){
+                        // logStudentCoach(`Observer: Student Knack ID ${studentKnackId} is same as observerLastProcessedStudentKnackId. No refresh needed from observer.`);
                     }
                 }
             } else { // Not on the student coach page (or Knack.scene not ready)
@@ -186,7 +193,7 @@ if (window.studentCoachLauncherInitialized) {
             }
         };
         
-        debouncedObserverCallback = debounce(observerCallback, 300); // Reduced debounce slightly
+        debouncedObserverCallback = debounce(observerCallback, 500); // Increased debounce slightly to 500ms
 
         coachObserver = new MutationObserver(debouncedObserverCallback);
         coachObserver.observe(targetNode, { childList: true, subtree: true });
@@ -463,22 +470,27 @@ if (window.studentCoachLauncherInitialized) {
 
         if (!studentObject3Id) { 
              logStudentCoach("fetchAICoachingData called with no studentObject3Id. Aborting.");
-             if(panelContent) panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Your user ID is missing, cannot fetch AI coaching data.</p></div>';
+             if(panelContent && !panelContent.innerHTML.includes("color:red")) { // Avoid overwriting existing error
+                panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Your user ID is missing, cannot fetch AI coaching data.</p></div>';
+             }
+             stopLoadingMessageRotator();
              return;
         }
 
+        // ***** Start Critical Section for preventing duplicate fetches *****
         if (currentlyFetchingStudentKnackId === studentObject3Id) {
-            logStudentCoach(`fetchAICoachingData: Already fetching data for student Object_3 ID ${studentObject3Id}. Aborting.`);
-            return;
+            logStudentCoach(`fetchAICoachingData: Already fetching data for student Object_3 ID ${studentObject3Id}. Aborting duplicate.`);
+            return; // Already fetching for this ID, so exit.
         }
-
+        // If there's an ongoing fetch for a *different* student, abort it.
         if (currentFetchAbortController) {
+            logStudentCoach("fetchAICoachingData: Aborting previous fetch call for a different student.");
             currentFetchAbortController.abort();
-            logStudentCoach("Aborted previous fetchAICoachingData call.");
         }
         currentFetchAbortController = new AbortController(); 
         const signal = currentFetchAbortController.signal;
-        currentlyFetchingStudentKnackId = studentObject3Id; // Track by Object_3 ID
+        currentlyFetchingStudentKnackId = studentObject3Id; // Set the ID we are now fetching for
+        // ***** End Critical Section *****
 
         startLoadingMessageRotator(panelContent, "student"); 
 
@@ -702,6 +714,11 @@ if (window.studentCoachLauncherInitialized) {
         const panelContent = panel ? panel.querySelector('.ai-coach-panel-content') : null;
         if (!panel || !panelContent) return;
 
+        if (coachDataCurrentlyRefreshing) {
+            logStudentCoach("refreshAICoachData: Already refreshing. Skipping duplicate call.");
+            return;
+        }
+
         if (!document.body.classList.contains('ai-coach-active')) { // Ensure classname is consistent or namespaced
             logStudentCoach("Student AI Coach panel is not active, refresh not needed.");
             return;
@@ -710,27 +727,37 @@ if (window.studentCoachLauncherInitialized) {
         logStudentCoach("refreshAICoachData (Student): Attempting to get student data...");
         const studentObject3Id = await getLoggedInStudentDataForCoach(); 
         
-        if (studentObject3Id) {
-            if (studentObject3Id !== lastFetchedStudentKnackId || lastFetchedStudentKnackId === null) {
-                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id}. Last fetched: ${lastFetchedStudentKnackId}. Fetching data.`);
-                if (currentlyFetchingStudentKnackId !== studentObject3Id && panelContent.innerHTML.indexOf('loader') === -1 ){
-                    panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your AI Coach...</p>';
+        coachDataCurrentlyRefreshing = true; // Set flag
+
+        try {
+            if (studentObject3Id) {
+                if (studentObject3Id !== lastFetchedStudentKnackId || lastFetchedStudentKnackId === null) {
+                    logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id}. Last fetched: ${lastFetchedStudentKnackId}. Fetching data.`);
+                    // Only set loader here if not already fetching this specific ID and no existing loader/error message
+                    if (currentlyFetchingStudentKnackId !== studentObject3Id && 
+                        panelContent.innerHTML.indexOf('loader') === -1 && 
+                        !panelContent.innerHTML.includes("color:red") && 
+                        !panelContent.innerHTML.includes("color:orange")) {
+                        panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your AI Coach...</p>';
+                    }
+                    await fetchAICoachingData(studentObject3Id); // Await this call
+                } else {
+                    logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id} is same as last fetched. Data likely current.`);
+                    if (panelContent && panelContent.querySelector('.loader') && !panelContent.querySelector('.ai-coach-section')) {
+                        panelContent.innerHTML = '<p>Activate My AI Coach to get personalized insights!</p>';
+                    }
                 }
-                fetchAICoachingData(studentObject3Id); 
             } else {
-                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id} is same as last fetched. Data likely current.`);
-                if (panelContent && panelContent.querySelector('.loader') && !panelContent.querySelector('.ai-coach-section')) {
-                    panelContent.innerHTML = '<p>Activate My AI Coach to get personalized insights!</p>';
+                logStudentCoach("refreshAICoachData (Student): Student Object_3 ID not available.");
+                lastFetchedStudentKnackId = null; 
+                observerLastProcessedStudentKnackId = null; 
+                // currentlyFetchingStudentKnackId should be cleared by fetchAICoachingData's finally block if a fetch was attempted
+                if (panelContent && panelContent.innerHTML.includes('loader') && !panelContent.innerHTML.includes('ai-coach-section')){
+                     panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not load your profile for the AI Coach. Please ensure you are logged in and on the correct page.</p></div>';
                 }
             }
-        } else {
-            logStudentCoach("refreshAICoachData (Student): Student Object_3 ID not available.");
-            lastFetchedStudentKnackId = null; 
-            observerLastProcessedStudentKnackId = null; 
-            currentlyFetchingStudentKnackId = null;
-            if (panelContent && panelContent.innerHTML.includes('loader') && !panelContent.innerHTML.includes('ai-coach-section')){
-                 panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not load your profile for the AI Coach. Please ensure you are logged in and on the correct page.</p></div>';
-            }
+        } finally {
+            coachDataCurrentlyRefreshing = false; // Clear flag
         }
     }
 
