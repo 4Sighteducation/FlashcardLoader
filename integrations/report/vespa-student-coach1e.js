@@ -20,9 +20,10 @@ if (window.studentCoachLauncherInitialized) {
     let loadingMessageIntervalId = null; 
 
     // --- Configuration ---
-    const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach.herokuapp.com/api/v1'; // UPDATED for student backend
-    const COACHING_DATA_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/student_coaching_data`; // UPDATED
-    const CHAT_TURN_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_turn`; // UPDATED
+    // TODO: Update these to point to your new vespa-student-coach Heroku app API
+    const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach.herokuapp.com/api/v1'; // Placeholder
+    const COACHING_DATA_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/student_coaching_data`; // Example endpoint
+    const CHAT_TURN_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_turn`; // Example endpoint
 
     function logStudentCoach(message, data) {
         if (STUDENT_COACH_LAUNCHER_CONFIG && STUDENT_COACH_LAUNCHER_CONFIG.debugMode) {
@@ -53,28 +54,36 @@ if (window.studentCoachLauncherInitialized) {
 
     // Function to check if we are on the correct student coach page
     function isStudentCoachPageView() {
-        if (!STUDENT_COACH_LAUNCHER_CONFIG || !STUDENT_COACH_LAUNCHER_CONFIG.sceneKey || !STUDENT_COACH_LAUNCHER_CONFIG.views || !STUDENT_COACH_LAUNCHER_CONFIG.views[0]) {
-            logStudentCoach("isStudentCoachPageView: Config not fully available (sceneKey or views missing).");
+        if (!STUDENT_COACH_LAUNCHER_CONFIG || !STUDENT_COACH_LAUNCHER_CONFIG.sceneKey || !STUDENT_COACH_LAUNCHER_CONFIG.elementSelector) {
+            logStudentCoach("isStudentCoachPageView: Config not fully available.");
             return false;
         }
 
-        // Check for the primary view container associated with this app from its config.
-        // Example: If config.views[0] is 'view_3055', this will check for '#view_3055'.
-        const primaryViewContainerSelector = `#${STUDENT_COACH_LAUNCHER_CONFIG.views[0]}`;
-        const viewContainerElement = document.querySelector(primaryViewContainerSelector);
+        // WorkingBridge.js has already determined this script should run for the scene specified 
+        // in STUDENT_COACH_LAUNCHER_CONFIG.sceneKey.
+        // So, we primarily check if the target element (where the button should go) exists.
+        const targetViewElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
 
-        if (viewContainerElement) {
-            logStudentCoach(`Student Coach page context confirmed: Primary View Container '${primaryViewContainerSelector}' exists.`);
-            // We can also verify if Knack.scene.key matches the configured sceneKey for extra robustness if Knack.scene is available.
+        if (targetViewElement) {
+            // For robustness, we can log Knack's current scene if available, but the presence
+            // of targetViewElement is the key indicator since WorkingBridge made the call to load this script.
             if (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key) {
-                if (Knack.scene.key !== STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
-                    logStudentCoach(`Warning: Knack.scene.key ('${Knack.scene.key}') differs from configured sceneKey ('${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}'), but view container was found.`);
+                if (Knack.scene.key === STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
+                    logStudentCoach(`Student Coach page view confirmed: Config Scene '${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}', Knack Scene '${Knack.scene.key}', Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found.`);
+                } else {
+                    // This is an edge case: element found, but Knack.scene.key reports a different scene.
+                    // This might happen during very rapid Knack view/scene transitions.
+                    // We'll trust that WorkingBridge loaded us for the correct configured scene.
+                    logStudentCoach(`Student Coach page view: Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found. Knack.scene.key ('${Knack.scene.key}') currently differs from config scene ('${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}'). Proceeding based on element presence.`);
                 }
+            } else {
+                // Knack.scene not fully available yet, but the target element exists.
+                logStudentCoach(`Student Coach page view confirmed: Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found (Knack.scene not checked/fully ready).`);
             }
-            return true; // View container found, proceed.
+            return true; // Element found, proceed.
         }
         
-        // logStudentCoach(`isStudentCoachPageView: Primary View Container '${primaryViewContainerSelector}' not found.`);
+        // logStudentCoach("isStudentCoachPageView: Target element for button not found.");
         return false;
     }
 
@@ -196,74 +205,55 @@ if (window.studentCoachLauncherInitialized) {
             return;
         }
 
+        // TODO: Update this to the CDN path of your vespa-student-coach.css
         const link = document.createElement('link');
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1a.css'; // Ensure this is the correct CSS file for students
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach.css'; // Placeholder
         
         // Dynamic CSS for config-specific IDs
-        // Uses STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector (e.g., #kn-scene_43)
-        // and STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId (e.g., studentCoachSlidePanel)
         const dynamicCss = `
             body.ai-coach-active ${STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector} {
-                width: calc(100% - var(--ai-coach-panel-width, 400px)); /* Default to 400px if var not set */
-                margin-right: var(--ai-coach-panel-width, 400px);
-                transition: width var(--ai-coach-transition-duration, 0.3s), 
-                            margin-right var(--ai-coach-transition-duration, 0.3s);
-            }
-            
-            ${STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector} {
-                transition: width var(--ai-coach-transition-duration, 0.3s), 
-                            margin-right var(--ai-coach-transition-duration, 0.3s);
+                /* Adjust main content if panel is on the side */
             }
             
             #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                /* Basic panel styles - some are in external CSS, these ensure core functionality */
+                /* Basic panel styles - copy from aiCoachLauncher1f.css and adapt IDs */
                 width: 0; opacity: 0; visibility: hidden;
                 position: fixed !important; top: 0; right: 0; height: 100vh;
-                background-color: #f4f6f8; /* Default, can be overridden by external CSS */
-                border-left: 1px solid #ddd; /* Default, can be overridden by external CSS */
+                background-color: #f4f6f8; border-left: 1px solid #ddd;
                 padding: 20px; box-sizing: border-box; overflow-y: auto;
-                z-index: 1050; 
-                transition: width var(--ai-coach-transition-duration, 0.3s), 
-                            opacity var(--ai-coach-transition-duration, 0.3s), 
-                            visibility var(--ai-coach-transition-duration, 0.3s);
+                z-index: 1050; transition: width 0.3s, opacity 0.3s, visibility 0.3s;
                 font-family: Arial, sans-serif; display: flex; flex-direction: column;
             }
             
             body.ai-coach-active #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: var(--ai-coach-panel-width, 400px); 
+                width: var(--ai-coach-panel-width, 450px); /* Use CSS var or default */
                 opacity: 1; visibility: visible;
             }
             
-            /* Ensure panel content section and header are styled if external CSS doesn't catch them by ID */
             #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header {
+                /* Styles for panel header */
                 display: flex; justify-content: space-between; align-items: center;
                 margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px;
                 flex-shrink: 0;
             }
-            #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header h3 { margin: 0; font-size: 1.2em;}
-            #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-close-btn { background:none; border:none; font-size:1.5em; cursor:pointer; }
-
+            
             #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content {
+                 /* Styles for panel content area */
                 flex: 1; display: flex; flex-direction: column;
                 overflow-y: auto; min-height: 0;
             }
             
-            .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-            /* Basic styles for the new toggle buttons if not fully covered by external CSS */
-            .ai-coach-section-toggles { display: flex; gap: 10px; margin: 15px 0; }
-            .ai-coach-section-toggles .p-button { flex: 1; padding: 10px; font-size: 0.9em; border-radius: 4px; cursor: pointer; }
+            .loader { /* Keep loader styles */ }
+            @keyframes spin { /* Keep spin animation */ }
         `;
         
         const styleElement = document.createElement('style');
         styleElement.textContent = dynamicCss;
         
-        // Set CSS variables (these are defaults, can be overridden by the loaded CSS file)
-        document.documentElement.style.setProperty('--ai-coach-panel-width', '400px'); 
+        document.documentElement.style.setProperty('--ai-coach-panel-width', '400px'); // Student panel might be narrower
         document.documentElement.style.setProperty('--ai-coach-panel-min-width', '280px');
         document.documentElement.style.setProperty('--ai-coach-panel-max-width', '600px');
         document.documentElement.style.setProperty('--ai-coach-transition-duration', '0.3s');
@@ -373,37 +363,56 @@ if (window.studentCoachLauncherInitialized) {
     }
 
     async function getLoggedInStudentDataForCoach() {
+        // This function will replace getStudentObject10RecordId
+        // It needs to:
+        // 1. Get logged-in Knack user attributes.
+        // 2. From those attributes (e.g., email or user ID), determine the student's Object_10 record ID.
+        //    This might involve a call to your *new* backend API if the link isn't direct.
+        //    For example: POST to /api/v1/get_student_object10_id with Knack user ID.
         logStudentCoach("Attempting to get logged-in student data for coach...");
         const user = Knack.getUserAttributes();
-        if (user && user.id) { 
-            logStudentCoach("Logged-in Knack User (Object_3) ID:", user.id);
-            // This user.id is the student's Object_3 record ID.
-            // The backend will take this, find the email, then find the Object_10 record.
-            return user.id; 
-        } else {
-            logStudentCoach("Knack user attributes (Object_3 ID) not available.");
-            const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
-            if (panelContent) {
-                 panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not identify you. Please ensure you are logged in correctly.</p></div>';
+        if (user && user.id) { // Using user.id as an example, could be user.email
+            logStudentCoach("Logged-in Knack User:", user);
+            // Placeholder: Assume for now the user.id IS the student_object10_record_id or can be directly used.
+            // In reality, you'll need a mapping or a backend call here.
+            // This function should ultimately return the student's Object_10 record ID.
+            // For MVP, if scene_43 is ONLY for logged-in students viewing their OWN profile,
+            // and if view_3055 directly relates to THEIR Object_10 record, there might be a way
+            // Knack makes this Object_10 ID available in the context of view_3055.
+            // This needs more info on how view_3055 is populated.
+            
+            // For now, let's assume a global var like in tutor version for simplicity,
+            // but this needs to be specific to the student context.
+            if (window.currentStudentProfileObject10Id) { // Expecting this to be set by the page context of scene_43/view_3055
+                 logStudentCoach("Found student's Object_10 ID in window.currentStudentProfileObject10Id: " + window.currentStudentProfileObject10Id);
+                return window.currentStudentProfileObject10Id;
+            } else {
+                logStudentCoach("Warning: window.currentStudentProfileObject10Id not found. Student AI Coach needs this to be set by the page context of view_3055.");
+                // Fallback: Try to get it from user attributes if there's a known field
+                // This is highly speculative and depends on your Knack setup
+                // For example, if user.values.field_XXX contains the Object_10 ID
+                // const object10IdFromUser = user.values.field_YOUR_OBJECT_10_ID_FIELD;
+                // if(object10IdFromUser) return object10IdFromUser;
+                return null;
             }
-            stopLoadingMessageRotator();
+        } else {
+            logStudentCoach("Knack user attributes not available or no ID found.");
             return null;
         }
     }
 
-    async function fetchAICoachingData(studentObject3Id) { // Renamed parameter
+    async function fetchAICoachingData(studentObject10Id) {
         const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
         if (!panelContent) return;
 
-        if (!studentObject3Id) { 
-             logStudentCoach("fetchAICoachingData called with no studentObject3Id. Aborting.");
-             if(panelContent) panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Your user ID is missing, cannot fetch AI coaching data.</p></div>';
+        if (!studentObject10Id) { 
+             logStudentCoach("fetchAICoachingData called with no studentObject10Id. Aborting.");
+             if(panelContent) panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Your data ID is missing, cannot fetch AI coaching data.</p></div>';
              return;
         }
 
-        // Using studentObject3Id for these checks now
-        if (currentlyFetchingStudentKnackId === studentObject3Id) {
-            logStudentCoach(`fetchAICoachingData: Already fetching data for student Object_3 ID ${studentObject3Id}. Aborting.`);
+        if (currentlyFetchingStudentKnackId === studentObject10Id) {
+            logStudentCoach(`fetchAICoachingData: Already fetching data for student ID ${studentObject10Id}. Aborting.`);
             return;
         }
 
@@ -413,17 +422,17 @@ if (window.studentCoachLauncherInitialized) {
         }
         currentFetchAbortController = new AbortController(); 
         const signal = currentFetchAbortController.signal;
-        currentlyFetchingStudentKnackId = studentObject3Id; // Track by Object_3 ID
+        currentlyFetchingStudentKnackId = studentObject10Id;
 
-        startLoadingMessageRotator(panelContent, "student"); 
+        startLoadingMessageRotator(panelContent, "student"); // Pass context
 
         try {
-            logStudentCoach("Fetching Student AI Coaching Data for student_object3_id: " + studentObject3Id);
+            logStudentCoach("Fetching Student AI Coaching Data for student_object10_id: " + studentObject10Id);
+            // TODO: Use COACHING_DATA_ENDPOINT and ensure backend is ready for student data requests
             const response = await fetch(COACHING_DATA_ENDPOINT, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // Backend will expect student_object3_id
-                body: JSON.stringify({ student_object3_id: studentObject3Id }), 
+                body: JSON.stringify({ student_object10_record_id: studentObject10Id }), // Backend needs to handle this
                 signal: signal 
             });
 
@@ -434,8 +443,8 @@ if (window.studentCoachLauncherInitialized) {
 
             const data = await response.json();
             logStudentCoach("Student AI Coaching data received:", data);
-            lastFetchedStudentKnackId = studentObject3Id; // Store the Object_3 ID
-            renderAICoachData(data); 
+            lastFetchedStudentKnackId = studentObject10Id; 
+            renderAICoachData(data); // This function will need significant adaptation for student view
             if (data && data.llm_generated_insights) { 
                 currentLLMInsightsForChat = data.llm_generated_insights;
             } else {
@@ -444,16 +453,16 @@ if (window.studentCoachLauncherInitialized) {
 
         } catch (error) {
             if (error.name === 'AbortError') {
-                logStudentCoach('Fetch aborted for student Object_3 ID: ' + studentObject3Id);
+                logStudentCoach('Fetch aborted for student ID: ' + studentObject10Id);
             } else {
                 logStudentCoach("Error fetching Student AI Coaching data:", error);
-                if (currentlyFetchingStudentKnackId === studentObject3Id && panelContent) { 
+                if (currentlyFetchingStudentKnackId === studentObject10Id && panelContent) { 
                     panelContent.innerHTML = `<div class="ai-coach-section"><p style="color:red;">Error loading your AI Coach insights: ${error.message}</p></div>`;
                 }
             }
         } finally {
             stopLoadingMessageRotator();
-            if (currentlyFetchingStudentKnackId === studentObject3Id) {
+            if (currentlyFetchingStudentKnackId === studentObject10Id) {
                 currentlyFetchingStudentKnackId = null;
             }
             if (currentFetchAbortController && currentFetchAbortController.signal === signal) {
@@ -469,85 +478,49 @@ if (window.studentCoachLauncherInitialized) {
         if (!panelContent) return;
         panelContent.innerHTML = ''; 
 
-        let htmlShell = '';
+        // --- STUDENT VERSION of renderAICoachData ---
+        // This will be simpler initially, focusing on student-facing text and less on tutor analysis tools.
+        // Charts, detailed breakdowns, and LLM prompt content will be different.
 
-        // AI Student Snapshot section
+        let htmlShell = '';
         htmlShell += '<div class="ai-coach-section">';
-        htmlShell += '<h4>My AI Snapshot</h4>';
+        htmlShell += '<h4>My VESPA Snapshot</h4>'; // Student-centric title
         if (data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
+            // This summary needs to be tailored for the student by the backend LLM call
             htmlShell += `<p>${data.llm_generated_insights.student_overview_summary}</p>`;
-        } else if (data.student_name && data.student_name !== "N/A") {
-            htmlShell += '<p>AI summary is being generated or is not available for you at this moment.</p>';
         } else {
-            htmlShell += '<p>Welcome! Activate the coach to see your insights.</p>';
+             htmlShell += '<p>Let\'s explore your VESPA profile together!</p>';
         }
         htmlShell += '</div>';
+        
+        // Example: Displaying current VESPA scores simply
+        if (data.vespa_profile) {
+            htmlShell += '<div class="ai-coach-section"><h5>My Current VESPA Scores</h5><ul>';
+            for (const element in data.vespa_profile) {
+                if (element !== "Overall" && data.vespa_profile[element]) {
+                    htmlShell += `<li><strong>${element}:</strong> ${data.vespa_profile[element].score_1_to_10 || 'N/A'}/10 (${data.vespa_profile[element].score_profile_text || 'N/A'})</li>`;
+                }
+            }
+            htmlShell += '</ul></div>';
+        }
 
-        // Toggle Buttons for different insight sections
-        // Using IDs that match the tutor CSS for styling consistency
-        htmlShell += `
-            <div class="ai-coach-section-toggles">
-                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false">My VESPA Insights</button>
-                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false">My Academic Insights</button>
-                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false">My Questionnaire Insights</button>
-            </div>
-        `;
-
-        // Content Divs for each toggle button - initially hidden
-        // Use unique IDs for student coach, but common class for styling
-        htmlShell += '<div id="studentCoachVespaProfileContainer" class="ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your VESPA profile insights will appear here.</p></div></div>';
-        htmlShell += '<div id="studentCoachAcademicProfileContainer" class="ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your academic insights will appear here.</p></div></div>';
-        htmlShell += '<div id="studentCoachQuestionAnalysisContainer" class="ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your questionnaire analysis will appear here.</p></div></div>';
+        // Placeholder for student-specific questionnaire insights (if applicable)
+        // htmlShell += '<div id="aiCoachQuestionAnalysisContainer" class="ai-coach-details-section" style="display: none;"></div>';
         
         panelContent.innerHTML = htmlShell;
 
-        // Add Chat Interface (always add the container, content conditional on student_name)
-        addChatInterface(panelContent, data.student_name || "My AI Coach");
-
-        // Add event listeners for the new toggle buttons
-        const toggleButtonsConfig = [
-            { buttonId: 'aiCoachToggleVespaButton',          containerId: 'studentCoachVespaProfileContainer',       defaultText: 'My VESPA Insights' },
-            { buttonId: 'aiCoachToggleAcademicButton',       containerId: 'studentCoachAcademicProfileContainer',    defaultText: 'My Academic Insights' },
-            { buttonId: 'aiCoachToggleQuestionButton',       containerId: 'studentCoachQuestionAnalysisContainer', defaultText: 'My Questionnaire Insights' }
-        ];
-
-        toggleButtonsConfig.forEach(config => {
-            const button = document.getElementById(config.buttonId);
-            const container = document.getElementById(config.containerId);
-
-            if (button && container) {
-                button.addEventListener('click', () => {
-                    const isVisible = container.style.display === 'block';
-                    
-                    // Hide all detail sections first
-                    document.querySelectorAll('.ai-coach-details-section').forEach(section => {
-                        section.style.display = 'none';
-                    });
-                     // Reset all button texts and ARIA states
-                    toggleButtonsConfig.forEach(btnConf => {
-                        const btn = document.getElementById(btnConf.buttonId);
-                        if (btn && btn.id !== config.buttonId) { // Don't reset the clicked button yet
-                            btn.textContent = btnConf.defaultText;
-                            btn.setAttribute('aria-expanded', 'false');
-                        }
-                    });
-
-                    if (isVisible) {
-                        container.style.display = 'none';
-                        button.textContent = config.defaultText;
-                        button.setAttribute('aria-expanded', 'false');
-                    } else {
-                        container.style.display = 'block';
-                        button.textContent = `Hide ${config.defaultText.replace('View ', '')}`;
-                        button.setAttribute('aria-expanded', 'true');
-                        // TODO: Populate these sections with actual data from `data` object later
-                        // For now, they just show placeholders.
-                        // Example: if (config.containerId === 'studentCoachVespaProfileContainer') { populateVespaSection(container, data); }
-                    }
-                });
-            }
-        });
-        logStudentCoach("Student AI Coach data rendered with toggle buttons.");
+        // Add student-centric chat interface
+        if (data.student_name && data.student_name !== "N/A") { // Or use a flag if student data is confirmed
+            addChatInterface(panelContent, "My AI Coach"); // Chat with "My AI Coach"
+        } else {
+             // Fallback if student context for chat isn't fully confirmed
+            const chatPlaceholder = document.createElement('div');
+            chatPlaceholder.id = 'aiCoachChatContainer'; // Keep ID for consistency if CSS targets it
+            chatPlaceholder.className = 'ai-coach-section';
+            chatPlaceholder.innerHTML = '<p>Chat will be available once your profile is fully loaded.</p>';
+            panelContent.appendChild(chatPlaceholder);
+        }
+        logStudentCoach("Student AI Coach data rendered.");
     }
     
     // Note: renderVespaComparisonChart, createSubjectBenchmarkScale, renderQuestionnaireDistributionChart
@@ -558,36 +531,32 @@ if (window.studentCoachLauncherInitialized) {
         const panelContent = panel ? panel.querySelector('.ai-coach-panel-content') : null;
         if (!panel || !panelContent) return;
 
-        if (!document.body.classList.contains('ai-coach-active')) { 
+        if (!document.body.classList.contains('ai-coach-active')) { // Ensure classname is consistent or namespaced
             logStudentCoach("Student AI Coach panel is not active, refresh not needed.");
             return;
         }
 
         logStudentCoach("refreshAICoachData (Student): Attempting to get student data...");
-        const studentObject3Id = await getLoggedInStudentDataForCoach(); // Now gets Object_3 ID
+        const studentObject10Id = await getLoggedInStudentDataForCoach(); 
         
-        if (studentObject3Id) {
-            // lastFetchedStudentKnackId now stores the studentObject3Id
-            if (studentObject3Id !== lastFetchedStudentKnackId || lastFetchedStudentKnackId === null) {
-                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id}. Last fetched: ${lastFetchedStudentKnackId}. Fetching data.`);
-                if (currentlyFetchingStudentKnackId !== studentObject3Id && panelContent.innerHTML.indexOf('loader') === -1 ){
-                    // panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your AI Coach...</p>';
-                     startLoadingMessageRotator(panelContent, "student"); // Use rotator
+        if (studentObject10Id) {
+            if (studentObject10Id !== lastFetchedStudentKnackId || lastFetchedStudentKnackId === null) {
+                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject10Id}. Last fetched: ${lastFetchedStudentKnackId}. Fetching data.`);
+                if (currentlyFetchingStudentKnackId !== studentObject10Id && panelContent.innerHTML.indexOf('loader') === -1 ){
+                    panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your AI Coach...</p>';
                 }
-                fetchAICoachingData(studentObject3Id); 
+                fetchAICoachingData(studentObject10Id); 
             } else {
-                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id} is same as last fetched. Data likely current.`);
-                stopLoadingMessageRotator();
+                logStudentCoach(`refreshAICoachData (Student): ID ${studentObject10Id} is same as last fetched. Data likely current.`);
                 if (panelContent && panelContent.querySelector('.loader') && !panelContent.querySelector('.ai-coach-section')) {
                     panelContent.innerHTML = '<p>Activate My AI Coach to get personalized insights!</p>';
                 }
             }
         } else {
-            logStudentCoach("refreshAICoachData (Student): Student Object_3 ID not available.");
+            logStudentCoach("refreshAICoachData (Student): Student Object_10 ID not available.");
             lastFetchedStudentKnackId = null; 
             observerLastProcessedStudentKnackId = null; 
             currentlyFetchingStudentKnackId = null;
-            stopLoadingMessageRotator();
             if (panelContent && panelContent.innerHTML.includes('loader') && !panelContent.innerHTML.includes('ai-coach-section')){
                  panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not load your profile for the AI Coach. Please ensure you are logged in and on the correct page.</p></div>';
             }
@@ -689,8 +658,7 @@ if (window.studentCoachLauncherInitialized) {
 
         async function sendChatMessage() {
             const messageText = chatInput.value.trim();
-            // lastFetchedStudentKnackId now holds student's Object_3 ID
-            if (messageText === '' || !lastFetchedStudentKnackId) return; 
+            if (messageText === '' || !lastFetchedStudentKnackId) return; // Ensure student context is there
 
             const userMessageElement = document.createElement('p');
             userMessageElement.className = 'ai-chat-message ai-chat-message-user';
@@ -717,9 +685,9 @@ if (window.studentCoachLauncherInitialized) {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        student_knack_id: lastFetchedStudentKnackId, // Send student's Object_3 ID
+                        student_knack_id: lastFetchedStudentKnackId, // Or student_object10_id
                         chat_history: chatHistory,
-                        current_user_message: originalInput, 
+                        current_user_message: originalInput, // current_tutor_message becomes current_user_message
                         // Backend needs to know this is a student context for different prompting
                         context_type: 'student' 
                     }),
@@ -755,7 +723,7 @@ if (window.studentCoachLauncherInitialized) {
     }
 
     // Placeholder for student-specific loading messages if different from tutor's
-    function startLoadingMessageRotator(panelContentElement, context = "student") { // Default context to student
+    function startLoadingMessageRotator(panelContentElement, context = "tutor") {
         if (loadingMessageIntervalId) clearInterval(loadingMessageIntervalId);
         if (!panelContentElement) return;
 
