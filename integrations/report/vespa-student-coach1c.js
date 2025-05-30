@@ -54,21 +54,36 @@ if (window.studentCoachLauncherInitialized) {
 
     // Function to check if we are on the correct student coach page
     function isStudentCoachPageView() {
-        if (!STUDENT_COACH_LAUNCHER_CONFIG) return false;
-        
-        // Defensive check for Knack.scene
-        if (typeof Knack === 'undefined' || typeof Knack.scene === 'undefined' || Knack.scene === null) {
-            logStudentCoach("isStudentCoachPageView: Knack.scene object is not available yet.");
+        if (!STUDENT_COACH_LAUNCHER_CONFIG || !STUDENT_COACH_LAUNCHER_CONFIG.sceneKey || !STUDENT_COACH_LAUNCHER_CONFIG.elementSelector) {
+            logStudentCoach("isStudentCoachPageView: Config not fully available.");
             return false;
         }
 
-        // Check if the specific view for the student coach is present on the configured scene
-        const targetView = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
-        if (Knack.scene.key === STUDENT_COACH_LAUNCHER_CONFIG.sceneKey && targetView) {
-            logStudentCoach(`Student Coach page view confirmed: Scene '${Knack.scene.key}', Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found.`);
-            return true;
+        // WorkingBridge.js has already determined this script should run for the scene specified 
+        // in STUDENT_COACH_LAUNCHER_CONFIG.sceneKey.
+        // So, we primarily check if the target element (where the button should go) exists.
+        const targetViewElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
+
+        if (targetViewElement) {
+            // For robustness, we can log Knack's current scene if available, but the presence
+            // of targetViewElement is the key indicator since WorkingBridge made the call to load this script.
+            if (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key) {
+                if (Knack.scene.key === STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
+                    logStudentCoach(`Student Coach page view confirmed: Config Scene '${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}', Knack Scene '${Knack.scene.key}', Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found.`);
+                } else {
+                    // This is an edge case: element found, but Knack.scene.key reports a different scene.
+                    // This might happen during very rapid Knack view/scene transitions.
+                    // We'll trust that WorkingBridge loaded us for the correct configured scene.
+                    logStudentCoach(`Student Coach page view: Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found. Knack.scene.key ('${Knack.scene.key}') currently differs from config scene ('${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}'). Proceeding based on element presence.`);
+                }
+            } else {
+                // Knack.scene not fully available yet, but the target element exists.
+                logStudentCoach(`Student Coach page view confirmed: Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found (Knack.scene not checked/fully ready).`);
+            }
+            return true; // Element found, proceed.
         }
-        // logStudentCoach("Not on Student Coach page view.");
+        
+        // logStudentCoach("isStudentCoachPageView: Target element for button not found.");
         return false;
     }
 
