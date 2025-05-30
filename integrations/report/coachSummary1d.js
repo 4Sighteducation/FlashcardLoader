@@ -96,6 +96,8 @@ function initializeCoachSummaryApp() {
     }
     targetElement.innerHTML = '';
 
+    let currentPageNumber = 1; // Variable to store the current page
+
     async function makeKnackApiRequest(urlPath, filters = null, page = 1, rowsPerPage = 1000) {
         const headers = {
             'X-Knack-Application-Id': knackAppId,
@@ -269,8 +271,16 @@ function initializeCoachSummaryApp() {
         if (resetButton) resetButton.addEventListener('click', resetFiltersAndRefreshData);
     }
 
-    async function applyStudentFiltersAndRefreshData() {
+    async function applyStudentFiltersAndRefreshData(navigateToPage = null) {
         if (debugMode) console.log('[CoachSummaryApp] Applying filters and refreshing data...');
+        
+        if (navigateToPage !== null) {
+            currentPageNumber = navigateToPage;
+        } else {
+            // Reset to page 1 if it's a new filter application, not a pagination click
+            currentPageNumber = 1; 
+        }
+
         const filters = {
             studentLevel: document.getElementById('filterStudentLevel').value,
             studentName: document.getElementById('filterStudentName').value,
@@ -293,14 +303,20 @@ function initializeCoachSummaryApp() {
                  window.VESPA_APPS.coachSummaryRoleRecordIdsMap = await getRoleRecordIds(userEmail, userRoles);
             }
             
-            const studentRecords = await fetchConnectedStudents(window.VESPA_APPS.coachSummaryRoleRecordIdsMap, filters);
-            if (debugMode) console.log('[CoachSummaryApp] Fetched student records with filters:', studentRecords);
-            renderSummaryView(studentRecords); // This will replace the 'Loading...' message
+            const { records: studentRecords, currentPage, totalPages } = await fetchConnectedStudents(
+                window.VESPA_APPS.coachSummaryRoleRecordIdsMap, 
+                filters, 
+                currentPageNumber
+            );
+
+            currentPageNumber = currentPage; // Update current page based on response
+
+            if (debugMode) console.log(`[CoachSummaryApp] Fetched student records (Page: ${currentPage}/${totalPages}):`, studentRecords);
+            renderSummaryView(studentRecords, currentPage, totalPages); // Pass pagination info
         } catch (error) {
             const summaryContainer = document.getElementById('summaryReportContainer');
             if(summaryContainer) {
-                 //Instead of directly setting innerHTML, let renderSummaryView handle error display
-                renderSummaryView([]); // Pass empty array to indicate error or no data after error
+                renderSummaryView([], 1, 0); // Error state with no pages
             }
             console.error('[CoachSummaryApp] Error applying filters and refreshing data:', error);
         }
@@ -311,10 +327,11 @@ function initializeCoachSummaryApp() {
         document.getElementById('filterStudentLevel').value = '';
         document.getElementById('filterStudentName').value = '';
         document.getElementById('filterGoalDeadline').value = '';
-        await applyStudentFiltersAndRefreshData(); // Re-fetch and render with cleared filters
+        currentPageNumber = 1; // Reset page number on filter reset
+        await applyStudentFiltersAndRefreshData(); // This will use currentPageNumber = 1
     }
 
-    function renderSummaryView(studentRecords) {
+    function renderSummaryView(studentData, currentPage = 1, totalPages = 0) {
         const summaryContainer = document.getElementById('summaryReportContainer');
         if (!summaryContainer) {
             console.error("[CoachSummaryApp] Summary container 'summaryReportContainer' not found. Cannot render.");
@@ -322,10 +339,13 @@ function initializeCoachSummaryApp() {
         }
         summaryContainer.innerHTML = ''; // Clear previous content
 
-        if (studentRecords === null) { // Loading state
+        if (studentData === null) { // Loading state
             summaryContainer.innerHTML = '<div class="loading-spinner"></div><p class="status-message">Loading student data...</p>';
             return;
         }
+
+        // studentData is now the records array from the paginated response
+        const studentRecords = studentData; 
 
         if (!studentRecords || studentRecords.length === 0) {
             summaryContainer.innerHTML = '<p class="status-message">No students found matching your criteria or connected to your account.</p>';
@@ -409,6 +429,28 @@ function initializeCoachSummaryApp() {
             });
             summaryHtml += '</div>';
             summaryContainer.insertAdjacentHTML('beforeend', summaryHtml);
+        }
+
+        // Render pagination controls
+        if (totalPages > 0) { // Only show pagination if there are pages
+            let paginationHtml = '<div class="pagination-controls no-print">';
+            if (currentPage > 1) {
+                paginationHtml += `<button class="action-button pagination-button" data-page="${currentPage - 1}">Previous</button>`;
+            }
+            paginationHtml += `<span class="page-info">Page ${currentPage} of ${totalPages}</span>`;
+            if (currentPage < totalPages) {
+                paginationHtml += `<button class="action-button pagination-button" data-page="${currentPage + 1}">Next</button>`;
+            }
+            paginationHtml += '</div>';
+            summaryContainer.insertAdjacentHTML('beforeend', paginationHtml);
+
+            // Add event listeners to new pagination buttons
+            document.querySelectorAll('.pagination-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const page = parseInt(event.target.dataset.page);
+                    applyStudentFiltersAndRefreshData(page);
+                });
+            });
         }
     }
 
@@ -595,6 +637,16 @@ function initializeCoachSummaryApp() {
             .vespa-scores-table {
                 margin-bottom: 15px;
             }
+            .pagination-controls {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 15px 0;
+                gap: 10px;
+            }
+            .pagination-controls .page-info {
+                font-weight: bold;
+            }
         `;
     }
 
@@ -615,34 +667,25 @@ function initializeCoachSummaryApp() {
 
         renderFilterUI();
 
-        // Show initial loading state for the summary view
-        const summaryContainer = document.getElementById('summaryReportContainer');
-        if (summaryContainer) { // Check if it exists, though renderFilterUI might not have created it yet
-             // renderSummaryView(null); // Call this AFTER summaryReportContainer is guaranteed to be on the page.
-        } else {
-            // If summaryReportContainer is not yet on the page (e.g. because renderFilterUI hasn't added it, or it's part of renderSummaryView's job)
-            // we might need to ensure a placeholder is there or that renderSummaryView creates it.
-            // For now, let's assume renderSummaryView will handle creating/finding the container if it should be called here.
-            // Let's create the container if it doesn't exist before calling renderSummaryView(null)
-            let container = document.getElementById('summaryReportContainer');
-            if (!container) {
-                targetElement.insertAdjacentHTML('beforeend', '<div id="summaryReportContainer"></div>');
-            }
-            renderSummaryView(null); // Now show loading in the newly created/verified container
+        let container = document.getElementById('summaryReportContainer');
+        if (!container) {
+            targetElement.insertAdjacentHTML('beforeend', '<div id="summaryReportContainer"></div>');
         }
+        renderSummaryView(null); 
 
         try {
             const roleRecordIdsMap = await getRoleRecordIds(userEmail, userRoles);
-            window.VESPA_APPS.coachSummaryRoleRecordIdsMap = roleRecordIdsMap; // Store for use by filters
+            window.VESPA_APPS.coachSummaryRoleRecordIdsMap = roleRecordIdsMap; 
             if (debugMode) console.log('[CoachSummaryApp] Map of role record IDs for connections:', roleRecordIdsMap);
             
-            // Initial fetch without UI filters (or pass empty filters object)
-            const studentRecords = await fetchConnectedStudents(roleRecordIdsMap, {}); 
-            if (debugMode) console.log('[CoachSummaryApp] Fetched student records:', studentRecords);
-            renderSummaryView(studentRecords);
+            currentPageNumber = 1; // Ensure it starts at 1 for initial load
+            const { records: studentRecords, currentPage, totalPages } = await fetchConnectedStudents(roleRecordIdsMap, {}, currentPageNumber);
+            currentPageNumber = currentPage; // Update based on initial fetch
+
+            if (debugMode) console.log(`[CoachSummaryApp] Fetched student records (Page: ${currentPage}/${totalPages}):`, studentRecords);
+            renderSummaryView(studentRecords, currentPage, totalPages);
         } catch (error) {
-            // targetElement.innerHTML = '<p class="error-message">Error loading coaching summary data.</p>'; // Old error handling
-            renderSummaryView([]); // Use new way to display error/no data state
+            renderSummaryView([], 1, 0); 
             console.error('[CoachSummaryApp] Error in main execution flow:', error);
         }
     }
@@ -651,4 +694,3 @@ function initializeCoachSummaryApp() {
 }
 
 window.initializeCoachSummaryApp = initializeCoachSummaryApp;
-
