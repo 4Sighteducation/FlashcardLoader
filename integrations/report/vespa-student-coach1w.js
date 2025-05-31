@@ -220,7 +220,7 @@ if (window.studentCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1c.css'; // UPDATED CSS LINK
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1d.css'; // UPDATED CSS LINK
         
         // Dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -313,8 +313,8 @@ if (window.studentCoachLauncherInitialized) {
             if (!isResizing) return;
             const diff = startX - e.clientX;
             // Use student-specific min/max width CSS variables
-            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-min-width'), 10) || 280;
-            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-max-width'), 10) || 600;
+            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-min-width'), 10) || 350;
+            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-max-width'), 10) || 1200;
             const newWidth = Math.max(minW, Math.min(maxW, startWidth + diff));
             
             document.documentElement.style.setProperty('--student-coach-panel-width', newWidth + 'px');
@@ -349,8 +349,8 @@ if (window.studentCoachLauncherInitialized) {
         const savedWidth = localStorage.getItem('studentCoachPanelWidth');
         if (savedWidth) {
             const width = parseInt(savedWidth, 10);
-            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-min-width'), 10) || 280;
-            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-max-width'), 10) || 600;
+            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-min-width'), 10) || 350;
+            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-max-width'), 10) || 1200;
             if (!isNaN(width) && width >= minW && width <= maxW) {
                 document.documentElement.style.setProperty('--student-coach-panel-width', width + 'px');
                 panel.style.width = width + 'px';
