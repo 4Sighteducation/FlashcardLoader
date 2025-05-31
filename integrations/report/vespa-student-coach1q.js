@@ -558,6 +558,16 @@ if (window.studentCoachLauncherInitialized) {
         htmlShell += '<h4>My AI Snapshot</h4>';
         if (data && data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
             htmlShell += `<p>${data.llm_generated_insights.student_overview_summary}</p>`;
+            
+            // Add suggested goals if available
+            if (data.llm_generated_insights.suggested_student_goals && data.llm_generated_insights.suggested_student_goals.length > 0) {
+                htmlShell += '<h5 style="margin-top: 15px;">My Suggested Goals:</h5>';
+                htmlShell += '<ul>';
+                data.llm_generated_insights.suggested_student_goals.forEach(goal => {
+                    htmlShell += `<li>${goal}</li>`;
+                });
+                htmlShell += '</ul>';
+            }
         } else if (data && data.student_name && data.student_name !== "N/A") {
             htmlShell += '<p>Your AI summary is being prepared. Please check back shortly!</p>';
         } else if (!data) { 
@@ -696,11 +706,11 @@ if (window.studentCoachLauncherInitialized) {
             ensureChartJsLoaded(() => { 
                 if (data.vespa_profile) { 
                     renderVespaComparisonChart(data.vespa_profile, data.school_vespa_averages); 
-                    // Add VESPA insights text if available (e.g. from LLM, if that key exists)
-                    // Example: if (data.llm_generated_insights && data.llm_generated_insights.vespa_interpretation) {
-                    //    const vespaInsightsTarget = document.getElementById('vespa-insights-text-content');
-                    //    if(vespaInsightsTarget) vespaInsightsTarget.innerHTML = `<p>${data.llm_generated_insights.vespa_interpretation}</p>`;
-                    // }
+                    // Add VESPA insights text if available from LLM
+                    const vespaTextDiv = document.getElementById('vespa-insights-text-content');
+                    if (vespaTextDiv && data.llm_generated_insights && data.llm_generated_insights.chart_comparative_insights) {
+                        vespaTextDiv.innerHTML = `<h5>Understanding My VESPA Scores</h5><p>${data.llm_generated_insights.chart_comparative_insights}</p>`;
+                    }
                 }
                 // Placeholder for academic chart/scales
                 const academicContainer = document.getElementById('studentCoachAcademicProfileContainer');
@@ -708,9 +718,23 @@ if (window.studentCoachLauncherInitialized) {
                     let academicHtml = '';
                     const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
                     if (data.academic_megs) { // Display overall MEGs if available
-                        academicHtml += '<h5>Overall Academic Benchmarks (MEGs)</h5>';
-                        academicHtml += `<p>Prior Attainment Score: ${data.academic_megs.prior_attainment_score || 'N/A'}</p>`;
-                        // Add more MEG details if relevant for students
+                        academicHtml += '<div class="ai-coach-section"><h5>Overall Academic Benchmarks (MEGs)</h5>';
+                        academicHtml += `<p><strong>Prior Attainment Score:</strong> ${data.academic_megs.prior_attainment_score || 'N/A'}</p>`;
+                        
+                        // Check if A-Level MEGs are available
+                        const hasALevelMegs = ['aLevel_meg_grade_60th', 'aLevel_meg_grade_75th', 'aLevel_meg_grade_90th', 'aLevel_meg_grade_100th']
+                            .some(key => data.academic_megs[key] && data.academic_megs[key] !== 'N/A');
+                        
+                        if (hasALevelMegs) {
+                            academicHtml += `<h6>My A-Level Minimum Expected Grades (MEGs):</h6>
+                                <ul>
+                                    <li><strong>Top 40% (60th):</strong> <strong>${data.academic_megs.aLevel_meg_grade_60th || 'N/A'}</strong></li>
+                                    <li><strong>Top 25% (75th - Standard MEG):</strong> <strong>${data.academic_megs.aLevel_meg_grade_75th || 'N/A'}</strong></li>
+                                    <li><strong>Top 10% (90th):</strong> <strong>${data.academic_megs.aLevel_meg_grade_90th || 'N/A'}</strong></li>
+                                    <li><strong>Top 1% (100th):</strong> <strong>${data.academic_megs.aLevel_meg_grade_100th || 'N/A'}</strong></li>
+                                </ul>`;
+                        }
+                        academicHtml += '</div>';
                     }
                     academicHtml += '<h5>My Subject Benchmarks</h5>';
                     if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))){
@@ -729,20 +753,67 @@ if (window.studentCoachLauncherInitialized) {
                     } else {
                          academicHtml += '<p>My detailed academic subject benchmarks are not yet available.</p>';
                     }
+                    
+                    // Add LLM academic benchmark analysis if available
+                    if (data.llm_generated_insights && data.llm_generated_insights.academic_benchmark_analysis) {
+                        academicHtml += `<div class="ai-coach-section"><h5>AI Analysis of My Academic Performance</h5>
+                            <p>${data.llm_generated_insights.academic_benchmark_analysis}</p></div>`;
+                    }
+                    
                     academicContainer.innerHTML = academicHtml;
                 }
 
-                // Placeholder for questionnaire chart/analysis
+                // Questionnaire chart/analysis with highlights
                 const questionnaireContainer = document.getElementById('studentCoachQuestionAnalysisContainer');
-                if (questionnaireContainer && data.all_scored_questionnaire_statements) {
-                    renderQuestionnaireDistributionChart(data.all_scored_questionnaire_statements); // New function
-                    if (data.llm_generated_insights && data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary) {
-                         questionnaireContainer.innerHTML += `<div class="ai-coach-section"><h5>Reflections on My Questionnaire</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p></div>`;
-                    } else {
-                        // questionnaireContainer.innerHTML += '<div class="ai-coach-section"><p>Further insights on your questionnaire will appear here.</p></div>';
+                if (questionnaireContainer) {
+                    let questionnaireHtml = '';
+                    
+                    // Add top/bottom highlights if available
+                    if (data.object29_question_highlights) {
+                        const highlights = data.object29_question_highlights;
+                        questionnaireHtml += '<div class="ai-coach-section"><h5>My Questionnaire Response Highlights</h5>';
+                        questionnaireHtml += '<p style="font-size:0.9em; margin-bottom:10px;"><em>(Response Scale: 1=Strongly Disagree, 5=Strongly Agree)</em></p>';
+                        
+                        if (highlights.top_3 && highlights.top_3.length > 0) {
+                            questionnaireHtml += '<h6>Strongest Agreement (Top 3):</h6><ul>';
+                            highlights.top_3.forEach(q => {
+                                questionnaireHtml += `<li>"${q.question_text}" <br><strong>Score: ${q.score}/5</strong> (${q.vespa_category})</li>`;
+                            });
+                            questionnaireHtml += '</ul>';
+                        }
+                        
+                        if (highlights.bottom_3 && highlights.bottom_3.length > 0) {
+                            questionnaireHtml += '<h6 style="margin-top:15px;">Areas for Growth (Bottom 3):</h6><ul>';
+                            highlights.bottom_3.forEach(q => {
+                                questionnaireHtml += `<li>"${q.question_text}" <br><strong>Score: ${q.score}/5</strong> (${q.vespa_category})</li>`;
+                            });
+                            questionnaireHtml += '</ul>';
+                        }
+                        questionnaireHtml += '</div>';
                     }
-                } else if (questionnaireContainer) {
-                     questionnaireContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachQuestionnaireChartPlaceholder"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area</p></div><p>My questionnaire analysis will appear here when available.</p></div>';
+                    
+                    // Set the HTML first
+                    questionnaireContainer.innerHTML = questionnaireHtml;
+                    
+                    // Add chart container
+                    const chartDiv = document.createElement('div');
+                    chartDiv.id = 'studentQuestionnaireDistributionChartContainer';
+                    chartDiv.style.height = '250px';
+                    chartDiv.style.marginBottom = '15px';
+                    questionnaireContainer.appendChild(chartDiv);
+                    
+                    // Render chart if data is available
+                    if (data.all_scored_questionnaire_statements) {
+                        renderQuestionnaireDistributionChart(data.all_scored_questionnaire_statements);
+                    }
+                    
+                    // Add LLM reflections
+                    if (data.llm_generated_insights && data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary) {
+                        const reflectionDiv = document.createElement('div');
+                        reflectionDiv.className = 'ai-coach-section';
+                        reflectionDiv.innerHTML = `<h5>Reflections on My Questionnaire</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p>`;
+                        questionnaireContainer.appendChild(reflectionDiv);
+                    }
                 }
             });
         } 
