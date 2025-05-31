@@ -646,33 +646,61 @@ if (window.studentCoachLauncherInitialized) {
         });
         logStudentCoach("Student AI Coach UI rendered and event listeners attached (or attempted). Final panelContent innerHTML length: ", panelContent.innerHTML.length);
 
-        // --- Prepare containers for charts BEFORE calling ensureChartJsLoaded ---
-        const vespaChartParentContainer = document.getElementById('studentCoachVespaProfileContainer');
-        if (vespaChartParentContainer) {
-            vespaChartParentContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachVespaChartPlaceholder"><div id="studentVespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area</p></div><p>My VESPA profile insights will appear here.</p></div>';
-        } else {
-            logStudentCoach("Error: studentCoachVespaProfileContainer not found before chart prep.");
-        }
-
-        const questionnaireChartParentContainer = document.getElementById('studentCoachQuestionAnalysisContainer');
-        if (questionnaireChartParentContainer) {
-            questionnaireChartParentContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachQuestionnaireChartPlaceholder"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area</p></div><p>My questionnaire analysis will appear here.</p></div>';
-        } else {
-            logStudentCoach("Error: studentCoachQuestionAnalysisContainer not found before chart prep.");
-        }
-
-        const academicContainerForContent = document.getElementById('studentCoachAcademicProfileContainer');
-        if (academicContainerForContent) {
-            academicContainerForContent.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>';
-        } else {
-            logStudentCoach("Error: studentCoachAcademicProfileContainer not found before content prep.");
-        }
-
         // Populate dynamic content sections if data is available
         if (data && data.student_name && data.student_name !== "N/A") {
-            ensureChartJsLoaded(() => { // Ensure Chart.js is loaded before trying to render charts
+            // Ensure parent containers for charts and other content exist and are prepared
+            const vespaSection = document.getElementById('studentCoachVespaProfileContainer');
+            if (vespaSection) {
+                vespaSection.innerHTML = ''; // Clear previous content
+                const vespaChartDiv = document.createElement('div');
+                vespaChartDiv.id = 'studentVespaComparisonChartContainer';
+                vespaChartDiv.style.height = '250px';
+                vespaChartDiv.style.marginBottom = '15px';
+                // Placeholder content, will be replaced by chart or error message
+                vespaChartDiv.innerHTML = '<p style="text-align:center;">VESPA Chart Area</p>'; 
+                vespaSection.appendChild(vespaChartDiv);
+                const vespaTextDiv = document.createElement('div');
+                vespaTextDiv.className = 'ai-coach-section'; // For consistent styling of text content
+                vespaTextDiv.id = 'vespa-insights-text-content'; // ID for specific content later
+                // vespaTextDiv.innerHTML = '<p>Your VESPA profile insights will appear here.</p>'; // Initial placeholder text
+                vespaSection.appendChild(vespaTextDiv);
+            } else {
+                logStudentCoach("Error: studentCoachVespaProfileContainer not found before preparing for VESPA content.");
+            }
+
+            const academicSection = document.getElementById('studentCoachAcademicProfileContainer');
+            if (academicSection) {
+                academicSection.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>'; // Clear and set default
+            } else {
+                logStudentCoach("Error: studentCoachAcademicProfileContainer not found before preparing for Academic content.");
+            }
+
+            const questionnaireSection = document.getElementById('studentCoachQuestionAnalysisContainer');
+            if (questionnaireSection) {
+                questionnaireSection.innerHTML = ''; // Clear previous content
+                const questionnaireChartDiv = document.createElement('div');
+                questionnaireChartDiv.id = 'studentQuestionnaireDistributionChartContainer';
+                questionnaireChartDiv.style.height = '250px';
+                questionnaireChartDiv.style.marginBottom = '15px';
+                questionnaireChartDiv.innerHTML = '<p style="text-align:center;">Questionnaire Chart Area</p>';
+                questionnaireSection.appendChild(questionnaireChartDiv);
+                const questionnaireTextDiv = document.createElement('div');
+                questionnaireTextDiv.className = 'ai-coach-section';
+                questionnaireTextDiv.id = 'questionnaire-insights-text-content';
+                // questionnaireTextDiv.innerHTML = '<p>Your questionnaire analysis will appear here.</p>';
+                questionnaireSection.appendChild(questionnaireTextDiv);
+            } else {
+                logStudentCoach("Error: studentCoachQuestionAnalysisContainer not found before preparing for Questionnaire content.");
+            }
+
+            ensureChartJsLoaded(() => { 
                 if (data.vespa_profile) { 
-                    renderVespaComparisonChart(data.vespa_profile, data.school_vespa_averages); // New function to render chart
+                    renderVespaComparisonChart(data.vespa_profile, data.school_vespa_averages); 
+                    // Add VESPA insights text if available (e.g. from LLM, if that key exists)
+                    // Example: if (data.llm_generated_insights && data.llm_generated_insights.vespa_interpretation) {
+                    //    const vespaInsightsTarget = document.getElementById('vespa-insights-text-content');
+                    //    if(vespaInsightsTarget) vespaInsightsTarget.innerHTML = `<p>${data.llm_generated_insights.vespa_interpretation}</p>`;
+                    // }
                 }
                 // Placeholder for academic chart/scales
                 const academicContainer = document.getElementById('studentCoachAcademicProfileContainer');
@@ -718,24 +746,21 @@ if (window.studentCoachLauncherInitialized) {
                 }
             });
         } 
-        // The following 'else' block is now largely handled by the pre-population step above,
-        // but can be kept as a fallback if data.student_name is N/A
         else { 
             // Data not fully available, ensure placeholders are in the content divs
-            // These were already populated above, so this is mostly a fallback or no-op if already done.
             const vespaContainer = document.getElementById('studentCoachVespaProfileContainer');
             if (vespaContainer && !vespaContainer.querySelector('#studentVespaComparisonChartContainer')) {
-                 vespaContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachVespaChartPlaceholder"><div id="studentVespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area</p></div><p>My VESPA profile insights will appear here.</p></div>';
+                 vespaContainer.innerHTML = '<div class="ai-coach-section"><div id="studentVespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area (No Data)</p></div><p>My VESPA profile insights will appear here.</p></div>';
             }
             
             const academicContainer = document.getElementById('studentCoachAcademicProfileContainer');
-            if (academicContainer && !academicContainer.querySelector('.subject-benchmark-item')) { // check if content already there
+            if (academicContainer && academicContainer.innerHTML.trim() === '') { 
                 academicContainer.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>';
             }
 
             const questionnaireContainer = document.getElementById('studentCoachQuestionAnalysisContainer');
             if (questionnaireContainer && !questionnaireContainer.querySelector('#studentQuestionnaireDistributionChartContainer')) {
-                 questionnaireContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachQuestionnaireChartPlaceholder"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area</p></div><p>My questionnaire analysis will appear here.</p></div>';
+                 questionnaireContainer.innerHTML = '<div class="ai-coach-section"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area (No Data)</p></div><p>My questionnaire analysis will appear here.</p></div>';
             }
         }
     }
