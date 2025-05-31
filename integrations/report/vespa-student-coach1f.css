@@ -510,7 +510,17 @@ body.ai-coach-active #studentCoachSlidePanel {
     align-items: center;
 }
 
-#studentCoachChatStats #studentCoachLikedCount { color: var(--danger-color); }
+#studentCoachChatStats #studentCoachLikedCount {
+    color: var(--danger-color);
+    display: inline-flex; /* Use flex to align icon and number */
+    align-items: center;
+    font-weight: 500;
+}
+
+#studentCoachChatStats #studentCoachLikedCount .like-icon {
+    margin-right: 4px;
+    font-size: 1.1em; /* Slightly larger heart */
+}
 
 #studentCoachChatDisplay { 
     flex: 1; /* Grow to fill available space */
@@ -550,6 +560,7 @@ body.ai-coach-active #studentCoachSlidePanel {
     border: 1px solid var(--border-color-light);
     margin-right: auto; /* Align to left */
     border-bottom-left-radius: var(--border-radius-sm); /* Speech bubble tail effect */
+    position: relative; /* Needed for absolute positioning of like button */
 }
 
 .ai-chat-message em { 
@@ -965,4 +976,46 @@ body.ai-coach-resizing * {
 /* Styles for chat stats (counts, clear button) if they become visible */
 #studentCoachChatStats #studentCoachClearOldChatsBtn {
     /* Default to display:none is handled inline in JS, but can be here too */
+}
+
+/* Style for the Like button on AI messages */
+.ai-chat-like-btn {
+    position: absolute;
+    bottom: 6px; /* Adjust as needed */
+    right: 8px;  /* Adjust as needed */
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: inline-flex; /* Helps with icon alignment */
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.ai-chat-like-btn:hover {
+    background-color: rgba(0,0,0,0.05); /* Subtle hover */
+}
+
+.ai-chat-like-btn .like-icon {
+    font-size: 1.2em; /* Adjust icon size */
+    line-height: 1;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.ai-chat-like-btn .like-icon.unliked {
+    color: var(--text-secondary-color); /* Grey for unliked */
+}
+.ai-chat-like-btn .like-icon.unliked:hover {
+    color: var(--danger-color); /* Red on hover for unliked */
+    transform: scale(1.1);
+}
+
+.ai-chat-like-btn .like-icon.liked {
+    color: var(--danger-color); /* Red for liked */
+    transform: scale(1.1); /* Slightly larger when liked */
+}
+.ai-chat-like-btn .like-icon.liked:hover {
+    transform: scale(1.2); /* Grow a bit more on hover when liked */
 }
