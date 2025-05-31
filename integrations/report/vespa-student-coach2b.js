@@ -220,7 +220,7 @@ if (window.studentCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1e.css'; // UPDATED CSS LINK
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1f.css'; // UPDATED CSS LINK
         
         // Dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -1048,19 +1048,19 @@ if (window.studentCoachLauncherInitialized) {
             <div id="studentCoachChatStats" style="font-size: 0.85em; color: #666; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <span id="studentCoachChatCount">Loading chat...</span>
                 <div style="display: flex; gap: 10px;">
-                    <span id="studentCoachLikedCount" style="color: #e74c3c; display:none;"> <!-- Hidden for now, needs backend -->
-                        ❤️ <span id="studentLikedCountNumber">0</span> liked
+                    <span id="studentCoachLikedCount" style="color: #e74c3c; display: inline-flex; align-items:center;"> <!-- MADE VISIBLE -->
+                        <span class="like-icon">❤️</span> <span id="studentLikedCountNumber">0</span> liked
                     </span>
-                    <button id="studentCoachClearOldChatsBtn" class="p-button p-component p-button-sm p-button-text" style="display:none;">Clear Old Chats</button> <!-- Hidden for now, needs backend -->
+                    <button id="studentCoachClearOldChatsBtn" class="p-button p-component p-button-sm p-button-text" style="display:none;">Clear Old Chats</button>
                 </div>
             </div>
-            <div id="studentCoachChatDisplay" style="flex-grow:1; min-height: 200px; /* max-height: 400px; - Let flexbox manage this */ overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom:10px; background:#fff;">
-                <p class="ai-chat-message ai-chat-message-bot"><em>${chatWithTitle}:</em> Hello! I'm here to help you explore your VESPA profile. What's on your mind?</p>
+            <div id="studentCoachChatDisplay" style="flex-grow:1; min-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom:10px; background:#fff;">
+                <p class="ai-chat-message ai-chat-message-bot" data-message-id="initial-bot-message"><em>${chatWithTitle}:</em> Hello! I'm here to help you explore your VESPA profile. What's on your mind?</p>
             </div>
             <div style="margin: 10px 0;">
                  <button id="studentCoachProblemButton" class="p-button p-component" style="width:100%; font-size:0.9em;">🤔 What area to focus on?</button>
             </div>
-            <div style="display: flex; gap: 10px; margin-top:auto;"> <!-- margin-top:auto to push to bottom of flex container -->
+            <div style="display: flex; gap: 10px; margin-top:auto;"> 
                 <input type="text" id="studentCoachChatInput" placeholder="Ask me anything about VESPA..." style="flex-grow:1; padding:10px; border-radius:4px; border:1px solid #ccc;">
                 <button id="studentCoachChatSendButton" class="p-button p-component">Send</button>
             </div>
@@ -1074,8 +1074,8 @@ if (window.studentCoachLauncherInitialized) {
         const thinkingIndicator = document.getElementById('studentCoachChatThinkingIndicator');
         const problemButton = document.getElementById('studentCoachProblemButton');
         const chatCountElement = document.getElementById('studentCoachChatCount');
-        // const likedCountNumberElement = document.getElementById('studentLikedCountNumber'); // For future use with backend
-        // const clearOldChatsBtn = document.getElementById('studentCoachClearOldChatsBtn'); // For future use with backend
+        const likedCountNumberElement = document.getElementById('studentLikedCountNumber'); 
+        // const clearOldChatsBtn = document.getElementById('studentCoachClearOldChatsBtn');
         
         if (problemButton) {
             problemButton.addEventListener('click', () => {
@@ -1083,11 +1083,31 @@ if (window.studentCoachLauncherInitialized) {
             });
         }
         
-        // loadStudentChatHistory(); // Placeholder: This will require a new backend endpoint
+        // Function to create and add like button to a message element
+        function addLikeButtonToMessage(messageElement, messageId, isLikedInitially) {
+            if (!messageId || messageElement.querySelector('.ai-chat-like-btn')) return; // Don't add if no ID or button exists
+
+            const likeButton = document.createElement('button');
+            likeButton.className = 'ai-chat-like-btn';
+            likeButton.setAttribute('aria-label', isLikedInitially ? 'Unlike message' : 'Like message');
+            likeButton.innerHTML = `<span class="like-icon ${isLikedInitially ? 'liked' : 'unliked'}">❤️</span>`; // Heart emoji
+            
+            likeButton.addEventListener('click', () => handleLikeButtonClick(messageId, likeButton, messageElement));
+            messageElement.appendChild(likeButton);
+        }
+
+        // Add like button to the initial bot message (if it should be likeable)
+        const initialBotMsgElement = chatDisplay.querySelector('[data-message-id="initial-bot-message"]');
+        if (initialBotMsgElement) {
+            // For initial message, we don't have a Knack ID, so liking won't persist unless we create one for it.
+            // For now, let's assume initial messages are not likeable or handle differently.
+            // addLikeButtonToMessage(initialBotMsgElement, 'initial-bot-message', false);
+        }
+        
+        loadStudentChatHistory();
 
         async function sendChatMessage() {
             const messageText = chatInput.value.trim();
-            // lastFetchedStudentKnackId now holds student's Object_3 ID
             if (messageText === '' || !lastFetchedStudentKnackId) return; 
 
             const userMessageElement = document.createElement('p');
@@ -1106,7 +1126,7 @@ if (window.studentCoachLauncherInitialized) {
                 .filter(el => el !== userMessageElement && el.id !== 'studentCoachTempInlineThinkingMessage') // Exclude current input and any temporary thinking message
                 .map(el => ({
                     role: el.classList.contains('ai-chat-message-bot') ? 'assistant' : 'user',
-                    content: el.textContent.replace(/^(My AI Coach:|You:)\s*/, '') // Strip prefix for history
+                    content: el.textContent.replace(/^(My AI Coach:|You:|${chatWithTitle}:)\s*/, '') // Strip prefix for history
                 }));
             
             // Add inline thinking message (similar to tutor coach)
@@ -1139,20 +1159,12 @@ if (window.studentCoachLauncherInitialized) {
 
                 const botMessageElement = document.createElement('p');
                 botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
-                botMessageElement.setAttribute('data-role', 'assistant'); // For potential history reconstruction
-                botMessageElement.style.position = 'relative'; // For potential like button positioning
+                botMessageElement.setAttribute('data-message-id', data.ai_message_knack_id || `bot-${Date.now()}`); // Use Knack ID if available
                 
-                // Process the AI response to make activity references clickable (like tutor coach)
                 let processedResponse = data.ai_response;
-                const suggestedActivities = data.suggested_activities_in_chat || []; // Expect this from student backend
-
-                // Create a map of activity names to their data for easy lookup
-                // const activityMap = {};
-                // suggestedActivities.forEach(activity => { activityMap[activity.name] = activity; });
+                const suggestedActivities = data.suggested_activities_in_chat || [];
                 
-                // Replace activity mentions with clickable links (similar logic to tutor coach)
                 suggestedActivities.forEach(activity => {
-                    // Simpler regex for student version for now, can be refined
                     const activityPattern = new RegExp(activity.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); // Escape name for regex
                     processedResponse = processedResponse.replace(activityPattern, 
                         // Using student-coach-activity-link class for styling
@@ -1162,13 +1174,10 @@ if (window.studentCoachLauncherInitialized) {
                 botMessageElement.innerHTML = `<em>${chatWithTitle}:</em> ${processedResponse}`;
                 chatDisplay.appendChild(botMessageElement);
 
-                // Add like button if backend provides ID (placeholder for now)
                 if (data.ai_message_knack_id) {
-                    // const likeButton = createLikeButton(data.ai_message_knack_id, false, 'student'); // Future function
-                    // botMessageElement.appendChild(likeButton);
+                    addLikeButtonToMessage(botMessageElement, data.ai_message_knack_id, false); // Add like button, initially unliked
                 }
                 
-                // Add click handlers to activity links
                 const activityLinks = botMessageElement.querySelectorAll('.student-coach-activity-link');
                 activityLinks.forEach(link => {
                     link.addEventListener('click', (e) => {
@@ -1225,6 +1234,145 @@ if (window.studentCoachLauncherInitialized) {
         if (chatSendButton) chatSendButton.addEventListener('click', sendChatMessage);
         if (chatInput) chatInput.addEventListener('keypress', e => e.key === 'Enter' && sendChatMessage());
         logStudentCoach("Student chat interface added.");
+    }
+
+    // --- NEW: Function to handle like button clicks ---
+    async function handleLikeButtonClick(messageKnackId, likeButtonElement, messageElement) {
+        if (!messageKnackId || messageKnackId.startsWith('initial-') || messageKnackId.startsWith('bot-')) {
+            logStudentCoach("Like button clicked for a message without a persistent Knack ID. Cannot save like.");
+            // Optionally, provide some visual feedback even if it can't be saved
+            const icon = likeButtonElement.querySelector('.like-icon');
+            if (icon) {
+                icon.classList.toggle('liked');
+                icon.classList.toggle('unliked');
+                likeButtonElement.setAttribute('aria-label', icon.classList.contains('liked') ? 'Unlike message' : 'Like message');
+            }
+            return;
+        }
+
+        const icon = likeButtonElement.querySelector('.like-icon');
+        const currentlyLiked = icon.classList.contains('liked');
+        const newLikeStatus = !currentlyLiked;
+
+        // Optimistically update UI
+        icon.classList.toggle('liked', newLikeStatus);
+        icon.classList.toggle('unliked', !newLikeStatus);
+        likeButtonElement.setAttribute('aria-label', newLikeStatus ? 'Unlike message' : 'Like message');
+        if (newLikeStatus) {
+            icon.style.transform = 'scale(1.2) rotate(5deg)'; setTimeout(() => icon.style.transform = 'scale(1.1)', 150);
+        } else {
+            icon.style.transform = 'scale(1)';
+        }
+        updateOverallLikedCount(newLikeStatus ? 1 : -1); // Adjust overall count
+
+        try {
+            logStudentCoach(`Toggling like for message ${messageKnackId} to ${newLikeStatus}`);
+            const response = await fetch(`${STUDENT_COACH_API_BASE_URL}/chat_message_like_toggle`, { // New endpoint
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    message_knack_id: messageKnackId, 
+                    like_status: newLikeStatus
+                }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`API Error (${response.status}): ${errorData.error || 'Failed to toggle like'}`);
+            }
+            const result = await response.json();
+            logStudentCoach("Like status updated successfully in backend:", result);
+            // Update data attribute on message element for persistence if needed for other logic
+            messageElement.setAttribute('data-is-liked', newLikeStatus.toString());
+
+        } catch (error) {
+            logStudentCoach("Error toggling like status:", error);
+            // Revert optimistic UI update on error
+            icon.classList.toggle('liked', !newLikeStatus); // Revert to original state
+            icon.classList.toggle('unliked', newLikeStatus);
+            likeButtonElement.setAttribute('aria-label', !newLikeStatus ? 'Unlike message' : 'Like message');
+            icon.style.transform = 'scale(1)';
+            updateOverallLikedCount(newLikeStatus ? -1 : 1); // Revert count adjustment
+            // Optionally, inform the user
+            // alert("Sorry, couldn't save your preference for this message.");
+        }
+    }
+
+    // --- NEW: Function to update the overall liked count in the UI ---
+    function updateOverallLikedCount(change) { // change is +1 or -1
+        const likedCountNumberElement = document.getElementById('studentLikedCountNumber');
+        if (likedCountNumberElement) {
+            let currentCount = parseInt(likedCountNumberElement.textContent, 10) || 0;
+            currentCount += change;
+            if (currentCount < 0) currentCount = 0; // Ensure count doesn't go below zero
+            likedCountNumberElement.textContent = currentCount;
+            // Show/hide the liked count span if needed (e.g., hide if 0)
+            const likedCountSpan = document.getElementById('studentCoachLikedCount');
+            if(likedCountSpan) likedCountSpan.style.display = currentCount > 0 ? 'inline-flex' : 'inline-flex'; // Always show for now
+        }
+    }
+
+    // --- NEW: Function to load and display student chat history ---
+    async function loadStudentChatHistory() {
+        const chatDisplay = document.getElementById('studentCoachChatDisplay');
+        const chatCountElement = document.getElementById('studentCoachChatCount');
+        const likedCountNumberElement = document.getElementById('studentLikedCountNumber');
+        if (!chatDisplay || !lastFetchedStudentKnackId) return;
+
+        chatDisplay.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading chat history...</p>';
+
+        try {
+            const response = await fetch(CHAT_HISTORY_ENDPOINT, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    student_knack_id: lastFetchedStudentKnackId,
+                    max_messages: 50, // Or make this configurable
+                    initial_ai_context: currentLLMInsightsForChat // Pass context if backend uses it for summary
+                })
+            });
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+            const data = await response.json();
+
+            chatDisplay.innerHTML = ''; // Clear loader
+            let totalLikes = 0;
+
+            if (data.chat_history && data.chat_history.length > 0) {
+                data.chat_history.forEach(msg => {
+                    const messageElement = document.createElement('p');
+                    messageElement.className = `ai-chat-message ai-chat-message-${msg.role === 'assistant' ? 'bot' : 'user'}`;
+                    messageElement.setAttribute('data-message-id', msg.id || `${msg.role}-${Date.now()}-${Math.random()}`);
+                    messageElement.setAttribute('data-is-liked', msg.is_liked ? msg.is_liked.toString() : 'false');
+                    
+                    const authorPrefix = msg.role === 'assistant' ? (chatWithTitle || "My AI Coach") : "You";
+                    messageElement.innerHTML = `<em>${authorPrefix}:</em> ${msg.content}`;
+                    chatDisplay.appendChild(messageElement);
+
+                    if (msg.role === 'assistant' && msg.id) { // Only add like buttons to AI messages with an ID
+                        addLikeButtonToMessage(messageElement, msg.id, msg.is_liked || false);
+                        if (msg.is_liked) totalLikes++;
+                    }
+                });
+            } else {
+                // Display the initial bot greeting if history is empty
+                const initialBotMsgElement = document.createElement('p');
+                initialBotMsgElement.className = 'ai-chat-message ai-chat-message-bot';
+                initialBotMsgElement.setAttribute('data-message-id', 'initial-bot-message');
+                initialBotMsgElement.innerHTML = `<em>${chatWithTitle}:</em> Hello! I'm here to help you explore your VESPA profile. What's on your mind?`;
+                chatDisplay.appendChild(initialBotMsgElement);
+            }
+            
+            if (chatCountElement) chatCountElement.textContent = `${data.total_count || 0} messages`;
+            if (likedCountNumberElement) likedCountNumberElement.textContent = data.liked_count || totalLikes; // Use backend count if available, else sum from history
+            
+            const likedCountSpan = document.getElementById('studentCoachLikedCount');
+            if(likedCountSpan) likedCountSpan.style.display = (data.liked_count || totalLikes) > 0 ? 'inline-flex' : 'inline-flex'; // Always show for now
+
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+
+        } catch (error) {
+            logStudentCoach("Error loading student chat history:", error);
+            chatDisplay.innerHTML = '<p style="color:red; text-align:center;">Could not load chat history.</p>';
+        }
     }
 
     // Placeholder for student-specific loading messages if different from tutor's
