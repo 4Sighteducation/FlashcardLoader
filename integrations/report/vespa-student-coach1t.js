@@ -1001,7 +1001,7 @@ if (window.studentCoachLauncherInitialized) {
             });
         }
         
-        loadStudentChatHistory(); // Call to load history when chat interface is added
+        // loadStudentChatHistory(); // Placeholder: This will require a new backend endpoint
 
         async function sendChatMessage() {
             const messageText = chatInput.value.trim();
@@ -1020,77 +1020,84 @@ if (window.studentCoachLauncherInitialized) {
             chatInput.disabled = true;
             thinkingIndicator.style.display = 'block';
 
-            // Prepare chat history for the backend
-            const chatHistoryForAPI = Array.from(chatDisplay.querySelectorAll('.ai-chat-message'))
-                .filter(el => el !== userMessageElement && el.id !== 'studentCoachTempInlineThinkingMessage') 
+            const chatHistory = Array.from(chatDisplay.querySelectorAll('.ai-chat-message'))
+                .filter(el => el !== userMessageElement && el.id !== 'studentCoachTempInlineThinkingMessage') // Exclude current input and any temporary thinking message
                 .map(el => ({
                     role: el.classList.contains('ai-chat-message-bot') ? 'assistant' : 'user',
-                    content: el.textContent.replace(/^(My AI Coach:|You:)\s*/, '') 
+                    content: el.textContent.replace(/^(My AI Coach:|You:)\s*/, '') // Strip prefix for history
                 }));
             
-            // Add inline thinking message 
+            // Add inline thinking message (similar to tutor coach)
             const inlineThinkingMessage = document.createElement('div');
-            inlineThinkingMessage.id = 'studentCoachTempInlineThinkingMessage'; 
-            inlineThinkingMessage.className = 'ai-chat-message ai-chat-message-bot'; 
-            inlineThinkingMessage.style.opacity = '0.7'; 
+            inlineThinkingMessage.id = 'studentCoachTempInlineThinkingMessage'; // Student-specific ID
+            inlineThinkingMessage.className = 'ai-chat-message ai-chat-message-bot'; // Style like a bot message
+            inlineThinkingMessage.style.opacity = '0.7'; // Make it look less prominent
             inlineThinkingMessage.innerHTML = `<em>${chatWithTitle}:</em> 🤔 Thinking...`;
             chatDisplay.appendChild(inlineThinkingMessage);
-            chatDisplay.scrollTop = chatDisplay.scrollHeight; 
+            chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to show it
             
             try {
-                const response = await fetch(CHAT_TURN_ENDPOINT, { 
+                // Ensure CHAT_TURN_ENDPOINT points to the student coach backend
+                const response = await fetch(CHAT_TURN_ENDPOINT, { // Uses STUDENT_COACH_API_BASE_URL implicitly
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        student_knack_id: lastFetchedStudentKnackId, 
-                        chat_history: chatHistoryForAPI, // Use the prepared history
+                        student_knack_id: lastFetchedStudentKnackId, // Send student's Object_3 ID (or other unique ID)
+                        chat_history: chatHistory,
                         current_user_message: originalInput, 
-                        context_type: 'student', 
-                        initial_ai_context: currentLLMInsightsForChat 
+                        context_type: 'student', // Crucial for backend to use student-specific prompts
+                        initial_ai_context: currentLLMInsightsForChat // Send any existing LLM insights for context
                     }),
                 });
 
-                if (inlineThinkingMessage) inlineThinkingMessage.remove();
+                if (inlineThinkingMessage) inlineThinkingMessage.remove(); // Remove the temporary thinking message
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ ai_response: `Chat API Error: ${response.statusText} (${response.status})` }));
-                    throw new Error(errorData.ai_response || `Chat API Error: ${response.statusText} (${response.status})`);
-                }
+                if (!response.ok) throw new Error(`Chat API Error: ${response.statusText} (${response.status})`);
                 const data = await response.json();
 
                 const botMessageElement = document.createElement('p');
                 botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
-                botMessageElement.setAttribute('data-role', 'assistant'); 
-                botMessageElement.style.position = 'relative'; 
+                botMessageElement.setAttribute('data-role', 'assistant'); // For potential history reconstruction
+                botMessageElement.style.position = 'relative'; // For potential like button positioning
                 
+                // Process the AI response to make activity references clickable (like tutor coach)
                 let processedResponse = data.ai_response;
-                const suggestedActivities = data.suggested_activities_in_chat || [];
+                const suggestedActivities = data.suggested_activities_in_chat || []; // Expect this from student backend
+
+                // Create a map of activity names to their data for easy lookup
+                // const activityMap = {};
+                // suggestedActivities.forEach(activity => { activityMap[activity.name] = activity; });
                 
+                // Replace activity mentions with clickable links (similar logic to tutor coach)
                 suggestedActivities.forEach(activity => {
-                    const activityPattern = new RegExp(activity.name.replace(/[.*+?^${}()|[\\\]]/g, '\\$&'), 'gi'); 
+                    // Simpler regex for student version for now, can be refined
+                    const activityPattern = new RegExp(activity.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); // Escape name for regex
                     processedResponse = processedResponse.replace(activityPattern, 
+                        // Using student-coach-activity-link class for styling
                         `<a href="#" class="student-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'>${activity.name}</a>`
                     );
                 });
                 botMessageElement.innerHTML = `<em>${chatWithTitle}:</em> ${processedResponse}`;
                 chatDisplay.appendChild(botMessageElement);
 
+                // Add like button if backend provides ID (placeholder for now)
                 if (data.ai_message_knack_id) {
                     // const likeButton = createLikeButton(data.ai_message_knack_id, false, 'student'); // Future function
                     // botMessageElement.appendChild(likeButton);
                 }
                 
+                // Add click handlers to activity links
                 const activityLinks = botMessageElement.querySelectorAll('.student-coach-activity-link');
                 activityLinks.forEach(link => {
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         try {
                             const activityData = JSON.parse(link.getAttribute('data-activity'));
-                            showActivityModal(activityData); 
+                            showActivityModal(activityData); // Uses the newly added function
                         } catch (error) { logStudentCoach("Error parsing activity data for modal:", error); }
                     });
                 });
-
+                 // If there are suggested activities, also add a quick links section (like tutor coach)
                  if (suggestedActivities.length > 0) {
                     const quickLinksElement = document.createElement('div');
                     quickLinksElement.style.cssText = `margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 5px; border-left: 3px solid #3498db;`;
@@ -1099,11 +1106,13 @@ if (window.studentCoachLauncherInitialized) {
                     linksList.style.cssText = 'margin: 5px 0 0 0; padding-left: 20px;';
                     suggestedActivities.forEach(activity => {
                         const listItem = document.createElement('li');
+                        // Style link like other activity links
                         listItem.innerHTML = `<a href="#" class="student-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'>${activity.name} <span style="color:#666;">(${activity.vespa_element})</span></a>`;
                         linksList.appendChild(listItem);
                     });
                     quickLinksElement.appendChild(linksList);
                     chatDisplay.appendChild(quickLinksElement);
+                    // Re-attach listeners for these new links as they are added after initial scan
                     quickLinksElement.querySelectorAll('.student-coach-activity-link').forEach(link => {
                         link.addEventListener('click', (e) => {
                             e.preventDefault();
@@ -1115,15 +1124,13 @@ if (window.studentCoachLauncherInitialized) {
                     });
                 }
 
+
             } catch (error) {
                 logStudentCoach("Error sending student chat message:", error);
                 const errorMsgEl = document.createElement('p');
                 errorMsgEl.className = 'ai-chat-message ai-chat-message-bot';
                 errorMsgEl.innerHTML = `<em>${chatWithTitle}:</em> Sorry, I had trouble responding. ${error.message}`;
                 chatDisplay.appendChild(errorMsgEl);
-                if (inlineThinkingMessage && inlineThinkingMessage.parentNode) {
-                    inlineThinkingMessage.remove(); // Ensure inline thinking is removed on error too
-                }
             } finally {
                 thinkingIndicator.style.display = 'none';
                 chatSendButton.disabled = false;
@@ -1136,66 +1143,6 @@ if (window.studentCoachLauncherInitialized) {
         if (chatSendButton) chatSendButton.addEventListener('click', sendChatMessage);
         if (chatInput) chatInput.addEventListener('keypress', e => e.key === 'Enter' && sendChatMessage());
         logStudentCoach("Student chat interface added.");
-    }
-
-    async function loadStudentChatHistory() {
-        const chatDisplay = document.getElementById('studentCoachChatDisplay');
-        const chatCountElement = document.getElementById('studentCoachChatCount');
-        // const likedCountNumberElement = document.getElementById('studentLikedCountNumber');
-
-        if (!chatDisplay || !lastFetchedStudentKnackId) {
-            logStudentCoach("Cannot load chat history: display element or student ID missing.");
-            if (chatDisplay) chatDisplay.innerHTML = '<p class="ai-chat-message ai-chat-message-bot"><em>Chat history could not be loaded.</em></p>';
-            if (chatCountElement) chatCountElement.textContent = 'History unavailable';
-            return;
-        }
-
-        if (chatCountElement) chatCountElement.textContent = 'Loading history...';
-
-        try {
-            const response = await fetch(CHAT_HISTORY_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ student_knack_id: lastFetchedStudentKnackId, max_messages: 50 })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: "Failed to load chat history" }));
-                throw new Error(errorData.error || `API Error: ${response.statusText} (${response.status})`);
-            }
-
-            const data = await response.json();
-            logStudentCoach("Chat history data received:", data);
-
-            chatDisplay.innerHTML = ''; // Clear any existing messages (like 'loading')
-            if (data.chat_history && data.chat_history.length > 0) {
-                data.chat_history.forEach(msg => {
-                    const messageElement = document.createElement('p');
-                    messageElement.className = `ai-chat-message ${msg.role === 'assistant' ? 'ai-chat-message-bot' : 'ai-chat-message-user'}`;
-                    messageElement.setAttribute('data-message-id', msg.id); // Store Knack ID if needed later
-                    // Add prefixes for clarity in history display, if not already in content
-                    const prefix = msg.role === 'assistant' ? "My AI Coach: " : "You: ";
-                    messageElement.innerHTML = `<em>${prefix}</em>${msg.content}`;
-                    // Add like button for assistant messages if needed in future
-                    chatDisplay.appendChild(messageElement);
-                });
-            } else {
-                chatDisplay.innerHTML = '<p class="ai-chat-message ai-chat-message-bot"><em>No previous chat messages found. Start a new conversation!</em></p>';
-            }
-            chatDisplay.scrollTop = chatDisplay.scrollHeight;
-
-            if (chatCountElement) {
-                chatCountElement.textContent = `${data.total_count || 0} messages`;
-            }
-            // if (likedCountNumberElement) {
-            //     likedCountNumberElement.textContent = data.liked_count || 0;
-            // }
-
-        } catch (error) {
-            logStudentCoach("Error loading student chat history:", error);
-            if (chatDisplay) chatDisplay.innerHTML = `<p class="ai-chat-message ai-chat-message-bot"><em>Error loading chat history: ${error.message}</em></p>`;
-            if (chatCountElement) chatCountElement.textContent = 'Error loading history';
-        }
     }
 
     // Placeholder for student-specific loading messages if different from tutor's
