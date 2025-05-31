@@ -646,10 +646,32 @@ if (window.studentCoachLauncherInitialized) {
         });
         logStudentCoach("Student AI Coach UI rendered and event listeners attached (or attempted). Final panelContent innerHTML length: ", panelContent.innerHTML.length);
 
+        // --- Prepare containers for charts BEFORE calling ensureChartJsLoaded ---
+        const vespaChartParentContainer = document.getElementById('studentCoachVespaProfileContainer');
+        if (vespaChartParentContainer) {
+            vespaChartParentContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachVespaChartPlaceholder"><div id="studentVespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area</p></div><p>My VESPA profile insights will appear here.</p></div>';
+        } else {
+            logStudentCoach("Error: studentCoachVespaProfileContainer not found before chart prep.");
+        }
+
+        const questionnaireChartParentContainer = document.getElementById('studentCoachQuestionAnalysisContainer');
+        if (questionnaireChartParentContainer) {
+            questionnaireChartParentContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachQuestionnaireChartPlaceholder"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area</p></div><p>My questionnaire analysis will appear here.</p></div>';
+        } else {
+            logStudentCoach("Error: studentCoachQuestionAnalysisContainer not found before chart prep.");
+        }
+
+        const academicContainerForContent = document.getElementById('studentCoachAcademicProfileContainer');
+        if (academicContainerForContent) {
+            academicContainerForContent.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>';
+        } else {
+            logStudentCoach("Error: studentCoachAcademicProfileContainer not found before content prep.");
+        }
+
         // Populate dynamic content sections if data is available
         if (data && data.student_name && data.student_name !== "N/A") {
             ensureChartJsLoaded(() => { // Ensure Chart.js is loaded before trying to render charts
-                if (data.vespa_profile) { // Assuming vespa_profile contains data for the chart
+                if (data.vespa_profile) { 
                     renderVespaComparisonChart(data.vespa_profile, data.school_vespa_averages); // New function to render chart
                 }
                 // Placeholder for academic chart/scales
@@ -695,15 +717,26 @@ if (window.studentCoachLauncherInitialized) {
                      questionnaireContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachQuestionnaireChartPlaceholder"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area</p></div><p>My questionnaire analysis will appear here when available.</p></div>';
                 }
             });
-        } else { // Data not fully available, ensure placeholders are in the content divs
+        } 
+        // The following 'else' block is now largely handled by the pre-population step above,
+        // but can be kept as a fallback if data.student_name is N/A
+        else { 
+            // Data not fully available, ensure placeholders are in the content divs
+            // These were already populated above, so this is mostly a fallback or no-op if already done.
             const vespaContainer = document.getElementById('studentCoachVespaProfileContainer');
-            if (vespaContainer) vespaContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachVespaChartPlaceholder"><div id="studentVespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area</p></div><p>My VESPA profile insights will appear here.</p></div>';
+            if (vespaContainer && !vespaContainer.querySelector('#studentVespaComparisonChartContainer')) {
+                 vespaContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachVespaChartPlaceholder"><div id="studentVespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area</p></div><p>My VESPA profile insights will appear here.</p></div>';
+            }
             
             const academicContainer = document.getElementById('studentCoachAcademicProfileContainer');
-            if (academicContainer) academicContainer.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>';
+            if (academicContainer && !academicContainer.querySelector('.subject-benchmark-item')) { // check if content already there
+                academicContainer.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>';
+            }
 
             const questionnaireContainer = document.getElementById('studentCoachQuestionAnalysisContainer');
-            if (questionnaireContainer) questionnaireContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachQuestionnaireChartPlaceholder"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area</p></div><p>My questionnaire analysis will appear here.</p></div>';
+            if (questionnaireContainer && !questionnaireContainer.querySelector('#studentQuestionnaireDistributionChartContainer')) {
+                 questionnaireContainer.innerHTML = '<div class="ai-coach-section" id="studentCoachQuestionnaireChartPlaceholder"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area</p></div><p>My questionnaire analysis will appear here.</p></div>';
+            }
         }
     }
     
