@@ -4,8 +4,8 @@
 /* CSS Custom Properties for dynamic values */
 :root {
     --student-coach-panel-width: 400px;
-    --student-coach-panel-min-width: 300px; /* Slightly wider min */
-    --student-coach-panel-max-width: 700px; /* Slightly wider max */
+    --student-coach-panel-min-width: 350px;
+    --student-coach-panel-max-width: 1200px;
     --student-coach-transition-duration: 0.35s; /* Slightly slower for smoother feel */
 
     /* Vibrant & Youthful Palette */
@@ -160,6 +160,12 @@ body.ai-coach-active #studentCoachSlidePanel {
     letter-spacing: -0.5px;
 }
 
+.ai-coach-panel-header h3::before {
+    content: "💡 ";
+    margin-right: 8px;
+    font-size: 1.1em; /* Adjust emoji size if needed */
+}
+
 .ai-coach-close-btn {
     background: none;
     border: none;
@@ -220,6 +226,9 @@ body.ai-coach-active #studentCoachSlidePanel {
     .student-coach-section-toggles {
         flex-direction: row;
     }
+    .student-coach-section-toggles .p-button {
+        flex-basis: 0; /* Ensures equal width distribution in a row */
+    }
 }
 
 .student-coach-section-toggles .p-button { 
@@ -238,14 +247,17 @@ body.ai-coach-active #studentCoachSlidePanel {
 }
 
 /* Specific toggle button IDs from JS */
-#aiCoachToggleVespaButton { 
-    background-color: var(--vespa-vision-color) !important; 
+#aiCoachToggleVespaButton::before {
+    content: "🧭 ";
+    margin-right: 5px;
 }
-#aiCoachToggleAcademicButton { 
-    background-color: var(--vespa-effort-color) !important; 
+#aiCoachToggleAcademicButton::before {
+    content: "🎓 ";
+    margin-right: 5px;
 }
-#aiCoachToggleQuestionButton { 
-    background-color: var(--vespa-systems-color) !important; 
+#aiCoachToggleQuestionButton::before {
+    content: "❓ ";
+    margin-right: 5px;
 }
 
 /* Content sections - generic class used in JS */
@@ -675,6 +687,11 @@ body.ai-coach-active #studentCoachSlidePanel {
 .thinking-pulse { animation: none; } /* Disable old pulse if not needed, or re-style */
 
 /* Problem Selector Button - student specific ID */
+#studentCoachProblemButton::before { 
+    content: "🤔 ";
+    margin-right: 8px;
+}
+
 #studentCoachProblemButton { 
     width: 100% !important;
     padding: 12px !important; /* More padding */
@@ -949,4 +966,3 @@ body.ai-coach-resizing * {
 #studentCoachChatStats #studentCoachClearOldChatsBtn {
     /* Default to display:none is handled inline in JS, but can be here too */
 }
-
