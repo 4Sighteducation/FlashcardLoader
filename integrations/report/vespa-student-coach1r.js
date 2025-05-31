@@ -49,7 +49,7 @@ if (window.studentCoachLauncherInitialized) {
         };
         script.onerror = () => {
             console.error("[StudentCoachLauncher] Failed to load Chart.js from CDN.");
-            const chartContainer = document.getElementById('vespaComparisonChartContainer'); // Keep generic ID for now
+            const chartContainer = document.getElementById('studentVespaComparisonChartContainer'); // Keep generic ID for now
             if(chartContainer) chartContainer.innerHTML = '<p style="color:red; text-align:center;">Chart library failed to load.</p>';
         };
         document.head.appendChild(script);
@@ -215,11 +215,12 @@ if (window.studentCoachLauncherInitialized) {
         }
 
         // TODO: Update this to the CDN path of your vespa-student-coach.css
+        // Using vespa-student-coach1a.css as per the context
         const link = document.createElement('link');
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1b.css'; // Placeholder
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1a.css'; // UPDATED CSS LINK
         
         // Dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -233,12 +234,12 @@ if (window.studentCoachLauncherInitialized) {
                 position: fixed !important; top: 0; right: 0; height: 100vh;
                 background-color: #f4f6f8; border-left: 1px solid #ddd;
                 padding: 20px; box-sizing: border-box; overflow-y: auto;
-                z-index: 1050; transition: width 0.3s, opacity 0.3s, visibility 0.3s;
+                z-index: 1050; transition: width var(--student-coach-transition-duration, 0.3s), opacity var(--student-coach-transition-duration, 0.3s), visibility var(--student-coach-transition-duration, 0.3s);
                 font-family: Arial, sans-serif; display: flex; flex-direction: column;
             }
             
             body.ai-coach-active #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: var(--ai-coach-panel-width, 450px); /* Use CSS var or default */
+                width: var(--student-coach-panel-width, 400px); /* Use CSS var or default */
                 opacity: 1; visibility: visible;
             }
             
@@ -581,9 +582,9 @@ if (window.studentCoachLauncherInitialized) {
         // --- Toggle Buttons for different insight sections --- 
         htmlShell += `
             <div class="student-coach-section-toggles ai-coach-section-toggles"> 
-                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false">My VESPA Insights</button>
-                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false">My Academic Insights</button>
-                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false">My Questionnaire Insights</button>
+                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false" aria-controls="studentCoachVespaProfileContainer">My VESPA Insights</button>
+                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false" aria-controls="studentCoachAcademicProfileContainer">My Academic Insights</button>
+                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false" aria-controls="studentCoachQuestionAnalysisContainer">My Questionnaire Insights</button>
             </div>
         `;
         logStudentCoach("renderAICoachData: HTML for toggle buttons appended.", htmlShell);
@@ -609,7 +610,7 @@ if (window.studentCoachLauncherInitialized) {
         // --- Add Chat Interface --- 
         // addChatInterface expects panelContent to already exist and be the parent.
         logStudentCoach("renderAICoachData: Calling addChatInterface.");
-        addChatInterface(panelContent, (data && data.student_name) ? data.student_name : "My AI Coach");
+        addChatInterface(panelContent, (data && data.student_name) ? data.student_name : "My AI Coach"); // panelContent is the direct parent for chat.
         logStudentCoach("renderAICoachData: Returned from addChatInterface.");
 
         // --- Add event listeners for the new toggle buttons --- 
@@ -662,17 +663,19 @@ if (window.studentCoachLauncherInitialized) {
             const vespaSection = document.getElementById('studentCoachVespaProfileContainer');
             if (vespaSection) {
                 vespaSection.innerHTML = ''; // Clear previous content
+                // VESPA Insights - Chart and Text
                 const vespaChartDiv = document.createElement('div');
-                vespaChartDiv.id = 'studentVespaComparisonChartContainer';
+                vespaChartDiv.id = 'studentVespaComparisonChartContainer'; // Matches CSS
                 vespaChartDiv.style.height = '250px';
                 vespaChartDiv.style.marginBottom = '15px';
-                // Placeholder content, will be replaced by chart or error message
                 vespaChartDiv.innerHTML = '<p style="text-align:center;">VESPA Chart Area</p>'; 
                 vespaSection.appendChild(vespaChartDiv);
+
                 const vespaTextDiv = document.createElement('div');
-                vespaTextDiv.className = 'ai-coach-section'; // For consistent styling of text content
-                vespaTextDiv.id = 'vespa-insights-text-content'; // ID for specific content later
-                // vespaTextDiv.innerHTML = '<p>Your VESPA profile insights will appear here.</p>'; // Initial placeholder text
+                vespaTextDiv.className = 'ai-coach-section'; 
+                vespaTextDiv.id = 'vespa-insights-text-content'; 
+                // Placeholder text will be replaced by LLM insights if available
+                vespaTextDiv.innerHTML = '<h5>Understanding My VESPA Scores</h5><p><em>Loading insights...</em></p>';
                 vespaSection.appendChild(vespaTextDiv);
             } else {
                 logStudentCoach("Error: studentCoachVespaProfileContainer not found before preparing for VESPA content.");
@@ -680,68 +683,76 @@ if (window.studentCoachLauncherInitialized) {
 
             const academicSection = document.getElementById('studentCoachAcademicProfileContainer');
             if (academicSection) {
-                academicSection.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>'; // Clear and set default
+                // Academic Insights - Text and Scales
+                academicSection.innerHTML = '<div class="ai-coach-section" id="academic-insights-text-content"><p>My academic insights and benchmarks will appear here.</p></div>'; // Clear and set default
             } else {
                 logStudentCoach("Error: studentCoachAcademicProfileContainer not found before preparing for Academic content.");
             }
 
             const questionnaireSection = document.getElementById('studentCoachQuestionAnalysisContainer');
             if (questionnaireSection) {
+                // Questionnaire Insights - Chart and Text
                 questionnaireSection.innerHTML = ''; // Clear previous content
                 const questionnaireChartDiv = document.createElement('div');
-                questionnaireChartDiv.id = 'studentQuestionnaireDistributionChartContainer';
+                questionnaireChartDiv.id = 'studentQuestionnaireDistributionChartContainer'; // Matches CSS
                 questionnaireChartDiv.style.height = '250px';
                 questionnaireChartDiv.style.marginBottom = '15px';
                 questionnaireChartDiv.innerHTML = '<p style="text-align:center;">Questionnaire Chart Area</p>';
                 questionnaireSection.appendChild(questionnaireChartDiv);
+
                 const questionnaireTextDiv = document.createElement('div');
                 questionnaireTextDiv.className = 'ai-coach-section';
                 questionnaireTextDiv.id = 'questionnaire-insights-text-content';
-                // questionnaireTextDiv.innerHTML = '<p>Your questionnaire analysis will appear here.</p>';
+                // Placeholder text will be replaced by LLM insights if available
+                questionnaireTextDiv.innerHTML = '<h5>Reflections on My Questionnaire</h5><p><em>Loading analysis...</em></p>';
                 questionnaireSection.appendChild(questionnaireTextDiv);
             } else {
                 logStudentCoach("Error: studentCoachQuestionAnalysisContainer not found before preparing for Questionnaire content.");
             }
 
             ensureChartJsLoaded(() => { 
+                // Render VESPA Chart
                 if (data.vespa_profile) { 
                     renderVespaComparisonChart(data.vespa_profile, data.school_vespa_averages); 
-                    // Add VESPA insights text if available from LLM
                     const vespaTextDiv = document.getElementById('vespa-insights-text-content');
                     if (vespaTextDiv && data.llm_generated_insights && data.llm_generated_insights.chart_comparative_insights) {
                         vespaTextDiv.innerHTML = `<h5>Understanding My VESPA Scores</h5><p>${data.llm_generated_insights.chart_comparative_insights}</p>`;
+                    } else if (vespaTextDiv) {
+                        vespaTextDiv.innerHTML = '<h5>Understanding My VESPA Scores</h5><p><em>Detailed insights on your VESPA scores are not available at this moment.</em></p>';
                     }
                 }
-                // Placeholder for academic chart/scales
-                const academicContainer = document.getElementById('studentCoachAcademicProfileContainer');
-                if (academicContainer && data.academic_profile_summary) {
+                
+                // Populate Academic Insights
+                const academicContainer = document.getElementById('studentCoachAcademicProfileContainer'); // Re-fetch for safety
+                if (academicContainer) { // Check if academicContainer still exists
                     let academicHtml = '';
                     const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
-                    if (data.academic_megs) { // Display overall MEGs if available
+                    
+                    // Overall MEGs Display
+                    if (data.academic_megs) { 
                         academicHtml += '<div class="ai-coach-section"><h5>Overall Academic Benchmarks (MEGs)</h5>';
-                        academicHtml += `<p><strong>Prior Attainment Score:</strong> ${data.academic_megs.prior_attainment_score || 'N/A'}</p>`;
-                        
-                        // Check if A-Level MEGs are available
+                        academicHtml += `<p><strong>My Prior Attainment Score:</strong> ${data.academic_megs.prior_attainment_score || 'N/A'}</p>`;
                         const hasALevelMegs = ['aLevel_meg_grade_60th', 'aLevel_meg_grade_75th', 'aLevel_meg_grade_90th', 'aLevel_meg_grade_100th']
                             .some(key => data.academic_megs[key] && data.academic_megs[key] !== 'N/A');
                         
                         if (hasALevelMegs) {
                             academicHtml += `<h6>My A-Level Minimum Expected Grades (MEGs):</h6>
                                 <ul>
-                                    <li><strong>Top 40% (60th):</strong> <strong>${data.academic_megs.aLevel_meg_grade_60th || 'N/A'}</strong></li>
-                                    <li><strong>Top 25% (75th - Standard MEG):</strong> <strong>${data.academic_megs.aLevel_meg_grade_75th || 'N/A'}</strong></li>
-                                    <li><strong>Top 10% (90th):</strong> <strong>${data.academic_megs.aLevel_meg_grade_90th || 'N/A'}</strong></li>
-                                    <li><strong>Top 1% (100th):</strong> <strong>${data.academic_megs.aLevel_meg_grade_100th || 'N/A'}</strong></li>
+                                    <li><strong>Top 40% (60th Percentile):</strong> <strong>${data.academic_megs.aLevel_meg_grade_60th || 'N/A'}</strong></li>
+                                    <li><strong>Top 25% (75th Percentile - Standard MEG):</strong> <strong>${data.academic_megs.aLevel_meg_grade_75th || 'N/A'}</strong></li>
+                                    <li><strong>Top 10% (90th Percentile):</strong> <strong>${data.academic_megs.aLevel_meg_grade_90th || 'N/A'}</strong></li>
+                                    <li><strong>Top 1% (100th Percentile):</strong> <strong>${data.academic_megs.aLevel_meg_grade_100th || 'N/A'}</strong></li>
                                 </ul>`;
                         }
                         academicHtml += '</div>';
                     }
-                    academicHtml += '<h5>My Subject Benchmarks</h5>';
+
+                    // Subject Benchmarks Section
+                    academicHtml += '<div class="ai-coach-section"><h5>My Subject Benchmarks</h5>';
                     if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))){
                         data.academic_profile_summary.forEach((subject, index) => {
                             if (subject && subject.subject && !subject.subject.includes("not found")) {
                                 academicHtml += `<div class="subject-benchmark-item"><h5>${subject.subject}</h5>`;
-                                // Render scale if points are available
                                 if (typeof subject.currentGradePoints === 'number' && typeof subject.standardMegPoints === 'number') {
                                    academicHtml += createSubjectBenchmarkScale(subject, index, studentFirstName);
                                 } else {
@@ -753,27 +764,29 @@ if (window.studentCoachLauncherInitialized) {
                     } else {
                          academicHtml += '<p>My detailed academic subject benchmarks are not yet available.</p>';
                     }
+                    academicHtml += '</div>'; // End subject benchmarks section
                     
-                    // Add LLM academic benchmark analysis if available
+                    // LLM Academic Benchmark Analysis
                     if (data.llm_generated_insights && data.llm_generated_insights.academic_benchmark_analysis) {
                         academicHtml += `<div class="ai-coach-section"><h5>AI Analysis of My Academic Performance</h5>
                             <p>${data.llm_generated_insights.academic_benchmark_analysis}</p></div>`;
+                    } else {
+                         academicHtml += '<div class="ai-coach-section"><h5>AI Analysis of My Academic Performance</h5><p><em>AI analysis of your academic performance is currently unavailable.</em></p></div>';
                     }
                     
-                    academicContainer.innerHTML = academicHtml;
+                    academicContainer.innerHTML = academicHtml; // Set all academic content
                 }
 
-                // Questionnaire chart/analysis with highlights
-                const questionnaireContainer = document.getElementById('studentCoachQuestionAnalysisContainer');
-                if (questionnaireContainer) {
+
+                // Populate Questionnaire Insights
+                const questionnaireTextContentDiv = document.getElementById('questionnaire-insights-text-content');
+                if (questionnaireTextContentDiv) {
                     let questionnaireHtml = '';
-                    
-                    // Add top/bottom highlights if available
+                    // Highlights
                     if (data.object29_question_highlights) {
                         const highlights = data.object29_question_highlights;
                         questionnaireHtml += '<div class="ai-coach-section"><h5>My Questionnaire Response Highlights</h5>';
                         questionnaireHtml += '<p style="font-size:0.9em; margin-bottom:10px;"><em>(Response Scale: 1=Strongly Disagree, 5=Strongly Agree)</em></p>';
-                        
                         if (highlights.top_3 && highlights.top_3.length > 0) {
                             questionnaireHtml += '<h6>Strongest Agreement (Top 3):</h6><ul>';
                             highlights.top_3.forEach(q => {
@@ -781,7 +794,6 @@ if (window.studentCoachLauncherInitialized) {
                             });
                             questionnaireHtml += '</ul>';
                         }
-                        
                         if (highlights.bottom_3 && highlights.bottom_3.length > 0) {
                             questionnaireHtml += '<h6 style="margin-top:15px;">Areas for Growth (Bottom 3):</h6><ul>';
                             highlights.bottom_3.forEach(q => {
@@ -791,29 +803,17 @@ if (window.studentCoachLauncherInitialized) {
                         }
                         questionnaireHtml += '</div>';
                     }
-                    
-                    // Set the HTML first
-                    questionnaireContainer.innerHTML = questionnaireHtml;
-                    
-                    // Add chart container
-                    const chartDiv = document.createElement('div');
-                    chartDiv.id = 'studentQuestionnaireDistributionChartContainer';
-                    chartDiv.style.height = '250px';
-                    chartDiv.style.marginBottom = '15px';
-                    questionnaireContainer.appendChild(chartDiv);
-                    
-                    // Render chart if data is available
-                    if (data.all_scored_questionnaire_statements) {
-                        renderQuestionnaireDistributionChart(data.all_scored_questionnaire_statements);
-                    }
-                    
-                    // Add LLM reflections
+                    // LLM Reflections
                     if (data.llm_generated_insights && data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary) {
-                        const reflectionDiv = document.createElement('div');
-                        reflectionDiv.className = 'ai-coach-section';
-                        reflectionDiv.innerHTML = `<h5>Reflections on My Questionnaire</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p>`;
-                        questionnaireContainer.appendChild(reflectionDiv);
+                        questionnaireHtml += `<div class="ai-coach-section"><h5>Reflections on My Questionnaire</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p></div>`;
+                    } else {
+                        questionnaireHtml += '<div class="ai-coach-section"><h5>Reflections on My Questionnaire</h5><p><em>AI reflections on your questionnaire are currently unavailable.</em></p></div>';
                     }
+                    questionnaireTextContentDiv.innerHTML = questionnaireHtml; // Set text content
+                }
+                // Render Questionnaire Chart
+                if (data.all_scored_questionnaire_statements) {
+                    renderQuestionnaireDistributionChart(data.all_scored_questionnaire_statements);
                 }
             });
         } 
@@ -894,7 +894,7 @@ if (window.studentCoachLauncherInitialized) {
     async function toggleAICoachPanel(show) { 
         const panel = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
         const toggleButton = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId);
-        const panelContent = panel ? panel.querySelector('.ai-coach-panel-content') : null;
+        const panelContent = panel ? panel.querySelector('#studentCoachSlidePanel .ai-coach-panel-content') : null; // Corrected selector
 
         if (show) {
             document.body.classList.add('ai-coach-active'); // Use a generic or namespaced class
@@ -951,11 +951,11 @@ if (window.studentCoachLauncherInitialized) {
         if (oldChatContainer) oldChatContainer.remove();
 
         const chatContainer = document.createElement('div');
-        chatContainer.id = 'studentCoachChatContainer'; 
-        chatContainer.className = 'ai-coach-section'; // Re-use class for consistent section styling
+        chatContainer.id = 'studentCoachChatContainer'; // Matches CSS
+        chatContainer.className = 'ai-coach-section'; 
         chatContainer.style.marginTop = '20px';
-        // Make chat container flexible to fill available space in the panel
         chatContainer.style.display = 'flex';
+        // Make chat container flexible to fill available space in the panel
         chatContainer.style.flexDirection = 'column';
         chatContainer.style.flexGrow = '1'; 
         chatContainer.style.minHeight = '0'; // Important for flex children to not overflow
@@ -972,7 +972,7 @@ if (window.studentCoachLauncherInitialized) {
                     <button id="studentCoachClearOldChatsBtn" class="p-button p-component p-button-sm p-button-text" style="display:none;">Clear Old Chats</button> <!-- Hidden for now, needs backend -->
                 </div>
             </div>
-            <div id="studentCoachChatDisplay" style="flex-grow:1; min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom:10px; background:#fff;">
+            <div id="studentCoachChatDisplay" style="flex-grow:1; min-height: 200px; /* max-height: 400px; - Let flexbox manage this */ overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom:10px; background:#fff;">
                 <p class="ai-chat-message ai-chat-message-bot"><em>${chatWithTitle}:</em> Hello! I'm here to help you explore your VESPA profile. What's on your mind?</p>
             </div>
             <div style="margin: 10px 0;">
