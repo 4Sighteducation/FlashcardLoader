@@ -220,7 +220,7 @@ if (window.studentCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1d.css'; // UPDATED CSS LINK
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1e.css'; // UPDATED CSS LINK
         
         // Dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -872,14 +872,14 @@ if (window.studentCoachLauncherInitialized) {
                         if (highlights.top_3 && highlights.top_3.length > 0) {
                             questionnaireHtml += '<h6>Strongest Agreement (Top 3):</h6><ul>';
                             highlights.top_3.forEach(q => {
-                                questionnaireHtml += `<li>"${q.question_text}" <br><strong>Score: ${q.score}/5</strong> (${q.vespa_category})</li>`;
+                                questionnaireHtml += `<li>"${q.text}" <br><strong>Score: ${q.score}/5</strong> (${q.category})</li>`;
                             });
                             questionnaireHtml += '</ul>';
                         }
                         if (highlights.bottom_3 && highlights.bottom_3.length > 0) {
                             questionnaireHtml += '<h6 style="margin-top:15px;">Areas for Growth (Bottom 3):</h6><ul>';
                             highlights.bottom_3.forEach(q => {
-                                questionnaireHtml += `<li>"${q.question_text}" <br><strong>Score: ${q.score}/5</strong> (${q.vespa_category})</li>`;
+                                questionnaireHtml += `<li>"${q.text}" <br><strong>Score: ${q.score}/5</strong> (${q.category})</li>`;
                             });
                             questionnaireHtml += '</ul>';
                         }
