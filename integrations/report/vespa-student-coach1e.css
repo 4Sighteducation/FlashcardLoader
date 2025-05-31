@@ -332,7 +332,7 @@ body.ai-coach-active #studentCoachSlidePanel {
 /* Chart containers - student specific IDs from JS */
 #studentVespaComparisonChartContainer,
 #studentQuestionnaireDistributionChartContainer {
-    height: 280px; /* Increased height */
+    height: 300px; /* Updated height */
     margin-bottom: 20px;
     background: var(--bg-content-color);
     border: 1px solid var(--border-color-light);
