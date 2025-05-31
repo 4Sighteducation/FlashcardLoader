@@ -683,8 +683,75 @@ if (window.studentCoachLauncherInitialized) {
 
             const academicSection = document.getElementById('studentCoachAcademicProfileContainer');
             if (academicSection) {
-                // Academic Insights - Text and Scales
-                academicSection.innerHTML = '<div class="ai-coach-section" id="academic-insights-text-content"><p>My academic insights and benchmarks will appear here.</p></div>'; // Clear and set default
+                // Populate Academic Insights
+                const academicContainer = document.getElementById('studentCoachAcademicProfileContainer'); // Re-fetch for safety
+                if (academicContainer) { // Check if academicContainer still exists
+                    let academicHtml = '';
+                    const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
+
+                    // --- NEW: AI Generated Quote --- 
+                    if (data.llm_generated_insights && data.llm_generated_insights.academic_quote) {
+                        academicHtml += `<div class="ai-coach-section quote-section" style="border-left-color: var(--accent-color); background-color: color-mix(in srgb, var(--accent-color) 8%, transparent);">
+                            <p style="font-style: italic; font-size: 1.1em; text-align: center; margin:0;">"${data.llm_generated_insights.academic_quote}"</p>
+                        </div>`;
+                    }
+
+                    // --- NEW: MEG Explainer Text --- 
+                    academicHtml += '<div class="ai-coach-section meg-explainer-section">';
+                    academicHtml += '<h5>Understanding Your Minimum Expected Grade (MEG)</h5>';
+                    academicHtml += `<p>
+                        Your MEG represents an aspirational grade based on how students with similar GCSE results have performed nationally. 
+                        Think of it as a starting point - it shows what's typically achievable for someone with your academic background. 
+                        Your school may set these targets at different levels of ambition - some schools choose highly aspirational targets to encourage you to aim high, 
+                        while others may set more moderate goals. Remember, this is just one indicator and doesn't account for your individual strengths, interests, 
+                        or the specific subjects you're studying. Many students exceed their MEG, while others may find it challenging to reach. 
+                        Your actual potential is influenced by many factors including your effort, teaching quality, and personal circumstances. 
+                        For a more personalized target, check your Subject Target Grade (STG) in the 'My Subject Benchmarks' section below, 
+                        which considers the specific subject you're studying and provides a more tailored expectation.
+                    </p>`;
+                    academicHtml += '</div>';
+                    
+                    // --- Subject Benchmarks Section (Remains) ---
+                    academicHtml += '<div class="ai-coach-section subject-benchmarks-display"><h5>My Subject Benchmarks</h5>'; // Added class for potential styling
+                    if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))){
+                        data.academic_profile_summary.forEach((subject, index) => {
+                            if (subject && subject.subject && !subject.subject.includes("not found")) {
+                                academicHtml += `<div class="subject-benchmark-item"><h5>${subject.subject}</h5>`;
+                                if (typeof subject.currentGradePoints === 'number' && typeof subject.standardMegPoints === 'number') {
+                                   academicHtml += createSubjectBenchmarkScale(subject, index, studentFirstName);
+                                } else {
+                                   academicHtml += '<p><em>Benchmark scale data not available for this subject.</em></p>';
+                                }
+                                academicHtml += '</div>';
+                            }
+                        });
+                    } else {
+                         academicHtml += '<p>My detailed academic subject benchmarks are not yet available.</p>';
+                    }
+                    academicHtml += '</div>'; // End subject benchmarks section
+                    
+                    // --- LLM Academic Benchmark Analysis (Existing - REMAINS for now, might be superseded or combined with new summary) ---
+                    if (data.llm_generated_insights && data.llm_generated_insights.academic_benchmark_analysis) {
+                        academicHtml += `<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5>
+                            <p>${data.llm_generated_insights.academic_benchmark_analysis}</p></div>`;
+                    } else {
+                         academicHtml += '<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5><p><em>AI analysis of your academic performance is currently unavailable.</em></p></div>';
+                    }
+
+                    // --- NEW: AI Generated Encouraging Summary & Recommendation ---
+                    if (data.llm_generated_insights && data.llm_generated_insights.academic_performance_ai_summary) {
+                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary" style="border-left-color: var(--secondary-color); background-color: color-mix(in srgb, var(--secondary-color) 8%, transparent);">
+                            <h5>Your AI Academic Mentor's Thoughts 💭</h5>
+                            <p>${data.llm_generated_insights.academic_performance_ai_summary}</p>
+                        </div>`;
+                    } else {
+                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary"><h5>Your AI Academic Mentor's Thoughts 💭</h5>
+                            <p><em>Your personalized academic summary is being prepared by your AI Mentor...</em></p>
+                        </div>`;
+                    }
+                    
+                    academicContainer.innerHTML = academicHtml; // Set all academic content
+                }
             } else {
                 logStudentCoach("Error: studentCoachAcademicProfileContainer not found before preparing for Academic content.");
             }
@@ -727,28 +794,31 @@ if (window.studentCoachLauncherInitialized) {
                 if (academicContainer) { // Check if academicContainer still exists
                     let academicHtml = '';
                     const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
-                    
-                    // Overall MEGs Display
-                    if (data.academic_megs) { 
-                        academicHtml += '<div class="ai-coach-section"><h5>Overall Academic Benchmarks (MEGs)</h5>';
-                        academicHtml += `<p><strong>My Prior Attainment Score:</strong> ${data.academic_megs.prior_attainment_score || 'N/A'}</p>`;
-                        const hasALevelMegs = ['aLevel_meg_grade_60th', 'aLevel_meg_grade_75th', 'aLevel_meg_grade_90th', 'aLevel_meg_grade_100th']
-                            .some(key => data.academic_megs[key] && data.academic_megs[key] !== 'N/A');
-                        
-                        if (hasALevelMegs) {
-                            academicHtml += `<h6>My A-Level Minimum Expected Grades (MEGs):</h6>
-                                <ul>
-                                    <li><strong>Top 40% (60th Percentile):</strong> <strong>${data.academic_megs.aLevel_meg_grade_60th || 'N/A'}</strong></li>
-                                    <li><strong>Top 25% (75th Percentile - Standard MEG):</strong> <strong>${data.academic_megs.aLevel_meg_grade_75th || 'N/A'}</strong></li>
-                                    <li><strong>Top 10% (90th Percentile):</strong> <strong>${data.academic_megs.aLevel_meg_grade_90th || 'N/A'}</strong></li>
-                                    <li><strong>Top 1% (100th Percentile):</strong> <strong>${data.academic_megs.aLevel_meg_grade_100th || 'N/A'}</strong></li>
-                                </ul>`;
-                        }
-                        academicHtml += '</div>';
+
+                    // --- NEW: AI Generated Quote --- 
+                    if (data.llm_generated_insights && data.llm_generated_insights.academic_quote) {
+                        academicHtml += `<div class="ai-coach-section quote-section" style="border-left-color: var(--accent-color); background-color: color-mix(in srgb, var(--accent-color) 8%, transparent);">
+                            <p style="font-style: italic; font-size: 1.1em; text-align: center; margin:0;">"${data.llm_generated_insights.academic_quote}"</p>
+                        </div>`;
                     }
 
-                    // Subject Benchmarks Section
-                    academicHtml += '<div class="ai-coach-section"><h5>My Subject Benchmarks</h5>';
+                    // --- NEW: MEG Explainer Text --- 
+                    academicHtml += '<div class="ai-coach-section meg-explainer-section">';
+                    academicHtml += '<h5>Understanding Your Minimum Expected Grade (MEG)</h5>';
+                    academicHtml += `<p>
+                        Your MEG represents an aspirational grade based on how students with similar GCSE results have performed nationally. 
+                        Think of it as a starting point - it shows what's typically achievable for someone with your academic background. 
+                        Your school may set these targets at different levels of ambition - some schools choose highly aspirational targets to encourage you to aim high, 
+                        while others may set more moderate goals. Remember, this is just one indicator and doesn't account for your individual strengths, interests, 
+                        or the specific subjects you're studying. Many students exceed their MEG, while others may find it challenging to reach. 
+                        Your actual potential is influenced by many factors including your effort, teaching quality, and personal circumstances. 
+                        For a more personalized target, check your Subject Target Grade (STG) in the 'My Subject Benchmarks' section below, 
+                        which considers the specific subject you're studying and provides a more tailored expectation.
+                    </p>`;
+                    academicHtml += '</div>';
+                    
+                    // --- Subject Benchmarks Section (Remains) ---
+                    academicHtml += '<div class="ai-coach-section subject-benchmarks-display"><h5>My Subject Benchmarks</h5>'; // Added class for potential styling
                     if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))){
                         data.academic_profile_summary.forEach((subject, index) => {
                             if (subject && subject.subject && !subject.subject.includes("not found")) {
@@ -766,12 +836,24 @@ if (window.studentCoachLauncherInitialized) {
                     }
                     academicHtml += '</div>'; // End subject benchmarks section
                     
-                    // LLM Academic Benchmark Analysis
+                    // --- LLM Academic Benchmark Analysis (Existing - REMAINS for now, might be superseded or combined with new summary) ---
                     if (data.llm_generated_insights && data.llm_generated_insights.academic_benchmark_analysis) {
-                        academicHtml += `<div class="ai-coach-section"><h5>AI Analysis of My Academic Performance</h5>
+                        academicHtml += `<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5>
                             <p>${data.llm_generated_insights.academic_benchmark_analysis}</p></div>`;
                     } else {
-                         academicHtml += '<div class="ai-coach-section"><h5>AI Analysis of My Academic Performance</h5><p><em>AI analysis of your academic performance is currently unavailable.</em></p></div>';
+                         academicHtml += '<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5><p><em>AI analysis of your academic performance is currently unavailable.</em></p></div>';
+                    }
+
+                    // --- NEW: AI Generated Encouraging Summary & Recommendation ---
+                    if (data.llm_generated_insights && data.llm_generated_insights.academic_performance_ai_summary) {
+                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary" style="border-left-color: var(--secondary-color); background-color: color-mix(in srgb, var(--secondary-color) 8%, transparent);">
+                            <h5>Your AI Academic Mentor's Thoughts 💭</h5>
+                            <p>${data.llm_generated_insights.academic_performance_ai_summary}</p>
+                        </div>`;
+                    } else {
+                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary"><h5>Your AI Academic Mentor's Thoughts 💭</h5>
+                            <p><em>Your personalized academic summary is being prepared by your AI Mentor...</em></p>
+                        </div>`;
                     }
                     
                     academicContainer.innerHTML = academicHtml; // Set all academic content
