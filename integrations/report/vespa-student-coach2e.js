@@ -214,13 +214,13 @@ if (window.studentCoachLauncherInitialized) {
             return;
         }
 
-        // TODO: Update this to the CDN path of your vespa-student-coach.css
-        // Using vespa-student-coach1a.css as per the context
         const link = document.createElement('link');
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1g.css'; // UPDATED CSS LINK
+        // Reverted to the CDN path as per user clarification that vespa-student-coach1g.css is the active, copied file.
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1g.css'; 
+        logStudentCoach("Attempting to load CSS from: " + link.href);
         
         // Dynamic CSS for config-specific IDs
         const dynamicCss = `
