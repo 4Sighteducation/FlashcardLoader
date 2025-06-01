@@ -228,8 +228,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1a.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1b.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1b.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -770,7 +770,11 @@ if (window.studentCoachLauncherInitialized) {
 
         // --- AI Student Snapshot section --- 
         htmlShell += '<div class="ai-coach-section" id="studentCoachSnapshotSection">'; // Added ID for debugging
+        htmlShell += '<div class="ai-snapshot-header">';
         htmlShell += '<h4>My AI Snapshot</h4>';
+        htmlShell += '<button id="toggleSnapshotBtn" class="ai-snapshot-toggle-btn" aria-expanded="true" aria-controls="snapshotContent">Hide</button>';
+        htmlShell += '</div>';
+        htmlShell += '<div id="snapshotContent">';
         if (data && data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
             htmlShell += `<p>${data.llm_generated_insights.student_overview_summary}</p>`;
             
@@ -790,6 +794,7 @@ if (window.studentCoachLauncherInitialized) {
         } else {
             htmlShell += '<p>Welcome! Activate the coach to see your insights. (Content will load once backend is ready)</p>';
         }
+        htmlShell += '</div>'; // End snapshotContent
         htmlShell += '</div>';
         logStudentCoach("renderAICoachData: HTML for snapshot built.", htmlShell);
 
@@ -870,6 +875,39 @@ if (window.studentCoachLauncherInitialized) {
             }
         });
         logStudentCoach("Student AI Coach UI rendered and event listeners attached (or attempted). Final panelContent innerHTML length: ", panelContent.innerHTML.length);
+
+        // Add event listener for snapshot toggle button
+        const toggleSnapshotBtn = document.getElementById('toggleSnapshotBtn');
+        const snapshotContent = document.getElementById('snapshotContent');
+        if (toggleSnapshotBtn && snapshotContent) {
+            toggleSnapshotBtn.addEventListener('click', () => {
+                const isHidden = snapshotContent.style.display === 'none';
+                if (isHidden) {
+                    snapshotContent.style.display = 'block';
+                    toggleSnapshotBtn.textContent = 'Hide';
+                    toggleSnapshotBtn.setAttribute('aria-expanded', 'true');
+                } else {
+                    snapshotContent.style.display = 'none';
+                    toggleSnapshotBtn.textContent = 'Show';
+                    toggleSnapshotBtn.setAttribute('aria-expanded', 'false');
+                    // Scroll chat into better view when snapshot is hidden
+                    const chatContainer = document.getElementById('aiCoachChatContainer');
+                    if (chatContainer) {
+                        chatContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+                // Save preference
+                localStorage.setItem('studentCoachSnapshotHidden', !isHidden);
+            });
+            
+            // Restore previous state
+            const wasHidden = localStorage.getItem('studentCoachSnapshotHidden') === 'true';
+            if (wasHidden) {
+                snapshotContent.style.display = 'none';
+                toggleSnapshotBtn.textContent = 'Show';
+                toggleSnapshotBtn.setAttribute('aria-expanded', 'false');
+            }
+        }
 
         // Populate dynamic content sections if data is available
         if (data && data.student_name && data.student_name !== "N/A") {
