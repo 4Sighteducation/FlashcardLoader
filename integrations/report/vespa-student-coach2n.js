@@ -103,6 +103,11 @@ if (window.studentCoachLauncherInitialized) {
         uiCurrentlyInitializing = true;
 
         logStudentCoach("Conditions met. Initializing Student Coach UI (button and panel).");
+        
+        // Set initial theme body class
+        const initialTheme = getCurrentTheme();
+        document.body.classList.add(`theme-${initialTheme}`);
+        
         loadExternalStyles(); 
         createAICoachPanel(); 
         addPanelResizeHandler(); // ADDED from tutor coach
@@ -207,20 +212,45 @@ if (window.studentCoachLauncherInitialized) {
         logStudentCoach("StudentCoachLauncher: Initializer setup complete. Observer is active.");
     }
 
-    function loadExternalStyles() {
+    function getCurrentTheme() {
+        // Get saved theme from localStorage, default to 'cyberpunk' for students
+        return localStorage.getItem('studentCoachTheme') || 'cyberpunk';
+    }
+
+    function loadExternalStyles(theme = null) {
+        // If no theme specified, get from localStorage or default
+        if (!theme) {
+            theme = getCurrentTheme();
+        }
+        
         const styleId = 'student-coach-external-styles'; // Unique ID
-        if (document.getElementById(styleId)) {
-            logStudentCoach("Student Coach external styles already loaded.");
+        const existingLink = document.getElementById(styleId);
+        
+        // URLs for both themes
+        const themeUrls = {
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original.css'
+        };
+        
+        const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
+        
+        // If link exists and href is different, update it
+        if (existingLink) {
+            if (existingLink.href !== newHref) {
+                existingLink.href = newHref;
+                logStudentCoach(`Switching theme to: ${theme}`);
+                localStorage.setItem('studentCoachTheme', theme);
+            }
             return;
         }
 
+        // Create new link element
         const link = document.createElement('link');
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        // Reverted to the CDN path as per user clarification that vespa-student-coach1g.css is the active, copied file.
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1m.css'; 
-        logStudentCoach("Attempting to load CSS from: " + link.href);
+        link.href = newHref;
+        logStudentCoach(`Loading ${theme} theme CSS from: ${link.href}`);
         
         // Dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -369,13 +399,31 @@ if (window.studentCoachLauncherInitialized) {
         const panel = document.createElement('div');
         panel.id = panelId;
         panel.className = 'ai-coach-panel'; // Generic class, specific styles via ID
+        
+        const currentTheme = getCurrentTheme();
+        const themeToggleText = currentTheme === 'cyberpunk' ? '🎨 Original Theme' : '🌆 Cyberpunk Theme';
+        
         panel.innerHTML = `
             <div class="ai-coach-panel-header">
                 <h3>My VESPA AI Coach</h3>
-                <div class="ai-coach-text-controls">
-                    <button class="ai-coach-text-control-btn" data-action="decrease" title="Decrease text size">A-</button>
-                    <span class="ai-coach-text-size-indicator">100%</span>
-                    <button class="ai-coach-text-control-btn" data-action="increase" title="Increase text size">A+</button>
+                <div class="ai-coach-header-controls" style="display: flex; gap: 15px; align-items: center;">
+                    <button class="ai-coach-theme-toggle-btn" id="themeToggleBtn" 
+                            title="Switch between themes" 
+                            style="background: rgba(255, 255, 255, 0.1); 
+                                   border: 1px solid rgba(255, 255, 255, 0.3); 
+                                   border-radius: 8px; 
+                                   padding: 6px 12px; 
+                                   cursor: pointer; 
+                                   font-size: 14px; 
+                                   color: inherit; 
+                                   transition: all 0.3s ease;">
+                        ${themeToggleText}
+                    </button>
+                    <div class="ai-coach-text-controls">
+                        <button class="ai-coach-text-control-btn" data-action="decrease" title="Decrease text size">A-</button>
+                        <span class="ai-coach-text-size-indicator">100%</span>
+                        <button class="ai-coach-text-control-btn" data-action="increase" title="Increase text size">A+</button>
+                    </div>
                 </div>
                 <button class="ai-coach-close-btn" aria-label="Close My AI Coach Panel">&times;</button>
             </div>
@@ -386,6 +434,7 @@ if (window.studentCoachLauncherInitialized) {
         document.body.appendChild(panel);
         logStudentCoach("Student Coach panel created.");
         setupTextSizeControls(panelId); // Pass panelId
+        setupThemeToggle(); // New function to handle theme toggle
     }
     
     function setupTextSizeControls(panelIdToQuery) { // Accept panelId
@@ -422,6 +471,51 @@ if (window.studentCoachLauncherInitialized) {
             localStorage.setItem('studentCoachTextZoom', zoom);
             logStudentCoach(`Text zoom set to ${zoom}%`);
         }
+    }
+
+    function setupThemeToggle() {
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        if (!themeToggleBtn) {
+            logStudentCoach("Theme toggle button not found");
+            return;
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = getCurrentTheme();
+            const newTheme = currentTheme === 'cyberpunk' ? 'original' : 'cyberpunk';
+            
+            logStudentCoach(`Switching theme from ${currentTheme} to ${newTheme}`);
+            
+            // Show loading state
+            themeToggleBtn.disabled = true;
+            themeToggleBtn.textContent = '⏳ Switching...';
+            
+            // Update body class for theme-specific styling
+            document.body.classList.remove(`theme-${currentTheme}`);
+            document.body.classList.add(`theme-${newTheme}`);
+            
+            // Update the CSS link
+            loadExternalStyles(newTheme);
+            
+            // Update button text after a short delay to allow CSS to load
+            setTimeout(() => {
+                const updatedTheme = getCurrentTheme();
+                themeToggleBtn.textContent = updatedTheme === 'cyberpunk' ? '🎨 Original Theme' : '🌆 Cyberpunk Theme';
+                themeToggleBtn.disabled = false;
+                
+                // Add a subtle animation to indicate the theme has changed
+                themeToggleBtn.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    themeToggleBtn.style.transform = 'scale(1)';
+                }, 200);
+            }, 500);
+        });
+        
+        // Set initial body class based on current theme
+        const initialTheme = getCurrentTheme();
+        document.body.classList.add(`theme-${initialTheme}`);
+        
+        logStudentCoach("Theme toggle setup complete");
     }
 
     function addLauncherButton() {
