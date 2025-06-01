@@ -125,6 +125,46 @@ body.ai-coach-active #aiCoachPanel {
     margin-bottom: 15px;
 }
 
+/* Launcher button container - For Floating Button Style */
+#aiCoachLauncherButtonContainer {
+    position: fixed; /* Position relative to the viewport */
+    bottom: 20px;    /* 20px from the bottom */
+    right: 20px;     /* 20px from the right */
+    z-index: 1040;   /* Ensure it's above most content but below the panel */
+    text-align: center; /* Centers the button if its display is inline-block */
+    padding: 0;      /* Reset padding if it's just for the button */
+    border-top: none; /* Remove border if it was for a full-width banner */
+    background-color: transparent; /* Make container transparent */
+}
+
+/* Hide the paragraph that was previously above the button if it's a floating button now */
+#aiCoachLauncherButtonContainer p {
+    display: none; 
+}
+
+/* Styling for the button itself - using activateAICoachBtn ID */
+#aiCoachLauncherButtonContainer button#activateAICoachBtn {
+    padding: 12px 20px !important; /* Using !important to override potential Knack .p-button styles */
+    font-size: 1em !important;
+    background-color: var(--primary-color) !important; /* Using your CSS variable */
+    color: var(--text-light-color) !important; /* Using your CSS variable */
+    border: none !important;
+    border-radius: var(--border-radius-lg) !important; /* Using your CSS variable */
+    box-shadow: var(--shadow-md) !important; /* Using your CSS variable */
+    cursor: pointer !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* For icon and text spacing */
+    transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover {
+    background-color: var(--primary-hover-color) !important; /* Define --primary-hover-color if not already */
+    box-shadow: var(--shadow-lg) !important;
+    transform: translateY(-2px);
+}
+
 /* Section toggles */
 .ai-coach-section-toggles {
     display: flex;
