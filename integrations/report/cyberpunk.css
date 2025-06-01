@@ -1756,3 +1756,103 @@ input:focus-visible,
     border-radius: 5px;
     margin-bottom: 10px;
 }
+
+/* Theme Toggle Button Styles - Cyberpunk Theme */
+.ai-coach-theme-toggle-btn {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(0, 255, 240, 0.2)) !important;
+    border: 1px solid var(--neon-cyan) !important;
+    border-radius: 10px !important;
+    padding: 8px 16px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    color: var(--neon-text-primary) !important;
+    transition: all 0.3s ease !important;
+    white-space: nowrap;
+    min-width: 160px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+    text-shadow: 0 0 5px var(--neon-cyan);
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-coach-theme-toggle-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 240, 0.4), transparent);
+    transition: left 0.5s ease;
+}
+
+.ai-coach-theme-toggle-btn:hover::before {
+    left: 100%;
+}
+
+.ai-coach-theme-toggle-btn:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(0, 255, 240, 0.3)) !important;
+    box-shadow: 0 0 20px rgba(0, 255, 240, 0.5), inset 0 0 15px rgba(0, 255, 240, 0.2) !important;
+    transform: translateY(-2px) scale(1.02);
+    border-color: var(--neon-pink) !important;
+}
+
+.ai-coach-theme-toggle-btn:active {
+    transform: translateY(0) scale(1);
+}
+
+.ai-coach-theme-toggle-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    filter: grayscale(0.5);
+}
+
+/* Header controls layout for theme toggle */
+.ai-coach-header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex: 1;
+    justify-content: flex-end;
+    margin: 0 15px;
+}
+
+/* Animation for theme switch */
+@keyframes neon-theme-pulse {
+    0% { 
+        box-shadow: 0 0 20px rgba(0, 255, 240, 0.5), inset 0 0 15px rgba(0, 255, 240, 0.2);
+    }
+    50% { 
+        box-shadow: 0 0 40px rgba(255, 0, 110, 0.7), inset 0 0 25px rgba(255, 0, 110, 0.3);
+    }
+    100% { 
+        box-shadow: 0 0 20px rgba(0, 255, 240, 0.5), inset 0 0 15px rgba(0, 255, 240, 0.2);
+    }
+}
+
+.ai-coach-theme-toggle-btn.theme-switching {
+    animation: neon-theme-pulse 0.5s ease-out;
+}
+
+/* Responsive adjustments for theme toggle */
+@media (max-width: 768px) {
+    .ai-coach-theme-toggle-btn {
+        min-width: auto;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+    
+    .ai-coach-header-controls {
+        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #aiCoachPanel .ai-coach-panel-header {
+        flex-wrap: wrap;
+    }
+}
