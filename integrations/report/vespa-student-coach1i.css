@@ -113,28 +113,17 @@ body.ai-coach-active #aiCoachPanel {
     min-height: 0;
 }
 
-/* Launcher button container */
-#aiCoachLauncherButtonContainer {
-    text-align: center;
-    padding: 20px;
-    border-top: 2px solid #eee;
-}
-
-#aiCoachLauncherButtonContainer p {
-    font-size: 1.1em;
-    margin-bottom: 15px;
-}
-
-/* Launcher button container - For Floating Button Style */
+/* Launcher button container - For Centered Floating Button Style */
 #aiCoachLauncherButtonContainer {
     position: fixed; /* Position relative to the viewport */
     bottom: 20px;    /* 20px from the bottom */
-    right: 20px;     /* 20px from the right */
+    left: 50%;       /* Start at 50% from the left edge of the viewport */
+    transform: translateX(-50%); /* Shift left by 50% of its own width to truly center it */
     z-index: 1040;   /* Ensure it's above most content but below the panel */
-    text-align: center; /* Centers the button if its display is inline-block */
-    padding: 0;      /* Reset padding if it's just for the button */
-    border-top: none; /* Remove border if it was for a full-width banner */
-    background-color: transparent; /* Make container transparent */
+    text-align: center; /* This will center the inline-flex div containing the buttons */
+    padding: 0;      
+    border-top: none; 
+    background-color: transparent; 
 }
 
 /* Hide the paragraph that was previously above the button if it's a floating button now */
@@ -142,27 +131,52 @@ body.ai-coach-active #aiCoachPanel {
     display: none; 
 }
 
-/* Styling for the button itself - using activateAICoachBtn ID */
+/* Styling for the main Activate button - activateAICoachBtn ID */
 #aiCoachLauncherButtonContainer button#activateAICoachBtn {
-    padding: 12px 20px !important; /* Using !important to override potential Knack .p-button styles */
+    padding: 12px 20px !important; 
     font-size: 1em !important;
-    background-color: var(--primary-color) !important; /* Using your CSS variable */
-    color: var(--text-light-color) !important; /* Using your CSS variable */
+    background-color: var(--primary-color, #3B82F6) !important; /* Fallback color if var not defined */
+    color: var(--text-light-color, #F9FAFB) !important; 
     border: none !important;
-    border-radius: var(--border-radius-lg) !important; /* Using your CSS variable */
-    box-shadow: var(--shadow-md) !important; /* Using your CSS variable */
+    border-radius: var(--border-radius-lg, 12px) !important; 
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)) !important; 
     cursor: pointer !important;
-    display: inline-flex;
+    display: inline-flex; /* Keep this to allow side-by-side with info button if its container is inline-flex */
     align-items: center;
     justify-content: center;
-    gap: 8px; /* For icon and text spacing */
+    gap: 8px; 
     transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:hover {
-    background-color: var(--primary-hover-color) !important; /* Define --primary-hover-color if not already */
-    box-shadow: var(--shadow-lg) !important;
+    background-color: var(--primary-hover-color, #2563EB) !important; /* Define --primary-hover-color or use a darkened fallback */
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)) !important;
     transform: translateY(-2px);
+}
+
+/* Styling for the new Info Button */
+#aiCoachInfoBtn {
+    width: 40px !important; 
+    height: 40px !important;
+    border-radius: 50% !important; 
+    background-color: var(--secondary-color, #10B981) !important; /* Fallback color */
+    border: none !important;
+    color: var(--text-light-color, #F9FAFB) !important; 
+    font-size: 20px !important; 
+    font-weight: bold !important;
+    cursor: pointer !important;
+    display: inline-flex !important; /* Changed from flex to inline-flex to sit nicely with other button */
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05)) !important;
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s !important;
+    vertical-align: middle; /* Helps align with other inline-flex items */
+}
+
+#aiCoachInfoBtn:hover {
+    background-color: var(--secondary-hover-color, #059669) !important; /* Define --secondary-hover-color or use a darkened fallback */
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)) !important;
 }
 
 /* Section toggles */
