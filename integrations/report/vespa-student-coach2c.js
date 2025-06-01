@@ -1316,25 +1316,58 @@ if (window.studentCoachLauncherInitialized) {
         const chatDisplay = document.getElementById('studentCoachChatDisplay');
         const chatCountElement = document.getElementById('studentCoachChatCount');
         const likedCountNumberElement = document.getElementById('studentLikedCountNumber');
-        if (!chatDisplay || !lastFetchedStudentKnackId) return;
+        const likedCountSpan = document.getElementById('studentCoachLikedCount'); // Get the whole span for visibility
 
-        chatDisplay.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading chat history...</p>';
+        // Derive chatWithTitle from available data, defaulting if necessary
+        const studentNameForTitle = (currentLLMInsightsForChat && currentLLMInsightsForChat.student_name && currentLLMInsightsForChat.student_name !== "N/A") 
+            ? currentLLMInsightsForChat.student_name 
+            : (STUDENT_COACH_LAUNCHER_CONFIG && STUDENT_COACH_LAUNCHER_CONFIG.studentNameForChat) 
+                ? STUDENT_COACH_LAUNCHER_CONFIG.studentNameForChat
+                : "My AI Coach";
+        const chatWithTitle = studentNameForTitle.split(' ')[0] || "My AI Coach";
+
+        logStudentCoach("loadStudentChatHistory: Called", { 
+            hasChatDisplay: !!chatDisplay, 
+            hasStudentId: !!lastFetchedStudentKnackId, 
+            chatWithTitle: chatWithTitle 
+        });
+
+        if (!chatDisplay || !lastFetchedStudentKnackId) {
+            logStudentCoach("loadStudentChatHistory: Aborting - chatDisplay or lastFetchedStudentKnackId missing.");
+            if (chatCountElement) chatCountElement.textContent = 'Chat context unavailable.';
+            if (likedCountNumberElement) likedCountNumberElement.textContent = '0';
+            if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Keep it visible but with 0
+            return;
+        }
+
+        chatDisplay.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your chat history...</p>';
+        if (chatCountElement) chatCountElement.textContent = 'Loading history...';
+        if (likedCountNumberElement) likedCountNumberElement.textContent = '-';
+        if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Show loading state
 
         try {
+            logStudentCoach(`loadStudentChatHistory: Fetching for student ID: ${lastFetchedStudentKnackId}`);
             const response = await fetch(CHAT_HISTORY_ENDPOINT, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     student_knack_id: lastFetchedStudentKnackId,
-                    max_messages: 50, // Or make this configurable
-                    initial_ai_context: currentLLMInsightsForChat // Pass context if backend uses it for summary
+                    max_messages: 50, 
+                    initial_ai_context: currentLLMInsightsForChat 
                 })
             });
-            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-            const data = await response.json();
 
-            chatDisplay.innerHTML = ''; // Clear loader
-            let totalLikes = 0;
+            chatDisplay.innerHTML = ''; // Clear loader/previous messages
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                logStudentCoach("loadStudentChatHistory: API Error", { status: response.status, text: errorText });
+                throw new Error(`Chat History API Error (${response.status}): ${errorText || response.statusText}`);
+            }
+            const data = await response.json();
+            logStudentCoach("loadStudentChatHistory: Successfully loaded history", data);
+
+            let totalLikesInHistory = 0;
 
             if (data.chat_history && data.chat_history.length > 0) {
                 data.chat_history.forEach(msg => {
@@ -1343,17 +1376,17 @@ if (window.studentCoachLauncherInitialized) {
                     messageElement.setAttribute('data-message-id', msg.id || `${msg.role}-${Date.now()}-${Math.random()}`);
                     messageElement.setAttribute('data-is-liked', msg.is_liked ? msg.is_liked.toString() : 'false');
                     
-                    const authorPrefix = msg.role === 'assistant' ? (chatWithTitle || "My AI Coach") : "You";
+                    const authorPrefix = msg.role === 'assistant' ? (chatWithTitle) : "You";
                     messageElement.innerHTML = `<em>${authorPrefix}:</em> ${msg.content}`;
                     chatDisplay.appendChild(messageElement);
 
-                    if (msg.role === 'assistant' && msg.id) { // Only add like buttons to AI messages with an ID
+                    if (msg.role === 'assistant' && msg.id) { 
                         addLikeButtonToMessage(messageElement, msg.id, msg.is_liked || false);
-                        if (msg.is_liked) totalLikes++;
+                        if (msg.is_liked) totalLikesInHistory++;
                     }
                 });
             } else {
-                // Display the initial bot greeting if history is empty
+                logStudentCoach("loadStudentChatHistory: No chat history messages found in response data.");
                 const initialBotMsgElement = document.createElement('p');
                 initialBotMsgElement.className = 'ai-chat-message ai-chat-message-bot';
                 initialBotMsgElement.setAttribute('data-message-id', 'initial-bot-message');
@@ -1362,16 +1395,19 @@ if (window.studentCoachLauncherInitialized) {
             }
             
             if (chatCountElement) chatCountElement.textContent = `${data.total_count || 0} messages`;
-            if (likedCountNumberElement) likedCountNumberElement.textContent = data.liked_count || totalLikes; // Use backend count if available, else sum from history
-            
-            const likedCountSpan = document.getElementById('studentCoachLikedCount');
-            if(likedCountSpan) likedCountSpan.style.display = (data.liked_count || totalLikes) > 0 ? 'inline-flex' : 'inline-flex'; // Always show for now
+            const finalLikedCount = data.liked_count !== undefined ? data.liked_count : totalLikesInHistory;
+            if (likedCountNumberElement) likedCountNumberElement.textContent = finalLikedCount;
+            if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Always show after loading
 
             chatDisplay.scrollTop = chatDisplay.scrollHeight;
+            logStudentCoach("loadStudentChatHistory: UI updated with history.");
 
         } catch (error) {
-            logStudentCoach("Error loading student chat history:", error);
-            chatDisplay.innerHTML = '<p style="color:red; text-align:center;">Could not load chat history.</p>';
+            logStudentCoach("loadStudentChatHistory: Error during fetch or processing", error);
+            chatDisplay.innerHTML = '<p style="color:red; text-align:center;">Could not load your chat history. Please try again later.</p>';
+            if (chatCountElement) chatCountElement.textContent = 'History unavailable';
+            if (likedCountNumberElement) likedCountNumberElement.textContent = '0';
+            if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Keep visible with 0
         }
     }
 
