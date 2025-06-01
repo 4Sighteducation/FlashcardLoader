@@ -219,7 +219,7 @@ if (window.studentCoachLauncherInitialized) {
         link.rel = 'stylesheet';
         link.type = 'text/css';
         // Reverted to the CDN path as per user clarification that vespa-student-coach1g.css is the active, copied file.
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1h.css'; 
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1g.css'; 
         logStudentCoach("Attempting to load CSS from: " + link.href);
         
         // Dynamic CSS for config-specific IDs
@@ -425,18 +425,20 @@ if (window.studentCoachLauncherInitialized) {
     }
 
     function addLauncherButton() {
-        const targetElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
-        if (!targetElement) {
-            console.error(`[StudentCoachLauncher] Launcher button target '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' not found.`);
-            return;
-        }
+        // const targetElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
+        // if (!targetElement) {
+        //     console.error(`[StudentCoachLauncher] Launcher button target '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' not found.`);
+        //     return;
+        // }
 
-        let buttonContainer = document.getElementById('studentCoachLauncherButtonContainer'); // Unique ID
+        let buttonContainer = document.getElementById('aiCoachLauncherButtonContainer'); 
         if (!buttonContainer) {
             buttonContainer = document.createElement('div');
-            buttonContainer.id = 'studentCoachLauncherButtonContainer';
-            targetElement.innerHTML = ''; 
-            targetElement.appendChild(buttonContainer);
+            buttonContainer.id = 'aiCoachLauncherButtonContainer';
+            // targetElement.innerHTML = ''; 
+            // targetElement.appendChild(buttonContainer);
+            document.body.appendChild(buttonContainer); // Append directly to body
+            logStudentCoach("Launcher button container DIV created and appended to document.body.");
         }
 
         if (!buttonContainer.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`)) {
