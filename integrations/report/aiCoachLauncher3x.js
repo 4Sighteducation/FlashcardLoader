@@ -1704,6 +1704,8 @@ if (window.aiCoachLauncherInitialized) {
             const messageText = chatInput.value.trim();
             if (messageText === '') return;
 
+            let suggestedActivities = []; // Declare here to be accessible in finally block
+
             const currentStudentId = lastFetchedStudentId; // Use the ID from the last successful main data fetch
             if (!currentStudentId) {
                 logAICoach("Cannot send chat message: student ID not available.");
@@ -1855,7 +1857,7 @@ if (window.aiCoachLauncherInitialized) {
                 
                 // Process the AI response to make activity references clickable
                 let processedResponse = data.ai_response;
-                const suggestedActivities = data.suggested_activities_in_chat || [];
+                suggestedActivities = data.suggested_activities_in_chat || []; // Assign here
                 
                 // Create a map of activity names to their data for easy lookup
                 const activityMap = {};
@@ -2769,3 +2771,4 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
+
