@@ -242,7 +242,7 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1i.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1g.css';
         // .css';
         
         // Add dynamic CSS for config-specific IDs
@@ -1031,6 +1031,19 @@ if (window.aiCoachLauncherInitialized) {
             }
             logAICoach("Chat interface not added due to missing student context.");
         }
+
+        // --- Add Quick Links Area (always add the placeholder, content managed by sendChatMessage) ---
+        const quickLinksArea = document.createElement('div');
+        quickLinksArea.id = 'aiCoachQuickLinksArea';
+        quickLinksArea.className = 'ai-coach-section'; // Use existing class for styling consistency
+        quickLinksArea.style.display = 'none'; // Initially hidden
+        quickLinksArea.style.marginTop = '20px';
+        quickLinksArea.style.padding = '10px';
+        quickLinksArea.style.background = '#e9f5ff'; // Light blue background
+        quickLinksArea.style.borderLeft = '4px solid #3498db'; // Blue accent border
+        quickLinksArea.style.borderRadius = '5px';
+        panelContent.appendChild(quickLinksArea);
+        logAICoach("Placeholder for Quick Links area added.");
     }
 
     function renderVespaComparisonChart(studentVespaProfile, schoolVespaAverages) {
@@ -1797,8 +1810,8 @@ if (window.aiCoachLauncherInitialized) {
                 };
 
                 // No need to interact with the old thinkingIndicator (bottom bar) here
-                chatSendButton.disabled = false;
-                chatInput.disabled = false;
+                // chatSendButton.disabled = false; // This was moved down
+                // chatInput.disabled = false; // This was moved down
                 
                 // The in-chat thinking message (aiCoachTempInlineThinkingMessage) was already removed before the fetch call.
                 // If we want to remove it only *after* a successful response or error, we'd move its removal here.
@@ -1822,8 +1835,8 @@ if (window.aiCoachLauncherInitialized) {
                 });
 
                 // No need to interact with the old thinkingIndicator (bottom bar) here
-                chatSendButton.disabled = false;
-                chatInput.disabled = false;
+                // chatSendButton.disabled = false; // This was moved down
+                // chatInput.disabled = false; // This was moved down
                 
                 // The in-chat thinking message (aiCoachTempInlineThinkingMessage) was already removed before the fetch call.
                 // If we want to remove it only *after* a successful response or error, we'd move its removal here.
@@ -1970,6 +1983,55 @@ if (window.aiCoachLauncherInitialized) {
                 chatSendButton.disabled = false;
                 chatInput.disabled = false;
                 chatInput.focus(); // Return focus to input
+
+
+                // --- Manage Quick Links Area ---
+                const quickLinksArea = document.getElementById('aiCoachQuickLinksArea');
+                if (quickLinksArea) {
+                    if (suggestedActivities && suggestedActivities.length > 0) {
+                        quickLinksArea.innerHTML = ''; // Clear previous links
+                        
+                        const quickLinksTitle = document.createElement('strong');
+                        quickLinksTitle.style.cssText = 'color: #2c3e50; font-size: 0.95em; display: block; margin-bottom: 8px;';
+                        quickLinksTitle.innerHTML = '📚 Suggested Activity Quick Links:';
+                        quickLinksArea.appendChild(quickLinksTitle);
+
+                        const linksUl = document.createElement('ul');
+                        linksUl.style.cssText = 'margin: 0; padding-left: 20px; list-style-type: disc;';
+                        
+                        suggestedActivities.forEach(activity => {
+                            const listItem = document.createElement('li');
+                            listItem.style.cssText = 'margin: 4px 0;';
+                            listItem.innerHTML = `
+                                <a href="#" class="ai-coach-activity-quick-link" 
+                                   data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'
+                                   style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                                    ${activity.name} <span style="color: #555; font-size:0.9em;">(${activity.vespa_element || 'N/A'})</span>
+                                </a>
+                            `;
+                            linksUl.appendChild(listItem);
+                        });
+                        quickLinksArea.appendChild(linksUl);
+
+                        // Add click handlers to these newly created quick links
+                        const newQuickLinks = quickLinksArea.querySelectorAll('.ai-coach-activity-quick-link');
+                        newQuickLinks.forEach(link => {
+                            link.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                try {
+                                    const activityData = JSON.parse(link.getAttribute('data-activity'));
+                                    showActivityModal(activityData);
+                                } catch (error) {
+                                    logAICoach("Error parsing activity data from quick link:", error);
+                                }
+                            });
+                        });
+                        quickLinksArea.style.display = 'block';
+                    } else {
+                        quickLinksArea.innerHTML = ''; // Clear if no activities
+                        quickLinksArea.style.display = 'none';
+                    }
+                }
             }
             chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
