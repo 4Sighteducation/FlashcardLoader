@@ -435,18 +435,136 @@ if (window.studentCoachLauncherInitialized) {
         if (!buttonContainer) {
             buttonContainer = document.createElement('div');
             buttonContainer.id = 'aiCoachLauncherButtonContainer';
-            // targetElement.innerHTML = ''; 
-            // targetElement.appendChild(buttonContainer);
-            document.body.appendChild(buttonContainer); // Append directly to body
+            document.body.appendChild(buttonContainer); 
             logStudentCoach("Launcher button container DIV created and appended to document.body.");
         }
 
+        // Ensure the paragraph is not re-added if only button is missing
         if (!buttonContainer.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`)) {
+            // New structure with a flex container for main button and info button
             buttonContainer.innerHTML = `
-                <p>Ready to explore your VESPA profile with AI guidance?</p>
-                <button id="${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" class="p-button p-component">🚀 Activate My AI Coach</button>
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
+                    <button id="${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" class="p-button p-component">🚀 Activate My AI Coach</button>
+                    <button id="aiCoachInfoBtn" title="About My AI Coach" 
+                            style="width: 40px; height: 40px; border-radius: 50%; 
+                                   background-color: #e9ecef; /* Light grey, adjust with CSS variables later */ 
+                                   border: 1px solid #ced4da; 
+                                   font-size: 20px; font-weight: bold; color: #495057; 
+                                   cursor: pointer; display: flex; align-items: center; 
+                                   justify-content: center; transition: background-color 0.2s, box-shadow 0.2s;"
+                            aria-label="Information about the AI Coach">
+                        i
+                    </button>
+                </div>
             `;
         }
+        
+        // Add event listener for the new info button
+        const infoButton = document.getElementById('aiCoachInfoBtn');
+        if (infoButton) {
+            infoButton.addEventListener('click', () => {
+                logStudentCoach("Info button clicked");
+                showInfoModal(); // This function will be created next
+            });
+        } else {
+            // This might happen if innerHTML was set but button isn't found immediately (less likely with direct innerHTML)
+            // Or if the button container already existed with different content.
+            // For robustness, try querying again after a tiny delay if critical, or ensure idempotent re-creation.
+            logStudentCoach("Info button not found immediately after innerHTML set. This might be an issue if container was not empty.");
+        }
+    }
+
+    function createInfoModalHTML() {
+        // Content for the info modal
+        // Adjust title and content as needed
+        const title = "About My VESPA AI Coach";
+        const content = `
+            <p>Hello! I'm your VESPA AI Coach, here to help you understand your VESPA profile and make the most of your learning journey.</p>
+            <h4>What can I help with?</h4>
+            <ul>
+                <li><strong>Understanding Your Scores:</strong> I can help you interpret your VESPA (Vision, Effort, Systems, Practice, Attitude) scores.</li>
+                <li><strong>Academic Insights:</strong> Explore your academic performance in relation to benchmarks like your Minimum Expected Grades (MEGs).</li>
+                <li><strong>Questionnaire Analysis:</strong> Reflect on your questionnaire responses and what they suggest about your learning habits and mindset.</li>
+                <li><strong>Setting Goals:</strong> I can help you think about S.M.A.R.T. goals based on your profile.</li>
+                <li><strong>Finding Strategies:</strong> If you're facing a challenge (e.g., motivation, organization), I can suggest relevant VESPA activities and resources.</li>
+            </ul>
+            <h4>How does it work?</h4>
+            <p>I use the data from your VESPA profile, academic results, and questionnaire responses (if available) to provide personalized insights and suggestions. Our conversation is designed to help you take ownership of your learning.</p>
+            <h4>Tips for chatting:</h4>
+            <ul>
+                <li>Be specific! The more details you give me about a challenge, the better I can help.</li>
+                <li>Ask questions about any part of your VESPA report or your learning.</li>
+                <li>Use the "What area to focus on?" button if you're unsure where to start.</li>
+            </ul>
+            <p>Let's work together to help you succeed!</p>
+        `;
+
+        return {
+            title: title,
+            bodyHtml: content
+        };
+    }
+
+    function showInfoModal() {
+        logStudentCoach("Showing AI Coach Info Modal");
+        const modalId = 'aiCoachInfoModal'; // Specific ID for this modal
+        const existingModal = document.getElementById(modalId);
+        if (existingModal) existingModal.remove(); // Remove if already exists
+
+        const modalData = createInfoModalHTML();
+
+        const modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'ai-coach-modal-overlay'; // Use a generic class for overlay styling
+
+        const modalContent = document.createElement('div');
+        modalContent.className = 'ai-coach-modal-content'; // Generic class for content box styling
+
+        const savedZoom = localStorage.getItem('studentCoachTextZoom'); // Reuse student zoom preference
+        if (savedZoom) {
+            modalContent.style.fontSize = `${parseInt(savedZoom, 10) * 14 / 100}px`;
+        }
+
+        modalContent.innerHTML = `
+            <div class="ai-coach-modal-header" style="background-color: #f0f8ff; border-bottom: 1px solid #cfe2f3;"> 
+                <h3 style="color: #0056b3;">${modalData.title}</h3>
+                <button class="ai-coach-modal-close" aria-label="Close information modal">&times;</button>
+            </div>
+            <div class="ai-coach-modal-body" style="padding: 20px 25px;">
+                ${modalData.bodyHtml}
+            </div>
+        `;
+
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        // Trigger CSS animations for entry
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modalContent.style.transform = 'scale(1) translateY(0)';
+        }, 10);
+
+        // Close handlers
+        const closeModal = () => {
+            modal.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.95) translateY(10px)';
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+            }, 300); // Match CSS transition duration
+            document.removeEventListener('keydown', escKeyHandler);
+        };
+
+        modalContent.querySelector('.ai-coach-modal-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal(); // Close if overlay is clicked
+        });
+
+        const escKeyHandler = (e) => {
+            if (e.key === 'Escape') closeModal();
+        };
+        document.addEventListener('keydown', escKeyHandler);
     }
 
     async function getLoggedInStudentDataForCoach() {
