@@ -1856,3 +1856,309 @@ input:focus-visible,
         flex-wrap: wrap;
     }
 }
+
+/* PROBLEM SELECTOR MODAL - CYBERPUNK THEME COMPLETE REDESIGN */
+#aiCoachProblemModal.ai-coach-modal-overlay {
+    background: rgba(10, 10, 15, 0.95) !important;
+    backdrop-filter: blur(10px);
+}
+
+#aiCoachProblemModal .ai-coach-modal-content {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%) !important;
+    border: 2px solid var(--neon-cyan) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 0 50px rgba(0, 255, 240, 0.4), 
+                inset 0 0 30px rgba(0, 255, 240, 0.1) !important;
+    max-width: 900px !important;
+    max-height: 85vh !important;
+    overflow: hidden;
+}
+
+/* Scanline effect for modal */
+#aiCoachProblemModal .ai-coach-modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 240, 0.03) 2px,
+        rgba(0, 255, 240, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Modal Header - Cyberpunk Style */
+#aiCoachProblemModal .ai-coach-problem-modal-header {
+    padding: 25px 30px !important;
+    background: rgba(26, 26, 46, 0.9) !important;
+    border-bottom: 2px solid var(--neon-cyan) !important;
+    position: relative;
+    z-index: 2;
+}
+
+#aiCoachProblemModal .ai-coach-problem-modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    animation: neon-scan 3s linear infinite;
+}
+
+#aiCoachProblemModal .ai-coach-problem-modal-header h3 {
+    color: var(--neon-cyan) !important;
+    font-size: 1.8em !important;
+    margin: 0 0 10px 0 !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan);
+    animation: neon-flicker 2s ease-in-out infinite alternate;
+}
+
+#aiCoachProblemModal .ai-coach-problem-modal-header p {
+    color: var(--neon-text-secondary) !important;
+    font-size: 1.1em !important;
+    margin: 0 !important;
+    opacity: 0.9;
+}
+
+/* Modal Body - Cyberpunk Style */
+#aiCoachProblemModal .ai-coach-problem-modal-body {
+    padding: 30px !important;
+    background: rgba(20, 20, 35, 0.6) !important;
+    overflow-y: auto !important;
+    max-height: calc(85vh - 150px) !important;
+    position: relative;
+    z-index: 2;
+}
+
+/* Custom scrollbar for modal body */
+#aiCoachProblemModal .ai-coach-problem-modal-body::-webkit-scrollbar {
+    width: 10px;
+}
+
+#aiCoachProblemModal .ai-coach-problem-modal-body::-webkit-scrollbar-track {
+    background: rgba(0, 255, 240, 0.1);
+    border-radius: 5px;
+}
+
+#aiCoachProblemModal .ai-coach-problem-modal-body::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, var(--neon-cyan), var(--neon-purple));
+    border-radius: 5px;
+}
+
+/* VESPA Category Sections */
+#aiCoachProblemModal .ai-coach-problem-category {
+    margin-bottom: 25px !important;
+    padding: 20px !important;
+    border-radius: 15px !important;
+    position: relative;
+    overflow: hidden;
+    background: rgba(30, 30, 50, 0.8) !important;
+}
+
+/* Gradient backgrounds for each VESPA category */
+#aiCoachProblemModal .ai-coach-problem-category.vespa-vision {
+    background: linear-gradient(135deg, rgba(255, 143, 0, 0.1), rgba(255, 143, 0, 0.05)) !important;
+    border: 1px solid rgba(255, 143, 0, 0.5) !important;
+    box-shadow: inset 0 0 20px rgba(255, 143, 0, 0.2), 0 0 15px rgba(255, 143, 0, 0.3) !important;
+}
+
+#aiCoachProblemModal .ai-coach-problem-category.vespa-effort {
+    background: linear-gradient(135deg, rgba(134, 180, 240, 0.1), rgba(134, 180, 240, 0.05)) !important;
+    border: 1px solid rgba(134, 180, 240, 0.5) !important;
+    box-shadow: inset 0 0 20px rgba(134, 180, 240, 0.2), 0 0 15px rgba(134, 180, 240, 0.3) !important;
+}
+
+#aiCoachProblemModal .ai-coach-problem-category.vespa-systems {
+    background: linear-gradient(135deg, rgba(114, 203, 68, 0.1), rgba(114, 203, 68, 0.05)) !important;
+    border: 1px solid rgba(114, 203, 68, 0.5) !important;
+    box-shadow: inset 0 0 20px rgba(114, 203, 68, 0.2), 0 0 15px rgba(114, 203, 68, 0.3) !important;
+}
+
+#aiCoachProblemModal .ai-coach-problem-category.vespa-practice {
+    background: linear-gradient(135deg, rgba(127, 49, 164, 0.1), rgba(127, 49, 164, 0.05)) !important;
+    border: 1px solid rgba(127, 49, 164, 0.5) !important;
+    box-shadow: inset 0 0 20px rgba(127, 49, 164, 0.2), 0 0 15px rgba(127, 49, 164, 0.3) !important;
+}
+
+#aiCoachProblemModal .ai-coach-problem-category.vespa-attitude {
+    background: linear-gradient(135deg, rgba(240, 50, 230, 0.1), rgba(240, 50, 230, 0.05)) !important;
+    border: 1px solid rgba(240, 50, 230, 0.5) !important;
+    box-shadow: inset 0 0 20px rgba(240, 50, 230, 0.2), 0 0 15px rgba(240, 50, 230, 0.3) !important;
+}
+
+/* Category Headers */
+#aiCoachProblemModal .ai-coach-problem-category h4 {
+    margin: 0 0 15px 0 !important;
+    font-size: 1.4em !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: bold;
+    padding: 10px 15px;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+#aiCoachProblemModal .vespa-vision h4 {
+    color: var(--vespa-vision-color) !important;
+    background: rgba(255, 143, 0, 0.2);
+    border: 1px solid var(--vespa-vision-color);
+    text-shadow: 0 0 10px var(--vespa-vision-color);
+}
+
+#aiCoachProblemModal .vespa-effort h4 {
+    color: var(--vespa-effort-color) !important;
+    background: rgba(134, 180, 240, 0.2);
+    border: 1px solid var(--vespa-effort-color);
+    text-shadow: 0 0 10px var(--vespa-effort-color);
+}
+
+#aiCoachProblemModal .vespa-systems h4 {
+    color: var(--vespa-systems-color) !important;
+    background: rgba(114, 203, 68, 0.2);
+    border: 1px solid var(--vespa-systems-color);
+    text-shadow: 0 0 10px var(--vespa-systems-color);
+}
+
+#aiCoachProblemModal .vespa-practice h4 {
+    color: var(--vespa-practice-color) !important;
+    background: rgba(127, 49, 164, 0.2);
+    border: 1px solid var(--vespa-practice-color);
+    text-shadow: 0 0 10px var(--vespa-practice-color);
+}
+
+#aiCoachProblemModal .vespa-attitude h4 {
+    color: var(--vespa-attitude-color) !important;
+    background: rgba(240, 50, 230, 0.2);
+    border: 1px solid var(--vespa-attitude-color);
+    text-shadow: 0 0 10px var(--vespa-attitude-color);
+}
+
+/* Problem Items - Cyberpunk Style */
+#aiCoachProblemModal .ai-coach-problem-item {
+    padding: 15px 20px !important;
+    margin: 10px 0 !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    font-size: 1.1em !important;
+    color: var(--neon-text-primary) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Add hover glow effect */
+#aiCoachProblemModal .ai-coach-problem-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+#aiCoachProblemModal .ai-coach-problem-item:hover::before {
+    left: 100%;
+}
+
+/* Specific hover colors for each VESPA category */
+#aiCoachProblemModal .vespa-vision .ai-coach-problem-item:hover {
+    background: rgba(255, 143, 0, 0.2) !important;
+    border-color: var(--vespa-vision-color) !important;
+    transform: translateX(5px);
+    box-shadow: 0 0 20px rgba(255, 143, 0, 0.5), inset 0 0 10px rgba(255, 143, 0, 0.2) !important;
+    color: #ffffff !important;
+}
+
+#aiCoachProblemModal .vespa-effort .ai-coach-problem-item:hover {
+    background: rgba(134, 180, 240, 0.2) !important;
+    border-color: var(--vespa-effort-color) !important;
+    transform: translateX(5px);
+    box-shadow: 0 0 20px rgba(134, 180, 240, 0.5), inset 0 0 10px rgba(134, 180, 240, 0.2) !important;
+    color: #ffffff !important;
+}
+
+#aiCoachProblemModal .vespa-systems .ai-coach-problem-item:hover {
+    background: rgba(114, 203, 68, 0.2) !important;
+    border-color: var(--vespa-systems-color) !important;
+    transform: translateX(5px);
+    box-shadow: 0 0 20px rgba(114, 203, 68, 0.5), inset 0 0 10px rgba(114, 203, 68, 0.2) !important;
+    color: #ffffff !important;
+}
+
+#aiCoachProblemModal .vespa-practice .ai-coach-problem-item:hover {
+    background: rgba(127, 49, 164, 0.2) !important;
+    border-color: var(--vespa-practice-color) !important;
+    transform: translateX(5px);
+    box-shadow: 0 0 20px rgba(127, 49, 164, 0.5), inset 0 0 10px rgba(127, 49, 164, 0.2) !important;
+    color: #ffffff !important;
+}
+
+#aiCoachProblemModal .vespa-attitude .ai-coach-problem-item:hover {
+    background: rgba(240, 50, 230, 0.2) !important;
+    border-color: var(--vespa-attitude-color) !important;
+    transform: translateX(5px);
+    box-shadow: 0 0 20px rgba(240, 50, 230, 0.5), inset 0 0 10px rgba(240, 50, 230, 0.2) !important;
+    color: #ffffff !important;
+}
+
+/* Modal Close Button - Cyberpunk Style */
+#aiCoachProblemModal .ai-coach-modal-close {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    background: rgba(26, 26, 46, 0.8) !important;
+    border: 2px solid var(--neon-pink) !important;
+    color: var(--neon-pink) !important;
+    font-size: 28px !important;
+    width: 45px !important;
+    height: 45px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    text-shadow: 0 0 10px var(--neon-pink);
+    z-index: 10;
+}
+
+#aiCoachProblemModal .ai-coach-modal-close:hover {
+    background: rgba(255, 0, 110, 0.2) !important;
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 0 30px var(--neon-pink), inset 0 0 15px var(--neon-pink) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #aiCoachProblemModal .ai-coach-modal-content {
+        width: 95% !important;
+        max-height: 90vh !important;
+    }
+    
+    #aiCoachProblemModal .ai-coach-problem-modal-body {
+        padding: 20px !important;
+    }
+    
+    #aiCoachProblemModal .ai-coach-problem-category {
+        padding: 15px !important;
+    }
+    
+    #aiCoachProblemModal .ai-coach-problem-item {
+        font-size: 1em !important;
+        padding: 12px 15px !important;
+    }
+}
