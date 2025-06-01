@@ -1162,3 +1162,88 @@ div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
     padding: 8px 4px !important;
     text-align: center !important;
 }
+
+/* Theme Toggle Button Styles - Original Theme */
+.ai-coach-theme-toggle-btn {
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    padding: 8px 16px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    color: #495057 !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap;
+    min-width: 160px;
+    text-align: center;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ai-coach-theme-toggle-btn:hover {
+    background: #e9ecef !important;
+    border-color: #adb5bd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    color: #212529 !important;
+}
+
+.ai-coach-theme-toggle-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ai-coach-theme-toggle-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Header controls layout for theme toggle */
+.ai-coach-header-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex: 1;
+    justify-content: flex-end;
+    margin: 0 15px;
+}
+
+/* Ensure proper header layout */
+#aiCoachPanel .ai-coach-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Animation for theme switch - subtle for original theme */
+@keyframes theme-switch-bounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.ai-coach-theme-toggle-btn.theme-switching {
+    animation: theme-switch-bounce 0.3s ease-out;
+}
+
+/* Responsive adjustments for theme toggle */
+@media (max-width: 768px) {
+    .ai-coach-theme-toggle-btn {
+        min-width: auto;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+    
+    .ai-coach-header-controls {
+        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #aiCoachPanel .ai-coach-panel-header {
+        flex-wrap: wrap;
+    }
+}
