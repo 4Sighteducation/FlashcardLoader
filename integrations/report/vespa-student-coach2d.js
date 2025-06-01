@@ -49,7 +49,7 @@ if (window.studentCoachLauncherInitialized) {
         };
         script.onerror = () => {
             console.error("[StudentCoachLauncher] Failed to load Chart.js from CDN.");
-            const chartContainer = document.getElementById('studentVespaComparisonChartContainer'); // Keep generic ID for now
+            const chartContainer = document.getElementById('vespaComparisonChartContainer'); // Changed ID
             if(chartContainer) chartContainer.innerHTML = '<p style="color:red; text-align:center;">Chart library failed to load.</p>';
         };
         document.head.appendChild(script);
@@ -220,7 +220,7 @@ if (window.studentCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1f.css'; // UPDATED CSS LINK
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespa-student-coach1g.css'; // UPDATED CSS LINK
         
         // Dynamic CSS for config-specific IDs
         const dynamicCss = `
@@ -582,17 +582,17 @@ if (window.studentCoachLauncherInitialized) {
         // --- Toggle Buttons for different insight sections --- 
         htmlShell += `
             <div class="student-coach-section-toggles ai-coach-section-toggles"> 
-                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false" aria-controls="studentCoachVespaProfileContainer">My VESPA Insights</button>
-                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false" aria-controls="studentCoachAcademicProfileContainer">My Academic Insights</button>
-                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false" aria-controls="studentCoachQuestionAnalysisContainer">My Questionnaire Insights</button>
+                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false" aria-controls="aiCoachVespaProfileContainer">My VESPA Insights</button> 
+                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false" aria-controls="aiCoachAcademicProfileContainer">My Academic Insights</button>
+                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false" aria-controls="aiCoachQuestionAnalysisContainer">My Questionnaire Insights</button>
             </div>
         `;
         logStudentCoach("renderAICoachData: HTML for toggle buttons appended.", htmlShell);
 
         // --- Content Divs for each toggle button - initially hidden --- 
-        htmlShell += '<div id="studentCoachVespaProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your VESPA profile insights will appear here when available.</p></div></div>';
-        htmlShell += '<div id="studentCoachAcademicProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your academic insights will appear here when available.</p></div></div>';
-        htmlShell += '<div id="studentCoachQuestionAnalysisContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your questionnaire analysis will appear here when available.</p></div></div>';
+        htmlShell += '<div id="aiCoachVespaProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your VESPA profile insights will appear here when available.</p></div></div>';
+        htmlShell += '<div id="aiCoachAcademicProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your academic insights will appear here when available.</p></div></div>';
+        htmlShell += '<div id="aiCoachQuestionAnalysisContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your questionnaire analysis will appear here when available.</p></div></div>';
         logStudentCoach("renderAICoachData: HTML for content divs appended.", htmlShell);
         
         // --- Set the combined HTML to the panel content --- 
@@ -615,9 +615,9 @@ if (window.studentCoachLauncherInitialized) {
 
         // --- Add event listeners for the new toggle buttons --- 
         const toggleButtonsConfig = [
-            { buttonId: 'aiCoachToggleVespaButton',          containerId: 'studentCoachVespaProfileContainer',       defaultText: 'My VESPA Insights' },
-            { buttonId: 'aiCoachToggleAcademicButton',       containerId: 'studentCoachAcademicProfileContainer',    defaultText: 'My Academic Insights' },
-            { buttonId: 'aiCoachToggleQuestionButton',       containerId: 'studentCoachQuestionAnalysisContainer', defaultText: 'My Questionnaire Insights' }
+            { buttonId: 'aiCoachToggleVespaButton',          containerId: 'aiCoachVespaProfileContainer',       defaultText: 'My VESPA Insights' },
+            { buttonId: 'aiCoachToggleAcademicButton',       containerId: 'aiCoachAcademicProfileContainer',    defaultText: 'My Academic Insights' },
+            { buttonId: 'aiCoachToggleQuestionButton',       containerId: 'aiCoachQuestionAnalysisContainer', defaultText: 'My Questionnaire Insights' }
         ];
 
         toggleButtonsConfig.forEach(config => {
@@ -660,12 +660,12 @@ if (window.studentCoachLauncherInitialized) {
         // Populate dynamic content sections if data is available
         if (data && data.student_name && data.student_name !== "N/A") {
             // Ensure parent containers for charts and other content exist and are prepared
-            const vespaSection = document.getElementById('studentCoachVespaProfileContainer');
+            const vespaSection = document.getElementById('aiCoachVespaProfileContainer'); // Changed ID
             if (vespaSection) {
                 vespaSection.innerHTML = ''; // Clear previous content
                 // VESPA Insights - Chart and Text
                 const vespaChartDiv = document.createElement('div');
-                vespaChartDiv.id = 'studentVespaComparisonChartContainer'; // Matches CSS
+                vespaChartDiv.id = 'vespaComparisonChartContainer'; // Changed ID, Matches CSS
                 vespaChartDiv.style.height = '250px';
                 vespaChartDiv.style.marginBottom = '15px';
                 vespaChartDiv.innerHTML = '<p style="text-align:center;">VESPA Chart Area</p>'; 
@@ -678,13 +678,13 @@ if (window.studentCoachLauncherInitialized) {
                 vespaTextDiv.innerHTML = '<h5>Understanding My VESPA Scores</h5><p><em>Loading insights...</em></p>';
                 vespaSection.appendChild(vespaTextDiv);
             } else {
-                logStudentCoach("Error: studentCoachVespaProfileContainer not found before preparing for VESPA content.");
+                logStudentCoach("Error: aiCoachVespaProfileContainer not found before preparing for VESPA content."); // Changed ID
             }
 
-            const academicSection = document.getElementById('studentCoachAcademicProfileContainer');
+            const academicSection = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID
             if (academicSection) {
                 // Populate Academic Insights
-                const academicContainer = document.getElementById('studentCoachAcademicProfileContainer'); // Re-fetch for safety
+                const academicContainer = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID, Re-fetch for safety
                 if (academicContainer) { // Check if academicContainer still exists
                     let academicHtml = '';
                     const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
@@ -753,15 +753,15 @@ if (window.studentCoachLauncherInitialized) {
                     academicContainer.innerHTML = academicHtml; // Set all academic content
                 }
             } else {
-                logStudentCoach("Error: studentCoachAcademicProfileContainer not found before preparing for Academic content.");
+                logStudentCoach("Error: aiCoachAcademicProfileContainer not found before preparing for Academic content."); // Changed ID
             }
 
-            const questionnaireSection = document.getElementById('studentCoachQuestionAnalysisContainer');
+            const questionnaireSection = document.getElementById('aiCoachQuestionAnalysisContainer'); // Changed ID
             if (questionnaireSection) {
                 // Questionnaire Insights - Chart and Text
                 questionnaireSection.innerHTML = ''; // Clear previous content
                 const questionnaireChartDiv = document.createElement('div');
-                questionnaireChartDiv.id = 'studentQuestionnaireDistributionChartContainer'; // Matches CSS
+                questionnaireChartDiv.id = 'questionnaireResponseDistributionChartContainer'; // Changed ID, Matches CSS
                 questionnaireChartDiv.style.height = '250px';
                 questionnaireChartDiv.style.marginBottom = '15px';
                 questionnaireChartDiv.innerHTML = '<p style="text-align:center;">Questionnaire Chart Area</p>';
@@ -774,7 +774,7 @@ if (window.studentCoachLauncherInitialized) {
                 questionnaireTextDiv.innerHTML = '<h5>Reflections on My Questionnaire</h5><p><em>Loading analysis...</em></p>';
                 questionnaireSection.appendChild(questionnaireTextDiv);
             } else {
-                logStudentCoach("Error: studentCoachQuestionAnalysisContainer not found before preparing for Questionnaire content.");
+                logStudentCoach("Error: aiCoachQuestionAnalysisContainer not found before preparing for Questionnaire content."); // Changed ID
             }
 
             ensureChartJsLoaded(() => { 
@@ -790,7 +790,7 @@ if (window.studentCoachLauncherInitialized) {
                 }
                 
                 // Populate Academic Insights
-                const academicContainer = document.getElementById('studentCoachAcademicProfileContainer'); // Re-fetch for safety
+                const academicContainer = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID, Re-fetch for safety
                 if (academicContainer) { // Check if academicContainer still exists
                     let academicHtml = '';
                     const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
@@ -901,19 +901,19 @@ if (window.studentCoachLauncherInitialized) {
         } 
         else { 
             // Data not fully available, ensure placeholders are in the content divs
-            const vespaContainer = document.getElementById('studentCoachVespaProfileContainer');
-            if (vespaContainer && !vespaContainer.querySelector('#studentVespaComparisonChartContainer')) {
-                 vespaContainer.innerHTML = '<div class="ai-coach-section"><div id="studentVespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area (No Data)</p></div><p>My VESPA profile insights will appear here.</p></div>';
+            const vespaContainer = document.getElementById('aiCoachVespaProfileContainer'); // Changed ID
+            if (vespaContainer && !vespaContainer.querySelector('#vespaComparisonChartContainer')) { // Changed ID
+                 vespaContainer.innerHTML = '<div class="ai-coach-section"><div id="vespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area (No Data)</p></div><p>My VESPA profile insights will appear here.</p></div>'; // Changed ID
             }
             
-            const academicContainer = document.getElementById('studentCoachAcademicProfileContainer');
+            const academicContainer = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID
             if (academicContainer && academicContainer.innerHTML.trim() === '') { 
                 academicContainer.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>';
             }
 
-            const questionnaireContainer = document.getElementById('studentCoachQuestionAnalysisContainer');
-            if (questionnaireContainer && !questionnaireContainer.querySelector('#studentQuestionnaireDistributionChartContainer')) {
-                 questionnaireContainer.innerHTML = '<div class="ai-coach-section"><div id="studentQuestionnaireDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area (No Data)</p></div><p>My questionnaire analysis will appear here.</p></div>';
+            const questionnaireContainer = document.getElementById('aiCoachQuestionAnalysisContainer'); // Changed ID
+            if (questionnaireContainer && !questionnaireContainer.querySelector('#questionnaireResponseDistributionChartContainer')) { // Changed ID
+                 questionnaireContainer.innerHTML = '<div class="ai-coach-section"><div id="questionnaireResponseDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area (No Data)</p></div><p>My questionnaire analysis will appear here.</p></div>'; // Changed ID
             }
         }
     }
@@ -1029,11 +1029,11 @@ if (window.studentCoachLauncherInitialized) {
     // --- CHAT INTERFACE (Adapted for Student) ---
     function addChatInterface(panelContentElement, chatWithTitle) {
         logStudentCoach("Adding student chat interface with title: " + chatWithTitle);
-        const oldChatContainer = document.getElementById('studentCoachChatContainer'); 
+        const oldChatContainer = document.getElementById('aiCoachChatContainer'); // Changed ID
         if (oldChatContainer) oldChatContainer.remove();
 
         const chatContainer = document.createElement('div');
-        chatContainer.id = 'studentCoachChatContainer'; // Matches CSS
+        chatContainer.id = 'aiCoachChatContainer'; // Changed ID, Matches CSS
         chatContainer.className = 'ai-coach-section'; 
         chatContainer.style.marginTop = '20px';
         chatContainer.style.display = 'flex';
@@ -1045,37 +1045,37 @@ if (window.studentCoachLauncherInitialized) {
 
         chatContainer.innerHTML = `
             <h4>Chat with ${chatWithTitle}</h4>
-            <div id="studentCoachChatStats" style="font-size: 0.85em; color: #666; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <span id="studentCoachChatCount">Loading chat...</span>
+            <div id="aiCoachChatStats" style="font-size: 0.85em; color: #666; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <span id="aiCoachChatCount">Loading chat...</span>
                 <div style="display: flex; gap: 10px;">
-                    <span id="studentCoachLikedCount" style="color: #e74c3c; display: inline-flex; align-items:center;"> <!-- MADE VISIBLE -->
-                        <span class="like-icon">❤️</span> <span id="studentLikedCountNumber">0</span> liked
+                    <span id="aiCoachLikedCount" style="color: #e74c3c; display: inline-flex; align-items:center;"> 
+                        <span class="like-icon">❤️</span> <span id="likedCountNumber">0</span> liked
                     </span>
-                    <button id="studentCoachClearOldChatsBtn" class="p-button p-component p-button-sm p-button-text" style="display:none;">Clear Old Chats</button>
+                    <button id="aiCoachClearOldChatsBtn" class="p-button p-component p-button-sm p-button-text" style="display:none;">Clear Old Chats</button>
                 </div>
             </div>
-            <div id="studentCoachChatDisplay" style="flex-grow:1; min-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom:10px; background:#fff;">
+            <div id="aiCoachChatDisplay" style="flex-grow:1; min-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom:10px; background:#fff;">
                 <p class="ai-chat-message ai-chat-message-bot" data-message-id="initial-bot-message"><em>${chatWithTitle}:</em> Hello! I'm here to help you explore your VESPA profile. What's on your mind?</p>
             </div>
             <div style="margin: 10px 0;">
-                 <button id="studentCoachProblemButton" class="p-button p-component" style="width:100%; font-size:0.9em;">🤔 What area to focus on?</button>
+                 <button id="aiCoachProblemButton" class="p-button p-component" style="width:100%; font-size:0.9em;">🤔 What area to focus on?</button>
             </div>
             <div style="display: flex; gap: 10px; margin-top:auto;"> 
-                <input type="text" id="studentCoachChatInput" placeholder="Ask me anything about VESPA..." style="flex-grow:1; padding:10px; border-radius:4px; border:1px solid #ccc;">
-                <button id="studentCoachChatSendButton" class="p-button p-component">Send</button>
+                <input type="text" id="aiCoachChatInput" placeholder="Ask me anything about VESPA..." style="flex-grow:1; padding:10px; border-radius:4px; border:1px solid #ccc;">
+                <button id="aiCoachChatSendButton" class="p-button p-component">Send</button>
             </div>
-            <div id="studentCoachChatThinkingIndicator" class="thinking-pulse" style="display: none; text-align:center; margin-top:5px; color:#3498db;">${chatWithTitle} is thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
+            <div id="aiCoachChatThinkingIndicator" class="thinking-pulse" style="display: none; text-align:center; margin-top:5px; color:#3498db;">${chatWithTitle} is thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
         `;
         panelContentElement.appendChild(chatContainer);
 
-        const chatInput = document.getElementById('studentCoachChatInput');
-        const chatSendButton = document.getElementById('studentCoachChatSendButton');
-        const chatDisplay = document.getElementById('studentCoachChatDisplay');
-        const thinkingIndicator = document.getElementById('studentCoachChatThinkingIndicator');
-        const problemButton = document.getElementById('studentCoachProblemButton');
-        const chatCountElement = document.getElementById('studentCoachChatCount');
-        const likedCountNumberElement = document.getElementById('studentLikedCountNumber'); 
-        // const clearOldChatsBtn = document.getElementById('studentCoachClearOldChatsBtn');
+        const chatInput = document.getElementById('aiCoachChatInput'); // Changed ID
+        const chatSendButton = document.getElementById('aiCoachChatSendButton'); // Changed ID
+        const chatDisplay = document.getElementById('aiCoachChatDisplay'); // Changed ID
+        const thinkingIndicator = document.getElementById('aiCoachChatThinkingIndicator'); // Changed ID
+        const problemButton = document.getElementById('aiCoachProblemButton'); // Changed ID
+        const chatCountElement = document.getElementById('aiCoachChatCount'); // Changed ID
+        const likedCountNumberElement = document.getElementById('likedCountNumber'); // Changed ID 
+        // const clearOldChatsBtn = document.getElementById('aiCoachClearOldChatsBtn'); // Changed ID
         
         if (problemButton) {
             problemButton.addEventListener('click', () => {
@@ -1123,7 +1123,7 @@ if (window.studentCoachLauncherInitialized) {
             thinkingIndicator.style.display = 'block';
 
             const chatHistory = Array.from(chatDisplay.querySelectorAll('.ai-chat-message'))
-                .filter(el => el !== userMessageElement && el.id !== 'studentCoachTempInlineThinkingMessage') // Exclude current input and any temporary thinking message
+                .filter(el => el !== userMessageElement && el.id !== 'aiCoachTempInlineThinkingMessage') // Exclude current input and any temporary thinking message
                 .map(el => ({
                     role: el.classList.contains('ai-chat-message-bot') ? 'assistant' : 'user',
                     content: el.textContent.replace(/^(My AI Coach:|You:|${chatWithTitle}:)\s*/, '') // Strip prefix for history
@@ -1131,7 +1131,7 @@ if (window.studentCoachLauncherInitialized) {
             
             // Add inline thinking message (similar to tutor coach)
             const inlineThinkingMessage = document.createElement('div');
-            inlineThinkingMessage.id = 'studentCoachTempInlineThinkingMessage'; // Student-specific ID
+            inlineThinkingMessage.id = 'aiCoachTempInlineThinkingMessage'; // Changed ID
             inlineThinkingMessage.className = 'ai-chat-message ai-chat-message-bot'; // Style like a bot message
             inlineThinkingMessage.style.opacity = '0.7'; // Make it look less prominent
             inlineThinkingMessage.innerHTML = `<em>${chatWithTitle}:</em> 🤔 Thinking...`;
@@ -1299,24 +1299,24 @@ if (window.studentCoachLauncherInitialized) {
 
     // --- NEW: Function to update the overall liked count in the UI ---
     function updateOverallLikedCount(change) { // change is +1 or -1
-        const likedCountNumberElement = document.getElementById('studentLikedCountNumber');
+        const likedCountNumberElement = document.getElementById('likedCountNumber');
         if (likedCountNumberElement) {
             let currentCount = parseInt(likedCountNumberElement.textContent, 10) || 0;
             currentCount += change;
             if (currentCount < 0) currentCount = 0; // Ensure count doesn't go below zero
             likedCountNumberElement.textContent = currentCount;
             // Show/hide the liked count span if needed (e.g., hide if 0)
-            const likedCountSpan = document.getElementById('studentCoachLikedCount');
+            const likedCountSpan = document.getElementById('aiCoachLikedCount');
             if(likedCountSpan) likedCountSpan.style.display = currentCount > 0 ? 'inline-flex' : 'inline-flex'; // Always show for now
         }
     }
 
     // --- NEW: Function to load and display student chat history ---
     async function loadStudentChatHistory() {
-        const chatDisplay = document.getElementById('studentCoachChatDisplay');
-        const chatCountElement = document.getElementById('studentCoachChatCount');
-        const likedCountNumberElement = document.getElementById('studentLikedCountNumber');
-        const likedCountSpan = document.getElementById('studentCoachLikedCount'); // Get the whole span for visibility
+        const chatDisplay = document.getElementById('aiCoachChatDisplay'); // Changed ID
+        const chatCountElement = document.getElementById('aiCoachChatCount'); // Changed ID
+        const likedCountNumberElement = document.getElementById('likedCountNumber'); // Changed ID
+        const likedCountSpan = document.getElementById('aiCoachLikedCount'); // Changed ID
 
         // Derive chatWithTitle from available data, defaulting if necessary
         const studentNameForTitle = (currentLLMInsightsForChat && currentLLMInsightsForChat.student_name && currentLLMInsightsForChat.student_name !== "N/A") 
@@ -1461,8 +1461,8 @@ if (window.studentCoachLauncherInitialized) {
 
     // --- NEW: renderVespaComparisonChart (adapted from tutor) ---
     function renderVespaComparisonChart(studentVespaProfile, schoolVespaAverages) {
-        const chartContainerId = 'studentVespaComparisonChartContainer'; // Student specific ID for the div
-        const chartCanvasId = 'studentVespaVsSchoolChart'; // Student specific ID for the canvas
+        const chartContainerId = 'vespaComparisonChartContainer'; // Changed ID
+        const chartCanvasId = 'vespaStudentVsSchoolChart'; // Changed ID
         const chartContainer = document.getElementById(chartContainerId);
 
         if (!chartContainer) {
@@ -1660,8 +1660,8 @@ if (window.studentCoachLauncherInitialized) {
     // This function renders a pie chart for questionnaire response distribution.
     function renderQuestionnaireDistributionChart(allStatements) {
         // Student-specific IDs for chart container and canvas
-        const chartContainerId = 'studentQuestionnaireDistributionChartContainer'; 
-        const chartCanvasId = 'studentQuestionnaireDistributionPieChartCanvas'; 
+        const chartContainerId = 'questionnaireResponseDistributionChartContainer'; // Changed ID
+        const chartCanvasId = 'questionnaireDistributionPieChartCanvas'; // Changed ID
         const chartContainer = document.getElementById(chartContainerId);
 
         if (!chartContainer) {
@@ -1755,16 +1755,16 @@ if (window.studentCoachLauncherInitialized) {
     };
 
     function showProblemSelectorModal(commonProblems, chatInput) {
-        const modalId = 'studentCoachProblemModal'; // Student specific ID
+        const modalId = 'aiCoachProblemModal'; // Changed ID
         const existingModal = document.getElementById(modalId);
         if (existingModal) existingModal.remove();
         
         const modal = document.createElement('div');
         modal.id = modalId;
-        modal.className = 'student-coach-modal-overlay'; // student specific class from CSS
+        modal.className = 'ai-coach-modal-overlay'; // Changed Class
         
         const modalContent = document.createElement('div');
-        modalContent.className = 'student-coach-modal-content'; // student specific class from CSS
+        modalContent.className = 'ai-coach-modal-content'; // Changed Class
         
         const savedZoom = localStorage.getItem('studentCoachTextZoom'); // Use student-specific zoom key
         if (savedZoom) modalContent.style.fontSize = `${parseInt(savedZoom, 10) * 14 / 100}px`;
@@ -1822,13 +1822,13 @@ if (window.studentCoachLauncherInitialized) {
     // --- NEW: showActivityModal (adapted from tutor) ---
     // This function displays a modal for a VESPA activity, potentially with a PDF.
     function showActivityModal(activity) { // Activity object is expected from backend
-        const modalId = 'studentCoachActivityModal'; // Student specific ID
+        const modalId = 'aiCoachActivityModal'; // Changed ID
         const existingModal = document.getElementById(modalId);
         if (existingModal) existingModal.remove();
 
         const modal = document.createElement('div');
         modal.id = modalId;
-        modal.className = 'student-coach-modal-overlay'; // student specific class
+        modal.className = 'ai-coach-modal-overlay'; // Changed Class
         // Basic styling for overlay - detailed styling in CSS
         modal.style.cssText = ` 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -1836,7 +1836,7 @@ if (window.studentCoachLauncherInitialized) {
             align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;
         `;
         const modalContent = document.createElement('div');
-        modalContent.className = 'student-coach-modal-content'; // student specific class
+        modalContent.className = 'ai-coach-modal-content'; // Changed Class
         // Basic styling for content - detailed styling in CSS
         modalContent.style.cssText = `
             background: white; width: 90%; max-width: 800px; height: 80vh; border-radius: 8px;
