@@ -1,6 +1,9 @@
 /* AI Coach Launcher Styles */
 /* Version: 2.1 - Enhanced for dynamic IDs */
 
+/* Modern UI Enhancements */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* CSS Custom Properties for dynamic values */
 :root {
     --ai-coach-panel-width: 450px;
@@ -13,19 +16,28 @@
     --vespa-systems-color: #72cb44;
     --vespa-practice-color: #7f31a4;
     --vespa-attitude-color: #f032e6;
+    /* Modern UI Colors */
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --ui-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Apply modern font globally to AI Coach elements */
+#aiCoachPanel,
+#aiCoachPanel * {
+    font-family: var(--ui-font-family) !important;
 }
 
 /* Main content adjustment when coach is active */
-body.ai-coach-active #content,
-body.ai-coach-active #kn-scene_43 {
+body.ai-coach-active #content {
     width: calc(100% - var(--ai-coach-panel-width));
     margin-right: var(--ai-coach-panel-width);
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 margin-right var(--ai-coach-transition-duration) ease-in-out;
 }
 
-#content,
-#kn-scene_43 {
+#content {
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 margin-right var(--ai-coach-transition-duration) ease-in-out;
 }
@@ -39,25 +51,45 @@ body.ai-coach-active #kn-scene_43 {
     top: 0;
     right: 0;
     height: 100vh;
-    background-color: #f4f6f8;
-    border-left: 2px solid #ddd;
+    background-color: #f8f9fa;
+    border-left: 1px solid #e9ecef;
     padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
     z-index: 1050;
-    transition: width var(--ai-coach-transition-duration) ease-in-out, 
+    transition: width var(--ai-coach-transition-duration) cubic-bezier(0.4, 0, 0.2, 1), 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
                 visibility var(--ai-coach-transition-duration);
-    font-family: Arial, sans-serif;
+    font-family: var(--ui-font-family);
     font-size: 14px;
     display: flex;
     flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
 }
 
 body.ai-coach-active #aiCoachPanel {
     width: var(--ai-coach-panel-width);
     opacity: 1;
     visibility: visible;
+}
+
+/* Smooth scrollbar styling */
+#aiCoachPanel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 /* Resize handle styles - use class selector for JavaScript-created element */
@@ -82,26 +114,39 @@ body.ai-coach-active #aiCoachPanel {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #ccc;
-    padding-bottom: 10px;
+    margin-bottom: 20px;
+    padding: 20px 20px 16px 20px;
+    margin: -20px -20px 20px -20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     flex-shrink: 0;
 }
 
 .ai-coach-panel-header h3 {
     margin: 0;
-    font-size: 1.5em;
-    color: #333;
-    font-weight: bold;
+    font-size: 1.6em;
+    color: white;
+    font-weight: 700;
+    letter-spacing: -0.5px;
 }
 
 .ai-coach-close-btn {
-    background: none;
+    background: rgba(255, 255, 255, 0.2);
     border: none;
-    font-size: 1.8em;
+    font-size: 1.5em;
     cursor: pointer;
-    padding: 5px;
-    color: #555;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.ai-coach-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
 }
 
 /* Panel content - make it flexible to accommodate chat */
@@ -113,183 +158,267 @@ body.ai-coach-active #aiCoachPanel {
     min-height: 0;
 }
 
-/* Launcher button container - For Centered Floating Button Style */
+/* Launcher button container */
 #aiCoachLauncherButtonContainer {
-    position: fixed; 
-    bottom: 20px;    
-    left: 50%;       
-    transform: translateX(-50%); 
-    z-index: 1040;   
-    text-align: center; 
-    padding: 0;      
-    border-top: none; 
-    background-color: transparent; 
+    text-align: center;
+    padding: 20px;
+    border-top: 2px solid #eee;
 }
 
 #aiCoachLauncherButtonContainer p {
-    display: none; 
-}
-
-/* Styling for the main Activate button - activateAICoachBtn ID */
-#aiCoachLauncherButtonContainer button#activateAICoachBtn {
-    padding: 15px 30px !important; /* Increased padding for larger size */
-    font-size: 1.1em !important;
-    font-weight: 600 !important;
-    background-image: linear-gradient(to right, var(--primary-color, #3B82F6) 0%, var(--secondary-color, #10B981) 50%, var(--primary-color, #3B82F6) 100%) !important;
-    background-size: 200% auto !important; /* For gradient animation */
-    color: var(--text-light-color, #F9FAFB) !important; 
-    border: none !important;
-    border-radius: var(--border-radius-lg, 12px) !important; 
-    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1)) !important; 
-    cursor: pointer !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px; 
-    transition: background-position 0.5s ease, box-shadow 0.3s ease, transform 0.3s ease !important;
-    letter-spacing: 0.5px;
-}
-
-#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover {
-    background-position: right center !important; /* Change gradient direction on hover */
-    box-shadow: 0 15px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2) !important;
-    transform: translateY(-3px) scale(1.03);
-}
-
-#aiCoachLauncherButtonContainer button#activateAICoachBtn:active {
-    transform: translateY(-1px) scale(1.01);
-    box-shadow: var(--shadow-md) !important;
-}
-
-/* Styling for the new Info Button */
-#aiCoachInfoBtn {
-    width: 48px !important; /* Slightly larger */
-    height: 48px !important;
-    border-radius: 50% !important; 
-    background-color: var(--accent-color, #F59E0B) !important; 
-    border: 2px solid var(--text-light-color, #FFFFFF) !important; /* White border for contrast */
-    color: var(--text-light-color, #FFFFFF) !important; 
-    font-size: 24px !important; /* Larger icon */
-    font-weight: bold !important;
-    font-family: 'Georgia', serif; /* More stylized 'i' */
-    line-height: 1; /* Ensure 'i' is centered vertically */
-    cursor: pointer !important;
-    display: inline-flex !important; 
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: var(--shadow-md) !important;
-    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s !important;
-    vertical-align: middle; 
-}
-
-#aiCoachInfoBtn:hover {
-    background-color: var(--accent-hover-color, #D97706) !important; 
-    transform: scale(1.15) rotate(10deg);
-    box-shadow: var(--shadow-lg) !important;
-}
-
-#aiCoachInfoBtn:active {
-    transform: scale(1.05) rotate(5deg);
+    font-size: 1.1em;
+    margin-bottom: 15px;
 }
 
 /* Section toggles */
 .ai-coach-section-toggles {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 8px;
-    margin: 10px 0 15px 0 !important;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0 !important;
     flex-shrink: 0;
 }
 
-.ai-coach-section-toggles .p-button {
-    flex-grow: 1;
-    padding: 12px 8px !important;
-    font-size: 0.95em !important;
-    border: none;
+.ai-insight-toggle-btn {
+    border: none !important;
     color: white !important;
-    border-radius: 4px;
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    padding: 16px 20px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    text-align: center !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-insight-toggle-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.ai-insight-toggle-btn:hover::before {
+    transform: translateX(0);
+}
+
+.ai-insight-toggle-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.ai-insight-toggle-btn[aria-expanded="true"] {
+    opacity: 0.9 !important;
+    transform: scale(0.98) !important;
+}
+
+/* Text control styling - Enhanced contrast */
+.ai-coach-text-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 4px 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ai-coach-text-control-btn {
+    background: #667eea;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
     cursor: pointer;
-    font-weight: 500;
+    font-size: 14px;
+    color: white;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
 
-.ai-coach-section-toggles .p-button:hover {
-    opacity: 0.85;
-    transform: translateY(-1px);
+.ai-coach-text-control-btn:hover {
+    background: #5a6fe8;
+    transform: scale(1.05);
+    box-shadow: 0 3px 6px rgba(102, 126, 234, 0.4);
 }
 
-#aiCoachToggleVespaButton {
-    background-color: #79A6DC !important;
-}
-
-#aiCoachToggleAcademicButton {
-    background-color: #77DD77 !important;
-}
-
-#aiCoachToggleQuestionButton {
-    background-color: #C3B1E1 !important;
+.ai-coach-text-size-indicator {
+    font-size: 14px;
+    color: #333;
+    margin: 0 6px;
+    font-weight: 600;
+    min-width: 45px;
+    text-align: center;
 }
 
 /* Content sections */
 .ai-coach-section {
     margin-bottom: 20px;
-    padding: 20px;
+    padding: 24px;
     background-color: #fff;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.3s ease;
+}
+
+.ai-coach-section:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .ai-coach-section h4 {
     font-size: 1.3em;
     margin-top: 0;
-    margin-bottom: 12px;
-    color: #333;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 8px;
-    font-weight: bold;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+    font-weight: 700;
+    letter-spacing: -0.3px;
 }
 
 .ai-coach-section h5 {
-    font-size: 1.15em;
-    color: #444;
-    margin-top: 18px;
-    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+    margin-top: 20px;
+    margin-bottom: 12px;
     font-weight: 600;
+    letter-spacing: -0.2px;
 }
 
 .ai-coach-section p, 
 .ai-coach-section ul, 
 .ai-coach-section li {
-    font-size: 1em;
-    line-height: 1.7;
-    color: #555;
+    font-size: 0.95em;
+    line-height: 1.8;
+    color: #495057;
 }
 
 .ai-coach-section ul {
-    padding-left: 25px;
+    padding-left: 24px;
     margin-bottom: 0;
 }
 
 .ai-coach-section li {
-    margin-bottom: 5px;
+    margin-bottom: 8px;
 }
 
-/* Loading spinner */
+/* Enhanced student snapshot section */
+.ai-student-snapshot-section {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-student-snapshot-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+/* Snapshot toggle button */
+.ai-snapshot-toggle-btn {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.9) !important;
+    color: #495057 !important;
+    padding: 6px 16px !important;
+    border-radius: 20px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    font-weight: 500 !important;
+}
+
+.ai-snapshot-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.95) !important;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ai-snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+/* Modern loading spinner */
 .loader {
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #3498db;
+    width: 48px;
+    height: 48px;
+    margin: 30px auto;
+    position: relative;
+}
+
+.loader::before,
+.loader::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 20px auto;
+    border: 3px solid transparent;
+    border-top-color: #667eea;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.loader::after {
+    border-top-color: #764ba2;
+    animation-delay: -0.5s;
 }
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Enhanced like button styling */
+.ai-chat-like-btn {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: white !important;
+    border: 1px solid #e9ecef !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.ai-chat-like-btn:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+.ai-chat-like-btn .like-icon {
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.ai-chat-like-btn .like-icon.liked {
+    animation: heartBeat 0.5s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
 }
 
 /* Chart containers */
@@ -485,59 +614,70 @@ body.ai-coach-active #aiCoachPanel {
     margin-bottom: 10px;
     background-color: #fff;
     scroll-behavior: smooth;
-    /* Clean scrollbar styling */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(155, 155, 155, 0.5) rgba(0, 0, 0, 0.05);
-}
-
-/* Custom scrollbar for chat display - Original theme */
-#aiCoachChatDisplay::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-#aiCoachChatDisplay::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-}
-
-#aiCoachChatDisplay::-webkit-scrollbar-thumb {
-    background: rgba(155, 155, 155, 0.5);
-    border-radius: 4px;
-}
-
-#aiCoachChatDisplay::-webkit-scrollbar-thumb:hover {
-    background: rgba(155, 155, 155, 0.7);
 }
 
 /* Chat messages styling */
 .ai-chat-message {
-    margin-bottom: 12px;
-    padding: 12px 16px;
-    border-radius: 12px;
+    margin-bottom: 16px;
+    padding: 14px 18px;
+    border-radius: 16px;
     word-wrap: break-word;
-    font-size: 1.05em;
-    line-height: 1.6;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    font-size: 0.95em;
+    line-height: 1.7;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.ai-chat-message:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .ai-chat-message-user {
-    background-color: #e3f2fd;
-    margin-left: 20%;
+    background: #667eea;
+    color: white;
+    margin-left: 15%;
     text-align: right;
-    border: 1px solid #bbdefb;
+    border: none;
+    position: relative;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Add subtle gradient overlay for depth */
+.ai-chat-message-user::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    border-radius: 16px;
+    pointer-events: none;
 }
 
 .ai-chat-message-bot {
-    background-color: #f5f5f5;
-    margin-right: 20%;
-    border: 1px solid #e0e0e0;
+    background-color: #f8f9fa;
+    margin-right: 15%;
+    border: 1px solid #e9ecef;
 }
 
 .ai-chat-message em {
-    font-weight: bold;
-    color: #666;
-    font-size: 0.95em;
+    font-weight: 600;
+    font-size: 0.9em;
+    opacity: 0.8;
+    font-style: normal;
+}
+
+.ai-chat-message-user em {
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+}
+
+.ai-chat-message-bot em {
+    color: #6c757d;
 }
 
 /* Activity links in chat */
@@ -1184,165 +1324,4 @@ div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
     width: 80px !important; /* Reduced from 100px */
     padding: 8px 4px !important;
     text-align: center !important;
-}
-
-/* Theme Toggle Button Styles - Original Theme */
-.ai-coach-theme-toggle-btn {
-    background: #f8f9fa !important;
-    border: 1px solid #dee2e6 !important;
-    border-radius: 6px !important;
-    padding: 8px 16px !important;
-    cursor: pointer !important;
-    font-size: 14px !important;
-    color: #495057 !important;
-    transition: all 0.2s ease !important;
-    white-space: nowrap;
-    min-width: 160px;
-    text-align: center;
-    font-weight: 500;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.ai-coach-theme-toggle-btn:hover {
-    background: #e9ecef !important;
-    border-color: #adb5bd !important;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-    color: #212529 !important;
-}
-
-.ai-coach-theme-toggle-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.ai-coach-theme-toggle-btn:disabled {
-    opacity: 0.6 !important;
-    cursor: not-allowed !important;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-/* Header controls layout for theme toggle */
-.ai-coach-header-controls {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex: 1;
-    justify-content: flex-end;
-    margin: 0 15px;
-}
-
-/* Ensure proper header layout */
-#aiCoachPanel .ai-coach-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-}
-
-/* Animation for theme switch - subtle for original theme */
-@keyframes theme-switch-bounce {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.ai-coach-theme-toggle-btn.theme-switching {
-    animation: theme-switch-bounce 0.3s ease-out;
-}
-
-/* Responsive adjustments for theme toggle */
-@media (max-width: 768px) {
-    .ai-coach-theme-toggle-btn {
-        min-width: auto;
-        padding: 6px 10px !important;
-        font-size: 12px !important;
-    }
-    
-    .ai-coach-header-controls {
-        gap: 10px;
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    #aiCoachPanel .ai-coach-panel-header {
-        flex-wrap: wrap;
-    }
-}
-
-/* AI Snapshot Toggle Styles - Original Theme */
-#studentCoachSnapshotSection {
-    position: relative;
-}
-
-.ai-snapshot-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
-.ai-snapshot-header h4 {
-    margin: 0;
-    flex: 1;
-}
-
-#toggleSnapshotBtn {
-    background: #f8f9fa !important;
-    border: 1px solid #dee2e6 !important;
-    border-radius: 4px !important;
-    padding: 6px 12px !important;
-    cursor: pointer !important;
-    font-size: 13px !important;
-    color: #495057 !important;
-    transition: all 0.2s ease !important;
-    font-weight: 500;
-    min-width: 50px;
-    white-space: nowrap;
-}
-
-#toggleSnapshotBtn:hover {
-    background: #e9ecef !important;
-    border-color: #adb5bd !important;
-    color: #212529 !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-}
-
-#toggleSnapshotBtn:active {
-    background: #dee2e6 !important;
-    transform: translateY(1px);
-}
-
-#snapshotContent {
-    transition: opacity 0.3s ease, max-height 0.3s ease;
-    overflow: hidden;
-}
-
-#snapshotContent[style*="display: none"] {
-    max-height: 0;
-    opacity: 0;
-}
-
-/* Ensure proper spacing when snapshot is hidden */
-#studentCoachSnapshotSection:has(#snapshotContent[style*="display: none"]) {
-    margin-bottom: 10px;
-}
-
-/* Adjust chat container to take more space when snapshot is hidden */
-body.ai-coach-active #aiCoachChatContainer {
-    transition: max-height 0.3s ease;
-}
-
-/* Responsive adjustments for snapshot toggle */
-@media (max-width: 768px) {
-    #toggleSnapshotBtn {
-        padding: 4px 8px !important;
-        font-size: 12px !important;
-        min-width: 40px;
-    }
-    
-    .ai-snapshot-header {
-        gap: 10px;
-    }
 }
