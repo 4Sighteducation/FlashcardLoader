@@ -18,7 +18,6 @@ if (window.aiCoachLauncherInitialized) {
     let vespaChartInstance = null; // To keep track of the chart instance for updates/destruction
     let currentLLMInsightsForChat = null; // ADDED: To store insights for chat context
     let loadingMessageIntervalId = null; // For the rotating loading messages
-    let startNewTopicDiscussion = false; // ADDED: Flag for new topic
 
     // --- Configuration ---
     const HEROKU_API_BASE_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1'; // MODIFIED for base path
@@ -243,7 +242,7 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1i.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1j.css';
         // .css';
         
         // Add dynamic CSS for config-specific IDs
@@ -564,37 +563,120 @@ if (window.aiCoachLauncherInitialized) {
     }
 
     function addLauncherButton() {
-        const targetElement = document.querySelector(AI_COACH_LAUNCHER_CONFIG.elementSelector);
-        if (!targetElement) {
-            console.error(`[AICoachLauncher] Launcher button target element '${AI_COACH_LAUNCHER_CONFIG.elementSelector}' not found.`);
-            return;
-        }
-
+        // Create floating button container attached to body (similar to student version)
         let buttonContainer = document.getElementById('aiCoachLauncherButtonContainer');
         
-        // If the main button container div doesn't exist within the targetElement, create it.
         if (!buttonContainer) {
             buttonContainer = document.createElement('div');
             buttonContainer.id = 'aiCoachLauncherButtonContainer';
-            // Clear targetElement before appending to ensure it only contains our button container.
-            // This assumes targetElement is designated EXCLUSIVELY for the AI Coach button.
-            // If targetElement can have other dynamic content, this approach needs refinement.
-            targetElement.innerHTML = ''; // Clear previous content from target
-            targetElement.appendChild(buttonContainer);
-            logAICoach("Launcher button container DIV created in target: " + AI_COACH_LAUNCHER_CONFIG.elementSelector);
+            // Style as floating button
+            buttonContainer.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                background: rgba(255, 255, 255, 0.95);
+                padding: 15px 20px;
+                border-radius: 60px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            `;
+            document.body.appendChild(buttonContainer);
+            logAICoach("Floating launcher button container created and appended to document.body.");
+            
+            // Add hover effect
+            buttonContainer.addEventListener('mouseenter', () => {
+                buttonContainer.style.transform = 'translateY(-2px)';
+                buttonContainer.style.boxShadow = '0 6px 25px rgba(0, 0, 0, 0.2)';
+            });
+            buttonContainer.addEventListener('mouseleave', () => {
+                buttonContainer.style.transform = 'translateY(0)';
+                buttonContainer.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)';
+            });
         }
 
-        // Now, populate/repopulate the buttonContainer if the button itself is missing.
-        // clearCoachUI empties buttonContainer.innerHTML.
+        // Populate button if missing
         if (!buttonContainer.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`)) {
-            const buttonContentHTML = `
-                <p>Get AI-powered insights and suggestions to enhance your coaching conversation.</p>
-                <button id="${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" class="p-button p-component">🚀 Activate AI Coach</button>
+            buttonContainer.innerHTML = `
+                <button id="${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" 
+                        class="p-button p-component ai-coach-floating-btn"
+                        style="
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            border: none;
+                            color: white;
+                            padding: 12px 24px;
+                            border-radius: 30px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+                        ">
+                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 20px;">🚀</span>
+                        <span>Activate AI Coach</span>
+                    </span>
+                </button>
+                <button id="aiCoachInfoBtn" 
+                        title="About AI Coach" 
+                        style="
+                            width: 45px; 
+                            height: 45px; 
+                            border-radius: 50%; 
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            border: none; 
+                            font-size: 22px; 
+                            font-weight: bold; 
+                            color: white; 
+                            cursor: pointer; 
+                            display: flex; 
+                            align-items: center; 
+                            justify-content: center; 
+                            transition: all 0.3s ease;
+                            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+                        "
+                        aria-label="Information about the AI Coach">
+                    <span style="font-family: Georgia, serif;">i</span>
+                </button>
             `;
-            buttonContainer.innerHTML = buttonContentHTML;
-            logAICoach("Launcher button content added/re-added to container.");
-        } else {
-            logAICoach("Launcher button content already present in container.");
+            
+            // Add hover effects to buttons
+            const mainBtn = buttonContainer.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`);
+            const infoBtn = buttonContainer.querySelector('#aiCoachInfoBtn');
+            
+            if (mainBtn) {
+                mainBtn.addEventListener('mouseenter', () => {
+                    mainBtn.style.transform = 'scale(1.05)';
+                    mainBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.6)';
+                });
+                mainBtn.addEventListener('mouseleave', () => {
+                    mainBtn.style.transform = 'scale(1)';
+                    mainBtn.style.boxShadow = '0 2px 10px rgba(102, 126, 234, 0.4)';
+                });
+            }
+            
+            if (infoBtn) {
+                infoBtn.addEventListener('mouseenter', () => {
+                    infoBtn.style.transform = 'scale(1.1) rotate(15deg)';
+                    infoBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.6)';
+                });
+                infoBtn.addEventListener('mouseleave', () => {
+                    infoBtn.style.transform = 'scale(1) rotate(0deg)';
+                    infoBtn.style.boxShadow = '0 2px 10px rgba(102, 126, 234, 0.4)';
+                });
+                
+                // Add click handler for info button
+                infoBtn.addEventListener('click', () => {
+                    logAICoach("Info button clicked");
+                    showInfoModal();
+                });
+            }
+            
+            logAICoach("Floating launcher button content added to container.");
         }
     }
 
@@ -707,6 +789,140 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 
+    // Add showInfoModal function
+    function showInfoModal() {
+        logAICoach("Showing AI Coach Info Modal");
+        const modalId = 'aiCoachInfoModal';
+        const existingModal = document.getElementById(modalId);
+        if (existingModal) existingModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'ai-coach-modal-overlay';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+
+        const modalContent = document.createElement('div');
+        modalContent.className = 'ai-coach-modal-content';
+        modalContent.style.cssText = `
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        `;
+
+        modalContent.innerHTML = `
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px;
+                position: relative;
+            ">
+                <h2 style="margin: 0; font-size: 28px; font-weight: 700;">AI Coach Assistant</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Your intelligent tutoring companion</p>
+                <button class="ai-coach-modal-close" style="
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border: none;
+                    color: white;
+                    font-size: 24px;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">&times;</button>
+            </div>
+            <div style="padding: 30px; max-height: 60vh; overflow-y: auto;">
+                <h3 style="color: #333; margin-top: 0;">Welcome to Your AI Coaching Assistant</h3>
+                <p style="color: #666; line-height: 1.8;">
+                    This AI-powered tool analyzes student VESPA profiles and provides personalized coaching insights 
+                    to help you have more effective conversations with your students.
+                </p>
+                
+                <h4 style="color: #667eea; margin-top: 24px;">Key Features:</h4>
+                <ul style="color: #666; line-height: 1.8;">
+                    <li><strong>Student Snapshot:</strong> Get an AI-generated overview of the student's profile</li>
+                    <li><strong>VESPA Analysis:</strong> View detailed insights on Vision, Effort, Systems, Practice, and Attitude scores</li>
+                    <li><strong>Academic Insights:</strong> Compare student performance against benchmarks and MEGs</li>
+                    <li><strong>Questionnaire Analysis:</strong> Understand student responses and patterns</li>
+                    <li><strong>Interactive Chat:</strong> Ask questions and get AI-powered coaching suggestions</li>
+                </ul>
+                
+                <h4 style="color: #667eea; margin-top: 24px;">How to Use:</h4>
+                <ol style="color: #666; line-height: 1.8;">
+                    <li>Click "Activate AI Coach" to open the coaching panel</li>
+                    <li>Review the AI-generated student snapshot</li>
+                    <li>Explore different insight sections using the toggle buttons</li>
+                    <li>Use the chat to ask specific questions about the student</li>
+                    <li>Select common problems for targeted coaching strategies</li>
+                </ol>
+                
+                <div style="
+                    background: #f0f4ff;
+                    padding: 20px;
+                    border-radius: 12px;
+                    margin-top: 24px;
+                    border-left: 4px solid #667eea;
+                ">
+                    <p style="margin: 0; color: #555; font-style: italic;">
+                        💡 <strong>Pro Tip:</strong> The AI Coach learns from the context of your conversation. 
+                        The more specific your questions, the more tailored the coaching suggestions will be.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        // Trigger animation
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modalContent.style.transform = 'scale(1)';
+        }, 10);
+
+        // Close handlers
+        const closeModal = () => {
+            modal.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.95)';
+            setTimeout(() => modal.remove(), 300);
+        };
+
+        modalContent.querySelector('.ai-coach-modal-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        // ESC key handler
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
     function renderAICoachData(data) {
         logAICoach("renderAICoachData CALLED. Data received:", JSON.parse(JSON.stringify(data)));
         const panelContent = document.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
@@ -723,9 +939,15 @@ if (window.aiCoachLauncherInitialized) {
         // --- 1. Construct the entire HTML shell (Snapshot, Buttons, Empty Content Divs) ---
         let htmlShell = '';
 
-        // AI Student Snapshot part
-        htmlShell += '<div class="ai-coach-section">';
-        htmlShell += '<h4>AI Student Snapshot</h4>';
+        // AI Student Snapshot part with hide button
+        htmlShell += '<div class="ai-coach-section ai-student-snapshot-section">';
+        htmlShell += '<div class="ai-snapshot-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">';
+        htmlShell += '<h4 style="margin: 0;">AI Student Snapshot</h4>';
+        htmlShell += '<button id="toggleSnapshotBtn" class="ai-snapshot-toggle-btn" aria-expanded="true" aria-controls="snapshotContent" style="';
+        htmlShell += 'background: #e9ecef; border: 1px solid #ced4da; border-radius: 20px; padding: 6px 16px; ';
+        htmlShell += 'font-size: 14px; cursor: pointer; transition: all 0.2s ease; color: #495057;">Hide</button>';
+        htmlShell += '</div>';
+        htmlShell += '<div id="snapshotContent">';
         if (data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
             htmlShell += `<p>${data.llm_generated_insights.student_overview_summary}</p>`;
         } else if (data.student_name && data.student_name !== "N/A") { 
@@ -733,20 +955,66 @@ if (window.aiCoachLauncherInitialized) {
         } else {
              htmlShell += '<p>No detailed coaching data or student context available. Ensure the report is loaded.</p>';
         }
+        htmlShell += '</div>'; // End snapshotContent
         htmlShell += '</div>';
         
-        // Toggle Buttons part
+        // Toggle Buttons part with improved styling
         // We add buttons even if student_name is N/A, they just might show empty sections
         htmlShell += `
-            <div class="ai-coach-section-toggles" style="margin: 10px 0 15px 0; display: flex; gap: 10px;">
-                <button id="aiCoachToggleVespaButton" class="p-button p-component" style="padding: 10px; font-size: 0.9em;" aria-expanded="false" aria-controls="aiCoachVespaProfileContainer">
-                    View VESPA Profile Insights
+            <div class="ai-coach-section-toggles" style="margin: 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                <button id="aiCoachToggleVespaButton" class="ai-insight-toggle-btn" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border: none;
+                    color: white;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                    text-align: center;
+                " aria-expanded="false" aria-controls="aiCoachVespaProfileContainer">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <span style="font-size: 24px;">📊</span>
+                        <span>VESPA Insights</span>
+                    </div>
                 </button>
-                <button id="aiCoachToggleAcademicButton" class="p-button p-component" style="padding: 10px; font-size: 0.9em;" aria-expanded="false" aria-controls="aiCoachAcademicProfileContainer">
-                    View Academic Profile Insights
+                <button id="aiCoachToggleAcademicButton" class="ai-insight-toggle-btn" style="
+                    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+                    border: none;
+                    color: white;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(58, 123, 213, 0.3);
+                    text-align: center;
+                " aria-expanded="false" aria-controls="aiCoachAcademicProfileContainer">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <span style="font-size: 24px;">🎓</span>
+                        <span>Academic Profile</span>
+                    </div>
                 </button>
-                <button id="aiCoachToggleQuestionButton" class="p-button p-component" style="padding: 10px; font-size: 0.9em;" aria-expanded="false" aria-controls="aiCoachQuestionAnalysisContainer">
-                    View Questionnaire Analysis
+                <button id="aiCoachToggleQuestionButton" class="ai-insight-toggle-btn" style="
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    border: none;
+                    color: white;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+                    text-align: center;
+                " aria-expanded="false" aria-controls="aiCoachQuestionAnalysisContainer">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <span style="font-size: 24px;">📝</span>
+                        <span>Questionnaire</span>
+                    </div>
                 </button>
             </div>
         `;
@@ -984,34 +1252,37 @@ if (window.aiCoachLauncherInitialized) {
             if (button && detailsContainer) { // Ensure both button and container exist
                 button.addEventListener('click', () => {
                     const allDetailSections = document.querySelectorAll('.ai-coach-details-section');
-                    // const currentButtonText = button.textContent; // Not needed with new logic
                     const isCurrentlyVisible = detailsContainer.style.display === 'block';
 
                     // Hide all sections first
                     allDetailSections.forEach(section => {
-                        if (section.id !== btnConfig.containerId) { // Don't hide the one we might show
+                        if (section.id !== btnConfig.containerId) {
                             section.style.display = 'none';
                         }
                     });
-                    // Reset all other button texts and ARIA states
+                    
+                    // Reset all other buttons' styles and ARIA states
                     toggleButtons.forEach(b => {
                         if (b.id !== btnConfig.id) {
                             const otherBtn = document.getElementById(b.id);
                             if (otherBtn) {
-                                otherBtn.textContent = `View ${b.id.replace('aiCoachToggle', '').replace('Button','')} Insights`;
                                 otherBtn.setAttribute('aria-expanded', 'false');
+                                otherBtn.style.opacity = '1';
+                                otherBtn.style.transform = 'scale(1)';
                             }
                         }
                     });
                     
                     if (isCurrentlyVisible) {
                         detailsContainer.style.display = 'none';
-                        button.textContent = `View ${btnConfig.id.replace('aiCoachToggle', '').replace('Button','')} Insights`;
                         button.setAttribute('aria-expanded', 'false');
+                        button.style.opacity = '1';
+                        button.style.transform = 'scale(1)';
                     } else {
                         detailsContainer.style.display = 'block';
-                        button.textContent = `Hide ${btnConfig.id.replace('aiCoachToggle', '').replace('Button','')} Insights`;
                         button.setAttribute('aria-expanded', 'true');
+                        button.style.opacity = '0.9';
+                        button.style.transform = 'scale(0.98)';
                     }
                 });
             } else {
@@ -1020,6 +1291,39 @@ if (window.aiCoachLauncherInitialized) {
         });
 
         logAICoach("renderAICoachData: Successfully rendered shell and conditionally populated data. Event listeners attached.");
+        
+        // Add event listener for snapshot toggle button
+        const toggleSnapshotBtn = document.getElementById('toggleSnapshotBtn');
+        const snapshotContent = document.getElementById('snapshotContent');
+        if (toggleSnapshotBtn && snapshotContent) {
+            toggleSnapshotBtn.addEventListener('click', () => {
+                const isHidden = snapshotContent.style.display === 'none';
+                if (isHidden) {
+                    snapshotContent.style.display = 'block';
+                    toggleSnapshotBtn.textContent = 'Hide';
+                    toggleSnapshotBtn.setAttribute('aria-expanded', 'true');
+                } else {
+                    snapshotContent.style.display = 'none';
+                    toggleSnapshotBtn.textContent = 'Show';
+                    toggleSnapshotBtn.setAttribute('aria-expanded', 'false');
+                    // Scroll chat into better view when snapshot is hidden
+                    const chatContainer = document.getElementById('aiCoachChatContainer');
+                    if (chatContainer) {
+                        chatContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+                // Save preference
+                localStorage.setItem('tutorCoachSnapshotHidden', !isHidden);
+            });
+            
+            // Restore previous state
+            const wasHidden = localStorage.getItem('tutorCoachSnapshotHidden') === 'true';
+            if (wasHidden) {
+                snapshotContent.style.display = 'none';
+                toggleSnapshotBtn.textContent = 'Show';
+                toggleSnapshotBtn.setAttribute('aria-expanded', 'false');
+            }
+        }
 
         // --- Add Chat Interface (conditionally, if student context is valid) ---
         if (data.student_name && data.student_name !== "N/A") {
@@ -1032,19 +1336,6 @@ if (window.aiCoachLauncherInitialized) {
             }
             logAICoach("Chat interface not added due to missing student context.");
         }
-
-        // --- Add Quick Links Area (always add the placeholder, content managed by sendChatMessage) ---
-        const quickLinksArea = document.createElement('div');
-        quickLinksArea.id = 'aiCoachQuickLinksArea';
-        quickLinksArea.className = 'ai-coach-section'; // Use existing class for styling consistency
-        quickLinksArea.style.display = 'none'; // Initially hidden
-        quickLinksArea.style.marginTop = '20px';
-        quickLinksArea.style.padding = '10px';
-        quickLinksArea.style.background = '#e9f5ff'; // Light blue background
-        quickLinksArea.style.borderLeft = '4px solid #3498db'; // Blue accent border
-        quickLinksArea.style.borderRadius = '5px';
-        panelContent.appendChild(quickLinksArea);
-        logAICoach("Placeholder for Quick Links area added.");
     }
 
     function renderVespaComparisonChart(studentVespaProfile, schoolVespaAverages) {
@@ -1296,69 +1587,122 @@ if (window.aiCoachLauncherInitialized) {
         chatContainer.style.marginTop = '20px';
 
         chatContainer.innerHTML = `
-            <h4>AI Chat with ${studentNameForContext}</h4>
+            <h4 style="margin-bottom: 20px; font-size: 1.4em; color: #333; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.2em;">💬</span> AI Chat with ${studentNameForContext}
+            </h4>
             <div id="aiCoachChatStats" style="
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 8px 12px;
-                background: #f0f8ff;
-                border-radius: 5px;
-                margin-bottom: 10px;
+                padding: 12px 16px;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                border-radius: 12px;
+                margin-bottom: 16px;
                 font-size: 0.85em;
-                color: #666;
+                color: #495057;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             ">
                 <div>
                     <span id="aiCoachChatCount">Loading chat history...</span>
                 </div>
                 <div style="display: flex; gap: 15px; align-items: center;">
-                    <span id="aiCoachLikedCount" style="color: #e74c3c;">
+                    <span id="aiCoachLikedCount" style="color: #e74c3c; display: flex; align-items: center; gap: 4px;">
                         <span style="font-size: 1.1em;">❤️</span> <span id="likedCountNumber">0</span> liked
                     </span>
                     <button id="aiCoachClearOldChatsBtn" class="p-button p-component" style="
-                        padding: 4px 8px;
+                        padding: 6px 12px;
                         font-size: 0.8em;
-                        background: #f8f9fa;
+                        background: rgba(255,255,255,0.8);
                         color: #666;
                         border: 1px solid #ddd;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
                         display: none;
                     ">
                         Clear Old Chats
                     </button>
                 </div>
             </div>
-            <div id="aiCoachChatDisplay">
+            <div id="aiCoachChatDisplay" style="
+                min-height: 300px;
+                max-height: 400px;
+                border: 1px solid #e9ecef;
+                border-radius: 12px;
+                padding: 20px;
+                background: #fff;
+                overflow-y: auto;
+                margin-bottom: 16px;
+                box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            ">
                 <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today?</p>
             </div>
-            <div style="margin: 10px 0; display: flex; gap: 10px;"> 
-                <button id="aiCoachProblemButton" class="p-button p-component" style="
-                    flex-grow: 1; /* Allow button to grow */
-                    padding: 8px;
-                    font-size: 0.9em;
-                    background: #f0f0f0; /* Lighter grey */
-                    color: #333;
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                <button id="aiCoachProblemButton" class="ai-chat-action-btn" style="
+                    padding: 12px 16px;
+                    font-size: 0.95em;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
                 ">
-                    🎯 Tackle a Specific Problem?
+                    <span style="font-size: 1.1em;">🎯</span>
+                    <span>Tackle a Specific Problem?</span>
                 </button>
-                <button id="aiCoachNewTopicButton" class="p-button p-component" style="
-                    flex-grow: 1; /* Allow button to grow */
-                    padding: 8px;
-                    font-size: 0.9em;
-                    background: #e9f5ff; /* Light blue */
-                    color: #3498db;
-                    border: 1px solid #b3d8f2;
-                    border-radius: 4px;
+                <button id="aiCoachDifferentIssueBtn" class="ai-chat-action-btn" style="
+                    padding: 12px 16px;
+                    font-size: 0.95em;
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    box-shadow: 0 3px 10px rgba(245, 87, 108, 0.3);
                 ">
-                    🔄 Discuss a Different Issue
+                    <span style="font-size: 1.1em;">💭</span>
+                    <span>Discuss a Different Issue</span>
                 </button>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="aiCoachChatInput" placeholder="Type your message...">
-                <button id="aiCoachChatSendButton" class="p-button p-component">Send</button>
+            <div style="display: flex; gap: 12px;">
+                <input type="text" id="aiCoachChatInput" placeholder="Type your message..." style="
+                    flex: 1;
+                    padding: 14px 18px;
+                    border: 2px solid #e9ecef;
+                    border-radius: 10px;
+                    font-size: 15px;
+                    transition: all 0.3s ease;
+                    background: #f8f9fa;
+                ">
+                <button id="aiCoachChatSendButton" class="p-button p-component" style="
+                    padding: 14px 28px;
+                    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 3px 10px rgba(58, 123, 213, 0.3);
+                ">
+                    Send
+                </button>
             </div>
-            <div id="aiCoachChatThinkingIndicator" class="thinking-pulse" style="display: none;"> 
+            <div id="aiCoachChatThinkingIndicator" class="thinking-pulse" style="display: none; margin-top: 16px; text-align: center; color: #667eea; font-weight: 500;"> 
                 AI Coach is thinking<span class="thinking-dots"><span></span><span></span><span></span></span>
             </div>
         `;
@@ -1372,7 +1716,46 @@ if (window.aiCoachLauncherInitialized) {
         const likedCountElement = document.getElementById('likedCountNumber');
         const clearOldChatsBtn = document.getElementById('aiCoachClearOldChatsBtn');
         const panelThinkingIndicator = document.getElementById('aiCoachChatThinkingIndicator'); // Get the panel-level indicator
-        const newTopicButton = document.getElementById('aiCoachNewTopicButton'); // Get the new button
+        const differentIssueBtn = document.getElementById('aiCoachDifferentIssueBtn');
+        
+        // Add hover effects for chat action buttons
+        const actionButtons = document.querySelectorAll('.ai-chat-action-btn');
+        actionButtons.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                btn.style.transform = 'translateY(-2px)';
+                btn.style.boxShadow = btn.style.boxShadow.replace('0 3px 10px', '0 6px 20px');
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = 'translateY(0)';
+                btn.style.boxShadow = btn.style.boxShadow.replace('0 6px 20px', '0 3px 10px');
+            });
+        });
+        
+        // Add hover effect for send button
+        if (chatSendButton) {
+            chatSendButton.addEventListener('mouseenter', () => {
+                chatSendButton.style.transform = 'scale(1.05)';
+                chatSendButton.style.boxShadow = '0 6px 20px rgba(58, 123, 213, 0.5)';
+            });
+            chatSendButton.addEventListener('mouseleave', () => {
+                chatSendButton.style.transform = 'scale(1)';
+                chatSendButton.style.boxShadow = '0 3px 10px rgba(58, 123, 213, 0.3)';
+            });
+        }
+        
+        // Add focus effect for chat input
+        if (chatInput) {
+            chatInput.addEventListener('focus', () => {
+                chatInput.style.borderColor = '#667eea';
+                chatInput.style.background = '#fff';
+                chatInput.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+            });
+            chatInput.addEventListener('blur', () => {
+                chatInput.style.borderColor = '#e9ecef';
+                chatInput.style.background = '#f8f9fa';
+                chatInput.style.boxShadow = 'none';
+            });
+        }
 
         // Track chat metadata
         let totalChatCount = 0;
@@ -1718,12 +2101,6 @@ if (window.aiCoachLauncherInitialized) {
             const messageText = chatInput.value.trim();
             if (messageText === '') return;
 
-            let suggestedActivities = []; // Declare here to be accessible in finally block
-            let sendNewTopicFlag = startNewTopicDiscussion; // Capture flag state for this send
-            if (sendNewTopicFlag) {
-                startNewTopicDiscussion = false; // Reset flag after capturing it for this message
-            }
-
             const currentStudentId = lastFetchedStudentId; // Use the ID from the last successful main data fetch
             if (!currentStudentId) {
                 logAICoach("Cannot send chat message: student ID not available.");
@@ -1826,13 +2203,12 @@ if (window.aiCoachLauncherInitialized) {
                 const payload = {
                     student_object10_record_id: currentStudentId,
                     chat_history: chatHistory, 
-                    current_tutor_message: originalInput,
-                    new_topic_initiated: sendNewTopicFlag // Add the flag to the payload
+                    current_tutor_message: originalInput
                 };
 
                 // No need to interact with the old thinkingIndicator (bottom bar) here
-                // chatSendButton.disabled = false; // This was moved down
-                // chatInput.disabled = false; // This was moved down
+                chatSendButton.disabled = false;
+                chatInput.disabled = false;
                 
                 // The in-chat thinking message (aiCoachTempInlineThinkingMessage) was already removed before the fetch call.
                 // If we want to remove it only *after* a successful response or error, we'd move its removal here.
@@ -1856,8 +2232,8 @@ if (window.aiCoachLauncherInitialized) {
                 });
 
                 // No need to interact with the old thinkingIndicator (bottom bar) here
-                // chatSendButton.disabled = false; // This was moved down
-                // chatInput.disabled = false; // This was moved down
+                chatSendButton.disabled = false;
+                chatInput.disabled = false;
                 
                 // The in-chat thinking message (aiCoachTempInlineThinkingMessage) was already removed before the fetch call.
                 // If we want to remove it only *after* a successful response or error, we'd move its removal here.
@@ -1876,7 +2252,7 @@ if (window.aiCoachLauncherInitialized) {
                 
                 // Process the AI response to make activity references clickable
                 let processedResponse = data.ai_response;
-                suggestedActivities = data.suggested_activities_in_chat || []; // Assign here
+                const suggestedActivities = data.suggested_activities_in_chat || [];
                 
                 // Create a map of activity names to their data for easy lookup
                 const activityMap = {};
@@ -1933,52 +2309,7 @@ if (window.aiCoachLauncherInitialized) {
                         }
                     });
                 });
-                
-                // If there are suggested activities, also add a quick links section
-                if (suggestedActivities.length > 0) {
-                    const quickLinksElement = document.createElement('div');
-                    quickLinksElement.style.cssText = `
-                        margin-top: 10px;
-                        padding: 10px;
-                        background: #f0f8ff;
-                        border-radius: 5px;
-                        border-left: 3px solid #3498db;
-                    `;
-                    quickLinksElement.innerHTML = '<strong style="color: #2c3e50; font-size: 0.9em;">📚 Quick Activity Links:</strong>';
-                    
-                    const linksList = document.createElement('ul');
-                    linksList.style.cssText = 'margin: 5px 0 0 0; padding-left: 20px;';
-                    
-                    suggestedActivities.forEach(activity => {
-                        const listItem = document.createElement('li');
-                        listItem.style.cssText = 'margin: 3px 0;';
-                        listItem.innerHTML = `
-                            <a href="#" class="ai-coach-activity-quick-link" 
-                               data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'
-                               style="color: #3498db; text-decoration: none; font-size: 0.9em;">
-                                ${activity.name} <span style="color: #666;">(${activity.vespa_element})</span>
-                            </a>
-                        `;
-                        linksList.appendChild(listItem);
-                    });
-                    
-                    quickLinksElement.appendChild(linksList);
-                    chatDisplay.appendChild(quickLinksElement);
-                    
-                    // Add click handlers to quick links
-                    const quickLinks = quickLinksElement.querySelectorAll('.ai-coach-activity-quick-link');
-                    quickLinks.forEach(link => {
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            try {
-                                const activityData = JSON.parse(link.getAttribute('data-activity'));
-                                showActivityModal(activityData);
-                            } catch (error) {
-                                logAICoach("Error parsing activity data from quick link:", error);
-                            }
-                        });
-                    });
-                }
+                // Quick links section removed as activities are already linked in the chat response
             } catch (error) {
                 logAICoach("Error sending chat message:", error);
                 const errorMessageElement = document.createElement('p');
@@ -2004,55 +2335,6 @@ if (window.aiCoachLauncherInitialized) {
                 chatSendButton.disabled = false;
                 chatInput.disabled = false;
                 chatInput.focus(); // Return focus to input
-
-
-                // --- Manage Quick Links Area ---
-                const quickLinksArea = document.getElementById('aiCoachQuickLinksArea');
-                if (quickLinksArea) {
-                    if (suggestedActivities && suggestedActivities.length > 0) {
-                        quickLinksArea.innerHTML = ''; // Clear previous links
-                        
-                        const quickLinksTitle = document.createElement('strong');
-                        quickLinksTitle.style.cssText = 'color: #2c3e50; font-size: 0.95em; display: block; margin-bottom: 8px;';
-                        quickLinksTitle.innerHTML = '📚 Suggested Activity Quick Links:';
-                        quickLinksArea.appendChild(quickLinksTitle);
-
-                        const linksUl = document.createElement('ul');
-                        linksUl.style.cssText = 'margin: 0; padding-left: 20px; list-style-type: disc;';
-                        
-                        suggestedActivities.forEach(activity => {
-                            const listItem = document.createElement('li');
-                            listItem.style.cssText = 'margin: 4px 0;';
-                            listItem.innerHTML = `
-                                <a href="#" class="ai-coach-activity-quick-link" 
-                                   data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'
-                                   style="color: #3498db; text-decoration: none; font-size: 0.9em;">
-                                    ${activity.name} <span style="color: #555; font-size:0.9em;">(${activity.vespa_element || 'N/A'})</span>
-                                </a>
-                            `;
-                            linksUl.appendChild(listItem);
-                        });
-                        quickLinksArea.appendChild(linksUl);
-
-                        // Add click handlers to these newly created quick links
-                        const newQuickLinks = quickLinksArea.querySelectorAll('.ai-coach-activity-quick-link');
-                        newQuickLinks.forEach(link => {
-                            link.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                try {
-                                    const activityData = JSON.parse(link.getAttribute('data-activity'));
-                                    showActivityModal(activityData);
-                                } catch (error) {
-                                    logAICoach("Error parsing activity data from quick link:", error);
-                                }
-                            });
-                        });
-                        quickLinksArea.style.display = 'block';
-                    } else {
-                        quickLinksArea.innerHTML = ''; // Clear if no activities
-                        quickLinksArea.style.display = 'none';
-                    }
-                }
             }
             chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
@@ -2093,6 +2375,32 @@ if (window.aiCoachLauncherInitialized) {
                 showProblemSelectorModal(commonProblems, chatInput);
             });
         }
+        
+        // Handle different issue button
+        if (differentIssueBtn) {
+            differentIssueBtn.addEventListener('click', () => {
+                // Clear the chat input and focus it
+                if (chatInput) {
+                    chatInput.value = '';
+                    chatInput.placeholder = 'What other topic would you like to explore?';
+                    chatInput.focus();
+                    
+                    // Temporarily highlight the input field
+                    chatInput.style.transition = 'all 0.3s ease';
+                    chatInput.style.borderColor = '#f5576c';
+                    chatInput.style.boxShadow = '0 0 0 3px rgba(245, 87, 108, 0.1)';
+                    
+                    setTimeout(() => {
+                        chatInput.style.borderColor = '#667eea';
+                        chatInput.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                        
+                        setTimeout(() => {
+                            chatInput.placeholder = 'Type your message...';
+                        }, 2000);
+                    }, 500);
+                }
+            });
+        }
 
         if (chatSendButton) {
             chatSendButton.addEventListener('click', sendChatMessage);
@@ -2105,34 +2413,6 @@ if (window.aiCoachLauncherInitialized) {
             });
         }
         logAICoach("Chat interface added and event listeners set up.");
-
-        if (newTopicButton) {
-            newTopicButton.addEventListener('click', () => {
-                startNewTopicDiscussion = true;
-                if (chatDisplay) {
-                    const separator = document.createElement('div');
-                    separator.className = 'ai-chat-topic-separator'; // Use this class for styling
-                    // Style the separator for better visibility
-                    separator.style.cssText = `
-                        text-align: center;
-                        margin: 15px 0;
-                        font-size: 0.85em;
-                        color: #777;
-                        border-bottom: 1px dashed #ccc;
-                        line-height: 0.1em; /* Adjust for vertical centering of text */
-                    `;
-                    separator.innerHTML = '<span style="background:#f4f6f8; padding:0 10px;">💬 Discussing a new issue...</span>'; // Span to lift text above line
-                    chatDisplay.appendChild(separator);
-                    chatDisplay.scrollTop = chatDisplay.scrollHeight;
-                }
-                if (chatInput) {
-                    chatInput.value = ''; // Clear input field
-                    chatInput.placeholder = 'What new issue would you like to discuss?';
-                    chatInput.focus();
-                }
-                logAICoach("'Discuss a Different Issue' button clicked. Flag set.");
-            });
-        }
     }
 
     // --- NEW: Function to show problem selector modal ---
