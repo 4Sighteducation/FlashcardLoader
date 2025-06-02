@@ -1974,33 +1974,49 @@ if (window.studentCoachLauncherInitialized) {
           { id: "svision_1", text: "I'm unsure about my future goals" },
           { id: "svision_2", text: "I'm not feeling motivated for my studies" },
           { id: "svision_3", text: "I can't see how school connects to my future" },
-          { id: "svision_4", text: "I don’t really know what success looks like for me" }
+          { id: "svision_4", text: "I don’t really know what success looks like for me" },
+          { id: "svision_5", text: "I haven’t thought about what I want to achieve this year" },
+          { id: "svision_6", text: "I find it hard to picture myself doing well" },
+          { id: "svision_7", text: "I rarely think about where I’m heading or why I’m here" }
         ],
         "Effort": [
           { id: "seffort_1", text: "I struggle to complete my homework on time" },
           { id: "seffort_2", text: "I find it hard to keep trying when things get difficult" },
           { id: "seffort_3", text: "I often give up if I don’t get things right straight away" },
-          { id: "seffort_4", text: "I do the bare minimum just to get by" }
+          { id: "seffort_4", text: "I do the bare minimum just to get by" },
+          { id: "seffort_5", text: "I get distracted really easily when I try to study" },
+          { id: "seffort_6", text: "I avoid topics or tasks that feel too hard" },
+          { id: "seffort_7", text: "I put things off until I’m under pressure" }
         ],
         "Systems": [
           { id: "ssystems_1", text: "I'm not very organized with my notes and deadlines" },
           { id: "ssystems_2", text: "I don't have a good revision plan" },
           { id: "ssystems_3", text: "I keep forgetting what homework I have" },
-          { id: "ssystems_4", text: "I leave everything to the last minute" }
+          { id: "ssystems_4", text: "I leave everything to the last minute" },
+          { id: "ssystems_5", text: "I don’t use a planner or calendar to track my work" },
+          { id: "ssystems_6", text: "My notes are all over the place and hard to follow" },
+          { id: "ssystems_7", text: "I struggle to prioritise what to do first" }
         ],
         "Practice": [
           { id: "spractice_1", text: "I don't review my work regularly" },
           { id: "spractice_2", text: "I tend to cram before tests" },
           { id: "spractice_3", text: "I avoid practising topics I find hard" },
-          { id: "spractice_4", text: "I’m not sure how to revise effectively" }
+          { id: "spractice_4", text: "I’m not sure how to revise effectively" },
+          { id: "spractice_5", text: "I don’t practise exam-style questions enough" },
+          { id: "spractice_6", text: "I don’t really learn from the mistakes I make" },
+          { id: "spractice_7", text: "I rarely check my understanding before moving on" }
         ],
         "Attitude": [
           { id: "sattitude_1", text: "I worry I'm not smart enough" },
           { id: "sattitude_2", text: "I get easily discouraged by setbacks" },
           { id: "sattitude_3", text: "I often compare myself to others and feel behind" },
-          { id: "sattitude_4", text: "I don’t believe my effort really makes a difference" }
+          { id: "sattitude_4", text: "I don’t believe my effort really makes a difference" },
+          { id: "sattitude_5", text: "I feel overwhelmed when I don’t get something straight away" },
+          { id: "sattitude_6", text: "I tell myself I’m just not good at certain subjects" },
+          { id: "sattitude_7", text: "I find it hard to stay positive about school" }
         ]
       };
+      
 
     function showProblemSelectorModal(commonProblems, chatInput) {
         const modalId = 'aiCoachProblemModal'; // Changed ID
