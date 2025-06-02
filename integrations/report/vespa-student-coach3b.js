@@ -229,7 +229,7 @@ if (window.studentCoachLauncherInitialized) {
         // URLs for both themes
         const themeUrls = {
             'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1h.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1k.css'
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1m.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
