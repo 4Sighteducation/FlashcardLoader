@@ -228,8 +228,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1s.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1t.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1u.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1u.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -300,9 +300,9 @@ if (window.studentCoachLauncherInitialized) {
         const styleElement = document.createElement('style');
         styleElement.textContent = dynamicCss;
         
-        document.documentElement.style.setProperty('--ai-coach-panel-width', '400px'); // Student panel might be narrower
-        document.documentElement.style.setProperty('--ai-coach-panel-min-width', '280px');
-        document.documentElement.style.setProperty('--ai-coach-panel-max-width', '600px');
+        document.documentElement.style.setProperty('--ai-coach-panel-width', '450px'); // Match tutor panel width
+        document.documentElement.style.setProperty('--ai-coach-panel-min-width', '350px');
+        document.documentElement.style.setProperty('--ai-coach-panel-max-width', '1200px');
         document.documentElement.style.setProperty('--ai-coach-transition-duration', '0.3s');
         
         // Append external CSS first, then dynamic CSS so theme takes precedence
@@ -325,7 +325,7 @@ if (window.studentCoachLauncherInitialized) {
         let startX = 0;
         let startWidth = 0;
         // Use student-specific CSS variable or default
-        let currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-width'), 10) || 400; 
+        let currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-width'), 10) || 450; 
 
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'ai-coach-resize-handle'; // Generic class for styling
@@ -543,8 +543,14 @@ if (window.studentCoachLauncherInitialized) {
             // New structure with a flex container for main button and info button
             buttonContainer.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
-                    <button id="${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" class="p-button p-component">🚀 Activate My AI Coach</button>
-                    <button id="aiCoachInfoBtn" title="About My AI Coach" aria-label="Information about the AI Coach">
+                    <button id="${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" 
+                            data-button-id="activateAICoachBtn" 
+                            class="p-button p-component p-button-raised" 
+                            style="font-size: 1.1em; padding: 15px 30px;">
+                        <span class="p-button-icon p-button-icon-left" style="font-size: 1.2em; margin-right: 8px;">🚀</span>
+                        <span class="p-button-label" style="font-weight: 600; letter-spacing: 0.5px;">Activate My AI Coach</span>
+                    </button>
+                    <button id="aiCoachInfoBtn" class="p-button p-component p-button-rounded p-button-info p-button-outlined" title="About My AI Coach" aria-label="Information about the AI Coach" style="width: 42px; height: 42px; padding: 0; font-weight: 700; font-size: 20px; font-family: Georgia, serif;">
                         i
                     </button>
                 </div>
@@ -799,9 +805,9 @@ if (window.studentCoachLauncherInitialized) {
         // --- Toggle Buttons for different insight sections --- 
         htmlShell += `
             <div class="student-coach-section-toggles ai-coach-section-toggles"> 
-                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false" aria-controls="aiCoachVespaProfileContainer">My VESPA Insights</button> 
-                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false" aria-controls="aiCoachAcademicProfileContainer">My Academic Insights</button>
-                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false" aria-controls="aiCoachQuestionAnalysisContainer">My Questionnaire Insights</button>
+                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false" aria-controls="aiCoachVespaProfileContainer">VESPA</button> 
+                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false" aria-controls="aiCoachAcademicProfileContainer">Academic</button>
+                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false" aria-controls="aiCoachQuestionAnalysisContainer">Questionnaire</button>
             </div>
         `;
         logStudentCoach("renderAICoachData: HTML for toggle buttons appended.", htmlShell);
@@ -832,9 +838,9 @@ if (window.studentCoachLauncherInitialized) {
 
         // --- Add event listeners for the new toggle buttons --- 
         const toggleButtonsConfig = [
-            { buttonId: 'aiCoachToggleVespaButton',          containerId: 'aiCoachVespaProfileContainer',       defaultText: 'My VESPA Insights' },
-            { buttonId: 'aiCoachToggleAcademicButton',       containerId: 'aiCoachAcademicProfileContainer',    defaultText: 'My Academic Insights' },
-            { buttonId: 'aiCoachToggleQuestionButton',       containerId: 'aiCoachQuestionAnalysisContainer', defaultText: 'My Questionnaire Insights' }
+            { buttonId: 'aiCoachToggleVespaButton',          containerId: 'aiCoachVespaProfileContainer',       defaultText: 'VESPA' },
+            { buttonId: 'aiCoachToggleAcademicButton',       containerId: 'aiCoachAcademicProfileContainer',    defaultText: 'Academic' },
+            { buttonId: 'aiCoachToggleQuestionButton',       containerId: 'aiCoachQuestionAnalysisContainer', defaultText: 'Questionnaire' }
         ];
 
         toggleButtonsConfig.forEach(config => {
@@ -864,7 +870,7 @@ if (window.studentCoachLauncherInitialized) {
                         button.setAttribute('aria-expanded', 'false');
                     } else {
                         container.style.display = 'block';
-                        button.textContent = `Hide ${config.defaultText.replace('My ', '')}`;
+                        button.textContent = `Hide ${config.defaultText}`;
                         button.setAttribute('aria-expanded', 'true');
                     }
                 });
@@ -1230,12 +1236,22 @@ if (window.studentCoachLauncherInitialized) {
 
         if (show) {
             document.body.classList.add('ai-coach-active'); // Use a generic or namespaced class
-            if (toggleButton) toggleButton.textContent = '🙈 Hide My AI Coach';
+            if (toggleButton) {
+                const buttonLabel = toggleButton.querySelector('.p-button-label');
+                const buttonIcon = toggleButton.querySelector('.p-button-icon');
+                if (buttonLabel) buttonLabel.textContent = 'Hide My AI Coach';
+                if (buttonIcon) buttonIcon.textContent = '🙈';
+            }
             logStudentCoach("Student AI Coach panel activated.");
             await refreshAICoachData(); 
         } else {
             document.body.classList.remove('ai-coach-active');
-            if (toggleButton) toggleButton.textContent = '🚀 Activate My AI Coach';
+            if (toggleButton) {
+                const buttonLabel = toggleButton.querySelector('.p-button-label');
+                const buttonIcon = toggleButton.querySelector('.p-button-icon');
+                if (buttonLabel) buttonLabel.textContent = 'Activate My AI Coach';
+                if (buttonIcon) buttonIcon.textContent = '🚀';
+            }
             if (panelContent) panelContent.innerHTML = '<p>Activate My AI Coach to get personalized insights!</p>';
             logStudentCoach("Student AI Coach panel deactivated.");
             stopLoadingMessageRotator();
