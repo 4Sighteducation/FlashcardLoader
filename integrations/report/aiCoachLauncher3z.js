@@ -18,6 +18,7 @@ if (window.aiCoachLauncherInitialized) {
     let vespaChartInstance = null; // To keep track of the chart instance for updates/destruction
     let currentLLMInsightsForChat = null; // ADDED: To store insights for chat context
     let loadingMessageIntervalId = null; // For the rotating loading messages
+    let startNewTopicDiscussion = false; // ADDED: Flag for new topic
 
     // --- Configuration ---
     const HEROKU_API_BASE_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1'; // MODIFIED for base path
@@ -1329,16 +1330,28 @@ if (window.aiCoachLauncherInitialized) {
             <div id="aiCoachChatDisplay">
                 <p class="ai-chat-message ai-chat-message-bot"><em>AI Coach:</em> Hello! How can I help you with ${studentNameForContext} today?</p>
             </div>
-            <div style="margin: 10px 0;">
+            <div style="margin: 10px 0; display: flex; gap: 10px;"> 
                 <button id="aiCoachProblemButton" class="p-button p-component" style="
-                    width: 100%;
+                    flex-grow: 1; /* Allow button to grow */
                     padding: 8px;
                     font-size: 0.9em;
-                    background: #f8f9fa;
+                    background: #f0f0f0; /* Lighter grey */
                     color: #333;
-                    border: 1px solid #ddd;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
                 ">
                     🎯 Tackle a Specific Problem?
+                </button>
+                <button id="aiCoachNewTopicButton" class="p-button p-component" style="
+                    flex-grow: 1; /* Allow button to grow */
+                    padding: 8px;
+                    font-size: 0.9em;
+                    background: #e9f5ff; /* Light blue */
+                    color: #3498db;
+                    border: 1px solid #b3d8f2;
+                    border-radius: 4px;
+                ">
+                    🔄 Discuss a Different Issue
                 </button>
             </div>
             <div style="display: flex; gap: 10px;">
@@ -1359,6 +1372,7 @@ if (window.aiCoachLauncherInitialized) {
         const likedCountElement = document.getElementById('likedCountNumber');
         const clearOldChatsBtn = document.getElementById('aiCoachClearOldChatsBtn');
         const panelThinkingIndicator = document.getElementById('aiCoachChatThinkingIndicator'); // Get the panel-level indicator
+        const newTopicButton = document.getElementById('aiCoachNewTopicButton'); // Get the new button
 
         // Track chat metadata
         let totalChatCount = 0;
@@ -1705,6 +1719,10 @@ if (window.aiCoachLauncherInitialized) {
             if (messageText === '') return;
 
             let suggestedActivities = []; // Declare here to be accessible in finally block
+            let sendNewTopicFlag = startNewTopicDiscussion; // Capture flag state for this send
+            if (sendNewTopicFlag) {
+                startNewTopicDiscussion = false; // Reset flag after capturing it for this message
+            }
 
             const currentStudentId = lastFetchedStudentId; // Use the ID from the last successful main data fetch
             if (!currentStudentId) {
@@ -1808,7 +1826,8 @@ if (window.aiCoachLauncherInitialized) {
                 const payload = {
                     student_object10_record_id: currentStudentId,
                     chat_history: chatHistory, 
-                    current_tutor_message: originalInput
+                    current_tutor_message: originalInput,
+                    new_topic_initiated: sendNewTopicFlag // Add the flag to the payload
                 };
 
                 // No need to interact with the old thinkingIndicator (bottom bar) here
@@ -2086,6 +2105,34 @@ if (window.aiCoachLauncherInitialized) {
             });
         }
         logAICoach("Chat interface added and event listeners set up.");
+
+        if (newTopicButton) {
+            newTopicButton.addEventListener('click', () => {
+                startNewTopicDiscussion = true;
+                if (chatDisplay) {
+                    const separator = document.createElement('div');
+                    separator.className = 'ai-chat-topic-separator'; // Use this class for styling
+                    // Style the separator for better visibility
+                    separator.style.cssText = `
+                        text-align: center;
+                        margin: 15px 0;
+                        font-size: 0.85em;
+                        color: #777;
+                        border-bottom: 1px dashed #ccc;
+                        line-height: 0.1em; /* Adjust for vertical centering of text */
+                    `;
+                    separator.innerHTML = '<span style="background:#f4f6f8; padding:0 10px;">💬 Discussing a new issue...</span>'; // Span to lift text above line
+                    chatDisplay.appendChild(separator);
+                    chatDisplay.scrollTop = chatDisplay.scrollHeight;
+                }
+                if (chatInput) {
+                    chatInput.value = ''; // Clear input field
+                    chatInput.placeholder = 'What new issue would you like to discuss?';
+                    chatInput.focus();
+                }
+                logAICoach("'Discuss a Different Issue' button clicked. Flag set.");
+            });
+        }
     }
 
     // --- NEW: Function to show problem selector modal ---
@@ -2771,4 +2818,3 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
-
