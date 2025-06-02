@@ -228,8 +228,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1g.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1g.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1f.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1f.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -252,42 +252,35 @@ if (window.studentCoachLauncherInitialized) {
         link.href = newHref;
         logStudentCoach(`Loading ${theme} theme CSS from: ${link.href}`);
         
-        // Dynamic CSS for config-specific IDs
+        // Dynamic CSS for config-specific IDs - minimal styles to not override theme CSS
         const dynamicCss = `
             body.ai-coach-active ${STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector} {
                 /* Adjust main content if panel is on the side */
             }
             
+            /* Minimal panel structure - let theme CSS handle appearance */
             #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                /* Basic panel styles - copy from aiCoachLauncher1f.css and adapt IDs */
                 width: 0; opacity: 0; visibility: hidden;
-                position: fixed !important; top: 0; right: 0; height: 100vh;
-                background-color: #f4f6f8; border-left: 1px solid #ddd;
-                padding: 20px; box-sizing: border-box; overflow-y: auto;
-                z-index: 1050; transition: width var(--student-coach-transition-duration, 0.3s), opacity var(--student-coach-transition-duration, 0.3s), visibility var(--student-coach-transition-duration, 0.3s);
-                font-family: Arial, sans-serif; display: flex; flex-direction: column;
+                position: fixed; top: 0; right: 0; height: 100vh;
+                z-index: 1050; 
+                transition: width var(--student-coach-transition-duration, 0.3s), opacity var(--student-coach-transition-duration, 0.3s), visibility var(--student-coach-transition-duration, 0.3s);
+                display: flex; flex-direction: column;
             }
             
             body.ai-coach-active #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: var(--student-coach-panel-width, 400px); /* Use CSS var or default */
+                width: var(--student-coach-panel-width, 400px);
                 opacity: 1; visibility: visible;
             }
             
             #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header {
-                /* Styles for panel header */
                 display: flex; justify-content: space-between; align-items: center;
-                margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px;
                 flex-shrink: 0;
             }
             
             #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content {
-                 /* Styles for panel content area */
                 flex: 1; display: flex; flex-direction: column;
                 overflow-y: auto; min-height: 0;
             }
-            
-            .loader { /* Keep loader styles */ }
-            @keyframes spin { /* Keep spin animation */ }
         `;
         
         const styleElement = document.createElement('style');
@@ -537,16 +530,9 @@ if (window.studentCoachLauncherInitialized) {
         if (!buttonContainer.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`)) {
             // New structure with a flex container for main button and info button
             buttonContainer.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
                     <button id="${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" class="p-button p-component">🚀 Activate My AI Coach</button>
-                    <button id="aiCoachInfoBtn" title="About My AI Coach" 
-                            style="width: 40px; height: 40px; border-radius: 50%; 
-                                   background-color: #e9ecef; /* Light grey, adjust with CSS variables later */ 
-                                   border: 1px solid #ced4da; 
-                                   font-size: 20px; font-weight: bold; color: #495057; 
-                                   cursor: pointer; display: flex; align-items: center; 
-                                   justify-content: center; transition: background-color 0.2s, box-shadow 0.2s;"
-                            aria-label="Information about the AI Coach">
+                    <button id="aiCoachInfoBtn" title="About My AI Coach" aria-label="Information about the AI Coach">
                         i
                     </button>
                 </div>
@@ -1983,28 +1969,38 @@ if (window.studentCoachLauncherInitialized) {
     // --- NEW: showProblemSelectorModal (adapted from tutor) ---
     // For students, the common problems and the modal's appearance might be different.
     // Using a simplified version of tutor's problems for now.
-    const studentCommonProblems = { // Example, can be refined based on student needs
+    const studentCommonProblems = {
         "Vision": [
-            { id: "svision_1", text: "I'm unsure about my future goals" },
-            { id: "svision_2", text: "I'm not feeling motivated for my studies" },
+          { id: "svision_1", text: "I'm unsure about my future goals" },
+          { id: "svision_2", text: "I'm not feeling motivated for my studies" },
+          { id: "svision_3", text: "I can't see how school connects to my future" },
+          { id: "svision_4", text: "I don’t really know what success looks like for me" }
         ],
         "Effort": [
-            { id: "seffort_1", text: "I struggle to complete my homework on time" },
-            { id: "seffort_2", text: "I find it hard to keep trying when things get difficult" },
+          { id: "seffort_1", text: "I struggle to complete my homework on time" },
+          { id: "seffort_2", text: "I find it hard to keep trying when things get difficult" },
+          { id: "seffort_3", text: "I often give up if I don’t get things right straight away" },
+          { id: "seffort_4", text: "I do the bare minimum just to get by" }
         ],
         "Systems": [
-            { id: "ssystems_1", text: "I'm not very organized with my notes and deadlines" },
-            { id: "ssystems_2", text: "I don't have a good revision plan" },
+          { id: "ssystems_1", text: "I'm not very organized with my notes and deadlines" },
+          { id: "ssystems_2", text: "I don't have a good revision plan" },
+          { id: "ssystems_3", text: "I keep forgetting what homework I have" },
+          { id: "ssystems_4", text: "I leave everything to the last minute" }
         ],
         "Practice": [
-            { id: "spractice_1", text: "I don't review my work regularly" },
-            { id: "spractice_2", text: "I tend to cram before tests" },
+          { id: "spractice_1", text: "I don't review my work regularly" },
+          { id: "spractice_2", text: "I tend to cram before tests" },
+          { id: "spractice_3", text: "I avoid practising topics I find hard" },
+          { id: "spractice_4", text: "I’m not sure how to revise effectively" }
         ],
         "Attitude": [
-            { id: "sattitude_1", text: "I worry I'm not smart enough" },
-            { id: "sattitude_2", text: "I get easily discouraged by setbacks" },
+          { id: "sattitude_1", text: "I worry I'm not smart enough" },
+          { id: "sattitude_2", text: "I get easily discouraged by setbacks" },
+          { id: "sattitude_3", text: "I often compare myself to others and feel behind" },
+          { id: "sattitude_4", text: "I don’t believe my effort really makes a difference" }
         ]
-    };
+      };
 
     function showProblemSelectorModal(commonProblems, chatInput) {
         const modalId = 'aiCoachProblemModal'; // Changed ID
