@@ -258,6 +258,8 @@ body.ai-coach-active [id*="CoachPanel"] {
 #aiCoachLauncherButtonContainer button#activateAICoachBtn,
 #studentCoachLauncherButtonContainer button#activateAICoachBtn,
 #aiCoachLauncherButtonContainer button[id*="activateAICoach"],
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
 button#activateAICoachBtn {
     padding: 18px 40px !important;
     font-size: 1.15em !important;
@@ -294,6 +296,8 @@ button#activateAICoachBtn {
 #aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
 #studentCoachLauncherButtonContainer button#activateAICoachBtn::before,
 #aiCoachLauncherButtonContainer button[id*="activateAICoach"]::before,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]::before,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]::before,
 button#activateAICoachBtn::before {
     content: '';
     position: absolute;
@@ -317,6 +321,8 @@ button#activateAICoachBtn::before {
 #aiCoachLauncherButtonContainer button#activateAICoachBtn::after,
 #studentCoachLauncherButtonContainer button#activateAICoachBtn::after,
 #aiCoachLauncherButtonContainer button[id*="activateAICoach"]::after,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]::after,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]::after,
 button#activateAICoachBtn::after {
     content: '';
     position: absolute;
@@ -359,6 +365,8 @@ button#activateAICoachBtn::after {
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:hover,
 #studentCoachLauncherButtonContainer button#activateAICoachBtn:hover,
 #aiCoachLauncherButtonContainer button[id*="activateAICoach"]:hover,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover,
 button#activateAICoachBtn:hover {
     transform: translateY(-5px) scale(1.05) !important;
     box-shadow: 0 0 60px rgba(139, 92, 246, 0.8), 
@@ -372,6 +380,8 @@ button#activateAICoachBtn:hover {
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:active,
 #studentCoachLauncherButtonContainer button#activateAICoachBtn:active,
 #aiCoachLauncherButtonContainer button[id*="activateAICoach"]:active,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:active,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:active,
 button#activateAICoachBtn:active {
     transform: translateY(-2px) scale(1.03) !important;
 }
