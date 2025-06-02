@@ -25,7 +25,11 @@
 
 /* Apply modern font globally to AI Coach elements */
 #aiCoachPanel,
-#aiCoachPanel * {
+#aiCoachPanel *,
+[id*="CoachPanel"],
+[id*="CoachPanel"] *,
+.ai-coach-panel,
+.ai-coach-panel * {
     font-family: var(--ui-font-family) !important;
 }
 
@@ -45,7 +49,9 @@ body.ai-coach-active #kn-scene_43 {
 }
 
 /* Main AI Coach Panel - Modern Design */
-#aiCoachPanel {
+#aiCoachPanel,
+[id*="CoachPanel"],
+.ai-coach-panel {
     width: 0;
     opacity: 0;
     visibility: hidden;
@@ -70,14 +76,18 @@ body.ai-coach-active #kn-scene_43 {
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
 }
 
-body.ai-coach-active #aiCoachPanel {
+body.ai-coach-active #aiCoachPanel,
+body.ai-coach-active [id*="CoachPanel"],
+body.ai-coach-active .ai-coach-panel {
     width: var(--ai-coach-panel-width);
     opacity: 1;
     visibility: visible;
 }
 
 /* Add subtle inner shadow for depth */
-#aiCoachPanel::before {
+#aiCoachPanel::before,
+[id*="CoachPanel"]::before,
+.ai-coach-panel::before {
     content: '';
     position: absolute;
     top: 0;
@@ -90,21 +100,29 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Smooth scrollbar styling */
-#aiCoachPanel::-webkit-scrollbar {
+#aiCoachPanel::-webkit-scrollbar,
+[id*="CoachPanel"]::-webkit-scrollbar,
+.ai-coach-panel::-webkit-scrollbar {
     width: 8px;
 }
 
-#aiCoachPanel::-webkit-scrollbar-track {
+#aiCoachPanel::-webkit-scrollbar-track,
+[id*="CoachPanel"]::-webkit-scrollbar-track,
+.ai-coach-panel::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 4px;
 }
 
-#aiCoachPanel::-webkit-scrollbar-thumb {
+#aiCoachPanel::-webkit-scrollbar-thumb,
+[id*="CoachPanel"]::-webkit-scrollbar-thumb,
+.ai-coach-panel::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 4px;
 }
 
-#aiCoachPanel::-webkit-scrollbar-thumb:hover {
+#aiCoachPanel::-webkit-scrollbar-thumb:hover,
+[id*="CoachPanel"]::-webkit-scrollbar-thumb:hover,
+.ai-coach-panel::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
 
@@ -168,7 +186,9 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Panel content - make it flexible to accommodate chat */
-#aiCoachPanel .ai-coach-panel-content {
+#aiCoachPanel .ai-coach-panel-content,
+[id*="CoachPanel"] .ai-coach-panel-content,
+.ai-coach-panel .ai-coach-panel-content {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -200,7 +220,9 @@ body.ai-coach-active #aiCoachPanel {
 
 /* Styling for the main Activate button - Modern Gradient Design */
 #aiCoachLauncherButtonContainer button#activateAICoachBtn,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"],
+button#activateAICoachBtn {
     padding: 16px 32px !important;
     font-size: 1.1em !important;
     font-weight: 600 !important;
@@ -221,7 +243,9 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn::before {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn::before,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]::before,
+button#activateAICoachBtn::before {
     content: '';
     position: absolute;
     top: 0;
@@ -234,19 +258,25 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:hover::before,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover::before {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover::before,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:hover::before,
+button#activateAICoachBtn:hover::before {
     transform: translateX(0);
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:hover,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:hover,
+button#activateAICoachBtn:hover {
     transform: translateY(-3px) scale(1.03);
     box-shadow: 0 8px 28px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 -2px 4px rgba(0, 0, 0, 0.15) !important;
     border-color: rgba(102, 126, 234, 0.5) !important;
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:active,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:active {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:active,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:active,
+button#activateAICoachBtn:active {
     transform: translateY(-1px) scale(1.01);
     box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3), 0 1px 4px rgba(0, 0, 0, 0.15), inset 0 -1px 2px rgba(0, 0, 0, 0.1) !important;
 }
@@ -980,7 +1010,9 @@ body.ai-coach-active #aiCoachPanel {
         display: none;
     }
     
-    #aiCoachPanel {
+    #aiCoachPanel,
+    [id*="CoachPanel"],
+    .ai-coach-panel {
         width: 100% !important;
         font-size: 16px;
     }
@@ -1302,7 +1334,9 @@ div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
 }
 
 /* Ensure proper header layout */
-#aiCoachPanel .ai-coach-panel-header {
+#aiCoachPanel .ai-coach-panel-header,
+[id*="CoachPanel"] .ai-coach-panel-header,
+.ai-coach-panel .ai-coach-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1334,7 +1368,9 @@ div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
         align-items: stretch;
     }
     
-    #aiCoachPanel .ai-coach-panel-header {
+    #aiCoachPanel .ai-coach-panel-header,
+    [id*="CoachPanel"] .ai-coach-panel-header,
+    .ai-coach-panel .ai-coach-panel-header {
         flex-wrap: wrap;
     }
 }
