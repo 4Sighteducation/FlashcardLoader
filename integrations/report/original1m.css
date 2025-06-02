@@ -1,0 +1,1426 @@
+/* AI Coach Launcher Styles */
+/* Version: 2.1 - Enhanced for dynamic IDs */
+
+/* Modern UI Enhancements */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* CSS Custom Properties for dynamic values */
+:root {
+    --ai-coach-panel-width: 450px;
+    --ai-coach-panel-min-width: 300px;
+    --ai-coach-panel-max-width: 1200px;
+    --ai-coach-transition-duration: 0.3s;
+    /* VESPA Theme Colors */
+    --vespa-vision-color: #ff8f00;
+    --vespa-effort-color: #86b4f0;
+    --vespa-systems-color: #72cb44;
+    --vespa-practice-color: #7f31a4;
+    --vespa-attitude-color: #f032e6;
+    /* Modern UI Colors */
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --ui-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Apply modern font globally to AI Coach elements */
+#aiCoachPanel,
+#aiCoachPanel * {
+    font-family: var(--ui-font-family) !important;
+}
+
+/* Main content adjustment when coach is active */
+body.ai-coach-active #content,
+body.ai-coach-active #kn-scene_43 {
+    width: calc(100% - var(--ai-coach-panel-width));
+    margin-right: var(--ai-coach-panel-width);
+    transition: width var(--ai-coach-transition-duration) ease-in-out, 
+                margin-right var(--ai-coach-transition-duration) ease-in-out;
+}
+
+#content,
+#kn-scene_43 {
+    transition: width var(--ai-coach-transition-duration) ease-in-out, 
+                margin-right var(--ai-coach-transition-duration) ease-in-out;
+}
+
+/* Main AI Coach Panel - Modern Design */
+#aiCoachPanel {
+    width: 0;
+    opacity: 0;
+    visibility: hidden;
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    background-color: #ffffff !important;
+    background-image: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%) !important;
+    border-left: 2px solid #d6dee5;
+    padding: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    z-index: 1050;
+    transition: width var(--ai-coach-transition-duration) cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity var(--ai-coach-transition-duration) ease-in-out, 
+                visibility var(--ai-coach-transition-duration);
+    font-family: var(--ui-font-family);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -6px 0 32px rgba(0, 0, 0, 0.12), -2px 0 8px rgba(0, 0, 0, 0.04);
+}
+
+body.ai-coach-active #aiCoachPanel {
+    width: var(--ai-coach-panel-width);
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Add subtle inner shadow for depth */
+#aiCoachPanel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.02) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Smooth scrollbar styling */
+#aiCoachPanel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Resize handle styles - use class selector for JavaScript-created element */
+.ai-coach-resize-handle {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 10px !important;
+    cursor: ew-resize !important;
+    background: transparent;
+    z-index: 1051 !important;
+    transition: background-color 0.2s;
+}
+
+.ai-coach-resize-handle:hover {
+    background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Panel header - Modern Gradient */
+.ai-coach-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background: var(--primary-gradient) !important;
+    flex-shrink: 0;
+    position: relative;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08), inset 0 -1px 1px rgba(0, 0, 0, 0.05);
+}
+
+.ai-coach-panel-header h3 {
+    margin: 0;
+    font-size: 1.5em;
+    color: white;
+    font-weight: 600;
+    letter-spacing: -0.25px;
+}
+
+.ai-coach-close-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    font-size: 1.6em;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.25s ease;
+}
+
+.ai-coach-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* Panel content - make it flexible to accommodate chat */
+#aiCoachPanel .ai-coach-panel-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 20px;
+    background: #f9fafb;
+    margin: 0;
+}
+
+/* Launcher button container - For Centered Floating Button Style */
+#aiCoachLauncherButtonContainer,
+#studentCoachLauncherButtonContainer {
+    position: fixed; 
+    bottom: 24px;    
+    left: 50%;       
+    transform: translateX(-50%); 
+    z-index: 1040;   
+    text-align: center; 
+    padding: 12px 20px;      
+    border-top: none; 
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 40px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+#aiCoachLauncherButtonContainer p,
+#studentCoachLauncherButtonContainer p {
+    display: none; 
+}
+
+/* Styling for the main Activate button - Modern Gradient Design */
+#aiCoachLauncherButtonContainer button#activateAICoachBtn,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn {
+    padding: 16px 32px !important;
+    font-size: 1.1em !important;
+    font-weight: 600 !important;
+    background: var(--primary-gradient) !important;
+    color: white !important; 
+    border: none !important;
+    border-radius: 30px !important;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3), 0 2px 6px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0,0,0,0.05) !important;
+    cursor: pointer !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(-100%);
+    transition: transform 0.4s ease;
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover::before,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover::before {
+    transform: translateX(0);
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35), 0 4px 10px rgba(0, 0, 0, 0.18), inset 0 -1px 3px rgba(0,0,0,0.1) !important;
+    filter: brightness(1.1);
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:active,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:active {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3), 0 1px 4px rgba(0, 0, 0, 0.15), inset 0 -1px 2px rgba(0,0,0,0.1) !important;
+    filter: brightness(0.95);
+}
+
+/* Styling for the new Info Button - Modern Design */
+#aiCoachInfoBtn {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 50% !important; 
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.9) !important;
+    color: white !important; 
+    font-size: 24px !important;
+    font-weight: bold !important;
+    font-family: 'Georgia', serif;
+    line-height: 1;
+    cursor: pointer !important;
+    display: inline-flex !important; 
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 16px rgba(240, 87, 108, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+    vertical-align: middle;
+    position: relative;
+}
+
+#aiCoachInfoBtn:hover {
+    transform: scale(1.15) rotate(10deg);
+    box-shadow: 0 6px 20px rgba(240, 87, 108, 0.5) !important;
+}
+
+#aiCoachInfoBtn:active {
+    transform: scale(1.05) rotate(5deg);
+}
+
+/* Section toggles - Modern Cards */
+.ai-coach-section-toggles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+    margin: 15px 0 !important;
+    flex-shrink: 0;
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e0e6ed;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.ai-coach-section-toggles .p-button {
+    flex-grow: 1;
+    padding: 14px 18px !important;
+    font-size: 14px !important;
+    border: 1px solid transparent !important;
+    color: white !important;
+    border-radius: 8px !important;
+    transition: all 0.25s ease !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08), inset 0 -1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ai-coach-section-toggles .p-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(-100%);
+    transition: transform 0.35s ease;
+}
+
+.ai-coach-section-toggles .p-button:hover {
+    transform: translateY(-2px) scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.08) !important;
+    filter: brightness(1.1);
+}
+
+#aiCoachToggleVespaButton {
+    background: var(--primary-gradient) !important;
+}
+
+#aiCoachToggleAcademicButton {
+    background: var(--secondary-gradient) !important;
+}
+
+#aiCoachToggleQuestionButton {
+    background: var(--accent-gradient) !important;
+}
+
+/* Content sections - Modern Cards */
+.ai-coach-section {
+    margin-bottom: 18px;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #e0e6ed;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.ai-coach-section:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+    border-color: #d1d9e0;
+    transform: translateY(-2px);
+}
+
+.ai-coach-section h4 {
+    font-size: 1.2em;
+    margin-top: 0;
+    margin-bottom: 14px;
+    color: #2d3748;
+    font-weight: 600;
+    letter-spacing: -0.1px;
+}
+
+.ai-coach-section h5 {
+    font-size: 1.05em;
+    color: #4a5568;
+    margin-top: 18px;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.ai-coach-section p, 
+.ai-coach-section ul, 
+.ai-coach-section li {
+    font-size: 0.98em;
+    line-height: 1.7;
+    color: #4a5568;
+}
+
+.ai-coach-section ul {
+    padding-left: 20px;
+    margin-bottom: 0;
+}
+
+.ai-coach-section li {
+    margin-bottom: 6px;
+}
+
+/* Enhanced student snapshot section */
+#studentCoachSnapshotSection {
+    background: linear-gradient(135deg, #fdfdff 0%, #f0f4f8 100%);
+    border: 1px solid #e0e6ed;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 2px rgba(0,0,0,0.02);
+}
+
+#studentCoachSnapshotSection::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+/* Modern loading spinner */
+.loader {
+    width: 48px;
+    height: 48px;
+    margin: 30px auto;
+    position: relative;
+}
+
+.loader::before,
+.loader::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #667eea;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.loader::after {
+    border-top-color: #764ba2;
+    animation-delay: -0.5s;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ENHANCED CHAT INTERFACE STYLES */
+#aiCoachChatContainer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    max-height: calc(100vh - 350px);
+    margin-top: 15px;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e0e6ed;
+    padding: 18px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    position: relative;
+}
+
+#aiCoachChatContainer h4 {
+    font-size: 1.2em;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+#aiCoachChatDisplay {
+    flex: 1;
+    min-height: 250px;
+    max-height: 450px;
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    overflow-y: auto;
+    padding: 18px;
+    margin-bottom: 12px;
+    background-color: #f9fafb;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #bdc1c6 #f0f2f5;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* Custom scrollbar for chat display - Modern theme */
+#aiCoachChatDisplay::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+#aiCoachChatDisplay::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+#aiCoachChatDisplay::-webkit-scrollbar-thumb {
+    background: #bdc1c6;
+    border-radius: 4px;
+}
+
+#aiCoachChatDisplay::-webkit-scrollbar-thumb:hover {
+    background: #a8adb1;
+}
+
+/* Chat messages styling - Modern Bubbles */
+.ai-chat-message {
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border-radius: 18px;
+    word-wrap: break-word;
+    font-size: 0.98em;
+    line-height: 1.6;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.03);
+    position: relative;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.ai-chat-message:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.ai-chat-message-user {
+    background: var(--primary-gradient);
+    color: white;
+    margin-left: 12%;
+    text-align: right;
+    border: none;
+    position: relative;
+    font-weight: 500;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.2), 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* Add subtle gradient overlay for depth */
+.ai-chat-message-user::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    border-radius: 16px;
+    pointer-events: none;
+}
+
+.ai-chat-message-bot {
+    background-color: #e9ecef;
+    color: #2d3748;
+    margin-right: 12%;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.ai-chat-message em {
+    font-weight: 500;
+    font-size: 0.85em;
+    opacity: 0.85;
+    font-style: normal;
+}
+
+.ai-chat-message-user em {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.ai-chat-message-bot em {
+    color: #4a5568;
+}
+
+/* Activity links in chat */
+.ai-coach-activity-link {
+    color: var(--vespa-effort-color) !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    border-bottom: 1px solid rgba(134, 180, 240, 0.4);
+    transition: all 0.2s ease;
+    padding: 1px 2px;
+    background: rgba(134, 180, 240, 0.08);
+    border-radius: 3px;
+}
+
+.ai-coach-activity-link:hover {
+    color: #5a90e0 !important;
+    border-bottom-color: #70a8ea !important;
+    background: rgba(134, 180, 240, 0.15);
+    box-shadow: none;
+}
+
+/* Quick activity links section in chat */
+#aiCoachChatDisplay > div[style*="background: #f0f8ff"] {
+    margin-top: 10px !important;
+    padding: 12px !important;
+    background: linear-gradient(135deg, #eef5ff 0%, #e6f0fc 100%) !important;
+    border-radius: 8px !important;
+    border-left: 3px solid var(--vespa-effort-color) !important;
+    border-right: 1px solid #d8e4f1 !important;
+    border-top: 1px solid #d8e4f1 !important;
+    border-bottom: 1px solid #d8e4f1 !important;
+    box-shadow: 0 1px 4px rgba(82, 148, 234, 0.08) !important;
+}
+
+/* Chat input area - Modern Design */
+#aiCoachChatContainer > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #e0e6ed;
+}
+
+#aiCoachChatInput {
+    flex-grow: 1;
+    padding: 10px 16px;
+    border: 1px solid #d6dee5;
+    border-radius: 20px;
+    font-size: 1em;
+    background: white;
+    transition: all 0.25s ease;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+}
+
+#aiCoachChatInput:focus {
+    outline: none;
+    border-color: var(--vespa-effort-color);
+    box-shadow: 0 0 0 3px rgba(134, 180, 240, 0.15), inset 0 1px 2px rgba(0,0,0,0.03);
+    background: #fdfdff;
+}
+
+#aiCoachChatSendButton {
+    padding: 10px 20px !important;
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 20px !important;
+    cursor: pointer;
+    font-size: 0.95em !important;
+    font-weight: 500 !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2), 0 1px 3px rgba(0,0,0,0.08), inset 0 -1px 1px rgba(0,0,0,0.05) !important;
+}
+
+#aiCoachChatSendButton:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25), 0 2px 5px rgba(0,0,0,0.1), inset 0 -1px 1px rgba(0,0,0,0.08) !important;
+    filter: brightness(1.1);
+}
+
+#aiCoachChatSendButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ENHANCED: Animated thinking indicator */
+#aiCoachChatThinkingIndicator {
+    display: none;
+    background: #f0f4f8;
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    padding: 10px 18px;
+    margin: 8px 15%;
+    text-align: center;
+    font-size: 0.95em;
+    color: var(--vespa-effort-color);
+    font-weight: 500;
+    position: relative;
+    animation: fadeIn 0.25s ease-in;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+}
+
+#aiCoachChatThinkingIndicator::before {
+    content: '💬 ';
+    font-size: 1.1em;
+    margin-right: 4px;
+}
+
+/* Problem Selector Button - Modern Design */
+#aiCoachProblemButton {
+    width: 100% !important;
+    padding: 10px !important;
+    font-size: 0.95em !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    color: #343a40 !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05), inset 0 -1px 1px rgba(0,0,0,0.03) !important;
+}
+
+#aiCoachProblemButton:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    border-color: #adb5bd !important;
+}
+
+/* Text control styling - Enhanced contrast */
+.ai-coach-text-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.ai-coach-text-control-btn {
+    background: var(--vespa-effort-color);
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: white;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(134, 180, 240, 0.3);
+}
+
+.ai-coach-text-control-btn:hover {
+    background: #70a8ea;
+    transform: scale(1.03);
+    box-shadow: 0 2px 6px rgba(134, 180, 240, 0.35), 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.ai-coach-text-size-indicator {
+    font-size: 13px;
+    color: #495057;
+    margin: 0 5px;
+    font-weight: 500;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* Enhanced like button styling */
+.ai-chat-like-btn {
+    position: absolute !important;
+    top: 6px !important;
+    right: 6px !important;
+    background: rgba(255,255,255,0.7) !important;
+    border: 1px solid #e0e6ed !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+
+.ai-chat-like-btn:hover {
+    transform: scale(1.12) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12) !important;
+    background: rgba(255,255,255,0.9) !important;
+}
+
+.ai-chat-like-btn .like-icon {
+    font-size: 14px;
+    transition: all 0.25s ease;
+}
+
+.ai-chat-like-btn .like-icon.liked {
+    animation: heartBeat 0.5s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+/* VESPA-colored problem categories - will be enhanced via JS for modal */
+.vespa-vision-category { color: var(--vespa-vision-color) !important; }
+.vespa-effort-category { color: var(--vespa-effort-color) !important; }
+.vespa-systems-category { color: var(--vespa-systems-color) !important; }
+.vespa-practice-category { color: var(--vespa-practice-color) !important; }
+.vespa-attitude-category { color: var(--vespa-attitude-color) !important; }
+
+/* Modal styles for problem selector */
+.ai-coach-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(5px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.ai-coach-modal-content {
+    background: white;
+    width: 90%;
+    max-width: 650px;
+    max-height: 85vh;
+    border-radius: 10px;
+    border: 1px solid #d6dee5;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.25s ease;
+    overflow: hidden;
+}
+
+/* Problem selector modal specific styles */
+.ai-coach-problem-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e6ed;
+    background: #f8f9fa;
+}
+
+.ai-coach-problem-modal-header h3 {
+    margin: 0;
+    font-size: 1.4em;
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.ai-coach-problem-modal-header p {
+    margin: 6px 0 0 0;
+    color: #4a5568;
+    font-size: 1em;
+}
+
+.ai-coach-problem-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.ai-coach-problem-category {
+    margin-bottom: 20px;
+}
+
+.ai-coach-problem-category h4 {
+    font-size: 1.15em;
+    margin: 0 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid;
+    font-weight: 500;
+}
+
+.ai-coach-problem-item {
+    padding: 12px 16px;
+    margin: 6px 0;
+    background: #f8f9fa;
+    border: 1px solid;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1em;
+    line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.ai-coach-problem-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    background: #f0f2f5;
+}
+
+/* Color-specific styles for each VESPA category */
+.ai-coach-problem-category.vespa-vision h4 {
+    color: var(--vespa-vision-color);
+    border-color: var(--vespa-vision-color);
+}
+
+.ai-coach-problem-category.vespa-vision .ai-coach-problem-item {
+    border-color: var(--vespa-vision-color);
+    background: rgba(255, 143, 0, 0.05);
+}
+
+.ai-coach-problem-category.vespa-vision .ai-coach-problem-item:hover {
+    background: rgba(255, 143, 0, 0.1);
+}
+
+.ai-coach-problem-category.vespa-effort h4 {
+    color: var(--vespa-effort-color);
+    border-color: var(--vespa-effort-color);
+}
+
+.ai-coach-problem-category.vespa-effort .ai-coach-problem-item {
+    border-color: var(--vespa-effort-color);
+    background: rgba(134, 180, 240, 0.05);
+}
+
+.ai-coach-problem-category.vespa-effort .ai-coach-problem-item:hover {
+    background: rgba(134, 180, 240, 0.1);
+}
+
+.ai-coach-problem-category.vespa-systems h4 {
+    color: var(--vespa-systems-color);
+    border-color: var(--vespa-systems-color);
+}
+
+.ai-coach-problem-category.vespa-systems .ai-coach-problem-item {
+    border-color: var(--vespa-systems-color);
+    background: rgba(114, 203, 68, 0.05);
+}
+
+.ai-coach-problem-category.vespa-systems .ai-coach-problem-item:hover {
+    background: rgba(114, 203, 68, 0.1);
+}
+
+.ai-coach-problem-category.vespa-practice h4 {
+    color: var(--vespa-practice-color);
+    border-color: var(--vespa-practice-color);
+}
+
+.ai-coach-problem-category.vespa-practice .ai-coach-problem-item {
+    border-color: var(--vespa-practice-color);
+    background: rgba(127, 49, 164, 0.05);
+}
+
+.ai-coach-problem-category.vespa-practice .ai-coach-problem-item:hover {
+    background: rgba(127, 49, 164, 0.1);
+}
+
+.ai-coach-problem-category.vespa-attitude h4 {
+    color: var(--vespa-attitude-color);
+    border-color: var(--vespa-attitude-color);
+}
+
+.ai-coach-problem-category.vespa-attitude .ai-coach-problem-item {
+    border-color: var(--vespa-attitude-color);
+    background: rgba(240, 50, 230, 0.05);
+}
+
+.ai-coach-problem-category.vespa-attitude .ai-coach-problem-item:hover {
+    background: rgba(240, 50, 230, 0.1);
+}
+
+/* Modal close button */
+.ai-coach-modal-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: none;
+    border: none;
+    font-size: 1.6em;
+    cursor: pointer;
+    padding: 4px 8px;
+    color: #6c757d;
+    transition: color 0.2s, transform 0.2s;
+    z-index: 10;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-coach-modal-close:hover {
+    color: #343a40;
+    background: rgba(0, 0, 0, 0.08);
+    transform: rotate(90deg);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    :root {
+        --ai-coach-panel-width: 100%;
+        --ai-coach-panel-min-width: 100%;
+    }
+    
+    body.ai-coach-active #content {
+        display: none;
+    }
+    
+    #aiCoachPanel {
+        width: 100% !important;
+        font-size: 16px;
+    }
+    
+    #aiCoachChatContainer {
+        max-height: calc(100vh - 300px);
+    }
+    
+    .ai-coach-modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+}
+
+/* Utility class for when panel is being resized */
+body.ai-coach-resizing {
+    user-select: none !important;
+    cursor: ew-resize !important;
+}
+
+body.ai-coach-resizing * {
+    cursor: ew-resize !important;
+}
+
+/* Ensure proper styling for details sections */
+.ai-coach-details-section {
+    display: none;
+}
+
+/* Additional styles for proper layout */
+#vespaChartComparativeSection,
+#vespaCoachingQuestionsSection,
+#vespaStudentCommentsGoalsSection {
+    margin-bottom: 20px;
+}
+
+/* Fix for p-button styling */
+.p-button {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 1em !important;
+}
+
+/* Text size adjustment buttons (to be added via JS) */
+/* This section seems duplicated, the one near line 730 is more complete. Removing this one. */
+/* .ai-coach-text-controls {
+    position: absolute;
+    top: 15px;
+    right: 50px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.ai-coach-text-control-btn {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.ai-coach-text-control-btn:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
+}
+
+.ai-coach-text-size-indicator {
+    font-size: 12px;
+    color: #666;
+    margin: 0 5px;
+} */
+
+/* Style for unliked heart icon on bot messages for better visibility */
+.ai-chat-message-bot .ai-chat-like-btn .ai-chat-like-icon.unliked-icon-visible {
+    color: #6c757d !important;
+    opacity: 0.7 !important;
+}
+
+/* Styles for externally controlled Student Report Component */
+/* Note: These selectors target elements based on the provided HTML. */
+/* They may need adjustment and the use of !important might be necessary. */
+/* Relying on data-v- attributes can be brittle if the external component updates. */
+
+/* Style the main card of the student reports */
+/* Using the data-v attribute for specificity, though it might change */
+div.card[data-v-7afa4eb2] {
+    border: 1px solid #cccccc !important;
+    background-color: #f9f9f9 !important;
+    padding: 15px !important;
+}
+
+/* Style the header text "Student Reports" */
+/* Targeting by ID is generally more stable if the ID is unique */
+div.card[data-v-7afa4eb2] #header h1#header-text {
+    color: #005a9c !important; /* Example: a shade of blue */
+    font-size: 1.8em !important;
+    text-transform: uppercase !important;
+}
+
+/* Style the cycle filter buttons */
+div.card[data-v-7afa4eb2] #cycle-filter.p-selectbutton .p-button {
+    background-color: #e0e0e0 !important;
+    color: #333333 !important;
+    border-color: #c0c0c0 !important;
+}
+
+div.card[data-v-7afa4eb2] #cycle-filter.p-selectbutton .p-button.p-highlight {
+    background-color: var(--vespa-effort-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border-color: var(--vespa-effort-color) !important;
+}
+
+
+/* Style the datatable component */
+div.card[data-v-7afa4eb2] .p-datatable.p-component[data-v-b7d9c24a] {
+    margin-top: 15px !important;
+}
+
+/* Style column titles in the table */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th .p-column-title {
+    color: #333333 !important;
+    font-weight: 600 !important;
+    font-size: 0.95em !important;
+}
+
+/* Style the table cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td {
+    font-size: 0.9em !important;
+    color: #444444 !important;
+}
+
+/* Example: Style the 'Report' buttons in the table */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td .view-report-button {
+    background-color: var(--vespa-vision-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border: none !important;
+    padding: 6px 12px !important;
+    font-size: 0.85em !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td .view-report-button:hover {
+    opacity: 0.85 !important;
+}
+
+/* Style the search input in the filter row */
+div.card[data-v-7afa4eb2] .p-datatable .p-filter-column input.p-inputtext.p-column-filter {
+    border: 1px solid #ced4da !important;
+    padding: 8px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-filter-column input.p-inputtext.p-column-filter:focus {
+    border-color: #86b4f0 !important; /* Using effort color for focus */
+    box-shadow: 0 0 0 0.2rem rgba(134, 180, 240, 0.25) !important;
+}
+
+/* Style the paginator */
+div.card[data-v-7afa4eb2] .p-paginator-bottom .p-paginator {
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #dee2e6 !important;
+    padding: 10px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-paginator-bottom .p-paginator .p-paginator-page.p-highlight {
+    background-color: var(--vespa-systems-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border-color: var(--vespa-systems-color) !important;
+}
+
+/* Enhanced Styling for Student Report Table */
+
+/* Custom Scrollbars for Report Response and Action Plan text areas */
+/* Targeting the span within the 11th and 12th td elements */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a],
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a] {
+    scrollbar-width: thin !important; /* For Firefox */
+    scrollbar-color: #adb5bd #f1f3f5 !important; /* For Firefox - thumb and track */
+    padding-right: 5px !important; /* Add a little padding so text doesn't touch scrollbar */
+}
+
+/* WebKit (Chrome, Safari, Edge) scrollbar styles */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-track,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-track {
+    background: #f1f3f5 !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb {
+    background: #adb5bd !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover {
+    background: #868e96 !important;
+}
+
+/* VESPA Column Styling (V, E, S, P, A, O) - 5th to 10th columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    text-align: center !important;
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    font-size: 1.05em !important; /* Slightly larger font */
+    font-weight: bold !important; /* Bolder numbers */
+    text-align: center !important; /* Centered numbers */
+    padding: 8px 4px !important; /* Adjust padding */
+}
+
+/* Student Name and Group Column Styling - 1st and 2nd columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+    word-break: break-word; /* Helps prevent overly wide cells if names are long */
+}
+
+/* Optional: Adjust padding for all header cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th .p-column-header-content {
+    padding: 0.8rem 0.5rem !important; /* Reduced padding */
+}
+
+/* Optional: Adjust padding for all body cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td {
+    padding: 0.8rem 0.5rem !important; /* Consistent padding */
+}
+
+/* Ensure the Report Response and Action Plan columns still have enough space */
+/* Overriding the general td padding for these specific columns if needed */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) {
+    padding: 0.8rem 0.8rem !important; /* Give them a bit more horizontal padding */
+}
+
+/* Make the "Report" button column (3rd column) a bit more compact if desired */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(3),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
+    width: 80px !important; /* Reduced from 100px */
+    padding: 8px 4px !important;
+    text-align: center !important;
+}
+
+/* Theme Toggle Button Styles - Original Theme */
+.ai-coach-theme-toggle-btn {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    border: 1px solid #d6dee5 !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    color: #495057 !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap;
+    min-width: 160px;
+    text-align: center;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08), inset 0 -1px 2px rgba(0,0,0,0.04);
+}
+
+.ai-coach-theme-toggle-btn:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-color: #adb5bd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12), inset 0 -1px 2px rgba(0,0,0,0.06);
+    color: #212529 !important;
+}
+
+.ai-coach-theme-toggle-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ai-coach-theme-toggle-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Header controls layout for theme toggle */
+.ai-coach-header-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex: 1;
+    justify-content: flex-end;
+    margin: 0 15px;
+}
+
+/* Ensure proper header layout */
+#aiCoachPanel .ai-coach-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Animation for theme switch - subtle for original theme */
+@keyframes theme-switch-bounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.ai-coach-theme-toggle-btn.theme-switching {
+    animation: theme-switch-bounce 0.3s ease-out;
+}
+
+/* Responsive adjustments for theme toggle */
+@media (max-width: 768px) {
+    .ai-coach-theme-toggle-btn {
+        min-width: auto;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+    
+    .ai-coach-header-controls {
+        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #aiCoachPanel .ai-coach-panel-header {
+        flex-wrap: wrap;
+    }
+}
+
+/* AI Snapshot Toggle Styles - Original Theme */
+#studentCoachSnapshotSection {
+    position: relative;
+}
+
+.ai-snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.ai-snapshot-header h4 {
+    margin: 0;
+    flex: 1;
+}
+
+#toggleSnapshotBtn {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    border: 1px solid #d6dee5 !important;
+    border-radius: 6px !important;
+    padding: 6px 14px !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    color: #495057 !important;
+    transition: all 0.2s ease !important;
+    font-weight: 500;
+    min-width: 50px;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 -1px 2px rgba(0,0,0,0.03) !important;
+}
+
+#toggleSnapshotBtn:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-color: #adb5bd !important;
+    color: #212529 !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12), inset 0 -1px 2px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+}
+
+#toggleSnapshotBtn:active {
+    background: #dee2e6 !important;
+    transform: translateY(1px);
+}
+
+#snapshotContent {
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+    overflow: hidden;
+}
+
+#snapshotContent[style*="display: none"] {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Ensure proper spacing when snapshot is hidden */
+#studentCoachSnapshotSection:has(#snapshotContent[style*="display: none"]) {
+    margin-bottom: 10px;
+}
+
+/* Adjust chat container to take more space when snapshot is hidden */
+body.ai-coach-active #aiCoachChatContainer {
+    transition: max-height 0.3s ease;
+}
+
+/* Responsive adjustments for snapshot toggle */
+@media (max-width: 768px) {
+    #toggleSnapshotBtn {
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        min-width: 40px;
+    }
+    
+    .ai-snapshot-header {
+        gap: 10px;
+    }
+}
