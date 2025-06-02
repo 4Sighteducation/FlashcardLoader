@@ -121,7 +121,7 @@ if (window.studentCoachLauncherInitialized) {
     function clearCoachUI() {
         if (!coachUIInitialized) return;
         logStudentCoach("Clearing Student Coach UI.");
-        const launcherButtonContainer = document.getElementById('studentCoachLauncherButtonContainer'); // Needs unique ID
+        const launcherButtonContainer = document.getElementById('aiCoachLauncherButtonContainer'); // Fixed ID to match what's created
         if (launcherButtonContainer) {
             launcherButtonContainer.innerHTML = ''; 
         }
@@ -228,8 +228,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1h.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1o.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1s.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1s.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -237,7 +237,14 @@ if (window.studentCoachLauncherInitialized) {
         // If link exists and href is different, update it
         if (existingLink) {
             if (existingLink.href !== newHref) {
-                existingLink.href = newHref;
+                // Force a reload of the CSS by removing and re-adding the link
+                existingLink.remove();
+                const newLink = document.createElement('link');
+                newLink.id = styleId;
+                newLink.rel = 'stylesheet';
+                newLink.type = 'text/css';
+                newLink.href = newHref;
+                document.head.appendChild(newLink);
                 logStudentCoach(`Switching theme to: ${theme}`);
                 localStorage.setItem('studentCoachTheme', theme);
             }
@@ -259,16 +266,17 @@ if (window.studentCoachLauncherInitialized) {
             }
             
             /* Minimal panel structure - let theme CSS handle appearance */
+            /* IMPORTANT: Background color comes from theme CSS, not set here */
             #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
                 width: 0; opacity: 0; visibility: hidden;
                 position: fixed; top: 0; right: 0; height: 100vh;
                 z-index: 1050; 
-                transition: width var(--student-coach-transition-duration, 0.3s), opacity var(--student-coach-transition-duration, 0.3s), visibility var(--student-coach-transition-duration, 0.3s);
+                transition: width var(--ai-coach-transition-duration, 0.3s), opacity var(--ai-coach-transition-duration, 0.3s), visibility var(--ai-coach-transition-duration, 0.3s);
                 display: flex; flex-direction: column;
             }
             
             body.ai-coach-active #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: var(--student-coach-panel-width, 400px);
+                width: var(--ai-coach-panel-width, 400px);
                 opacity: 1; visibility: visible;
             }
             
@@ -281,6 +289,12 @@ if (window.studentCoachLauncherInitialized) {
                 flex: 1; display: flex; flex-direction: column;
                 overflow-y: auto; min-height: 0;
             }
+            
+            /* Ensure launcher button container is recognized by CSS files */
+            #studentCoachLauncherButtonContainer {
+                /* This ID is expected by CSS but we create aiCoachLauncherButtonContainer */
+                /* This rule ensures CSS still applies */
+            }
         `;
         
         const styleElement = document.createElement('style');
@@ -291,8 +305,12 @@ if (window.studentCoachLauncherInitialized) {
         document.documentElement.style.setProperty('--ai-coach-panel-max-width', '600px');
         document.documentElement.style.setProperty('--ai-coach-transition-duration', '0.3s');
         
+        // Append external CSS first, then dynamic CSS so theme takes precedence
         document.head.appendChild(link);
-        document.head.appendChild(styleElement);
+        // Wait a bit for external CSS to start loading before adding dynamic CSS
+        setTimeout(() => {
+            document.head.appendChild(styleElement);
+        }, 10);
         
         logStudentCoach("Student Coach external styles loading...");
         link.onload = () => logStudentCoach("Student Coach external styles loaded successfully.");
@@ -307,7 +325,7 @@ if (window.studentCoachLauncherInitialized) {
         let startX = 0;
         let startWidth = 0;
         // Use student-specific CSS variable or default
-        let currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-width'), 10) || 400; 
+        let currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-width'), 10) || 400; 
 
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'ai-coach-resize-handle'; // Generic class for styling
@@ -336,11 +354,11 @@ if (window.studentCoachLauncherInitialized) {
             if (!isResizing) return;
             const diff = startX - e.clientX;
             // Use student-specific min/max width CSS variables
-            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-min-width'), 10) || 350;
-            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-max-width'), 10) || 1200;
+            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-min-width'), 10) || 350;
+            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-max-width'), 10) || 1200;
             const newWidth = Math.max(minW, Math.min(maxW, startWidth + diff));
             
-            document.documentElement.style.setProperty('--student-coach-panel-width', newWidth + 'px');
+            document.documentElement.style.setProperty('--ai-coach-panel-width', newWidth + 'px');
             panel.style.width = newWidth + 'px';
             
             const mainContent = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector);
@@ -372,10 +390,10 @@ if (window.studentCoachLauncherInitialized) {
         const savedWidth = localStorage.getItem('studentCoachPanelWidth');
         if (savedWidth) {
             const width = parseInt(savedWidth, 10);
-            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-min-width'), 10) || 350;
-            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--student-coach-panel-max-width'), 10) || 1200;
+            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-min-width'), 10) || 350;
+            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-max-width'), 10) || 1200;
             if (!isNaN(width) && width >= minW && width <= maxW) {
-                document.documentElement.style.setProperty('--student-coach-panel-width', width + 'px');
+                document.documentElement.style.setProperty('--ai-coach-panel-width', width + 'px');
                 panel.style.width = width + 'px';
                 currentWidth = width;
             }
@@ -391,7 +409,9 @@ if (window.studentCoachLauncherInitialized) {
         }
         const panel = document.createElement('div');
         panel.id = panelId;
-        panel.className = 'ai-coach-panel'; // Generic class, specific styles via ID
+        panel.className = 'ai-coach-panel'; // Generic class that theme CSS targets
+        // Also ensure the panel element is recognized by any wildcard selectors in CSS
+        panel.setAttribute('data-coach-panel', 'student');
         
         const currentTheme = getCurrentTheme();
         const themeToggleText = currentTheme === 'cyberpunk' ? '🎨 Original Theme' : '🌆 Cyberpunk Theme';
@@ -401,15 +421,7 @@ if (window.studentCoachLauncherInitialized) {
                 <h3>My VESPA AI Coach</h3>
                 <div class="ai-coach-header-controls" style="display: flex; gap: 15px; align-items: center;">
                     <button class="ai-coach-theme-toggle-btn" id="themeToggleBtn" 
-                            title="Switch between themes" 
-                            style="background: rgba(255, 255, 255, 0.1); 
-                                   border: 1px solid rgba(255, 255, 255, 0.3); 
-                                   border-radius: 8px; 
-                                   padding: 6px 12px; 
-                                   cursor: pointer; 
-                                   font-size: 14px; 
-                                   color: inherit; 
-                                   transition: all 0.3s ease;">
+                            title="Switch between themes">
                         ${themeToggleText}
                     </button>
                     <div class="ai-coach-text-controls">
@@ -1974,26 +1986,26 @@ if (window.studentCoachLauncherInitialized) {
           { id: "svision_1", text: "I'm unsure about my future goals" },
           { id: "svision_2", text: "I'm not feeling motivated for my studies" },
           { id: "svision_3", text: "I can't see how school connects to my future" },
-          { id: "svision_4", text: "I don’t really know what success looks like for me" },
-          { id: "svision_5", text: "I haven’t thought about what I want to achieve this year" },
+          { id: "svision_4", text: "I don't really know what success looks like for me" },
+          { id: "svision_5", text: "I haven't thought about what I want to achieve this year" },
           { id: "svision_6", text: "I find it hard to picture myself doing well" },
-          { id: "svision_7", text: "I rarely think about where I’m heading or why I’m here" }
+          { id: "svision_7", text: "I rarely think about where I'm heading or why I'm here" }
         ],
         "Effort": [
           { id: "seffort_1", text: "I struggle to complete my homework on time" },
           { id: "seffort_2", text: "I find it hard to keep trying when things get difficult" },
-          { id: "seffort_3", text: "I often give up if I don’t get things right straight away" },
+          { id: "seffort_3", text: "I often give up if I don't get things right straight away" },
           { id: "seffort_4", text: "I do the bare minimum just to get by" },
           { id: "seffort_5", text: "I get distracted really easily when I try to study" },
           { id: "seffort_6", text: "I avoid topics or tasks that feel too hard" },
-          { id: "seffort_7", text: "I put things off until I’m under pressure" }
+          { id: "seffort_7", text: "I put things off until I'm under pressure" }
         ],
         "Systems": [
           { id: "ssystems_1", text: "I'm not very organized with my notes and deadlines" },
           { id: "ssystems_2", text: "I don't have a good revision plan" },
           { id: "ssystems_3", text: "I keep forgetting what homework I have" },
           { id: "ssystems_4", text: "I leave everything to the last minute" },
-          { id: "ssystems_5", text: "I don’t use a planner or calendar to track my work" },
+          { id: "ssystems_5", text: "I don't use a planner or calendar to track my work" },
           { id: "ssystems_6", text: "My notes are all over the place and hard to follow" },
           { id: "ssystems_7", text: "I struggle to prioritise what to do first" }
         ],
@@ -2001,18 +2013,18 @@ if (window.studentCoachLauncherInitialized) {
           { id: "spractice_1", text: "I don't review my work regularly" },
           { id: "spractice_2", text: "I tend to cram before tests" },
           { id: "spractice_3", text: "I avoid practising topics I find hard" },
-          { id: "spractice_4", text: "I’m not sure how to revise effectively" },
-          { id: "spractice_5", text: "I don’t practise exam-style questions enough" },
-          { id: "spractice_6", text: "I don’t really learn from the mistakes I make" },
+          { id: "spractice_4", text: "I'm not sure how to revise effectively" },
+          { id: "spractice_5", text: "I don't practise exam-style questions enough" },
+          { id: "spractice_6", text: "I don't really learn from the mistakes I make" },
           { id: "spractice_7", text: "I rarely check my understanding before moving on" }
         ],
         "Attitude": [
           { id: "sattitude_1", text: "I worry I'm not smart enough" },
           { id: "sattitude_2", text: "I get easily discouraged by setbacks" },
           { id: "sattitude_3", text: "I often compare myself to others and feel behind" },
-          { id: "sattitude_4", text: "I don’t believe my effort really makes a difference" },
-          { id: "sattitude_5", text: "I feel overwhelmed when I don’t get something straight away" },
-          { id: "sattitude_6", text: "I tell myself I’m just not good at certain subjects" },
+          { id: "sattitude_4", text: "I don't believe my effort really makes a difference" },
+          { id: "sattitude_5", text: "I feel overwhelmed when I don't get something straight away" },
+          { id: "sattitude_6", text: "I tell myself I'm just not good at certain subjects" },
           { id: "sattitude_7", text: "I find it hard to stay positive about school" }
         ]
       };
