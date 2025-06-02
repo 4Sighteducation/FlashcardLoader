@@ -1,6 +1,9 @@
 /* AI Coach Launcher Styles */
 /* Version: 2.1 - Enhanced for dynamic IDs */
 
+/* Modern UI Enhancements */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* CSS Custom Properties for dynamic values */
 :root {
     --ai-coach-panel-width: 450px;
@@ -13,6 +16,17 @@
     --vespa-systems-color: #72cb44;
     --vespa-practice-color: #7f31a4;
     --vespa-attitude-color: #f032e6;
+    /* Modern UI Colors */
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --ui-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Apply modern font globally to AI Coach elements */
+#aiCoachPanel,
+#aiCoachPanel * {
+    font-family: var(--ui-font-family) !important;
 }
 
 /* Main content adjustment when coach is active */
@@ -37,25 +51,45 @@ body.ai-coach-active #content {
     top: 0;
     right: 0;
     height: 100vh;
-    background-color: #f4f6f8;
-    border-left: 2px solid #ddd;
+    background-color: #f8f9fa;
+    border-left: 1px solid #e9ecef;
     padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
     z-index: 1050;
-    transition: width var(--ai-coach-transition-duration) ease-in-out, 
+    transition: width var(--ai-coach-transition-duration) cubic-bezier(0.4, 0, 0.2, 1), 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
                 visibility var(--ai-coach-transition-duration);
-    font-family: Arial, sans-serif;
+    font-family: var(--ui-font-family);
     font-size: 14px;
     display: flex;
     flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
 }
 
 body.ai-coach-active #aiCoachPanel {
     width: var(--ai-coach-panel-width);
     opacity: 1;
     visibility: visible;
+}
+
+/* Smooth scrollbar styling */
+#aiCoachPanel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 /* Resize handle styles - use class selector for JavaScript-created element */
@@ -80,26 +114,39 @@ body.ai-coach-active #aiCoachPanel {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #ccc;
-    padding-bottom: 10px;
+    margin-bottom: 20px;
+    padding: 20px 20px 16px 20px;
+    margin: -20px -20px 20px -20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     flex-shrink: 0;
 }
 
 .ai-coach-panel-header h3 {
     margin: 0;
-    font-size: 1.5em;
-    color: #333;
-    font-weight: bold;
+    font-size: 1.6em;
+    color: white;
+    font-weight: 700;
+    letter-spacing: -0.5px;
 }
 
 .ai-coach-close-btn {
-    background: none;
+    background: rgba(255, 255, 255, 0.2);
     border: none;
-    font-size: 1.8em;
+    font-size: 1.5em;
     cursor: pointer;
-    padding: 5px;
-    color: #555;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.ai-coach-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
 }
 
 /* Panel content - make it flexible to accommodate chat */
@@ -125,102 +172,247 @@ body.ai-coach-active #aiCoachPanel {
 
 /* Section toggles */
 .ai-coach-section-toggles {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 8px;
-    margin: 10px 0 15px 0 !important;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0 !important;
     flex-shrink: 0;
 }
 
-.ai-coach-section-toggles .p-button {
-    flex-grow: 1;
-    padding: 12px 8px !important;
-    font-size: 0.95em !important;
-    border: none;
+.ai-insight-toggle-btn {
+    border: none !important;
     color: white !important;
-    border-radius: 4px;
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    padding: 16px 20px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    text-align: center !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-insight-toggle-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.ai-insight-toggle-btn:hover::before {
+    transform: translateX(0);
+}
+
+.ai-insight-toggle-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.ai-insight-toggle-btn[aria-expanded="true"] {
+    opacity: 0.9 !important;
+    transform: scale(0.98) !important;
+}
+
+/* Text control styling */
+.ai-coach-text-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-coach-text-control-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    padding: 6px 10px;
     cursor: pointer;
+    font-size: 13px;
+    color: white;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.ai-coach-text-control-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.ai-coach-text-size-indicator {
+    font-size: 13px;
+    color: white;
+    margin: 0 4px;
     font-weight: 500;
-}
-
-.ai-coach-section-toggles .p-button:hover {
-    opacity: 0.85;
-    transform: translateY(-1px);
-}
-
-#aiCoachToggleVespaButton {
-    background-color: #79A6DC !important;
-}
-
-#aiCoachToggleAcademicButton {
-    background-color: #77DD77 !important;
-}
-
-#aiCoachToggleQuestionButton {
-    background-color: #C3B1E1 !important;
+    min-width: 40px;
+    text-align: center;
 }
 
 /* Content sections */
 .ai-coach-section {
     margin-bottom: 20px;
-    padding: 20px;
+    padding: 24px;
     background-color: #fff;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.3s ease;
+}
+
+.ai-coach-section:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .ai-coach-section h4 {
     font-size: 1.3em;
     margin-top: 0;
-    margin-bottom: 12px;
-    color: #333;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 8px;
-    font-weight: bold;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+    font-weight: 700;
+    letter-spacing: -0.3px;
 }
 
 .ai-coach-section h5 {
-    font-size: 1.15em;
-    color: #444;
-    margin-top: 18px;
-    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+    margin-top: 20px;
+    margin-bottom: 12px;
     font-weight: 600;
+    letter-spacing: -0.2px;
 }
 
 .ai-coach-section p, 
 .ai-coach-section ul, 
 .ai-coach-section li {
-    font-size: 1em;
-    line-height: 1.7;
-    color: #555;
+    font-size: 0.95em;
+    line-height: 1.8;
+    color: #495057;
 }
 
 .ai-coach-section ul {
-    padding-left: 25px;
+    padding-left: 24px;
     margin-bottom: 0;
 }
 
 .ai-coach-section li {
-    margin-bottom: 5px;
+    margin-bottom: 8px;
 }
 
-/* Loading spinner */
+/* Enhanced student snapshot section */
+.ai-student-snapshot-section {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-student-snapshot-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+/* Snapshot toggle button */
+.ai-snapshot-toggle-btn {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.9) !important;
+    color: #495057 !important;
+    padding: 6px 16px !important;
+    border-radius: 20px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    font-weight: 500 !important;
+}
+
+.ai-snapshot-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.95) !important;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ai-snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+/* Modern loading spinner */
 .loader {
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #3498db;
+    width: 48px;
+    height: 48px;
+    margin: 30px auto;
+    position: relative;
+}
+
+.loader::before,
+.loader::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 20px auto;
+    border: 3px solid transparent;
+    border-top-color: #667eea;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.loader::after {
+    border-top-color: #764ba2;
+    animation-delay: -0.5s;
 }
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Enhanced like button styling */
+.ai-chat-like-btn {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: white !important;
+    border: 1px solid #e9ecef !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.ai-chat-like-btn:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+.ai-chat-like-btn .like-icon {
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.ai-chat-like-btn .like-icon.liked {
+    animation: heartBeat 0.5s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
 }
 
 /* Chart containers */
@@ -420,32 +612,49 @@ body.ai-coach-active #aiCoachPanel {
 
 /* Chat messages styling */
 .ai-chat-message {
-    margin-bottom: 12px;
-    padding: 12px 16px;
-    border-radius: 12px;
+    margin-bottom: 16px;
+    padding: 14px 18px;
+    border-radius: 16px;
     word-wrap: break-word;
-    font-size: 1.05em;
-    line-height: 1.6;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    font-size: 0.95em;
+    line-height: 1.7;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.ai-chat-message:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .ai-chat-message-user {
-    background-color: #e3f2fd;
-    margin-left: 20%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin-left: 15%;
     text-align: right;
-    border: 1px solid #bbdefb;
+    border: none;
 }
 
 .ai-chat-message-bot {
-    background-color: #f5f5f5;
-    margin-right: 20%;
-    border: 1px solid #e0e0e0;
+    background-color: #f8f9fa;
+    margin-right: 15%;
+    border: 1px solid #e9ecef;
 }
 
 .ai-chat-message em {
-    font-weight: bold;
-    color: #666;
-    font-size: 0.95em;
+    font-weight: 600;
+    font-size: 0.9em;
+    opacity: 0.8;
+    font-style: normal;
+}
+
+.ai-chat-message-user em {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ai-chat-message-bot em {
+    color: #6c757d;
 }
 
 /* Activity links in chat */
@@ -903,4 +1112,193 @@ body.ai-coach-resizing * {
 .ai-chat-message-bot .ai-chat-like-btn .ai-chat-like-icon.unliked-icon-visible {
     color: #555 !important; /* Darker grey for the unliked heart */
     /* opacity: 1 !important; */ /* Ensure full opacity for the icon itself if needed */
+}
+
+/* Styles for externally controlled Student Report Component */
+/* Note: These selectors target elements based on the provided HTML. */
+/* They may need adjustment and the use of !important might be necessary. */
+/* Relying on data-v- attributes can be brittle if the external component updates. */
+
+/* Style the main card of the student reports */
+/* Using the data-v attribute for specificity, though it might change */
+div.card[data-v-7afa4eb2] {
+    border: 1px solid #cccccc !important;
+    background-color: #f9f9f9 !important;
+    padding: 15px !important;
+}
+
+/* Style the header text "Student Reports" */
+/* Targeting by ID is generally more stable if the ID is unique */
+div.card[data-v-7afa4eb2] #header h1#header-text {
+    color: #005a9c !important; /* Example: a shade of blue */
+    font-size: 1.8em !important;
+    text-transform: uppercase !important;
+}
+
+/* Style the cycle filter buttons */
+div.card[data-v-7afa4eb2] #cycle-filter.p-selectbutton .p-button {
+    background-color: #e0e0e0 !important;
+    color: #333333 !important;
+    border-color: #c0c0c0 !important;
+}
+
+div.card[data-v-7afa4eb2] #cycle-filter.p-selectbutton .p-button.p-highlight {
+    background-color: var(--vespa-effort-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border-color: var(--vespa-effort-color) !important;
+}
+
+
+/* Style the datatable component */
+div.card[data-v-7afa4eb2] .p-datatable.p-component[data-v-b7d9c24a] {
+    margin-top: 15px !important;
+}
+
+/* Style column titles in the table */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th .p-column-title {
+    color: #333333 !important;
+    font-weight: 600 !important;
+    font-size: 0.95em !important;
+}
+
+/* Style the table cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td {
+    font-size: 0.9em !important;
+    color: #444444 !important;
+}
+
+/* Example: Style the 'Report' buttons in the table */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td .view-report-button {
+    background-color: var(--vespa-vision-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border: none !important;
+    padding: 6px 12px !important;
+    font-size: 0.85em !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td .view-report-button:hover {
+    opacity: 0.85 !important;
+}
+
+/* Style the search input in the filter row */
+div.card[data-v-7afa4eb2] .p-datatable .p-filter-column input.p-inputtext.p-column-filter {
+    border: 1px solid #ced4da !important;
+    padding: 8px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-filter-column input.p-inputtext.p-column-filter:focus {
+    border-color: #86b4f0 !important; /* Using effort color for focus */
+    box-shadow: 0 0 0 0.2rem rgba(134, 180, 240, 0.25) !important;
+}
+
+/* Style the paginator */
+div.card[data-v-7afa4eb2] .p-paginator-bottom .p-paginator {
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #dee2e6 !important;
+    padding: 10px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-paginator-bottom .p-paginator .p-paginator-page.p-highlight {
+    background-color: var(--vespa-systems-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border-color: var(--vespa-systems-color) !important;
+}
+
+/* Enhanced Styling for Student Report Table */
+
+/* Custom Scrollbars for Report Response and Action Plan text areas */
+/* Targeting the span within the 11th and 12th td elements */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a],
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a] {
+    scrollbar-width: thin !important; /* For Firefox */
+    scrollbar-color: #adb5bd #f1f3f5 !important; /* For Firefox - thumb and track */
+    padding-right: 5px !important; /* Add a little padding so text doesn't touch scrollbar */
+}
+
+/* WebKit (Chrome, Safari, Edge) scrollbar styles */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-track,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-track {
+    background: #f1f3f5 !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb {
+    background: #adb5bd !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover {
+    background: #868e96 !important;
+}
+
+/* VESPA Column Styling (V, E, S, P, A, O) - 5th to 10th columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    text-align: center !important;
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    font-size: 1.05em !important; /* Slightly larger font */
+    font-weight: bold !important; /* Bolder numbers */
+    text-align: center !important; /* Centered numbers */
+    padding: 8px 4px !important; /* Adjust padding */
+}
+
+/* Student Name and Group Column Styling - 1st and 2nd columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+    word-break: break-word; /* Helps prevent overly wide cells if names are long */
+}
+
+/* Optional: Adjust padding for all header cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th .p-column-header-content {
+    padding: 0.8rem 0.5rem !important; /* Reduced padding */
+}
+
+/* Optional: Adjust padding for all body cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td {
+    padding: 0.8rem 0.5rem !important; /* Consistent padding */
+}
+
+/* Ensure the Report Response and Action Plan columns still have enough space */
+/* Overriding the general td padding for these specific columns if needed */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) {
+    padding: 0.8rem 0.8rem !important; /* Give them a bit more horizontal padding */
+}
+
+/* Make the "Report" button column (3rd column) a bit more compact if desired */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(3),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
+    width: 80px !important; /* Reduced from 100px */
+    padding: 8px 4px !important;
+    text-align: center !important;
 }
