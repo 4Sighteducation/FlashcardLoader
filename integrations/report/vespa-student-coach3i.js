@@ -17,6 +17,7 @@ if (window.studentCoachLauncherInitialized) {
     let currentlyFetchingStudentKnackId = null;
     let vespaChartInstance = null; 
     let currentLLMInsightsForChat = null; 
+    let fullStudentDataForChat = null; // <<< ADDED THIS LINE
     let loadingMessageIntervalId = null; 
     let questionnairePieChartInstance = null; // Added for questionnaire chart
     let uiCurrentlyInitializing = false; // Flag to prevent re-entrant UI initialization
@@ -228,8 +229,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1u.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1u.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1s.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1s.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -731,6 +732,7 @@ if (window.studentCoachLauncherInitialized) {
             const data = await response.json();
             logStudentCoach("Student AI Coaching data received:", data);
             lastFetchedStudentKnackId = studentObject3Id; // Store the Object_3 ID
+            fullStudentDataForChat = data; // Ensure this line assigns the fetched data
             renderAICoachData(data); 
             if (data && data.llm_generated_insights) { 
                 currentLLMInsightsForChat = data.llm_generated_insights;
@@ -1414,7 +1416,7 @@ if (window.studentCoachLauncherInitialized) {
                         chat_history: chatHistory,
                         current_user_message: originalInput, 
                         context_type: 'student', // Crucial for backend to use student-specific prompts
-                        initial_ai_context: currentLLMInsightsForChat // Send any existing LLM insights for context
+                        initial_ai_context: fullStudentDataForChat // <<< CHANGED THIS LINE - Use the full data object
                     }),
                 });
 
