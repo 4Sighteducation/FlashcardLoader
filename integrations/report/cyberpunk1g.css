@@ -55,7 +55,7 @@ body.ai-coach-active #kn-scene_43 {
     top: 0;
     right: 0;
     height: 100vh;
-    background: linear-gradient(135deg, var(--neon-bg-dark) 0%, var(--neon-bg-medium) 50%, var(--neon-bg-light) 100%);
+    background: linear-gradient(135deg, var(--neon-bg-dark) 0%, var(--neon-bg-medium) 50%, var(--neon-bg-light) 100%) !important;
     border-left: 2px solid var(--neon-cyan);
     box-shadow: -5px 0 30px rgba(0, 255, 240, 0.3), inset 0 0 100px rgba(0, 255, 240, 0.05);
     padding: 20px;
@@ -70,6 +70,27 @@ body.ai-coach-active #kn-scene_43 {
     display: flex;
     flex-direction: column;
     position: relative;
+    color: var(--neon-text-primary) !important;
+}
+
+/* Ensure all text in the panel is visible */
+#aiCoachPanel * {
+    color: var(--neon-text-primary);
+}
+
+#aiCoachPanel p,
+#aiCoachPanel li,
+#aiCoachPanel span {
+    color: var(--neon-text-secondary) !important;
+}
+
+#aiCoachPanel h1,
+#aiCoachPanel h2,
+#aiCoachPanel h3,
+#aiCoachPanel h4,
+#aiCoachPanel h5,
+#aiCoachPanel h6 {
+    color: var(--neon-text-primary) !important;
 }
 
 #aiCoachPanel::before {
@@ -126,6 +147,9 @@ body.ai-coach-active #aiCoachPanel {
     flex-shrink: 0;
     position: relative;
     z-index: 2;
+    background: rgba(26, 26, 46, 0.6) !important;
+    margin: -20px -20px 20px -20px;
+    padding: 20px;
 }
 
 .ai-coach-panel-header::after {
@@ -195,9 +219,10 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Launcher button container - For Centered Floating Button Style */
-#aiCoachLauncherButtonContainer {
+#aiCoachLauncherButtonContainer,
+#studentCoachLauncherButtonContainer {
     position: fixed; 
-    bottom: 20px;    
+    bottom: 30px;    
     left: 50%;       
     transform: translateX(-50%); 
     z-index: 1040;   
@@ -207,49 +232,82 @@ body.ai-coach-active #aiCoachPanel {
     background-color: transparent; 
 }
 
-#aiCoachLauncherButtonContainer p {
+#aiCoachLauncherButtonContainer p,
+#studentCoachLauncherButtonContainer p {
     display: none; 
 }
 
 /* Styling for the main Activate button - NEON CYBERPUNK STYLE */
-#aiCoachLauncherButtonContainer button#activateAICoachBtn {
-    padding: 15px 30px !important;
-    font-size: 1.1em !important;
-    font-weight: 600 !important;
-    background: linear-gradient(45deg, var(--neon-purple), var(--neon-cyan), var(--neon-pink)) !important;
-    background-size: 300% 300% !important;
+#aiCoachLauncherButtonContainer button#activateAICoachBtn,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn {
+    padding: 18px 40px !important;
+    font-size: 1.15em !important;
+    font-weight: 700 !important;
+    background: linear-gradient(45deg, 
+        var(--neon-purple) 0%, 
+        var(--neon-cyan) 25%, 
+        var(--neon-pink) 50%, 
+        var(--neon-purple) 75%, 
+        var(--neon-cyan) 100%) !important;
+    background-size: 400% 400% !important;
     color: var(--neon-text-primary) !important; 
     border: 2px solid transparent !important;
-    border-radius: 30px !important;
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.5), 
-                0 0 60px rgba(0, 255, 240, 0.3),
-                inset 0 0 20px rgba(255, 255, 255, 0.1) !important;
+    border-radius: 50px !important;
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 
+                0 0 80px rgba(0, 255, 240, 0.4),
+                0 10px 40px rgba(0, 0, 0, 0.3),
+                inset 0 0 30px rgba(255, 255, 255, 0.2) !important;
     cursor: pointer !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px; 
-    transition: all 0.3s ease !important;
-    letter-spacing: 1px;
+    gap: 12px; 
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    animation: gradient-shift 3s ease infinite, neon-pulse 2s ease-in-out infinite;
+    animation: gradient-shift 4s ease infinite, neon-pulse 2s ease-in-out infinite;
     position: relative;
     overflow: hidden;
+    font-family: 'Orbitron', 'Roboto', sans-serif;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
 }
 
-#aiCoachLauncherButtonContainer button#activateAICoachBtn::before {
+#aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn::before {
     content: '';
     position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, var(--neon-cyan), var(--neon-pink), var(--neon-purple), var(--neon-cyan));
-    border-radius: 30px;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    background: linear-gradient(45deg, 
+        var(--neon-cyan), 
+        var(--neon-pink), 
+        var(--neon-purple), 
+        var(--neon-cyan));
+    border-radius: 50px;
     background-size: 400% 400%;
     z-index: -1;
-    animation: gradient-shift 3s ease infinite;
-    filter: blur(8px);
+    animation: gradient-shift 4s ease infinite;
+    filter: blur(15px);
+    opacity: 0.8;
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn::after,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        transparent 40%, 
+        transparent 60%, 
+        rgba(255, 255, 255, 0.1) 100%);
+    border-radius: 50px;
+    pointer-events: none;
 }
 
 @keyframes gradient-shift {
@@ -260,35 +318,46 @@ body.ai-coach-active #aiCoachPanel {
 
 @keyframes neon-pulse {
     0%, 100% { 
-        box-shadow: 0 0 30px rgba(139, 92, 246, 0.5), 
-                    0 0 60px rgba(0, 255, 240, 0.3),
-                    inset 0 0 20px rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 
+                    0 0 80px rgba(0, 255, 240, 0.4),
+                    0 10px 40px rgba(0, 0, 0, 0.3),
+                    inset 0 0 30px rgba(255, 255, 255, 0.2);
+        transform: translateY(0) scale(1);
     }
     50% { 
-        box-shadow: 0 0 40px rgba(139, 92, 246, 0.7), 
-                    0 0 80px rgba(0, 255, 240, 0.5),
-                    inset 0 0 30px rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 60px rgba(139, 92, 246, 0.8), 
+                    0 0 120px rgba(0, 255, 240, 0.6),
+                    0 15px 50px rgba(0, 0, 0, 0.4),
+                    inset 0 0 40px rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px) scale(1.02);
     }
 }
 
-#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover {
-    transform: translateY(-3px) scale(1.05);
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover {
+    transform: translateY(-5px) scale(1.05) !important;
+    box-shadow: 0 0 60px rgba(139, 92, 246, 0.8), 
+                0 0 120px rgba(0, 255, 240, 0.6),
+                0 20px 60px rgba(0, 0, 0, 0.4),
+                inset 0 0 40px rgba(255, 255, 255, 0.3) !important;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 1);
+    animation-play-state: paused;
 }
 
-#aiCoachLauncherButtonContainer button#activateAICoachBtn:active {
-    transform: translateY(-1px) scale(1.02);
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:active,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:active {
+    transform: translateY(-2px) scale(1.03) !important;
 }
 
-/* Styling for the new Info Button - NEON STYLE */
+/* Styling for the new Info Button - ULTRA NEON STYLE */
 #aiCoachInfoBtn {
-    width: 48px !important;
-    height: 48px !important;
+    width: 52px !important;
+    height: 52px !important;
     border-radius: 50% !important; 
-    background: linear-gradient(135deg, var(--neon-orange), var(--neon-yellow)) !important;
+    background: linear-gradient(135deg, var(--neon-orange) 0%, var(--neon-yellow) 100%) !important;
     border: 2px solid var(--neon-text-primary) !important;
     color: var(--neon-bg-dark) !important; 
-    font-size: 24px !important;
+    font-size: 26px !important;
     font-weight: bold !important;
     font-family: 'Orbitron', 'Georgia', serif;
     line-height: 1;
@@ -296,34 +365,70 @@ body.ai-coach-active #aiCoachPanel {
     display: inline-flex !important; 
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 0 20px rgba(255, 149, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 0 30px rgba(255, 149, 0, 0.6), 
+                0 0 60px rgba(255, 255, 0, 0.4),
+                inset 0 0 20px rgba(255, 255, 255, 0.3) !important;
     transition: all 0.3s ease !important;
     vertical-align: middle;
-    animation: info-glow 2s ease-in-out infinite alternate;
+    animation: info-pulse 2s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
-@keyframes info-glow {
-    0% { box-shadow: 0 0 20px rgba(255, 149, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.3); }
-    100% { box-shadow: 0 0 30px rgba(255, 149, 0, 0.8), inset 0 0 15px rgba(255, 255, 255, 0.5); }
+#aiCoachInfoBtn::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--neon-yellow), var(--neon-orange), var(--neon-yellow));
+    border-radius: 50%;
+    filter: blur(8px);
+    z-index: -1;
+    opacity: 0.7;
+    animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes info-pulse {
+    0%, 100% { 
+        box-shadow: 0 0 30px rgba(255, 149, 0, 0.6), 
+                    0 0 60px rgba(255, 255, 0, 0.4),
+                    inset 0 0 20px rgba(255, 255, 255, 0.3);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 40px rgba(255, 149, 0, 0.8), 
+                    0 0 80px rgba(255, 255, 0, 0.6),
+                    inset 0 0 30px rgba(255, 255, 255, 0.4);
+        transform: scale(1.05);
+    }
 }
 
 #aiCoachInfoBtn:hover {
-    transform: scale(1.15);
+    transform: scale(1.15) rotate(10deg);
     background: linear-gradient(135deg, var(--neon-yellow), var(--neon-orange)) !important;
+    box-shadow: 0 0 50px rgba(255, 149, 0, 0.9), 
+                0 0 100px rgba(255, 255, 0, 0.7),
+                inset 0 0 40px rgba(255, 255, 255, 0.5) !important;
 }
 
 #aiCoachInfoBtn:active {
-    transform: scale(1.05);
+    transform: scale(1.10) rotate(5deg);
 }
 
 /* Section toggles - NEON STYLE */
 .ai-coach-section-toggles {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 8px;
-    margin: 10px 0 15px 0 !important;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0 !important;
     flex-shrink: 0;
+    background: rgba(10, 10, 15, 0.6) !important;
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid rgba(0, 255, 240, 0.2);
 }
 
 .ai-coach-section-toggles .p-button {
@@ -398,45 +503,28 @@ body.ai-coach-active #aiCoachPanel {
 .ai-coach-section {
     margin-bottom: 20px;
     padding: 20px;
-    background: linear-gradient(135deg, rgba(26, 26, 46, 0.8), rgba(22, 33, 62, 0.8));
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.8), rgba(22, 33, 62, 0.8)) !important;
     border: 1px solid var(--neon-border);
     border-radius: 15px;
     box-shadow: 0 0 20px rgba(0, 255, 240, 0.1), inset 0 0 30px rgba(0, 255, 240, 0.05);
     backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
+    color: var(--neon-text-primary) !important;
 }
 
-.ai-coach-section::before {
-    content: '';
-    position: absolute;
-    top: -1px;
-    left: -1px;
-    right: -1px;
-    bottom: -1px;
-    background: linear-gradient(45deg, var(--neon-cyan), var(--neon-purple));
-    border-radius: 15px;
-    opacity: 0;
-    z-index: -1;
-    transition: opacity 0.3s ease;
-}
-
-.ai-coach-section:hover::before {
-    opacity: 0.5;
-    animation: border-glow 2s linear infinite;
-}
-
-@keyframes border-glow {
-    0% { opacity: 0.3; }
-    50% { opacity: 0.7; }
-    100% { opacity: 0.3; }
+/* Ensure text is visible in sections */
+.ai-coach-section p,
+.ai-coach-section li,
+.ai-coach-section span {
+    color: var(--neon-text-secondary) !important;
 }
 
 .ai-coach-section h4 {
     font-size: 1.3em;
     margin-top: 0;
     margin-bottom: 12px;
-    color: var(--neon-cyan);
+    color: var(--neon-cyan) !important;
     border-bottom: 2px solid rgba(0, 255, 240, 0.3);
     padding-bottom: 8px;
     font-weight: bold;
@@ -447,7 +535,7 @@ body.ai-coach-active #aiCoachPanel {
 
 .ai-coach-section h5 {
     font-size: 1.15em;
-    color: var(--neon-pink);
+    color: var(--neon-pink) !important;
     margin-top: 18px;
     margin-bottom: 10px;
     font-weight: 600;
@@ -517,7 +605,7 @@ body.ai-coach-active #aiCoachPanel {
 #questionnaireResponseDistributionChartContainer {
     height: 250px;
     margin-bottom: 15px;
-    background: linear-gradient(135deg, rgba(10, 10, 15, 0.9), rgba(26, 26, 46, 0.9));
+    background: linear-gradient(135deg, rgba(10, 10, 15, 0.9), rgba(26, 26, 46, 0.9)) !important;
     border: 1px solid var(--neon-border);
     border-radius: 10px;
     padding: 10px;
@@ -529,20 +617,23 @@ body.ai-coach-active #aiCoachPanel {
 
 #vespaComparisonChartContainer p,
 #questionScoresChartContainer p {
-    color: var(--neon-text-secondary);
+    color: var(--neon-text-secondary) !important;
     font-style: italic;
     font-size: 1em;
     text-shadow: 0 0 3px var(--neon-cyan);
 }
 
-/* Benchmark Scales */
+/* Benchmark Scales - DARK THEME */
 .subject-benchmark-item {
-    padding: 15px 0;
-    border-bottom: 2px solid #f0f0f0;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: rgba(26, 26, 46, 0.6) !important;
+    border: 1px solid rgba(0, 255, 240, 0.2);
+    border-radius: 10px;
 }
 
 .subject-benchmark-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .subject-benchmark-header {
@@ -553,12 +644,13 @@ body.ai-coach-active #aiCoachPanel {
     margin: 0 0 5px 0;
     font-size: 1.1em;
     font-weight: bold;
-    color: #224466;
+    color: var(--neon-cyan) !important;
+    text-shadow: 0 0 5px var(--neon-cyan);
 }
 
 .subject-grades-info {
     font-size: 0.95em;
-    color: #555;
+    color: var(--neon-text-secondary) !important;
     margin-bottom: 12px;
     line-height: 1.6;
 }
@@ -573,7 +665,7 @@ body.ai-coach-active #aiCoachPanel {
     display: flex;
     justify-content: space-between;
     font-size: 0.85em;
-    color: #777;
+    color: var(--neon-text-secondary) !important;
     margin-bottom: 4px;
     font-weight: 500;
 }
@@ -581,10 +673,11 @@ body.ai-coach-active #aiCoachPanel {
 .scale-bar-wrapper {
     width: 100%;
     height: 12px;
-    background-color: #e9ecef;
+    background-color: rgba(10, 10, 15, 0.8) !important;
     border-radius: 6px;
     position: relative;
-    border: 1px solid #d6d6d6;
+    border: 1px solid var(--neon-border);
+    box-shadow: inset 0 0 10px rgba(0, 255, 240, 0.1);
 }
 
 .scale-bar {
@@ -689,12 +782,16 @@ body.ai-coach-active #aiCoachPanel {
     min-height: 0;
     max-height: calc(100vh - 400px);
     margin-top: 20px;
+    background: rgba(10, 10, 15, 0.6) !important;
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid var(--neon-border);
 }
 
 #aiCoachChatContainer h4 {
     font-size: 1.3em;
     margin-bottom: 15px;
-    color: var(--neon-cyan);
+    color: var(--neon-cyan) !important;
     text-transform: uppercase;
     letter-spacing: 1px;
     text-shadow: 0 0 5px var(--neon-cyan);
@@ -709,7 +806,7 @@ body.ai-coach-active #aiCoachPanel {
     overflow-y: auto;
     padding: 15px;
     margin-bottom: 10px;
-    background: linear-gradient(135deg, rgba(10, 10, 15, 0.95), rgba(26, 26, 46, 0.95));
+    background: linear-gradient(135deg, rgba(10, 10, 15, 0.95), rgba(26, 26, 46, 0.95)) !important;
     scroll-behavior: smooth;
     box-shadow: inset 0 0 30px rgba(0, 255, 240, 0.05), 0 0 20px rgba(0, 255, 240, 0.1);
     position: relative;
@@ -744,6 +841,7 @@ body.ai-coach-active #aiCoachPanel {
     line-height: 1.6;
     position: relative;
     animation: message-pop-in 0.3s ease-out;
+    color: var(--neon-text-primary) !important;
 }
 
 @keyframes message-pop-in {
@@ -758,25 +856,25 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 .ai-chat-message-user {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.7), rgba(255, 0, 110, 0.7));
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.7), rgba(255, 0, 110, 0.7)) !important;
     margin-left: 20%;
     text-align: right;
     border: 1px solid rgba(139, 92, 246, 0.8);
-    color: #ffffff;
+    color: #ffffff !important;
     box-shadow: 0 0 15px rgba(139, 92, 246, 0.3), inset 0 0 10px rgba(139, 92, 246, 0.1);
 }
 
 .ai-chat-message-bot {
-    background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95));
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95)) !important;
     margin-right: 20%;
     border: 1px solid rgba(0, 255, 240, 0.6);
-    color: #ffffff;
+    color: #ffffff !important;
     box-shadow: 0 0 15px rgba(0, 255, 240, 0.3), inset 0 0 10px rgba(0, 255, 240, 0.1);
 }
 
 .ai-chat-message em {
     font-weight: bold;
-    color: var(--neon-cyan);
+    color: var(--neon-cyan) !important;
     font-size: 0.95em;
     text-shadow: 0 0 3px var(--neon-cyan);
 }
@@ -808,6 +906,14 @@ body.ai-coach-active #aiCoachPanel {
     border-radius: 10px !important;
     border-left: 4px solid var(--neon-blue) !important;
     box-shadow: 0 0 15px rgba(0, 180, 216, 0.3), inset 0 0 10px rgba(0, 180, 216, 0.1) !important;
+}
+
+#aiCoachChatDisplay > div[style*="background: #f0f8ff"] strong {
+    color: var(--neon-cyan) !important;
+}
+
+#aiCoachChatDisplay > div[style*="background: #f0f8ff"] a {
+    color: var(--neon-green) !important;
 }
 
 /* Chat input area - FUTURISTIC INPUT */
@@ -2162,3 +2268,276 @@ input:focus-visible,
         padding: 12px 15px !important;
     }
 }
+
+/* AI Snapshot Toggle Styles - Cyberpunk Theme */
+#studentCoachSnapshotSection {
+    position: relative;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(0, 255, 240, 0.2)) !important;
+    border: 1px solid var(--neon-border) !important;
+    border-radius: 15px !important;
+    padding: 20px !important;
+    box-shadow: 0 0 30px rgba(0, 255, 240, 0.2), inset 0 0 20px rgba(139, 92, 246, 0.1) !important;
+}
+
+.ai-snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.ai-snapshot-header h4 {
+    margin: 0;
+    flex: 1;
+    color: var(--neon-cyan) !important;
+    text-shadow: 0 0 10px var(--neon-cyan) !important;
+}
+
+#toggleSnapshotBtn {
+    background: linear-gradient(135deg, rgba(0, 255, 240, 0.1), rgba(139, 92, 246, 0.1)) !important;
+    border: 1px solid var(--neon-cyan) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    color: var(--neon-text-primary) !important;
+    transition: all 0.3s ease !important;
+    font-weight: 500;
+    min-width: 50px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 0 5px var(--neon-cyan);
+}
+
+#toggleSnapshotBtn:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 240, 0.2), rgba(139, 92, 246, 0.2)) !important;
+    border-color: var(--neon-pink) !important;
+    box-shadow: 0 0 15px rgba(0, 255, 240, 0.5), inset 0 0 10px rgba(0, 255, 240, 0.2) !important;
+    transform: scale(1.05);
+}
+
+#toggleSnapshotBtn:active {
+    transform: scale(0.98);
+}
+
+#snapshotContent {
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+    overflow: hidden;
+    color: var(--neon-text-secondary) !important;
+}
+
+#snapshotContent p {
+    color: var(--neon-text-secondary) !important;
+}
+
+#snapshotContent h5 {
+    color: var(--neon-pink) !important;
+    text-shadow: 0 0 5px var(--neon-pink) !important;
+}
+
+#snapshotContent ul {
+    color: var(--neon-text-secondary) !important;
+}
+
+#snapshotContent li {
+    color: var(--neon-text-secondary) !important;
+}
+
+#snapshotContent[style*="display: none"] {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Ensure proper spacing when snapshot is hidden */
+#studentCoachSnapshotSection:has(#snapshotContent[style*="display: none"]) {
+    margin-bottom: 10px;
+}
+
+/* Adjust chat container to take more space when snapshot is hidden */
+body.ai-coach-active #aiCoachChatContainer {
+    transition: max-height 0.3s ease;
+}
+
+/* Responsive adjustments for snapshot toggle */
+@media (max-width: 768px) {
+    #toggleSnapshotBtn {
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        min-width: 40px;
+    }
+    
+    .ai-snapshot-header {
+        gap: 10px;
+    }
+}
+
+/* Fix any remaining white areas */
+/* Ensure all chat stats have dark theme */
+#aiCoachChatStats {
+    background: rgba(10, 10, 15, 0.6) !important;
+    padding: 10px !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(0, 255, 240, 0.1) !important;
+    color: var(--neon-text-secondary) !important;
+}
+
+#aiCoachChatStats span {
+    color: var(--neon-text-secondary) !important;
+}
+
+#aiCoachLikedCount {
+    color: var(--neon-pink) !important;
+}
+
+/* Clear old chats button dark theme */
+#aiCoachClearOldChatsBtn {
+    background: rgba(255, 0, 110, 0.2) !important;
+    color: var(--neon-pink) !important;
+    border: 1px solid var(--neon-pink) !important;
+}
+
+#aiCoachClearOldChatsBtn:hover {
+    background: rgba(255, 0, 110, 0.3) !important;
+}
+
+/* Enhanced like button for dark theme */
+.ai-chat-like-btn {
+    background: rgba(26, 26, 46, 0.8) !important;
+    border: 1px solid var(--neon-border) !important;
+    box-shadow: 0 2px 8px rgba(0, 255, 240, 0.2) !important;
+}
+
+.ai-chat-like-btn:hover {
+    background: rgba(255, 0, 110, 0.2) !important;
+    border-color: var(--neon-pink) !important;
+}
+
+/* Fix info modal for dark theme */
+#aiCoachInfoModal .ai-coach-modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #222244 100%) !important;
+    border: 2px solid var(--neon-cyan) !important;
+    color: var(--neon-text-primary) !important;
+}
+
+#aiCoachInfoModal .ai-coach-modal-header {
+    background: rgba(26, 26, 46, 0.9) !important;
+    border-bottom: 2px solid var(--neon-cyan) !important;
+}
+
+#aiCoachInfoModal .ai-coach-modal-header h3 {
+    color: var(--neon-cyan) !important;
+}
+
+#aiCoachInfoModal .ai-coach-modal-body {
+    background: rgba(20, 20, 35, 0.6) !important;
+}
+
+#aiCoachInfoModal .ai-coach-modal-body h4 {
+    color: var(--neon-pink) !important;
+}
+
+#aiCoachInfoModal .ai-coach-modal-body p,
+#aiCoachInfoModal .ai-coach-modal-body li {
+    color: var(--neon-text-secondary) !important;
+}
+
+/* Activity modal dark theme */
+#aiCoachActivityModal .ai-coach-modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #222244 100%) !important;
+    border: 2px solid var(--neon-cyan) !important;
+}
+
+#aiCoachActivityModal .activity-modal-body {
+    background: rgba(20, 20, 35, 0.8) !important;
+}
+
+#aiCoachActivityModal .pdf-section {
+    background: linear-gradient(135deg, rgba(10, 10, 15, 0.9), rgba(26, 26, 46, 0.9)) !important;
+    border: 1px solid var(--neon-border) !important;
+}
+
+/* Quote sections dark theme */
+.quote-section {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(255, 0, 110, 0.2)) !important;
+    border-left: 4px solid var(--neon-pink) !important;
+    padding: 20px !important;
+    border-radius: 10px !important;
+}
+
+.quote-section p {
+    color: var(--neon-text-primary) !important;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Encouraging AI summary section */
+.encouraging-ai-summary {
+    background: linear-gradient(135deg, rgba(0, 255, 240, 0.1), rgba(139, 92, 246, 0.1)) !important;
+    border: 1px solid var(--neon-cyan) !important;
+    border-radius: 10px !important;
+    padding: 20px !important;
+}
+
+.encouraging-ai-summary h5 {
+    color: var(--neon-cyan) !important;
+}
+
+.encouraging-ai-summary p {
+    color: var(--neon-text-secondary) !important;
+}
+
+/* Existing AI analysis section */
+.existing-ai-analysis {
+    background: rgba(139, 92, 246, 0.1) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    border-radius: 10px !important;
+    padding: 15px !important;
+}
+
+/* Chat count and stats styling */
+#aiCoachChatCount {
+    color: var(--neon-text-secondary) !important;
+}
+
+/* Theme toggle button dark theme */
+.ai-coach-theme-toggle-btn {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(0, 255, 240, 0.2)) !important;
+    border: 1px solid var(--neon-cyan) !important;
+    color: var(--neon-text-primary) !important;
+    text-shadow: 0 0 5px var(--neon-cyan) !important;
+}
+
+/* Ensure all p tags in sections have proper color */
+.ai-coach-section p,
+.ai-coach-details-section p,
+#aiCoachPanel p {
+    color: var(--neon-text-secondary) !important;
+}
+
+/* SCAN LINE REMOVAL - Remove the distracting animated scan lines */
+/* Override main panel scan line effect */
+#aiCoachPanel::before {
+    display: none !important;
+}
+
+/* Override modal scan line effects */
+.ai-coach-modal-content::before {
+    display: none !important;
+}
+
+/* Remove any scan line animations from problem modal */
+#aiCoachProblemModal .ai-coach-modal-content::before {
+    display: none !important;
+}
+
+/* Remove the animated scan line from modal headers */
+.ai-coach-modal-header::after,
+.ai-coach-problem-modal-header::after {
+    display: none !important;
+}
+
+/* Remove the animated scan line from panel header */
+.ai-coach-panel-header::after {
+    display: none !important;
+}
+
