@@ -242,7 +242,7 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1j.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1k.css';
         // .css';
         
         // Add dynamic CSS for config-specific IDs
@@ -1688,18 +1688,27 @@ if (window.aiCoachLauncherInitialized) {
                     background: #f8f9fa;
                 ">
                 <button id="aiCoachChatSendButton" class="p-button p-component" style="
-                    padding: 14px 28px;
+                    padding: 16px 36px;
                     background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
                     color: white;
                     border: none;
-                    border-radius: 10px;
-                    font-size: 15px;
-                    font-weight: 600;
+                    border-radius: 12px;
+                    font-size: 16px;
+                    font-weight: 700;
                     cursor: pointer;
                     transition: all 0.3s ease;
-                    box-shadow: 0 3px 10px rgba(58, 123, 213, 0.3);
+                    box-shadow: 0 4px 15px rgba(58, 123, 213, 0.4);
+                    min-width: 100px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
                 ">
-                    Send
+                    <span>Send</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
                 </button>
             </div>
             <div id="aiCoachChatThinkingIndicator" class="thinking-pulse" style="display: none; margin-top: 16px; text-align: center; color: #667eea; font-weight: 500;"> 
@@ -1734,12 +1743,14 @@ if (window.aiCoachLauncherInitialized) {
         // Add hover effect for send button
         if (chatSendButton) {
             chatSendButton.addEventListener('mouseenter', () => {
-                chatSendButton.style.transform = 'scale(1.05)';
-                chatSendButton.style.boxShadow = '0 6px 20px rgba(58, 123, 213, 0.5)';
+                chatSendButton.style.transform = 'scale(1.05) translateY(-2px)';
+                chatSendButton.style.boxShadow = '0 8px 25px rgba(58, 123, 213, 0.6)';
+                chatSendButton.style.background = 'linear-gradient(135deg, #00c4ff 0%, #2a6dd5 100%)';
             });
             chatSendButton.addEventListener('mouseleave', () => {
-                chatSendButton.style.transform = 'scale(1)';
-                chatSendButton.style.boxShadow = '0 3px 10px rgba(58, 123, 213, 0.3)';
+                chatSendButton.style.transform = 'scale(1) translateY(0)';
+                chatSendButton.style.boxShadow = '0 4px 15px rgba(58, 123, 213, 0.4)';
+                chatSendButton.style.background = 'linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%)';
             });
         }
         
@@ -3098,3 +3109,4 @@ if (window.aiCoachLauncherInitialized) {
         }
     }
 } 
+
