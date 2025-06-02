@@ -1,9 +1,6 @@
 /* AI Coach Launcher Styles */
 /* Version: 2.1 - Enhanced for dynamic IDs */
 
-/* Modern UI Enhancements */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 /* CSS Custom Properties for dynamic values */
 :root {
     --ai-coach-panel-width: 450px;
@@ -16,17 +13,6 @@
     --vespa-systems-color: #72cb44;
     --vespa-practice-color: #7f31a4;
     --vespa-attitude-color: #f032e6;
-    /* Modern UI Colors */
-    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --secondary-gradient: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
-    --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    --ui-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-}
-
-/* Apply modern font globally to AI Coach elements */
-#aiCoachPanel,
-#aiCoachPanel * {
-    font-family: var(--ui-font-family) !important;
 }
 
 /* Main content adjustment when coach is active */
@@ -44,7 +30,7 @@ body.ai-coach-active #kn-scene_43 {
                 margin-right var(--ai-coach-transition-duration) ease-in-out;
 }
 
-/* Main AI Coach Panel - Modern Design */
+/* Main AI Coach Panel */
 #aiCoachPanel {
     width: 0;
     opacity: 0;
@@ -53,45 +39,25 @@ body.ai-coach-active #kn-scene_43 {
     top: 0;
     right: 0;
     height: 100vh;
-    background-color: #f8f9fa;
-    border-left: 1px solid #e9ecef;
-    padding: 0;
+    background-color: #f4f6f8;
+    border-left: 2px solid #ddd;
+    padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
     z-index: 1050;
-    transition: width var(--ai-coach-transition-duration) cubic-bezier(0.4, 0, 0.2, 1), 
+    transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
                 visibility var(--ai-coach-transition-duration);
-    font-family: var(--ui-font-family);
+    font-family: Arial, sans-serif;
     font-size: 14px;
     display: flex;
     flex-direction: column;
-    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
 }
 
 body.ai-coach-active #aiCoachPanel {
     width: var(--ai-coach-panel-width);
     opacity: 1;
     visibility: visible;
-}
-
-/* Smooth scrollbar styling */
-#aiCoachPanel::-webkit-scrollbar {
-    width: 8px;
-}
-
-#aiCoachPanel::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-#aiCoachPanel::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-#aiCoachPanel::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
 }
 
 /* Resize handle styles - use class selector for JavaScript-created element */
@@ -111,43 +77,31 @@ body.ai-coach-active #aiCoachPanel {
     background: rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Panel header - Modern Gradient */
+/* Panel header */
 .ai-coach-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 25px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin-bottom: 15px;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 10px;
     flex-shrink: 0;
-    position: relative;
 }
 
 .ai-coach-panel-header h3 {
     margin: 0;
-    font-size: 1.6em;
-    color: white;
-    font-weight: 700;
-    letter-spacing: -0.5px;
+    font-size: 1.5em;
+    color: #333;
+    font-weight: bold;
 }
 
 .ai-coach-close-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: none;
     border: none;
-    font-size: 1.5em;
+    font-size: 1.8em;
     cursor: pointer;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    transition: all 0.3s ease;
-}
-
-.ai-coach-close-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: rotate(90deg);
+    padding: 5px;
+    color: #555;
 }
 
 /* Panel content - make it flexible to accommodate chat */
@@ -157,12 +111,10 @@ body.ai-coach-active #aiCoachPanel {
     flex-direction: column;
     overflow-y: auto;
     min-height: 0;
-    padding: 20px;
 }
 
 /* Launcher button container - For Centered Floating Button Style */
-#aiCoachLauncherButtonContainer,
-#studentCoachLauncherButtonContainer {
+#aiCoachLauncherButtonContainer {
     position: fixed; 
     bottom: 20px;    
     left: 50%;       
@@ -174,248 +126,337 @@ body.ai-coach-active #aiCoachPanel {
     background-color: transparent; 
 }
 
-#aiCoachLauncherButtonContainer p,
-#studentCoachLauncherButtonContainer p {
+#aiCoachLauncherButtonContainer p {
     display: none; 
 }
 
-/* Styling for the main Activate button - Modern Gradient Design */
-#aiCoachLauncherButtonContainer button#activateAICoachBtn,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn {
-    padding: 15px 30px !important;
+/* Styling for the main Activate button - activateAICoachBtn ID */
+#aiCoachLauncherButtonContainer button#activateAICoachBtn {
+    padding: 15px 30px !important; /* Increased padding for larger size */
     font-size: 1.1em !important;
     font-weight: 600 !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    color: white !important; 
+    background-image: linear-gradient(to right, var(--primary-color, #3B82F6) 0%, var(--secondary-color, #10B981) 50%, var(--primary-color, #3B82F6) 100%) !important;
+    background-size: 200% auto !important; /* For gradient animation */
+    color: var(--text-light-color, #F9FAFB) !important; 
     border: none !important;
-    border-radius: 30px !important;
-    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.35) !important;
+    border-radius: var(--border-radius-lg, 12px) !important; 
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1)) !important; 
     cursor: pointer !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 10px; 
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: background-position 0.5s ease, box-shadow 0.3s ease, transform 0.3s ease !important;
     letter-spacing: 0.5px;
-    position: relative;
-    overflow: hidden;
 }
 
-#aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-}
-
-#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover::before,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover::before {
-    transform: translateX(0);
-}
-
-#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover {
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover {
+    background-position: right center !important; /* Change gradient direction on hover */
+    box-shadow: 0 15px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2) !important;
     transform: translateY(-3px) scale(1.03);
-    box-shadow: 0 15px 35px rgba(102, 126, 234, 0.45) !important;
 }
 
-#aiCoachLauncherButtonContainer button#activateAICoachBtn:active,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:active {
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:active {
     transform: translateY(-1px) scale(1.01);
+    box-shadow: var(--shadow-md) !important;
 }
 
-/* Styling for the new Info Button - Modern Design */
+/* Styling for the new Info Button */
 #aiCoachInfoBtn {
-    width: 48px !important;
+    width: 48px !important; /* Slightly larger */
     height: 48px !important;
     border-radius: 50% !important; 
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-    border: 2px solid white !important;
-    color: white !important; 
-    font-size: 24px !important;
+    background-color: var(--accent-color, #F59E0B) !important; 
+    border: 2px solid var(--text-light-color, #FFFFFF) !important; /* White border for contrast */
+    color: var(--text-light-color, #FFFFFF) !important; 
+    font-size: 24px !important; /* Larger icon */
     font-weight: bold !important;
-    font-family: 'Georgia', serif;
-    line-height: 1;
+    font-family: 'Georgia', serif; /* More stylized 'i' */
+    line-height: 1; /* Ensure 'i' is centered vertically */
     cursor: pointer !important;
     display: inline-flex !important; 
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 4px 15px rgba(240, 87, 108, 0.4) !important;
-    transition: all 0.3s ease !important;
-    vertical-align: middle;
+    box-shadow: var(--shadow-md) !important;
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s !important;
+    vertical-align: middle; 
 }
 
 #aiCoachInfoBtn:hover {
+    background-color: var(--accent-hover-color, #D97706) !important; 
     transform: scale(1.15) rotate(10deg);
-    box-shadow: 0 6px 20px rgba(240, 87, 108, 0.5) !important;
+    box-shadow: var(--shadow-lg) !important;
 }
 
 #aiCoachInfoBtn:active {
     transform: scale(1.05) rotate(5deg);
 }
 
-/* Section toggles - Modern Cards */
+/* Section toggles */
 .ai-coach-section-toggles {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin: 20px 0 !important;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 10px 0 15px 0 !important;
     flex-shrink: 0;
 }
 
 .ai-coach-section-toggles .p-button {
     flex-grow: 1;
-    padding: 16px 20px !important;
-    font-size: 15px !important;
-    border: none !important;
+    padding: 12px 8px !important;
+    font-size: 0.95em !important;
+    border: none;
     color: white !important;
-    border-radius: 12px !important;
-    transition: all 0.3s ease !important;
-    cursor: pointer !important;
-    font-weight: 600 !important;
-    text-align: center !important;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.ai-coach-section-toggles .p-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-}
-
-.ai-coach-section-toggles .p-button:hover::before {
-    transform: translateX(0);
+    border-radius: 4px;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    cursor: pointer;
+    font-weight: 500;
 }
 
 .ai-coach-section-toggles .p-button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+    opacity: 0.85;
+    transform: translateY(-1px);
 }
 
 #aiCoachToggleVespaButton {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background-color: #79A6DC !important;
 }
 
 #aiCoachToggleAcademicButton {
-    background: linear-gradient(135deg, #72cb44 0%, #4caf50 100%) !important;
+    background-color: #77DD77 !important;
 }
 
 #aiCoachToggleQuestionButton {
-    background: linear-gradient(135deg, #86b4f0 0%, #3a7bd5 100%) !important;
+    background-color: #C3B1E1 !important;
 }
 
-/* Content sections - Modern Cards */
+/* Content sections */
 .ai-coach-section {
     margin-bottom: 20px;
-    padding: 24px;
+    padding: 20px;
     background-color: #fff;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    transition: all 0.3s ease;
-}
-
-.ai-coach-section:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 .ai-coach-section h4 {
     font-size: 1.3em;
     margin-top: 0;
-    margin-bottom: 16px;
-    color: #1a1a1a;
-    font-weight: 700;
-    letter-spacing: -0.3px;
+    margin-bottom: 12px;
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 8px;
+    font-weight: bold;
 }
 
 .ai-coach-section h5 {
-    font-size: 1.1em;
-    color: #333;
-    margin-top: 20px;
-    margin-bottom: 12px;
+    font-size: 1.15em;
+    color: #444;
+    margin-top: 18px;
+    margin-bottom: 10px;
     font-weight: 600;
-    letter-spacing: -0.2px;
 }
 
 .ai-coach-section p, 
 .ai-coach-section ul, 
 .ai-coach-section li {
-    font-size: 0.95em;
-    line-height: 1.8;
-    color: #495057;
+    font-size: 1em;
+    line-height: 1.7;
+    color: #555;
 }
 
 .ai-coach-section ul {
-    padding-left: 24px;
+    padding-left: 25px;
     margin-bottom: 0;
 }
 
 .ai-coach-section li {
-    margin-bottom: 8px;
+    margin-bottom: 5px;
 }
 
-/* Enhanced student snapshot section */
-#studentCoachSnapshotSection {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    border: none;
-    position: relative;
-    overflow: hidden;
-}
-
-#studentCoachSnapshotSection::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    transform: rotate(45deg);
-    pointer-events: none;
-}
-
-/* Modern loading spinner */
+/* Loading spinner */
 .loader {
-    width: 48px;
-    height: 48px;
-    margin: 30px auto;
-    position: relative;
-}
-
-.loader::before,
-.loader::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
     border-radius: 50%;
-    border: 3px solid transparent;
-    border-top-color: #667eea;
-    animation: spin 1s ease-in-out infinite;
-}
-
-.loader::after {
-    border-top-color: #764ba2;
-    animation-delay: -0.5s;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
 }
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Chart containers */
+#vespaComparisonChartContainer,
+#questionnaireResponseDistributionChartContainer {
+    height: 250px;
+    margin-bottom: 15px;
+    background: #f8f9fa;
+    border: 2px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#vespaComparisonChartContainer p,
+#questionScoresChartContainer p {
+    color: #777;
+    font-style: italic;
+    font-size: 1em;
+}
+
+/* Benchmark Scales */
+.subject-benchmark-item {
+    padding: 15px 0;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.subject-benchmark-item:last-child {
+    border-bottom: none;
+}
+
+.subject-benchmark-header {
+    margin-bottom: 10px;
+}
+
+.subject-benchmark-header h5 {
+    margin: 0 0 5px 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #224466;
+}
+
+.subject-grades-info {
+    font-size: 0.95em;
+    color: #555;
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.subject-benchmark-scale-container {
+    margin-top: 5px;
+    margin-bottom: 25px;
+    padding: 0 5px;
+}
+
+.scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    color: #777;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.scale-bar-wrapper {
+    width: 100%;
+    height: 12px;
+    background-color: #e9ecef;
+    border-radius: 6px;
+    position: relative;
+    border: 1px solid #d6d6d6;
+}
+
+.scale-bar {
+    height: 100%;
+    position: relative;
+}
+
+.scale-marker {
+    width: 8px;
+    height: 16px;
+    border-radius: 2px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) translateX(-50%);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.scale-marker .marker-label {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8em;
+    color: #333;
+    white-space: nowrap;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 2px 4px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    z-index: 11;
+    font-weight: 500;
+}
+
+/* Marker colors */
+.current-grade-marker { background-color: #28a745; }
+.standard-meg-marker { background-color: #ffc107; }
+.a-level-meg-marker { background-color: #007bff; }
+
+.a-level-meg-marker.p60 .marker-label { color: #17a2b8; }
+.a-level-meg-marker.p90 .marker-label { color: #fd7e14; }
+.a-level-meg-marker.p100 .marker-label { color: #dc3545; }
+
+/* Distinct marker styles */
+.current-grade-dot-marker {
+    background-color: #28a745;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+    z-index: 15;
+}
+
+.current-grade-dot-marker .marker-label {
+    bottom: -24px;
+    font-weight: bold;
+}
+
+.percentile-line-marker {
+    background-color: #6c757d;
+    width: 3px;
+    height: 24px;
+    border-radius: 1px;
+    z-index: 12;
+}
+
+.percentile-line-marker.a-level-meg-marker {
+    background-color: #007bff;
+}
+
+.percentile-line-marker.p60 {
+    background-color: #17a2b8;
+}
+
+.percentile-line-marker.p90 {
+    background-color: #fd7e14;
+}
+
+.percentile-line-marker.p100 {
+    background-color: #dc3545;
+}
+
+.percentile-line-marker.standard-meg-marker {
+    background-color: #ffc107;
+    z-index: 13;
+}
+
+.percentile-line-marker .marker-label {
+    bottom: -22px;
+    font-size: 0.75em;
 }
 
 /* ENHANCED CHAT INTERFACE STYLES */
@@ -426,37 +467,30 @@ body.ai-coach-active #aiCoachPanel {
     min-height: 0;
     max-height: calc(100vh - 400px);
     margin-top: 20px;
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #e9ecef;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 #aiCoachChatContainer h4 {
     font-size: 1.3em;
     margin-bottom: 15px;
-    font-weight: 700;
-    color: #1a1a1a;
 }
 
 #aiCoachChatDisplay {
     flex: 1;
     min-height: 300px;
     max-height: 500px;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
     overflow-y: auto;
     padding: 15px;
     margin-bottom: 10px;
-    background-color: #f8f9fa;
+    background-color: #fff;
     scroll-behavior: smooth;
     /* Clean scrollbar styling */
     scrollbar-width: thin;
     scrollbar-color: rgba(155, 155, 155, 0.5) rgba(0, 0, 0, 0.05);
 }
 
-/* Custom scrollbar for chat display - Modern theme */
+/* Custom scrollbar for chat display - Original theme */
 #aiCoachChatDisplay::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -476,85 +510,62 @@ body.ai-coach-active #aiCoachPanel {
     background: rgba(155, 155, 155, 0.7);
 }
 
-/* Chat messages styling - Modern Bubbles */
+/* Chat messages styling */
 .ai-chat-message {
-    margin-bottom: 16px;
-    padding: 14px 18px;
-    border-radius: 16px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
     word-wrap: break-word;
-    font-size: 0.95em;
-    line-height: 1.7;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.ai-chat-message:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    font-size: 1.05em;
+    line-height: 1.6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .ai-chat-message-user {
-    background: #667eea;
-    color: white;
-    margin-left: 15%;
+    background-color: #e3f2fd;
+    margin-left: 20%;
     text-align: right;
-    border: none;
-    position: relative;
-    font-weight: 500;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Add subtle gradient overlay for depth */
-.ai-chat-message-user::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
-    border-radius: 16px;
-    pointer-events: none;
+    border: 1px solid #bbdefb;
 }
 
 .ai-chat-message-bot {
-    background-color: white;
-    margin-right: 15%;
-    border: 1px solid #e9ecef;
+    background-color: #f5f5f5;
+    margin-right: 20%;
+    border: 1px solid #e0e0e0;
 }
 
 .ai-chat-message em {
-    font-weight: 600;
-    font-size: 0.9em;
-    opacity: 0.8;
-    font-style: normal;
-}
-
-.ai-chat-message-user em {
-    color: rgba(255, 255, 255, 0.95);
-    font-weight: 600;
-}
-
-.ai-chat-message-bot em {
-    color: #6c757d;
+    font-weight: bold;
+    color: #666;
+    font-size: 0.95em;
 }
 
 /* Activity links in chat */
 .ai-coach-activity-link {
-    color: #667eea !important;
-    text-decoration: none !important;
+    color: #3498db !important;
+    text-decoration: underline !important;
     font-weight: 600 !important;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
 }
 
 .ai-coach-activity-link:hover {
-    color: #5563e1 !important;
-    border-bottom-color: #5563e1 !important;
+    color: #2980b9 !important;
+    text-decoration: none !important;
+    background-color: rgba(52, 152, 219, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin: -2px -4px;
 }
 
-/* Chat input area - Modern Design */
+/* Quick activity links section */
+#aiCoachChatDisplay > div[style*="background: #f0f8ff"] {
+    margin-top: 12px !important;
+    padding: 12px !important;
+    background: #f0f8ff !important;
+    border-radius: 8px !important;
+    border-left: 4px solid #3498db !important;
+}
+
+/* Chat input area */
 #aiCoachChatContainer > div:last-child {
     display: flex;
     align-items: center;
@@ -564,36 +575,32 @@ body.ai-coach-active #aiCoachPanel {
 
 #aiCoachChatInput {
     flex-grow: 1;
-    padding: 12px 16px;
-    border: 2px solid #e9ecef;
-    border-radius: 25px;
+    padding: 12px;
+    border: 2px solid #ccc;
+    border-radius: 6px;
     font-size: 1.05em;
-    background: white;
-    transition: all 0.3s ease;
 }
 
 #aiCoachChatInput:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 #aiCoachChatSendButton {
     padding: 12px 24px !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background-color: #3498db !important;
     color: white !important;
     border: none !important;
-    border-radius: 25px !important;
+    border-radius: 6px !important;
     cursor: pointer;
     font-size: 1em !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+    font-weight: 500 !important;
 }
 
 #aiCoachChatSendButton:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+    background-color: #2980b9 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 #aiCoachChatSendButton:disabled {
@@ -604,18 +611,17 @@ body.ai-coach-active #aiCoachPanel {
 /* ENHANCED: Animated thinking indicator */
 #aiCoachChatThinkingIndicator {
     display: none;
-    background: linear-gradient(135deg, #f0f4f8 0%, #e9ecef 100%);
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
+    background: #f0f8ff;
+    border: 1px solid #d0e8ff;
+    border-radius: 8px;
     padding: 12px 20px;
     margin: 10px 20%;
     text-align: center;
     font-size: 1em;
-    color: #667eea;
-    font-weight: 600;
+    color: #3498db;
+    font-weight: 500;
     position: relative;
     animation: fadeIn 0.3s ease-in;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 #aiCoachChatThinkingIndicator::before {
@@ -624,100 +630,91 @@ body.ai-coach-active #aiCoachPanel {
     margin-right: 5px;
 }
 
-/* Problem Selector Button - Modern Design */
+/* Animated dots */
+.thinking-dots {
+    display: inline-block;
+    margin-left: 5px;
+}
+
+.thinking-dots span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #3498db;
+    margin: 0 2px;
+    animation: thinking-bounce 1.4s infinite ease-in-out both;
+}
+
+.thinking-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.thinking-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.thinking-dots span:nth-child(3) {
+    animation-delay: 0;
+}
+
+@keyframes thinking-bounce {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Alternative pulse animation for the whole indicator */
+.thinking-pulse {
+    animation: thinking-pulse-anim 2s infinite;
+}
+
+@keyframes thinking-pulse-anim {
+    0% {
+        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(52, 152, 219, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+    }
+}
+
+/* Problem Selector Button */
 #aiCoachProblemButton {
     width: 100% !important;
-    padding: 12px !important;
+    padding: 10px !important;
     font-size: 1em !important;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-    color: #495057 !important;
-    border: 1px solid #dee2e6 !important;
-    border-radius: 12px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+    background: #f8f9fa !important;
+    color: #333 !important;
+    border: 2px solid #ddd !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
 }
 
 #aiCoachProblemButton:hover {
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-}
-
-/* Text control styling - Enhanced contrast */
-.ai-coach-text-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 4px 8px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.ai-coach-text-control-btn {
-    background: #667eea;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 14px;
-    color: white;
-    transition: all 0.2s ease;
-    font-weight: 600;
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
-}
-
-.ai-coach-text-control-btn:hover {
-    background: #5a6fe8;
-    transform: scale(1.05);
-    box-shadow: 0 3px 6px rgba(102, 126, 234, 0.4);
-}
-
-.ai-coach-text-size-indicator {
-    font-size: 14px;
-    color: #333;
-    margin: 0 6px;
-    font-weight: 600;
-    min-width: 45px;
-    text-align: center;
-}
-
-/* Enhanced like button styling */
-.ai-chat-like-btn {
-    position: absolute !important;
-    top: 8px !important;
-    right: 8px !important;
-    background: white !important;
-    border: 1px solid #e9ecef !important;
-    width: 32px !important;
-    height: 32px !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-}
-
-.ai-chat-like-btn:hover {
-    transform: scale(1.1) !important;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
-}
-
-.ai-chat-like-btn .like-icon {
-    font-size: 16px;
-    transition: all 0.3s ease;
-}
-
-.ai-chat-like-btn .like-icon.liked {
-    animation: heartBeat 0.5s ease;
-}
-
-@keyframes heartBeat {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.3); }
+    background: #e9ecef !important;
+    border-color: #bbb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 /* VESPA-colored problem categories - will be enhanced via JS for modal */
