@@ -47,35 +47,45 @@ body.ai-coach-active #kn-scene_43 {
 }
 
 /* Main AI Coach Panel - FUTURISTIC DARK THEME */
-#aiCoachPanel {
+#aiCoachPanel,
+[id*="CoachPanel"] {
     width: 0;
     opacity: 0;
     visibility: hidden;
-    position: fixed;
-    top: 0;
-    right: 0;
-    height: 100vh;
-    background: linear-gradient(135deg, var(--neon-bg-dark) 0%, var(--neon-bg-medium) 50%, var(--neon-bg-light) 100%) !important;
-    border-left: 2px solid var(--neon-cyan);
-    box-shadow: -5px 0 30px rgba(0, 255, 240, 0.3), inset 0 0 100px rgba(0, 255, 240, 0.05);
-    padding: 20px;
-    box-sizing: border-box;
-    overflow-y: auto;
-    z-index: 1050;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    height: 100vh !important;
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%) !important;
+    border-left: 2px solid var(--neon-cyan) !important;
+    box-shadow: -5px 0 30px rgba(0, 255, 240, 0.3), inset 0 0 100px rgba(0, 255, 240, 0.05) !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    z-index: 1050 !important;
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
-                visibility var(--ai-coach-transition-duration);
-    font-family: 'Orbitron', 'Roboto', Arial, sans-serif;
-    font-size: 14px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
+                visibility var(--ai-coach-transition-duration) !important;
+    font-family: 'Orbitron', 'Roboto', Arial, sans-serif !important;
+    font-size: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
     color: var(--neon-text-primary) !important;
 }
 
 /* Ensure all text in the panel is visible */
-#aiCoachPanel * {
+#aiCoachPanel *,
+[id*="CoachPanel"] * {
     color: var(--neon-text-primary);
+}
+
+/* Override any inline or dynamic styles */
+#aiCoachPanel,
+[id*="CoachPanel"],
+.ai-coach-panel {
+    background-color: transparent !important;
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%) !important;
 }
 
 #aiCoachPanel p,
@@ -112,10 +122,11 @@ body.ai-coach-active #kn-scene_43 {
     z-index: 1;
 }
 
-body.ai-coach-active #aiCoachPanel {
-    width: var(--ai-coach-panel-width);
-    opacity: 1;
-    visibility: visible;
+body.ai-coach-active #aiCoachPanel,
+body.ai-coach-active [id*="CoachPanel"] {
+    width: var(--ai-coach-panel-width) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 /* Resize handle styles - use class selector for JavaScript-created element */
@@ -137,7 +148,9 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Panel header - FUTURISTIC STYLE */
-.ai-coach-panel-header {
+.ai-coach-panel-header,
+#aiCoachPanel .ai-coach-panel-header,
+[id*="CoachPanel"] .ai-coach-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -147,9 +160,10 @@ body.ai-coach-active #aiCoachPanel {
     flex-shrink: 0;
     position: relative;
     z-index: 2;
-    background: rgba(26, 26, 46, 0.6) !important;
+    background: rgba(26, 26, 46, 0.9) !important;
     margin: -20px -20px 20px -20px;
     padding: 20px;
+    color: var(--neon-text-primary) !important;
 }
 
 .ai-coach-panel-header::after {
@@ -208,7 +222,8 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Panel content - make it flexible to accommodate chat */
-#aiCoachPanel .ai-coach-panel-content {
+#aiCoachPanel .ai-coach-panel-content,
+[id*="CoachPanel"] .ai-coach-panel-content {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -216,6 +231,8 @@ body.ai-coach-active #aiCoachPanel {
     min-height: 0;
     position: relative;
     z-index: 2;
+    background: transparent !important;
+    color: var(--neon-text-primary) !important;
 }
 
 /* Launcher button container - For Centered Floating Button Style */
@@ -239,7 +256,9 @@ body.ai-coach-active #aiCoachPanel {
 
 /* Styling for the main Activate button - NEON CYBERPUNK STYLE */
 #aiCoachLauncherButtonContainer button#activateAICoachBtn,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"],
+button#activateAICoachBtn {
     padding: 18px 40px !important;
     font-size: 1.15em !important;
     font-weight: 700 !important;
@@ -273,7 +292,9 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn::before {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn::before,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]::before,
+button#activateAICoachBtn::before {
     content: '';
     position: absolute;
     top: -3px;
@@ -294,7 +315,9 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn::after,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn::after {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn::after,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]::after,
+button#activateAICoachBtn::after {
     content: '';
     position: absolute;
     top: 0;
@@ -334,7 +357,9 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:hover,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:hover,
+button#activateAICoachBtn:hover {
     transform: translateY(-5px) scale(1.05) !important;
     box-shadow: 0 0 60px rgba(139, 92, 246, 0.8), 
                 0 0 120px rgba(0, 255, 240, 0.6),
@@ -345,7 +370,9 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn:active,
-#studentCoachLauncherButtonContainer button#activateAICoachBtn:active {
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:active,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:active,
+button#activateAICoachBtn:active {
     transform: translateY(-2px) scale(1.03) !important;
 }
 
@@ -564,11 +591,13 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Loading spinner - FUTURISTIC */
-.loader {
+.loader,
+.ai-coach-panel .loader {
     width: 40px;
     height: 40px;
     margin: 20px auto;
     position: relative;
+    background: none !important;
 }
 
 .loader::before,
@@ -2270,13 +2299,15 @@ input:focus-visible,
 }
 
 /* AI Snapshot Toggle Styles - Cyberpunk Theme */
-#studentCoachSnapshotSection {
+#studentCoachSnapshotSection,
+.ai-coach-section:has(.ai-snapshot-header) {
     position: relative;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(0, 255, 240, 0.2)) !important;
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.8), rgba(22, 33, 62, 0.8)) !important;
     border: 1px solid var(--neon-border) !important;
     border-radius: 15px !important;
     padding: 20px !important;
-    box-shadow: 0 0 30px rgba(0, 255, 240, 0.2), inset 0 0 20px rgba(139, 92, 246, 0.1) !important;
+    box-shadow: 0 0 20px rgba(0, 255, 240, 0.1), inset 0 0 30px rgba(0, 255, 240, 0.05) !important;
+    color: var(--neon-text-primary) !important;
 }
 
 .ai-snapshot-header {
@@ -2541,3 +2572,56 @@ body.ai-coach-active #aiCoachChatContainer {
     display: none !important;
 }
 
+/* COMPREHENSIVE DARK THEME OVERRIDE - CATCH ALL */
+/* Ensure all elements inside the panel have dark theme applied */
+#aiCoachPanel,
+[id*="CoachPanel"],
+.ai-coach-panel,
+#aiCoachPanel *,
+[id*="CoachPanel"] *,
+.ai-coach-panel * {
+    background-color: transparent !important;
+}
+
+/* Re-apply dark gradients after clearing backgrounds */
+#aiCoachPanel,
+[id*="CoachPanel"],
+.ai-coach-panel {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%) !important;
+}
+
+/* Ensure sections maintain dark theme */
+#aiCoachPanel .ai-coach-section,
+[id*="CoachPanel"] .ai-coach-section,
+.ai-coach-section {
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.8), rgba(22, 33, 62, 0.8)) !important;
+}
+
+/* Force text colors */
+#aiCoachPanel,
+#aiCoachPanel *:not(button),
+[id*="CoachPanel"],
+[id*="CoachPanel"] *:not(button) {
+    color: var(--neon-text-primary) !important;
+}
+
+#aiCoachPanel p,
+#aiCoachPanel span,
+#aiCoachPanel li,
+[id*="CoachPanel"] p,
+[id*="CoachPanel"] span,
+[id*="CoachPanel"] li {
+    color: var(--neon-text-secondary) !important;
+}
+
+/* Fix any divs that might have white backgrounds */
+#aiCoachPanel div,
+[id*="CoachPanel"] div {
+    background-color: transparent !important;
+}
+
+/* Ensure loader has no background */
+#aiCoachPanel .loader,
+[id*="CoachPanel"] .loader {
+    background: none !important;
+}
