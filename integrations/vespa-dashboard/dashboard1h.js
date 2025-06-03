@@ -1,4 +1,4 @@
-// dashboard1g.js
+// dashboard1h.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -351,12 +351,12 @@ function initializeDashboardApp() {
         ];
 
         const defaultThemeColors = {
-            vision: '#ff8f00',
-            effort: '#86b4f0',
-            systems: '#72cb44',
-            practice: '#7f31a4',
-            attitude: '#f032e6',
-            overall: '#ffd700' // Gold/Yellow for overall
+            vision: '#ff6b35',
+            effort: '#4ecdc4',
+            systems: '#95e1d3',
+            practice: '#c56cf0',
+            attitude: '#ff4757',
+            overall: '#ffd93d'
         };
 
         const currentThemeColors = config.themeColors || defaultThemeColors;
@@ -367,7 +367,7 @@ function initializeDashboardApp() {
 
             const card = document.createElement('div');
             card.className = 'vespa-score-card';
-            card.style.backgroundColor = currentThemeColors[element.key] || defaultThemeColors[element.key];
+            // Remove inline backgroundColor style to let CSS handle the colors via nth-child
 
             let percentageDiffText = '';
             let arrow = '';
@@ -414,11 +414,11 @@ function initializeDashboardApp() {
 
         // VESPA elements and their corresponding field prefixes in Object_10 for historical data
         const vespaElements = [
-            { name: 'Vision', key: 'vision', color: themeColorsConfig?.vision || '#ff8f00', fieldCycle1: 'field_155', fieldCycle2: 'field_161', fieldCycle3: 'field_167' },
-            { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#86b4f0', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168' },
-            { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#72cb44', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169' },
-            { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#7f31a4', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170' },
-            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' }
+            { name: 'Vision', key: 'vision', color: themeColorsConfig?.vision || '#ff6b35', fieldCycle1: 'field_155', fieldCycle2: 'field_161', fieldCycle3: 'field_167' },
+            { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#4ecdc4', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168' },
+            { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#95e1d3', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169' },
+            { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#c56cf0', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170' },
+            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#ff4757', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' }
         ];
 
         vespaElements.forEach(element => {
@@ -468,9 +468,9 @@ function initializeDashboardApp() {
                 datasets: [{
                     label: 'School Score Distribution',
                     data: schoolScoreDistribution,
-                    backgroundColor: color || 'rgba(75, 192, 192, 0.6)',
-                    borderColor: color ? color.replace('0.6', '1') : 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
+                    backgroundColor: color || 'rgba(75, 192, 192, 0.8)',
+                    borderColor: color || 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2
                 }]
             },
             options: {
@@ -479,12 +479,22 @@ function initializeDashboardApp() {
                 plugins: {
                     title: {
                         display: true,
-                        text: title
+                        text: title,
+                        color: '#ffffff',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
                     },
                     legend: {
                         display: false // Typically hide legend for a simple histogram
                     },
                     tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: color,
+                        borderWidth: 1,
                         callbacks: {
                             label: function(context) {
                                 return `Score ${context.label}: ${context.raw} students`;
@@ -498,19 +508,33 @@ function initializeDashboardApp() {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            borderColor: 'rgba(255, 255, 255, 0.2)'
+                        },
                         title: {
                             display: true,
-                            text: 'Number of Students'
+                            text: 'Number of Students',
+                            color: '#a8b2d1'
                         },
                         ticks: { // Ensure y-axis ticks are integers
+                            color: '#a8b2d1',
                             stepSize: 1,
                             callback: function(value) { if (Number.isInteger(value)) { return value; } }
                         }
                     },
                     x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            borderColor: 'rgba(255, 255, 255, 0.2)'
+                        },
                         title: {
                             display: true,
-                            text: 'Score (0-10)'
+                            text: 'Score (0-10)',
+                            color: '#a8b2d1'
+                        },
+                        ticks: {
+                            color: '#a8b2d1'
                         }
                     }
                 }
@@ -526,18 +550,22 @@ function initializeDashboardApp() {
         if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined' && annotationPluginAvailable) {
             chartConfig.options.plugins.annotation.annotations[`nationalAvgLine-${elementKey}`] = {
                 type: 'line',
-                yMin: nationalAverageScore,
-                yMax: nationalAverageScore,
-                borderColor: 'rgb(255, 99, 132)',
-                borderWidth: 2,
-                borderDash: [6, 6], // Dashed line
+                xMin: nationalAverageScore,
+                xMax: nationalAverageScore,
+                borderColor: '#ffd93d',
+                borderWidth: 3,
+                borderDash: [8, 4], // Dashed line
                 label: {
                     enabled: true,
-                    content: `Nat Avg: ${nationalAverageScore.toFixed(2)}`,
-                    position: 'end',
-                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                    font: { weight: 'bold' },
-                    color: 'white'
+                    content: `Nat Avg: ${nationalAverageScore.toFixed(1)}`,
+                    position: 'start',
+                    backgroundColor: 'rgba(255, 217, 61, 0.9)',
+                    font: { 
+                        weight: 'bold',
+                        size: 12
+                    },
+                    color: '#0f0f23',
+                    padding: 4
                 }
             };
         } else if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined'){
@@ -950,4 +978,3 @@ if (document.readyState === 'loading') {
 // If it's not already, you might need:
 // window.initializeDashboardApp = initializeDashboardApp;
 // However, since it's a top-level function in the script, it should be.
-
