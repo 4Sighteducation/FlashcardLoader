@@ -204,6 +204,22 @@ function initializeDashboardApp() {
                             <option value="2">Cycle 2</option>
                             <option value="3">Cycle 3</option>
                         </select>
+                        <div class="response-stats-card">
+                            <div class="response-stats-content">
+                                <div class="stat-item">
+                                    <span class="stat-label">Responses</span>
+                                    <span class="stat-value" id="cycle-responses">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Students</span>
+                                    <span class="stat-value" id="total-students">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Completion Rate</span>
+                                    <span class="stat-value" id="completion-rate">-</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div id="active-filters-display" style="display:none;">
                         <div class="active-filters-header">
@@ -716,6 +732,9 @@ function initializeDashboardApp() {
             }
             log(`National Averages (Cycle ${cycle}):`, nationalAverages); // This log was already there, good.
             
+            // Update response statistics
+            await updateResponseStats(staffAdminId, cycle, additionalFilters);
+            
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
             renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
 
@@ -781,6 +800,87 @@ function initializeDashboardApp() {
             }
         }
         return averages;
+    }
+
+    // Function to calculate and update response statistics
+    async function updateResponseStats(staffAdminId, cycle, additionalFilters = []) {
+        log(`Updating response statistics for Cycle ${cycle}`);
+        
+        try {
+            // Get all records for this staff admin (total registered students)
+            let allStudentRecords = [];
+            if (staffAdminId) {
+                const staffAdminFilter = [{
+                    field: 'field_439',
+                    operator: 'is',
+                    value: staffAdminId
+                }];
+                allStudentRecords = await fetchDataFromKnack(objectKeys.vespaResults, staffAdminFilter);
+            }
+            
+            const totalStudents = allStudentRecords ? allStudentRecords.length : 0;
+            
+            // Get filtered records if there are additional filters
+            let filteredRecords = allStudentRecords;
+            if (additionalFilters && additionalFilters.length > 0) {
+                const filters = [{
+                    field: 'field_439',
+                    operator: 'is',
+                    value: staffAdminId
+                }, ...additionalFilters];
+                filteredRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+            }
+            
+            // Count responses where vision score (V1) is not empty for the selected cycle
+            const fieldMappings = {
+                cycle1: { v: 'field_155' },
+                cycle2: { v: 'field_161' },
+                cycle3: { v: 'field_167' }
+            };
+            
+            const visionField = fieldMappings[`cycle${cycle}`]?.v;
+            if (!visionField) {
+                errorLog(`Invalid cycle number ${cycle} for response counting.`);
+                return;
+            }
+            
+            let responseCount = 0;
+            if (filteredRecords && Array.isArray(filteredRecords)) {
+                filteredRecords.forEach(record => {
+                    const visionScore = record[visionField + '_raw'];
+                    if (visionScore !== null && visionScore !== undefined && visionScore !== '') {
+                        responseCount++;
+                    }
+                });
+            }
+            
+            // Calculate completion rate
+            const completionRate = totalStudents > 0 
+                ? ((responseCount / totalStudents) * 100).toFixed(1) 
+                : '0.0';
+            
+            // Update the UI
+            const cycleResponsesElement = document.getElementById('cycle-responses');
+            const totalStudentsElement = document.getElementById('total-students');
+            const completionRateElement = document.getElementById('completion-rate');
+            
+            if (cycleResponsesElement) cycleResponsesElement.textContent = responseCount.toLocaleString();
+            if (totalStudentsElement) totalStudentsElement.textContent = totalStudents.toLocaleString();
+            if (completionRateElement) completionRateElement.textContent = `${completionRate}%`;
+            
+            log(`Response Stats - Total Students: ${totalStudents}, Responses: ${responseCount}, Completion: ${completionRate}%`);
+            
+        } catch (error) {
+            errorLog("Failed to update response statistics", error);
+            // Reset to dashes on error
+            const cycleResponsesElement = document.getElementById('cycle-responses');
+            const totalStudentsElement = document.getElementById('total-students');
+            const completionRateElement = document.getElementById('completion-rate');
+            
+            if (cycleResponsesElement) cycleResponsesElement.textContent = '-';
+            if (totalStudentsElement) totalStudentsElement.textContent = '-';
+            if (completionRateElement) completionRateElement.textContent = '-';
+        }
     }
 
     function getNationalVespaAveragesFromRecord(record, cycle) {
