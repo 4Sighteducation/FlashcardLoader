@@ -65,25 +65,65 @@ body {
     overflow-x: hidden;
 }
 
+/* Override potential Knack container constraints */
+.kn-content,
+.kn-view,
+.view_4567, /* Replace with your actual view class */
+.kn-container,
+.kn-info,
+.kn-scene,
+.kn-details,
+[class*="view_"] {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* Force Knack to use full width for our dashboard */
+body.knack-body .kn-content {
+    max-width: none !important;
+    padding: 0 !important;
+}
+
+/* If in a Knack modal or specific container */
+.kn-modal-bg .kn-content,
+.kn-details-modal .kn-content {
+    max-width: 95vw !important;
+}
+
 /* --- Main Container --- */
 #dashboard-container {
     width: 100%;
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: var(--spacing-lg);
+    max-width: none; /* Remove max-width constraint */
+    margin: 0;
+    padding: 1rem;
     min-height: 100vh;
     background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+}
+
+/* Force full viewport usage */
+@media (min-width: 1200px) {
+    #dashboard-container {
+        height: 100vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #dashboard-container > section {
+        flex-shrink: 0;
+    }
 }
 
 /* --- Header Styles --- */
 #dashboard-container header {
     text-align: center;
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
     position: relative;
 }
 
 #dashboard-container header h1 {
-    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
     font-weight: 800;
     background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
     -webkit-background-clip: text;
@@ -91,7 +131,7 @@ body {
     background-clip: text;
     text-transform: uppercase;
     letter-spacing: 2px;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 0.5rem;
     position: relative;
     display: inline-block;
 }
@@ -211,22 +251,33 @@ body {
 
 /* --- VESPA Score Cards Grid --- */
 .vespa-scores-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-md);
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 1rem !important;
     margin-bottom: var(--spacing-xl);
     padding: 0;
+    width: 100% !important;
+    min-width: 1200px; /* Force minimum width */
 }
 
-@media (min-width: 768px) {
+/* Force smaller cards on narrow screens */
+@media (max-width: 1400px) {
     .vespa-scores-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(6, minmax(150px, 1fr)) !important;
     }
 }
 
-@media (min-width: 1200px) {
+@media (max-width: 1200px) {
     .vespa-scores-grid {
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(3, 1fr) !important;
+        min-width: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .vespa-scores-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        min-width: auto;
     }
 }
 
@@ -235,8 +286,9 @@ body {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
-    min-height: 160px;
+    padding: 0.75rem;
+    min-height: 120px;
+    height: 120px;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -270,34 +322,35 @@ body {
 }
 
 .vespa-score-card h3 {
-    font-size: 0.85rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: var(--spacing-sm);
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
     color: currentColor;
     z-index: 1;
 }
 
 .vespa-score-card .score-value {
-    font-size: 3rem;
+    font-size: 2.2rem;
     font-weight: 900;
     line-height: 1;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 0.25rem;
     z-index: 1;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .vespa-score-card .national-comparison {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     background: rgba(0, 0, 0, 0.5);
-    padding: 0.25rem 0.75rem;
+    padding: 0.2rem 0.5rem;
     border-radius: var(--radius-sm);
     backdrop-filter: blur(10px);
     z-index: 1;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.2rem;
+    white-space: nowrap;
 }
 
 .vespa-score-card .national-comparison .arrow {
@@ -341,21 +394,31 @@ body {
 
 /* --- Distribution Charts Container --- */
 #distribution-charts-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--spacing-md);
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 1rem !important;
     margin-bottom: var(--spacing-xl);
+    width: 100% !important;
+    min-width: 1200px; /* Force minimum width */
 }
 
-@media (min-width: 1200px) {
+@media (max-width: 1400px) {
     #distribution-charts-container {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(5, minmax(200px, 1fr)) !important;
     }
 }
 
-@media (min-width: 1600px) {
+@media (max-width: 1200px) {
     #distribution-charts-container {
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(3, 1fr) !important;
+        min-width: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    #distribution-charts-container {
+        grid-template-columns: repeat(2, 1fr) !important;
+        min-width: auto;
     }
 }
 
@@ -364,8 +427,9 @@ body {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
-    min-height: 300px;
+    padding: 0.75rem;
+    min-height: 220px;
+    height: 220px;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -407,9 +471,28 @@ body {
     backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
     box-shadow: var(--shadow-md);
+}
+
+/* Ensure overview section handles overflow */
+#overview-section {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+/* Dashboard content wrapper for proper scrolling */
+.dashboard-content-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 1rem;
+}
+
+/* Ensure charts and cards stay in their grid layout */
+.dashboard-content-wrapper > * {
+    flex-shrink: 0;
 }
 
 /* --- QLA Section --- */
@@ -604,15 +687,7 @@ body {
 /* --- Responsive Design --- */
 @media (max-width: 1200px) {
     #dashboard-container {
-        padding: var(--spacing-md);
-    }
-    
-    .vespa-scores-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    
-    #distribution-charts-container {
-        grid-template-columns: repeat(2, 1fr);
+        padding: var(--spacing-sm);
     }
 }
 
@@ -622,23 +697,25 @@ body {
     }
     
     #dashboard-container header h1 {
-        font-size: 2rem;
-    }
-    
-    .vespa-scores-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    #distribution-charts-container {
-        grid-template-columns: 1fr;
+        font-size: 1.8rem;
     }
     
     .vespa-score-card {
-        min-height: 140px;
+        min-height: 100px;
+        height: 100px;
     }
     
     .vespa-score-card .score-value {
-        font-size: 2.5rem;
+        font-size: 1.8rem;
+    }
+    
+    .vespa-score-card h3 {
+        font-size: 0.6rem;
+    }
+    
+    .chart-wrapper {
+        min-height: 180px;
+        height: 180px;
     }
 }
 
