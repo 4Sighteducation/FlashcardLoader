@@ -1,4 +1,4 @@
-// dashboard1c.js
+// dashboard1f.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -121,9 +121,9 @@ function initializeDashboardApp() {
                             <option value="3">Cycle 3</option>
                         </select>
                     </div>
-                    <div id="loading-indicator" style="display:none; text-align:center; padding:20px;">
+                   <div id="loading-indicator" style="display:none;"> {/* Style via CSS */}
                         <p>Loading chart data...</p>
-                        <!-- Optional: Add a CSS spinner image or animation -->
+                        <div class="spinner"></div>
                     </div>
                     <div id="averages-summary-container" class="vespa-scores-grid">
                         <!-- Scorecards will be dynamically inserted here -->
@@ -935,4 +935,3 @@ if (document.readyState === 'loading') {
 // If it's not already, you might need:
 // window.initializeDashboardApp = initializeDashboardApp;
 // However, since it's a top-level function in the script, it should be.
-
