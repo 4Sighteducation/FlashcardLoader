@@ -23,6 +23,12 @@ function initializeDashboardApp() {
         loggedInUserEmail
     } = config;
 
+    // Add Super User state variables
+    let isSuperUser = false;
+    let superUserRecordId = null;
+    let selectedEstablishmentId = null;
+    let selectedEstablishmentName = null;
+
     // --- Helper Functions (General) ---
     function log(message, data) {
         if (debugMode) {
@@ -67,6 +73,81 @@ function initializeDashboardApp() {
         }
     }
 
+    // New function to check if user is a Super User (from object_21)
+    async function checkSuperUserStatus(userEmail) {
+        if (!userEmail) {
+            errorLog("User email not provided to checkSuperUserStatus.");
+            return null;
+        }
+
+        const filters = [{
+            field: 'field_86', // Assuming email field in object_21 is also field_86
+            operator: 'is',
+            value: userEmail
+        }];
+
+        try {
+            log(`Checking Super User status for email: ${userEmail}`);
+            const superUserRecords = await fetchDataFromKnack('object_21', filters);
+            if (superUserRecords && superUserRecords.length > 0) {
+                log("Found Super User record:", superUserRecords[0]);
+                return superUserRecords[0].id;
+            } else {
+                log("No Super User record found for email:", userEmail);
+                return null;
+            }
+        } catch (error) {
+            errorLog(`Error checking Super User status for email ${userEmail}:`, error);
+            return null;
+        }
+    }
+
+    // New function to get all unique establishments
+    async function getAllEstablishments() {
+        try {
+            log("Fetching all establishments from vespaResults");
+            // Fetch a reasonable sample of records to get establishment list
+            const vespaRecords = await fetchDataFromKnack(objectKeys.vespaResults, [], { rows_per_page: 1000 });
+            
+            const establishmentMap = new Map();
+            
+            vespaRecords.forEach(record => {
+                // field_133 is the Establishment field
+                if (record.field_133_raw && record.field_133) {
+                    // Handle both connected and text fields
+                    if (Array.isArray(record.field_133_raw)) {
+                        // Connected field - array of IDs
+                        record.field_133_raw.forEach((id, index) => {
+                            if (id && !establishmentMap.has(id)) {
+                                const displayName = Array.isArray(record.field_133) ? 
+                                    record.field_133[index] : record.field_133;
+                                establishmentMap.set(id, displayName || id);
+                            }
+                        });
+                    } else if (typeof record.field_133_raw === 'string' && record.field_133_raw.trim()) {
+                        // Text field
+                        const id = record.field_133_raw.trim();
+                        const name = record.field_133 || id;
+                        if (!establishmentMap.has(id)) {
+                            establishmentMap.set(id, name);
+                        }
+                    }
+                }
+            });
+            
+            // Convert to array and sort by name
+            const establishments = Array.from(establishmentMap.entries())
+                .map(([id, name]) => ({ id, name }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            
+            log(`Found ${establishments.length} unique establishments`);
+            return establishments;
+        } catch (error) {
+            errorLog("Failed to fetch establishments", error);
+            return [];
+        }
+    }
+
     // New function to get Staff Admin Record ID (from object_5) by User Email
     async function getStaffAdminRecordIdByEmail(userEmail) {
         if (!userEmail) {
@@ -104,12 +185,116 @@ function initializeDashboardApp() {
     }
 
     // --- UI Rendering ---
-    function renderDashboardUI(container) {
+    function renderDashboardUI(container, showSuperUserControls = false) {
         log("Rendering Dashboard UI into:", container);
         
-        // Add styles for the filters
+        // Add styles for the filters and super user controls
         const style = document.createElement('style');
         style.textContent = `
+            /* Super User Controls */
+            .super-user-controls {
+                background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+                border: 2px solid rgba(255, 215, 0, 0.3);
+                border-radius: 12px;
+                padding: 20px;
+                margin: 20px auto;
+                max-width: 1200px;
+                box-shadow: 0 4px 20px rgba(255, 215, 0, 0.2);
+                animation: slideDown 0.3s ease-out;
+            }
+            
+            .super-user-header {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .super-user-badge {
+                background: linear-gradient(135deg, #ffd700, #ffed4e);
+                color: #0f0f23;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-weight: 700;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                box-shadow: 0 2px 10px rgba(255, 215, 0, 0.4);
+            }
+            
+            .super-user-title {
+                color: #ffd700;
+                font-size: 18px;
+                font-weight: 600;
+            }
+            
+            .super-user-form {
+                display: flex;
+                gap: 15px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            
+            .super-user-form label {
+                color: #a8b2d1;
+                font-weight: 600;
+                font-size: 14px;
+            }
+            
+            .super-user-form select,
+            .super-user-form input {
+                padding: 10px 15px;
+                border: 2px solid rgba(255, 215, 0, 0.3);
+                background: rgba(0, 0, 0, 0.5);
+                color: #ffffff;
+                border-radius: 8px;
+                font-size: 14px;
+                min-width: 250px;
+                transition: all 0.3s ease;
+            }
+            
+            .super-user-form select:focus,
+            .super-user-form input:focus {
+                outline: none;
+                border-color: #ffd700;
+                box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+            }
+            
+            .super-user-form button {
+                padding: 10px 24px;
+                background: linear-gradient(135deg, #ffd700, #ffed4e);
+                color: #0f0f23;
+                border: none;
+                border-radius: 8px;
+                font-weight: 700;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .super-user-form button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+            }
+            
+            .current-viewing {
+                margin-top: 15px;
+                padding: 10px 15px;
+                background: rgba(255, 215, 0, 0.1);
+                border-radius: 8px;
+                color: #ffd700;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .current-viewing strong {
+                color: #ffffff;
+            }
+            
             .filters-container {
                 display: flex;
                 flex-wrap: wrap;
@@ -190,12 +375,37 @@ function initializeDashboardApp() {
         `;
         document.head.appendChild(style);
         
+        // Build the HTML with conditional Super User controls
+        let superUserControlsHTML = '';
+        if (showSuperUserControls) {
+            superUserControlsHTML = `
+                <div class="super-user-controls">
+                    <div class="super-user-header">
+                        <span class="super-user-badge">⚡ Super User Mode</span>
+                        <span class="super-user-title">Establishment Emulator</span>
+                    </div>
+                    <div class="super-user-form">
+                        <label for="establishment-select">Select Establishment:</label>
+                        <select id="establishment-select">
+                            <option value="">Loading establishments...</option>
+                        </select>
+                        <input type="text" id="establishment-search" placeholder="Search establishments..." />
+                        <button id="load-establishment-btn">Load Dashboard</button>
+                    </div>
+                    <div id="current-establishment-viewing" class="current-viewing" style="display: none;">
+                        <span>Currently viewing:</span> <strong id="current-establishment-name">-</strong>
+                    </div>
+                </div>
+            `;
+        }
+        
         container.innerHTML = `
             <div id="dashboard-container">
+                ${superUserControlsHTML}
                 <header>
                     <h1>VESPA Performance Dashboard</h1>
                 </header>
-                <section id="overview-section">
+                <section id="overview-section" style="${showSuperUserControls ? 'display: none;' : ''}">
                     <h2>School Overview & Benchmarking</h2>
                     <div class="controls">
                         <label for="cycle-select">Select Cycle:</label>
@@ -292,7 +502,7 @@ function initializeDashboardApp() {
                         </div>
                     </div>
                 </section>
-                <section id="qla-section">
+                <section id="qla-section" style="${showSuperUserControls ? 'display: none;' : ''}">
                     <h2>Question Level Analysis</h2>
                     <div id="qla-controls">
                         <select id="qla-question-dropdown"></select>
@@ -310,15 +520,180 @@ function initializeDashboardApp() {
                         <!-- Other interesting statistical info -->
                     </div>
                 </section>
-                <section id="student-insights-section">
+                <section id="student-insights-section" style="${showSuperUserControls ? 'display: none;' : ''}">
                     <h2>Student Comment Insights</h2>
                     <div id="word-cloud-container"></div>
                     <div id="common-themes-container"></div>
                 </section>
             </div>
         `;
-        // Add event listeners for UI elements (e.g., qla-chat-submit)
-        document.getElementById('qla-chat-submit').addEventListener('click', handleQLAChatSubmit);
+        
+        // Add event listeners for UI elements
+        document.getElementById('qla-chat-submit')?.addEventListener('click', handleQLAChatSubmit);
+        
+        // Add Super User specific event listeners
+        if (showSuperUserControls) {
+            const establishmentSelect = document.getElementById('establishment-select');
+            const establishmentSearch = document.getElementById('establishment-search');
+            const loadEstablishmentBtn = document.getElementById('load-establishment-btn');
+            
+            if (loadEstablishmentBtn) {
+                loadEstablishmentBtn.addEventListener('click', handleEstablishmentLoad);
+            }
+            
+            if (establishmentSearch) {
+                establishmentSearch.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    filterEstablishmentDropdown(searchTerm);
+                });
+            }
+            
+            // Load establishments
+            loadEstablishmentsDropdown();
+        }
+    }
+    
+    // New function to handle establishment selection and loading
+    async function handleEstablishmentLoad() {
+        const establishmentSelect = document.getElementById('establishment-select');
+        const selectedOption = establishmentSelect.selectedOptions[0];
+        
+        if (!establishmentSelect.value) {
+            alert('Please select an establishment first.');
+            return;
+        }
+        
+        selectedEstablishmentId = establishmentSelect.value;
+        selectedEstablishmentName = selectedOption.textContent;
+        
+        log(`Loading dashboard for establishment: ${selectedEstablishmentName} (${selectedEstablishmentId})`);
+        
+        // Update the current viewing display
+        const currentViewingDiv = document.getElementById('current-establishment-viewing');
+        const currentNameSpan = document.getElementById('current-establishment-name');
+        if (currentViewingDiv) currentViewingDiv.style.display = 'flex';
+        if (currentNameSpan) currentNameSpan.textContent = selectedEstablishmentName;
+        
+        // Show all sections
+        document.getElementById('overview-section').style.display = 'block';
+        document.getElementById('qla-section').style.display = 'block';
+        document.getElementById('student-insights-section').style.display = 'block';
+        
+        // Load data with establishment filter
+        await loadDashboardWithEstablishment(selectedEstablishmentId, selectedEstablishmentName);
+    }
+    
+    // New function to load establishments dropdown
+    async function loadEstablishmentsDropdown() {
+        const establishmentSelect = document.getElementById('establishment-select');
+        if (!establishmentSelect) return;
+        
+        establishmentSelect.innerHTML = '<option value="">Loading establishments...</option>';
+        
+        try {
+            const establishments = await getAllEstablishments();
+            
+            establishmentSelect.innerHTML = '<option value="">Select an establishment...</option>';
+            establishments.forEach(est => {
+                const option = document.createElement('option');
+                option.value = est.id;
+                option.textContent = est.name;
+                establishmentSelect.appendChild(option);
+            });
+            
+            log(`Loaded ${establishments.length} establishments in dropdown`);
+        } catch (error) {
+            errorLog("Failed to load establishments", error);
+            establishmentSelect.innerHTML = '<option value="">Error loading establishments</option>';
+        }
+    }
+    
+    // New function to filter establishment dropdown
+    function filterEstablishmentDropdown(searchTerm) {
+        const establishmentSelect = document.getElementById('establishment-select');
+        if (!establishmentSelect) return;
+        
+        const options = establishmentSelect.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value === '') return; // Keep the placeholder
+            
+            const text = option.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    }
+    
+    // New function to load dashboard with establishment filter
+    async function loadDashboardWithEstablishment(establishmentId, establishmentName) {
+        log(`Loading dashboard data for establishment: ${establishmentName}`);
+        
+        // Populate filter dropdowns using establishment filter
+        await populateFilterDropdowns(null, establishmentId);
+        
+        // Load initial data
+        const cycleSelectElement = document.getElementById('cycle-select');
+        const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
+        
+        // Load data with establishment filter instead of staff admin filter
+        await loadOverviewData(null, initialCycle, [], establishmentId);
+        await loadQLAData(null, establishmentId);
+        await loadStudentCommentInsights(null, establishmentId);
+        
+        // Update event listeners to use establishment filter
+        if (cycleSelectElement) {
+            // Remove old listeners
+            const newCycleSelect = cycleSelectElement.cloneNode(true);
+            cycleSelectElement.parentNode.replaceChild(newCycleSelect, cycleSelectElement);
+            
+            newCycleSelect.addEventListener('change', (event) => {
+                const selectedCycle = parseInt(event.target.value, 10);
+                log(`Cycle changed to: ${selectedCycle}`);
+                const activeFilters = getActiveFilters();
+                loadOverviewData(null, selectedCycle, activeFilters, establishmentId);
+            });
+        }
+        
+        // Update filter buttons
+        const applyFiltersBtn = document.getElementById('apply-filters-btn');
+        if (applyFiltersBtn) {
+            const newApplyBtn = applyFiltersBtn.cloneNode(true);
+            applyFiltersBtn.parentNode.replaceChild(newApplyBtn, applyFiltersBtn);
+            
+            newApplyBtn.addEventListener('click', () => {
+                const selectedCycle = document.getElementById('cycle-select') ? 
+                    parseInt(document.getElementById('cycle-select').value, 10) : 1;
+                const activeFilters = getActiveFilters();
+                log("Applying filters:", activeFilters);
+                loadOverviewData(null, selectedCycle, activeFilters, establishmentId);
+            });
+        }
+        
+        const clearFiltersBtn = document.getElementById('clear-filters-btn');
+        if (clearFiltersBtn) {
+            const newClearBtn = clearFiltersBtn.cloneNode(true);
+            clearFiltersBtn.parentNode.replaceChild(newClearBtn, clearFiltersBtn);
+            
+            newClearBtn.addEventListener('click', () => {
+                // Clear all filter inputs
+                document.getElementById('student-search').value = '';
+                document.getElementById('group-filter').value = '';
+                document.getElementById('course-filter').value = '';
+                document.getElementById('year-group-filter').value = '';
+                document.getElementById('faculty-filter').value = '';
+                
+                // Clear the active filters display
+                updateActiveFiltersDisplay([]);
+                
+                // Reload data without filters
+                const selectedCycle = document.getElementById('cycle-select') ? 
+                    parseInt(document.getElementById('cycle-select').value, 10) : 1;
+                log("Clearing all filters");
+                loadOverviewData(null, selectedCycle, [], establishmentId);
+            });
+        }
     }
 
     // --- Filter Management Functions ---
@@ -442,19 +817,32 @@ function initializeDashboardApp() {
         });
     }
 
-    async function populateFilterDropdowns(staffAdminId) {
+    async function populateFilterDropdowns(staffAdminId, establishmentId = null) {
         log("Populating filter dropdowns");
         
         try {
-            // Fetch all records for this staff admin to extract unique values
+            // Fetch all records based on mode
             let allRecords = [];
-            if (staffAdminId) {
-                const staffAdminFilter = [{
+            const filters = [];
+            
+            if (establishmentId) {
+                // Super User mode - filter by establishment
+                filters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
+            } else if (staffAdminId) {
+                // Normal mode - filter by staff admin
+                filters.push({
                     field: 'field_439',
                     operator: 'is',
                     value: staffAdminId
-                }];
-                allRecords = await fetchDataFromKnack(objectKeys.vespaResults, staffAdminFilter);
+                });
+            }
+            
+            if (filters.length > 0) {
+                allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
             }
             
             if (!allRecords || allRecords.length === 0) {
@@ -650,8 +1038,8 @@ function initializeDashboardApp() {
     }
 
     // --- Section 1: Overview and Benchmarking ---
-    async function loadOverviewData(staffAdminId, cycle = 1, additionalFilters = []) {
-        log(`Loading overview data with Staff Admin ID: ${staffAdminId} for Cycle: ${cycle}`);
+    async function loadOverviewData(staffAdminId, cycle = 1, additionalFilters = [], establishmentId = null) {
+        log(`Loading overview data with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId} for Cycle: ${cycle}`);
         const loadingIndicator = document.getElementById('loading-indicator');
         const averagesContainer = document.getElementById('averages-summary-container');
         const distributionContainer = document.getElementById('distribution-charts-container');
@@ -662,22 +1050,36 @@ function initializeDashboardApp() {
 
         try {
             let schoolVespaResults = [];
-            if (staffAdminId) {
-                const filters = [{
+            
+            // Build filters based on whether we're in Super User mode or normal mode
+            const filters = [];
+            
+            if (establishmentId) {
+                // Super User mode - filter by establishment
+                filters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
+            } else if (staffAdminId) {
+                // Normal mode - filter by staff admin
+                filters.push({
                     field: 'field_439',
                     operator: 'is',
                     value: staffAdminId
-                }];
-                
-                // Add any additional filters
-                if (additionalFilters && additionalFilters.length > 0) {
-                    filters.push(...additionalFilters);
-                }
-                
+                });
+            }
+            
+            // Add any additional filters
+            if (additionalFilters && additionalFilters.length > 0) {
+                filters.push(...additionalFilters);
+            }
+            
+            if (filters.length > 0) {
                 schoolVespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
                 log("Fetched School VESPA Results (filtered):", schoolVespaResults ? schoolVespaResults.length : 0);
             } else {
-                log("No Staff Admin ID provided to loadOverviewData. Cannot filter school-specific data.");
+                log("No Staff Admin ID or Establishment ID provided to loadOverviewData. Cannot filter school-specific data.");
             }
 
             // Fetch National Benchmark Data from Object_120
@@ -733,7 +1135,7 @@ function initializeDashboardApp() {
             log(`National Averages (Cycle ${cycle}):`, nationalAverages); // This log was already there, good.
             
             // Update response statistics
-            await updateResponseStats(staffAdminId, cycle, additionalFilters);
+            await updateResponseStats(staffAdminId, cycle, additionalFilters, establishmentId);
             
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
             renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
@@ -803,19 +1205,32 @@ function initializeDashboardApp() {
     }
 
     // Function to calculate and update response statistics
-    async function updateResponseStats(staffAdminId, cycle, additionalFilters = []) {
+    async function updateResponseStats(staffAdminId, cycle, additionalFilters = [], establishmentId = null) {
         log(`Updating response statistics for Cycle ${cycle}`);
         
         try {
-            // Get all records for this staff admin (total registered students)
+            // Get all records based on whether we're in Super User mode or normal mode
             let allStudentRecords = [];
-            if (staffAdminId) {
-                const staffAdminFilter = [{
+            const baseFilters = [];
+            
+            if (establishmentId) {
+                // Super User mode - filter by establishment
+                baseFilters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
+            } else if (staffAdminId) {
+                // Normal mode - filter by staff admin
+                baseFilters.push({
                     field: 'field_439',
                     operator: 'is',
                     value: staffAdminId
-                }];
-                allStudentRecords = await fetchDataFromKnack(objectKeys.vespaResults, staffAdminFilter);
+                });
+            }
+            
+            if (baseFilters.length > 0) {
+                allStudentRecords = await fetchDataFromKnack(objectKeys.vespaResults, baseFilters);
             }
             
             const totalStudents = allStudentRecords ? allStudentRecords.length : 0;
@@ -823,11 +1238,7 @@ function initializeDashboardApp() {
             // Get filtered records if there are additional filters
             let filteredRecords = allStudentRecords;
             if (additionalFilters && additionalFilters.length > 0) {
-                const filters = [{
-                    field: 'field_439',
-                    operator: 'is',
-                    value: staffAdminId
-                }, ...additionalFilters];
+                const filters = [...baseFilters, ...additionalFilters];
                 filteredRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
             }
             
@@ -1765,8 +2176,8 @@ function initializeDashboardApp() {
     let allQuestionResponses = []; // Cache for QLA data
     let questionMappings = { id_to_text: {}, psychometric_details: {} }; // Cache for mappings
 
-    async function loadQLAData(staffAdminId) {
-        log("Loading QLA data with Staff Admin ID:", staffAdminId);
+    async function loadQLAData(staffAdminId, establishmentId = null) {
+        log(`Loading QLA data with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId}`);
         try {
             // Fetch question mappings first
             try {
@@ -1785,20 +2196,29 @@ function initializeDashboardApp() {
 
 
             // Fetch all records from Object_29 (Questionnaire Qs)
-            // Filter by the logged-in Staff Admin ID
+            // Filter by Staff Admin ID or Establishment (VESPA Customer)
             let qlaFilters = [];
-            if (staffAdminId) {
-                 // field_2069 in object_29 connects to Staff Admin (object_5) - this is an array connection
+            
+            if (establishmentId) {
+                // Super User mode - filter by VESPA Customer (field_1821) which links to establishment
+                qlaFilters.push({
+                    field: 'field_1821', 
+                    operator: 'is',
+                    value: establishmentId
+                });
+                allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, qlaFilters);
+                log("Fetched QLA Responses (filtered by Establishment/VESPA Customer):", allQuestionResponses ? allQuestionResponses.length : 0);
+            } else if (staffAdminId) {
+                // Normal mode - filter by Staff Admin
                 qlaFilters.push({
                     field: 'field_2069', 
                     operator: 'is', // For array connections, 'is' often works like 'contains this ID' in Knack.
-                                   // If specific 'is_any_of' or 'contains' is needed and not working, backend might need adjustment.
                     value: staffAdminId
                 });
-                 allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, qlaFilters);
-                 log("Fetched QLA Responses (filtered by Staff Admin ID):");
+                allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, qlaFilters);
+                log("Fetched QLA Responses (filtered by Staff Admin ID):", allQuestionResponses ? allQuestionResponses.length : 0);
             } else {
-                log("No Staff Admin ID provided to loadQLAData. Cannot filter QLA data.");
+                log("No Staff Admin ID or Establishment ID provided to loadQLAData. Cannot filter QLA data.");
                 // Fetch all if no specific filtering is possible, or show an error.
             }
             // log("QLA data loaded:", allQuestionResponses.length, "responses"); // Already logged above if filtered
@@ -1983,20 +2403,32 @@ function initializeDashboardApp() {
 
 
     // --- Section 3: Student Comment Insights ---
-    async function loadStudentCommentInsights(staffAdminId) {
-        log("Loading student comment insights with Staff Admin ID:", staffAdminId);
+    async function loadStudentCommentInsights(staffAdminId, establishmentId = null) {
+        log(`Loading student comment insights with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId}`);
         try {
             let vespaResults = []; // Initialize as empty array
-            if (staffAdminId) {
-                const staffAdminFilter = [{
+            const filters = [];
+            
+            if (establishmentId) {
+                // Super User mode - filter by establishment
+                filters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
+                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched VESPA Results for comments (filtered by Establishment):", vespaResults ? vespaResults.length : 0);
+            } else if (staffAdminId) {
+                // Normal mode - filter by staff admin
+                filters.push({
                     field: 'field_439', 
                     operator: 'is',
                     value: staffAdminId
-                }];
-                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, staffAdminFilter);
-                log("Fetched VESPA Results for comments (filtered by Staff Admin ID):");
+                });
+                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched VESPA Results for comments (filtered by Staff Admin ID):", vespaResults ? vespaResults.length : 0);
             } else {
-                 log("No Staff Admin ID provided to loadStudentCommentInsights. Cannot filter comments.");
+                 log("No Staff Admin ID or Establishment ID provided to loadStudentCommentInsights. Cannot filter comments.");
             }
             
             if (!Array.isArray(vespaResults)) {
@@ -2063,7 +2495,25 @@ function initializeDashboardApp() {
             return;
         }
 
-        renderDashboardUI(targetElement); // Render main structure first
+        // Check if user is a Super User first
+        if (!loggedInUserEmail) {
+            errorLog("No loggedInUserEmail found in config. Cannot check user status.");
+            renderDashboardUI(targetElement); // Render basic UI
+            document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
+            document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
+            document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
+            return;
+        }
+
+        // Check Super User status
+        const checkSuperUser = await checkSuperUserStatus(loggedInUserEmail);
+        if (checkSuperUser) {
+            superUserRecordId = checkSuperUser;
+            isSuperUser = true;
+            log("User is a Super User!");
+        }
+
+        renderDashboardUI(targetElement, isSuperUser); // Render main structure with Super User controls if applicable
 
         // Attempt to register Chart.js plugins globally if they are loaded
         if (typeof Chart !== 'undefined') {
@@ -2104,6 +2554,12 @@ function initializeDashboardApp() {
             document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
             document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
             return;
+        }
+
+        // If Super User, stop here and wait for establishment selection
+        if (isSuperUser) {
+            log("Super User mode active. Waiting for establishment selection.");
+            return; // Exit here for Super Users
         }
 
         const staffAdminRecordId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
