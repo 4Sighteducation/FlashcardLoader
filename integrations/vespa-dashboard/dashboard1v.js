@@ -2136,6 +2136,7 @@ function initializeDashboardApp() {
         if (typeof Annotation !== 'undefined') annotationPluginAvailable = true;
         else if (typeof Chart !== 'undefined' && Chart.Annotation) annotationPluginAvailable = true;
         else if (typeof window !== 'undefined' && window.ChartAnnotation) annotationPluginAvailable = true;
+        else if (typeof Chart !== 'undefined' && Chart.registry && Chart.registry.getPlugin && Chart.registry.getPlugin('annotation')) annotationPluginAvailable = true;
 
         if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined' && annotationPluginAvailable) {
             chartConfig.options.plugins.annotation.annotations[`nationalAvgLine-${elementKey}`] = {
