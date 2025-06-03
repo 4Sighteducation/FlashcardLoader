@@ -214,6 +214,75 @@ body.knack-body .kn-content {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
+/* --- Response Stats Card --- */
+.response-stats-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.5rem;
+    margin-left: auto;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+.response-stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent-primary);
+}
+
+.response-stats-content {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.response-stats-content .stat-item {
+    text-align: center;
+    min-width: 80px;
+}
+
+.response-stats-content .stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.response-stats-content .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.response-stats-content .stat-value#completion-rate {
+    color: var(--accent-success);
+}
+
+@media (max-width: 768px) {
+    .response-stats-card {
+        margin-left: 0;
+        margin-top: 1rem;
+        width: 100%;
+    }
+    
+    .response-stats-content {
+        gap: 1rem;
+    }
+    
+    .response-stats-content .stat-item {
+        min-width: 60px;
+    }
+    
+    .response-stats-content .stat-value {
+        font-size: 1.2rem;
+    }
+}
+
 /* --- Active Filters Display --- */
 #active-filters-display {
     margin-bottom: var(--spacing-md);
