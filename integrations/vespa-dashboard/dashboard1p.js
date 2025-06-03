@@ -1,4 +1,4 @@
-// dashboard1o.js
+// dashboard1f.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -876,294 +876,419 @@ function initializeDashboardApp() {
                 <div class="national-comparison">
                     National: ${nationalScoreToDisplay} <span class="arrow ${arrowClass}">${arrow}</span> ${percentageDiffText}
                 </div>
+                <button class="advanced-stats-btn" data-element="${element.key}" data-cycle="${cycle}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18M9 17V9m4 8V5m4 12V11"/>
+                    </svg>
+                    Stats
+                </button>
             `;
             container.appendChild(card);
         });
-    }
-
-    let vespaDistributionChartInstances = {}; // To store multiple chart instances
-
-    function renderDistributionCharts(schoolResults, nationalAveragesData, themeColorsConfig, cycle, nationalDistributions) {
-        const container = document.getElementById('distribution-charts-container');
-        if (!container) {
-            errorLog("Distribution charts container not found");
-            return;
-        }
-        log(`Rendering distribution charts for Cycle ${cycle}.`);
-
-        // VESPA elements and their corresponding field prefixes in Object_10 for historical data
-        const vespaElements = [
-            { name: 'Vision', key: 'vision', color: themeColorsConfig?.vision || '#ff8f00', fieldCycle1: 'field_155', fieldCycle2: 'field_161', fieldCycle3: 'field_167' },
-            { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#86b4f0', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168' },
-            { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#72cb44', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169' },
-            { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#7f31a4', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170' },
-            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' },
-            { name: 'Overall', key: 'overall', color: themeColorsConfig?.overall || '#ffd93d', fieldCycle1: 'field_160', fieldCycle2: 'field_166', fieldCycle3: 'field_172' }
-        ];
-
-        vespaElements.forEach(element => {
-            const scoreDistribution = Array(11).fill(0); // For scores 0-10
-            let scoreFieldKey = element[`fieldCycle${cycle}`] + '_raw';
-
-            if (!schoolResults || schoolResults.length === 0) {
-                log(`No school results to process for ${element.name} distribution.`);
-            } else {
-                schoolResults.forEach(record => {
-                    const score = parseFloat(record[scoreFieldKey]);
-                    if (!isNaN(score) && score >= 0 && score <= 10) {
-                        scoreDistribution[Math.round(score)]++; // Round score in case of decimals, though they should be whole numbers
-                    }
-                });
-            }
-            
-            const nationalAverageForElement = nationalAveragesData ? nationalAveragesData[element.key] : null;
-            const canvasId = `${element.key}-distribution-chart`;
-            let chartTitle = `${element.name} Score Distribution - Cycle ${cycle}`;
-            if (nationalAverageForElement !== null && nationalAverageForElement !== undefined) {
-                chartTitle += ` (Nat Avg: ${nationalAverageForElement.toFixed(2)})`;
-            }
-
-            log(`For ${element.name} Distribution - National Avg: ${nationalAverageForElement}`); // Log national average for this element
-
-            createSingleHistogram(canvasId, chartTitle, scoreDistribution, nationalAverageForElement, element.color, cycle, element.key, nationalDistributions);
+        
+        // Add event listeners for advanced stats buttons
+        container.querySelectorAll('.advanced-stats-btn').forEach(btn => {
+            btn.addEventListener('click', handleAdvancedStatsClick);
         });
     }
 
-    function createSingleHistogram(canvasId, title, schoolScoreDistribution, nationalAverageScore, color, cycle, elementKey, nationalDistributions) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) {
-            errorLog(`Canvas element ${canvasId} not found for histogram.`);
-            return;
-        }
-        const ctx = canvas.getContext('2d');
-
-        // Destroy previous chart instance if it exists
-        if (vespaDistributionChartInstances[canvasId]) {
-            vespaDistributionChartInstances[canvasId].destroy();
+    // --- Advanced Statistics Functions ---
+    function calculateStatistics(values) {
+        if (!values || values.length === 0) {
+            return null;
         }
 
-        const labels = Array.from({ length: 11 }, (_, i) => i.toString()); // Scores 0-10
+        // Sort values for percentile calculations
+        const sorted = values.slice().sort((a, b) => a - b);
+        const n = sorted.length;
 
-        // Prepare national distribution data if available
-        let nationalDistributionData = null;
-        let nationalPatternData = null; // Scaled pattern for display
-        if (nationalDistributions && elementKey) {
-            // Map element key to the name used in the JSON (e.g., 'vision' -> 'Vision')
-            const elementNameMap = {
-                'vision': 'Vision',
-                'effort': 'Effort',
-                'systems': 'Systems',
-                'practice': 'Practice',
-                'attitude': 'Attitude',
-                'overall': 'Overall'
-            };
-            
-            const elementName = elementNameMap[elementKey];
-            if (elementName && nationalDistributions[elementName]) {
-                // Convert the distribution object to an array for Chart.js
-                nationalDistributionData = labels.map(label => {
-                    return nationalDistributions[elementName][label] || 0;
-                });
-                
-                // Option 1: Scale national data to match school data range for pattern comparison
-                const schoolMax = Math.max(...schoolScoreDistribution);
-                const nationalMax = Math.max(...nationalDistributionData);
-                
-                // Option 2: Convert to percentages (uncomment to use this approach instead)
-                // const schoolTotal = schoolScoreDistribution.reduce((sum, val) => sum + val, 0);
-                // const nationalTotal = nationalDistributionData.reduce((sum, val) => sum + val, 0);
-                // if (schoolTotal > 0 && nationalTotal > 0) {
-                //     schoolScoreDistribution = schoolScoreDistribution.map(val => (val / schoolTotal) * 100);
-                //     nationalPatternData = nationalDistributionData.map(val => (val / nationalTotal) * 100);
-                //     // Would also need to update y-axis label to "Percentage of Students"
-                // }
-                
-                // Using Option 1: Scale to match
-                if (nationalMax > 0 && schoolMax > 0) {
-                    // Scale national data to match school's maximum, preserving the pattern
-                    const scaleFactor = schoolMax / nationalMax * 0.8; // 0.8 to keep it slightly below school max
-                    nationalPatternData = nationalDistributionData.map(value => value * scaleFactor);
-                    log(`Scaled national pattern for ${elementName} with factor ${scaleFactor}`);
-                } else {
-                    nationalPatternData = nationalDistributionData;
-                }
-            }
-        }
+        // Calculate mean
+        const mean = values.reduce((sum, val) => sum + val, 0) / n;
 
-        const datasets = [{
-            label: 'School Score Distribution',
-            data: schoolScoreDistribution,
-            backgroundColor: color || 'rgba(75, 192, 192, 0.8)',
-            borderColor: color || 'rgba(75, 192, 192, 1)',
-            borderWidth: 2,
-            order: 2 // Draw bars first
-        }];
+        // Calculate standard deviation
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / n;
+        const stdDev = Math.sqrt(variance);
 
-        // Add national distribution pattern as a line if data is available
-        if (nationalPatternData) {
-            datasets.push({
-                label: 'National Pattern',
-                data: nationalPatternData,
-                type: 'line',
-                borderColor: 'rgba(255, 217, 61, 0.5)', // More subtle golden yellow
-                backgroundColor: 'rgba(255, 217, 61, 0.05)',
-                borderWidth: 2,
-                borderDash: [8, 4], // Longer dashes for pattern indication
-                pointRadius: 2, // Smaller points
-                pointBackgroundColor: 'rgba(255, 217, 61, 0.5)',
-                pointBorderColor: 'rgba(255, 217, 61, 0.7)',
-                tension: 0.4, // Smoother curve to emphasize pattern
-                order: 1 // Draw line on top
-            });
-        }
+        // Calculate percentiles
+        const percentile = (p) => {
+            const index = (p / 100) * (n - 1);
+            const lower = Math.floor(index);
+            const upper = Math.ceil(index);
+            const weight = index % 1;
+            return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+        };
 
-        const chartConfig = {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: datasets
+        // Calculate skewness (simplified)
+        const skewness = n > 2 ? 
+            (values.reduce((sum, val) => sum + Math.pow((val - mean) / stdDev, 3), 0) / n) : 0;
+
+        // Calculate confidence intervals (95%)
+        const confidenceInterval = 1.96 * (stdDev / Math.sqrt(n));
+
+        return {
+            mean: parseFloat(mean.toFixed(2)),
+            std_dev: parseFloat(stdDev.toFixed(2)),
+            min: Math.min(...values),
+            max: Math.max(...values),
+            percentile_25: parseFloat(percentile(25).toFixed(2)),
+            percentile_50: parseFloat(percentile(50).toFixed(2)),
+            percentile_75: parseFloat(percentile(75).toFixed(2)),
+            confidence_interval_lower: parseFloat((mean - confidenceInterval).toFixed(2)),
+            confidence_interval_upper: parseFloat((mean + confidenceInterval).toFixed(2)),
+            skewness: parseFloat(skewness.toFixed(3)),
+            count: n
+        };
+    }
+
+    function calculateSchoolStatistics(schoolResults, cycle, elementKey) {
+        const fieldMappings = {
+            cycle1: { 
+                vision: 'field_155', effort: 'field_156', systems: 'field_157', 
+                practice: 'field_158', attitude: 'field_159', overall: 'field_160' 
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                aspectRatio: 1.5,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: title,
-                        color: '#ffffff',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        }
-                    },
-                    legend: {
-                        display: nationalPatternData ? true : false, // Show legend only if we have national data
-                        labels: {
-                            color: '#a8b2d1',
-                            usePointStyle: true,
-                            padding: 10,
-                            font: {
-                                size: 11
-                            },
-                            generateLabels: function(chart) {
-                                const defaultLabels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-                                // Customize the national pattern label
-                                defaultLabels.forEach(label => {
-                                    if (label.text === 'National Pattern') {
-                                        label.text = 'National Pattern (scaled for comparison)';
-                                    }
-                                });
-                                return defaultLabels;
-                            }
-                        }
-                    },
-                    datalabels: {
-                        display: false // Disable data labels on bars and line points
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        titleColor: '#ffffff',
-                        bodyColor: '#ffffff',
-                        borderColor: color,
-                        borderWidth: 1,
-                        callbacks: {
-                            label: function(context) {
-                                const datasetLabel = context.dataset.label;
-                                const value = context.raw;
-                                if (datasetLabel === 'School Score Distribution') {
-                                    return `Your School: ${value} students`;
-                                } else if (datasetLabel === 'National Pattern') {
-                                    // For national pattern, show it as a relative indicator
-                                    const scoreIndex = parseInt(context.label);
-                                    const nationalValue = nationalDistributionData ? nationalDistributionData[scoreIndex] : 0;
-                                    return `National Pattern (${nationalValue.toLocaleString()} students nationally)`;
-                                }
-                                return `${datasetLabel}: ${value}`;
-                            }
-                        }
-                    },
-                    annotation: { // Annotation plugin configuration
-                        annotations: {}
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)',
-                            borderColor: 'rgba(255, 255, 255, 0.2)'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Number of Students',
-                            color: '#a8b2d1'
-                        },
-                        ticks: { // Ensure y-axis ticks are integers
-                            color: '#a8b2d1',
-                            stepSize: 1,
-                            callback: function(value) { if (Number.isInteger(value)) { return value; } }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)',
-                            borderColor: 'rgba(255, 255, 255, 0.2)'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Score (0-10)',
-                            color: '#a8b2d1'
-                        },
-                        ticks: {
-                            color: '#a8b2d1'
-                        }
-                    }
-                }
+            cycle2: { 
+                vision: 'field_161', effort: 'field_162', systems: 'field_163', 
+                practice: 'field_164', attitude: 'field_165', overall: 'field_166' 
+            },
+            cycle3: { 
+                vision: 'field_167', effort: 'field_168', systems: 'field_169', 
+                practice: 'field_170', attitude: 'field_171', overall: 'field_172' 
             }
         };
 
-        // Check for Annotation plugin specifically before trying to use its options
-        let annotationPluginAvailable = false;
-        if (typeof Annotation !== 'undefined') annotationPluginAvailable = true;
-        else if (typeof Chart !== 'undefined' && Chart.Annotation) annotationPluginAvailable = true;
-        else if (typeof window !== 'undefined' && window.ChartAnnotation) annotationPluginAvailable = true;
-
-        if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined' && annotationPluginAvailable) {
-            chartConfig.options.plugins.annotation.annotations[`nationalAvgLine-${elementKey}`] = {
-                type: 'line',
-                xMin: nationalAverageScore,
-                xMax: nationalAverageScore,
-                borderColor: '#ffd93d',
-                borderWidth: 3,
-                borderDash: [8, 4], // Dashed line
-                label: {
-                    enabled: true,
-                    content: `Nat Avg: ${nationalAverageScore.toFixed(1)}`,
-                    position: 'start',
-                    backgroundColor: 'rgba(255, 217, 61, 0.9)',
-                    font: { 
-                        weight: 'bold',
-                        size: 12
-                    },
-                    color: '#0f0f23',
-                    padding: 4
-                }
-            };
-        } else if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined'){
-            log(`Annotation plugin not loaded or national average is null for ${elementKey}. Line will not be drawn.`);
-            // As a fallback, add it to the title if annotation is not available
-            chartConfig.options.plugins.title.text += ` (Nat Avg: ${nationalAverageScore.toFixed(2)})`;
+        const cycleFields = fieldMappings[`cycle${cycle}`];
+        if (!cycleFields || !cycleFields[elementKey]) {
+            return null;
         }
 
-        log(`Creating histogram for ${canvasId} with title: '${chartConfig.options.plugins.title.text}'`); // Log final title
+        const fieldKey = cycleFields[elementKey] + '_raw';
+        const values = [];
+
+        schoolResults.forEach(record => {
+            const value = parseFloat(record[fieldKey]);
+            if (!isNaN(value)) {
+                values.push(value);
+            }
+        });
+
+        return calculateStatistics(values);
+    }
+
+    async function handleAdvancedStatsClick(event) {
+        const button = event.currentTarget;
+        const elementKey = button.dataset.element;
+        const cycle = parseInt(button.dataset.cycle);
+
+        log(`Opening advanced stats for ${elementKey} - Cycle ${cycle}`);
+
+        // Show loading state
+        showStatsPanel(elementKey, cycle, true);
 
         try {
-            vespaDistributionChartInstances[canvasId] = new Chart(ctx, chartConfig);
-        } catch (e) {
-            errorLog(`Error creating histogram for ${canvasId}:`, e);
+            // Get current school results (filtered)
+            const activeFilters = getActiveFilters();
+            let schoolResults = [];
+            
+            const staffAdminId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
+            if (staffAdminId) {
+                const filters = [{
+                    field: 'field_439',
+                    operator: 'is',
+                    value: staffAdminId
+                }, ...activeFilters];
+                
+                schoolResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+            }
+
+            // Calculate school statistics
+            const schoolStats = calculateSchoolStatistics(schoolResults, cycle, elementKey);
+
+            // Fetch national statistics
+            let nationalStats = null;
+            if (objectKeys.nationalBenchmarkData) {
+                const nationalData = await fetchDataFromKnack(
+                    objectKeys.nationalBenchmarkData, 
+                    [], 
+                    { rows_per_page: 1, sort_field: 'field_3307', sort_order: 'desc' }
+                );
+
+                if (nationalData && nationalData.length > 0) {
+                    const statsFieldMap = {
+                        1: 'field_3429',
+                        2: 'field_3430',
+                        3: 'field_3421'  // Note: You mentioned field_3421 for cycle 3
+                    };
+                    
+                    const statsField = statsFieldMap[cycle];
+                    if (statsField && nationalData[0][statsField + '_raw']) {
+                        try {
+                            const allStats = JSON.parse(nationalData[0][statsField + '_raw']);
+                            // Get stats for the specific element (capitalize first letter)
+                            const elementName = elementKey.charAt(0).toUpperCase() + elementKey.slice(1);
+                            nationalStats = allStats[elementName];
+                        } catch (e) {
+                            errorLog(`Failed to parse national statistics for cycle ${cycle}:`, e);
+                        }
+                    }
+                }
+            }
+
+            // Update panel with data
+            updateStatsPanel(elementKey, cycle, schoolStats, nationalStats);
+
+        } catch (error) {
+            errorLog("Error loading advanced statistics:", error);
+            updateStatsPanel(elementKey, cycle, null, null, error.message);
         }
     }
+
+    function showStatsPanel(elementKey, cycle, isLoading = false) {
+        // Create panel HTML if it doesn't exist
+        let overlay = document.querySelector('.stats-panel-overlay');
+        let panel = document.querySelector('.stats-panel');
+        
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'stats-panel-overlay';
+            overlay.addEventListener('click', hideStatsPanel);
+            document.body.appendChild(overlay);
+        }
+        
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.className = 'stats-panel';
+            document.body.appendChild(panel);
+        }
+
+        // Set initial content
+        const elementColors = {
+            vision: 'var(--vision-color)',
+            effort: 'var(--effort-color)',
+            systems: 'var(--systems-color)',
+            practice: 'var(--practice-color)',
+            attitude: 'var(--attitude-color)',
+            overall: 'var(--overall-color)'
+        };
+
+        const elementName = elementKey.charAt(0).toUpperCase() + elementKey.slice(1);
+        const color = elementColors[elementKey] || 'var(--accent-primary)';
+
+        panel.innerHTML = `
+            <div class="stats-panel-header">
+                <div class="stats-panel-title">
+                    <h3>
+                        Advanced Statistics
+                        <span class="stats-element-badge" style="background-color: ${color}">
+                            ${elementName} - Cycle ${cycle}
+                        </span>
+                    </h3>
+                    <button class="stats-close-btn" onclick="hideStatsPanel()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="stats-panel-content">
+                ${isLoading ? '<div class="stats-loading"><div class="spinner"></div><p>Calculating statistics...</p></div>' : ''}
+            </div>
+        `;
+
+        // Show panel with animation
+        requestAnimationFrame(() => {
+            overlay.classList.add('active');
+            panel.classList.add('active');
+        });
+    }
+
+    function updateStatsPanel(elementKey, cycle, schoolStats, nationalStats, error = null) {
+        const panel = document.querySelector('.stats-panel');
+        const content = panel.querySelector('.stats-panel-content');
+        
+        if (error) {
+            content.innerHTML = `
+                <div class="stats-section">
+                    <p style="color: var(--accent-danger); text-align: center;">
+                        Error loading statistics: ${error}
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        if (!schoolStats && !nationalStats) {
+            content.innerHTML = `
+                <div class="stats-section">
+                    <p style="color: var(--text-muted); text-align: center;">
+                        No statistical data available.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        // Generate comparison HTML
+        content.innerHTML = `
+            <div class="stats-comparison">
+                ${schoolStats ? generateStatsSection('Your School', schoolStats, nationalStats, 'school') : ''}
+                ${nationalStats ? generateStatsSection('National Benchmark', nationalStats, null, 'national') : ''}
+                ${schoolStats && nationalStats ? generateInsights(schoolStats, nationalStats, elementKey) : ''}
+            </div>
+        `;
+
+        // Add box plot visualization if both datasets exist
+        if (schoolStats && nationalStats) {
+            // You could add a box plot here using Chart.js or D3.js
+        }
+    }
+
+    function generateStatsSection(title, stats, compareStats, type) {
+        const formatDiff = (value, compareValue) => {
+            if (!compareStats || compareValue === undefined) return '';
+            const diff = value - compareValue;
+            const percentage = compareValue !== 0 ? (diff / compareValue * 100).toFixed(1) : 0;
+            const isPositive = diff > 0;
+            return `<span class="stat-diff ${isPositive ? 'positive' : 'negative'}">
+                ${isPositive ? '+' : ''}${percentage}%
+            </span>`;
+        };
+
+        return `
+            <div class="stats-section">
+                <h4>${title}</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Mean</div>
+                        <div class="stat-value">
+                            ${stats.mean}
+                            ${formatDiff(stats.mean, compareStats?.mean)}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Standard Deviation</div>
+                        <div class="stat-value">
+                            ${stats.std_dev}
+                            ${formatDiff(stats.std_dev, compareStats?.std_dev)}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">25th Percentile</div>
+                        <div class="stat-value">${stats.percentile_25}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Median (50th)</div>
+                        <div class="stat-value">${stats.percentile_50}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">75th Percentile</div>
+                        <div class="stat-value">${stats.percentile_75}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Sample Size</div>
+                        <div class="stat-value">${stats.count.toLocaleString()}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Range</div>
+                        <div class="stat-value">${stats.min} - ${stats.max}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Confidence Interval</div>
+                        <div class="stat-value" style="font-size: 1rem;">
+                            ${stats.confidence_interval_lower} - ${stats.confidence_interval_upper}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function generateInsights(schoolStats, nationalStats, elementKey) {
+        const insights = [];
+        
+        // Compare mean
+        if (schoolStats.mean > nationalStats.mean) {
+            const diff = ((schoolStats.mean - nationalStats.mean) / nationalStats.mean * 100).toFixed(1);
+            insights.push({
+                type: 'success',
+                text: `Your school's average is ${diff}% above the national average`
+            });
+        } else if (schoolStats.mean < nationalStats.mean) {
+            const diff = ((nationalStats.mean - schoolStats.mean) / nationalStats.mean * 100).toFixed(1);
+            insights.push({
+                type: 'warning',
+                text: `Your school's average is ${diff}% below the national average`
+            });
+        }
+
+        // Variability comparison
+        if (schoolStats.std_dev > nationalStats.std_dev * 1.2) {
+            insights.push({
+                type: 'info',
+                text: 'Higher variability than national - consider targeted interventions'
+            });
+        } else if (schoolStats.std_dev < nationalStats.std_dev * 0.8) {
+            insights.push({
+                type: 'success',
+                text: 'More consistent scores than national average'
+            });
+        }
+
+        // Percentile position
+        if (schoolStats.mean > nationalStats.percentile_75) {
+            insights.push({
+                type: 'success',
+                text: 'Performance in top quartile nationally'
+            });
+        } else if (schoolStats.mean < nationalStats.percentile_25) {
+            insights.push({
+                type: 'warning',
+                text: 'Performance in bottom quartile nationally'
+            });
+        }
+
+        // Sample size
+        if (schoolStats.count < 30) {
+            insights.push({
+                type: 'info',
+                text: 'Small sample size - interpret with caution'
+            });
+        }
+
+        return `
+            <div class="stats-insights">
+                <h5>Key Insights</h5>
+                ${insights.map(insight => `
+                    <div class="insight-item">
+                        <div class="insight-icon ${insight.type}">
+                            ${insight.type === 'success' ? '✓' : insight.type === 'warning' ? '!' : 'i'}
+                        </div>
+                        <div class="insight-text">${insight.text}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    // Make hideStatsPanel globally accessible
+    window.hideStatsPanel = function() {
+        const overlay = document.querySelector('.stats-panel-overlay');
+        const panel = document.querySelector('.stats-panel');
+        
+        if (overlay) overlay.classList.remove('active');
+        if (panel) panel.classList.remove('active');
+        
+        // Remove elements after animation
+        setTimeout(() => {
+            if (overlay && !overlay.classList.contains('active')) {
+                overlay.remove();
+            }
+            if (panel && !panel.classList.contains('active')) {
+                panel.remove();
+            }
+        }, 400);
+    };
+
+    let vespaDistributionChartInstances = {}; // To store multiple chart instances
 
     // --- Section 2: Question Level Analysis (QLA) ---
     let allQuestionResponses = []; // Cache for QLA data
