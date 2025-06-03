@@ -105,46 +105,74 @@ function initializeDashboardApp() {
     // New function to get all unique establishments
     async function getAllEstablishments() {
         try {
-            log("Fetching all establishments from vespaResults");
-            // Fetch a reasonable sample of records to get establishment list
-            const vespaRecords = await fetchDataFromKnack(objectKeys.vespaResults, [], { rows_per_page: 1000 });
+            log("Fetching establishments from dedicated endpoint");
             
-            const establishmentMap = new Map();
+            // Use the new establishments endpoint
+            const url = `${config.herokuAppUrl}/api/establishments`;
+            log("Fetching from establishments endpoint:", url);
             
-            vespaRecords.forEach(record => {
-                // field_133 is the Establishment field
-                if (record.field_133_raw && record.field_133) {
-                    // Handle both connected and text fields
-                    if (Array.isArray(record.field_133_raw)) {
-                        // Connected field - array of IDs
-                        record.field_133_raw.forEach((id, index) => {
-                            if (id && !establishmentMap.has(id)) {
-                                const displayName = Array.isArray(record.field_133) ? 
-                                    record.field_133[index] : record.field_133;
-                                establishmentMap.set(id, displayName || id);
-                            }
-                        });
-                    } else if (typeof record.field_133_raw === 'string' && record.field_133_raw.trim()) {
-                        // Text field
-                        const id = record.field_133_raw.trim();
-                        const name = record.field_133 || id;
-                        if (!establishmentMap.has(id)) {
-                            establishmentMap.set(id, name);
-                        }
-                    }
-                }
-            });
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch establishments: ${response.status}`);
+            }
             
-            // Convert to array and sort by name
-            const establishments = Array.from(establishmentMap.entries())
-                .map(([id, name]) => ({ id, name }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+            const data = await response.json();
+            log(`Fetched ${data.total} establishments from ${data.source_object}`);
             
-            log(`Found ${establishments.length} unique establishments`);
-            return establishments;
+            if (data.partial) {
+                log("Note: Partial establishment list due to size limits");
+            }
+            
+            return data.establishments || [];
+            
         } catch (error) {
             errorLog("Failed to fetch establishments", error);
-            return [];
+            
+            // Fallback to the old method with better error handling
+            try {
+                log("Falling back to extracting establishments from VESPA results");
+                const establishmentMap = new Map();
+                
+                // Just fetch first page to avoid timeout
+                const vespaRecords = await fetchDataFromKnack(
+                    objectKeys.vespaResults, 
+                    [], 
+                    { rows_per_page: 100 }
+                );
+                
+                if (vespaRecords && vespaRecords.length > 0) {
+                    vespaRecords.forEach(record => {
+                        if (record.field_133_raw && record.field_133) {
+                            if (Array.isArray(record.field_133_raw)) {
+                                record.field_133_raw.forEach((id, index) => {
+                                    if (id && !establishmentMap.has(id)) {
+                                        const displayName = Array.isArray(record.field_133) ? 
+                                            record.field_133[index] : record.field_133;
+                                        establishmentMap.set(id, displayName || id);
+                                    }
+                                });
+                            } else if (typeof record.field_133_raw === 'string' && record.field_133_raw.trim()) {
+                                const id = record.field_133_raw.trim();
+                                const name = record.field_133 || id;
+                                if (!establishmentMap.has(id)) {
+                                    establishmentMap.set(id, name);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                const establishments = Array.from(establishmentMap.entries())
+                    .map(([id, name]) => ({ id, name }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                
+                log(`Found ${establishments.length} establishments (limited sample)`);
+                return establishments;
+                
+            } catch (fallbackError) {
+                errorLog("Fallback method also failed", fallbackError);
+                return [];
+            }
         }
     }
 
@@ -588,23 +616,37 @@ function initializeDashboardApp() {
         const establishmentSelect = document.getElementById('establishment-select');
         if (!establishmentSelect) return;
         
-        establishmentSelect.innerHTML = '<option value="">Loading establishments...</option>';
+        establishmentSelect.innerHTML = '<option value="">Loading VESPA Customers...</option>';
+        establishmentSelect.disabled = true; // Disable during loading
         
         try {
             const establishments = await getAllEstablishments();
             
-            establishmentSelect.innerHTML = '<option value="">Select an establishment...</option>';
+            if (establishments.length === 0) {
+                establishmentSelect.innerHTML = '<option value="">No active VESPA Customers found</option>';
+                log("No establishments found");
+                return;
+            }
+            
+            establishmentSelect.innerHTML = '<option value="">Select a VESPA Customer...</option>';
             establishments.forEach(est => {
                 const option = document.createElement('option');
                 option.value = est.id;
                 option.textContent = est.name;
+                // Add data attribute for status if available
+                if (est.status) {
+                    option.setAttribute('data-status', est.status);
+                }
                 establishmentSelect.appendChild(option);
             });
             
-            log(`Loaded ${establishments.length} establishments in dropdown`);
+            establishmentSelect.disabled = false; // Re-enable after loading
+            log(`Loaded ${establishments.length} VESPA Customers in dropdown`);
+            
         } catch (error) {
             errorLog("Failed to load establishments", error);
-            establishmentSelect.innerHTML = '<option value="">Error loading establishments</option>';
+            establishmentSelect.innerHTML = '<option value="">Error loading VESPA Customers - Please refresh</option>';
+            establishmentSelect.disabled = false;
         }
     }
     
@@ -628,7 +670,10 @@ function initializeDashboardApp() {
     
     // New function to load dashboard with establishment filter
     async function loadDashboardWithEstablishment(establishmentId, establishmentName) {
-        log(`Loading dashboard data for establishment: ${establishmentName}`);
+        log(`Loading dashboard data for VESPA Customer: ${establishmentName} (${establishmentId})`);
+        
+        // Note: establishmentId is now a VESPA Customer record ID from object_2
+        // When filtering VESPA Results (object_10), field_133 contains the connected VESPA Customer
         
         // Populate filter dropdowns using establishment filter
         await populateFilterDropdowns(null, establishmentId);
@@ -637,7 +682,7 @@ function initializeDashboardApp() {
         const cycleSelectElement = document.getElementById('cycle-select');
         const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
         
-        // Load data with establishment filter instead of staff admin filter
+        // Load data with establishment filter (VESPA Customer ID)
         await loadOverviewData(null, initialCycle, [], establishmentId);
         await loadQLAData(null, establishmentId);
         await loadStudentCommentInsights(null, establishmentId);
@@ -2202,13 +2247,14 @@ function initializeDashboardApp() {
             
             if (establishmentId) {
                 // Super User mode - filter by VESPA Customer (field_1821) which links to establishment
+                // Note: establishmentId is now a VESPA Customer ID from object_2
                 qlaFilters.push({
                     field: 'field_1821', 
                     operator: 'is',
                     value: establishmentId
                 });
                 allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, qlaFilters);
-                log("Fetched QLA Responses (filtered by Establishment/VESPA Customer):", allQuestionResponses ? allQuestionResponses.length : 0);
+                log("Fetched QLA Responses (filtered by VESPA Customer):", allQuestionResponses ? allQuestionResponses.length : 0);
             } else if (staffAdminId) {
                 // Normal mode - filter by Staff Admin
                 qlaFilters.push({
@@ -2648,3 +2694,4 @@ if (document.readyState === 'loading') {
 // If it's not already, you might need:
 // window.initializeDashboardApp = initializeDashboardApp;
 // However, since it's a top-level function in the script, it should be.
+
