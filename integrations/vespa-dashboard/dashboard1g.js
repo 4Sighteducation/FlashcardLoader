@@ -1,4 +1,4 @@
-// dashboard1f.js
+// dashboard1g.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -421,30 +421,6 @@ function initializeDashboardApp() {
             { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' }
         ];
 
-        // Register annotation plugin globally if available (Chart.js v3+ style)
-        // This should ideally be done once. If plugins are registered per chart, this can be moved into createSingleHistogram.
-        // However, Chart.register is usually global.
-        if (typeof Chart !== 'undefined' && Chart.plugins && typeof ChartDataLabels !== 'undefined') {
-            // For Chart.js v3, plugins are registered directly on Chart object
-            // Chart.register(ChartDataLabels); // Already registered for the average chart
-            if (typeof Annotation !== 'undefined') {
-                 if (typeof Annotation === 'object' && Annotation.id) {
-                    Chart.register(Annotation);
-                    log("Annotation plugin registered (v3+ style).");
-                 } else if (typeof Chart.plugins === 'object' && typeof Chart.plugins.register === 'function') {
-                     try { 
-                         Chart.plugins.register(Annotation); 
-                         log("Annotation plugin registered (v2 style).");
-                     } catch(e){ errorLog("Failed to register Annotation plugin v2 style", e); }
-                 }
-            } else {
-                log("Annotation plugin global object not found. National average line may not be drawn on histograms.");
-            }
-        } else {
-            log("Chart object or ChartDataLabels not defined, cannot register Annotation plugin.");
-        }
-
-
         vespaElements.forEach(element => {
             const scoreDistribution = Array(11).fill(0); // For scores 0-10
             let scoreFieldKey = element[`fieldCycle${cycle}`] + '_raw';
@@ -541,7 +517,13 @@ function initializeDashboardApp() {
             }
         };
 
-        if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined' && typeof Annotation !== 'undefined') {
+        // Check for Annotation plugin specifically before trying to use its options
+        let annotationPluginAvailable = false;
+        if (typeof Annotation !== 'undefined') annotationPluginAvailable = true;
+        else if (typeof Chart !== 'undefined' && Chart.Annotation) annotationPluginAvailable = true;
+        else if (typeof window !== 'undefined' && window.ChartAnnotation) annotationPluginAvailable = true;
+
+        if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined' && annotationPluginAvailable) {
             chartConfig.options.plugins.annotation.annotations[`nationalAvgLine-${elementKey}`] = {
                 type: 'line',
                 yMin: nationalAverageScore,
@@ -875,7 +857,40 @@ function initializeDashboardApp() {
             return;
         }
 
-        renderDashboardUI(targetElement);
+        renderDashboardUI(targetElement); // Render main structure first
+
+        // Attempt to register Chart.js plugins globally if they are loaded
+        if (typeof Chart !== 'undefined') {
+            if (typeof ChartDataLabels !== 'undefined') {
+                Chart.register(ChartDataLabels);
+                log("ChartDataLabels plugin registered globally.");
+            } else {
+                log("ChartDataLabels plugin not found globally during init.");
+            }
+            
+            // Attempt to register Annotation plugin (checking common global names)
+            let annotationPlugin = null;
+            if (typeof Annotation !== 'undefined') { // Direct global name
+                annotationPlugin = Annotation;
+            } else if (typeof Chart !== 'undefined' && Chart.Annotation) { // Often attached to Chart object
+                annotationPlugin = Chart.Annotation;
+            } else if (typeof window !== 'undefined' && window.ChartAnnotation) { // Another common global pattern
+                annotationPlugin = window.ChartAnnotation;
+            }
+
+            if (annotationPlugin) {
+                try {
+                    Chart.register(annotationPlugin);
+                    log("Annotation plugin registered globally.");
+                } catch (e) {
+                    errorLog("Error registering Annotation plugin globally: ", e)
+                }
+            } else {
+                log("Annotation plugin not found globally (checked Annotation, Chart.Annotation, window.ChartAnnotation) during init. National average lines on histograms may not appear.");
+            }
+        } else {
+            log("Chart.js core (Chart) not found globally during init. All charts will fail.");
+        }
 
         if (!loggedInUserEmail) {
             errorLog("No loggedInUserEmail found in config. Cannot fetch Staff Admin ID or dependent data.");
@@ -935,3 +950,4 @@ if (document.readyState === 'loading') {
 // If it's not already, you might need:
 // window.initializeDashboardApp = initializeDashboardApp;
 // However, since it's a top-level function in the script, it should be.
+
