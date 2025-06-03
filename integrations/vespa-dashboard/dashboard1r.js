@@ -1082,11 +1082,16 @@ function initializeDashboardApp() {
                             ${elementName} - Cycle ${cycle}
                         </span>
                     </h3>
-                    <button class="stats-close-btn" onclick="hideStatsPanel()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                    </button>
+                    <div style="display: flex; align-items: center;">
+                        <button class="stats-info-btn" onclick="showStatsInfoModal()">
+                            i
+                        </button>
+                        <button class="stats-close-btn" onclick="hideStatsPanel()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="stats-panel-content">
@@ -1288,6 +1293,95 @@ function initializeDashboardApp() {
         }, 400);
     };
 
+    // Stats Info Modal Functions
+    window.showStatsInfoModal = function() {
+        // Create modal if it doesn't exist
+        let modal = document.querySelector('.stats-info-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'stats-info-modal';
+            modal.innerHTML = `
+                <div class="stats-info-content">
+                    <div class="stats-info-header">
+                        <h3>Understanding Your Statistics</h3>
+                        <button class="stats-info-close" onclick="hideStatsInfoModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="stats-info-body">
+                        <div class="stats-term">
+                            <h4>Mean (Average)</h4>
+                            <p>The average score calculated by adding all scores and dividing by the number of responses. This gives you the central tendency of your data.</p>
+                            <div class="example">Example: If your school's mean is 6.2 and the national mean is 5.8, your students are performing above the national average.</div>
+                        </div>
+                        
+                        <div class="stats-term">
+                            <h4>Standard Deviation</h4>
+                            <p>Measures how spread out the scores are from the average. A lower value means scores are more consistent, while a higher value indicates more variability.</p>
+                            <div class="example">Example: A standard deviation of 1.5 means most scores fall within 1.5 points of the average.</div>
+                        </div>
+                        
+                        <div class="stats-term">
+                            <h4>Percentiles (25th, 50th, 75th)</h4>
+                            <p>Shows the score below which a certain percentage of students fall. The 50th percentile is the median.</p>
+                            <div class="example">Example: A 75th percentile of 8 means 75% of students scored 8 or below.</div>
+                        </div>
+                        
+                        <div class="stats-term">
+                            <h4>Confidence Interval</h4>
+                            <p>The range where we're 95% confident the true average lies. Narrower intervals indicate more precise estimates.</p>
+                            <div class="example">Example: A confidence interval of 5.8-6.2 means we're 95% confident the true average is between these values.</div>
+                        </div>
+                        
+                        <div class="stats-term">
+                            <h4>Sample Size</h4>
+                            <p>The number of students included in the calculation. Larger sample sizes generally provide more reliable statistics.</p>
+                            <div class="example">Note: Results based on fewer than 30 students should be interpreted with caution.</div>
+                        </div>
+                        
+                        <div class="stats-term">
+                            <h4>Range (Min-Max)</h4>
+                            <p>Shows the lowest and highest scores in your data. A wider range indicates more diverse performance levels.</p>
+                            <div class="example">Example: A range of 2-10 shows significant variation in student responses.</div>
+                        </div>
+                        
+                        <div class="stats-term">
+                            <h4>Percentage Differences</h4>
+                            <p>Green percentages show where your school exceeds national averages, while red indicates areas below national performance.</p>
+                            <div class="example">Tip: Focus improvement efforts on areas with negative percentages while maintaining strengths.</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Add click outside to close
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hideStatsInfoModal();
+                }
+            });
+        }
+        
+        // Show modal with animation
+        requestAnimationFrame(() => {
+            modal.classList.add('active');
+        });
+    };
+
+    window.hideStatsInfoModal = function() {
+        const modal = document.querySelector('.stats-info-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            // Remove after animation
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+        }
+    };
+
     let vespaDistributionChartInstances = {}; // To store multiple chart instances
 
     function renderDistributionCharts(schoolResults, nationalAveragesData, themeColorsConfig, cycle, nationalDistributions) {
@@ -1326,9 +1420,6 @@ function initializeDashboardApp() {
             const nationalAverageForElement = nationalAveragesData ? nationalAveragesData[element.key] : null;
             const canvasId = `${element.key}-distribution-chart`;
             let chartTitle = `${element.name} Score Distribution - Cycle ${cycle}`;
-            if (nationalAverageForElement !== null && nationalAverageForElement !== undefined) {
-                chartTitle += ` (Nat Avg: ${nationalAverageForElement.toFixed(2)})`;
-            }
 
             log(`For ${element.name} Distribution - National Avg: ${nationalAverageForElement}`); // Log national average for this element
 
@@ -1557,9 +1648,8 @@ function initializeDashboardApp() {
                     padding: 4
                 }
             };
-        } else if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined'){
-            log(`Annotation plugin not loaded or national average is null for ${elementKey}. Line will not be drawn.`);
-            // As a fallback, add it to the title if annotation is not available
+        } else if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined') {
+            // Fallback: add to title if annotation plugin is not available
             chartConfig.options.plugins.title.text += ` (Nat Avg: ${nationalAverageScore.toFixed(2)})`;
         }
 
