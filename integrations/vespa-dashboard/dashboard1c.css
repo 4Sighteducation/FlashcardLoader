@@ -1,4 +1,4 @@
-/* dashboard1b.css - Enhanced Styles */
+/* dashboard.css - Enhanced Styles */
 
 /* --- Global & Typography (Assuming a modern sans-serif font is loaded elsewhere) --- */
 body { /* Apply to body if this CSS is global for the dashboard view */
@@ -92,13 +92,15 @@ body { /* Apply to body if this CSS is global for the dashboard view */
 .vespa-scores-grid {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center; /* Center cards if they don't fill the row */
+    justify-content: flex-start; /* Center cards if they don't fill the row */
     gap: 20px; 
     margin-bottom: 40px;
+    padding: 10px 0;
 }
 
 .vespa-score-card {
     flex-grow: 1;
+    flex-shrink: 1; /* Allow cards to shrink if needed */
     flex-basis: 160px; 
     max-width: 220px;
     min-height: 140px; 
@@ -176,7 +178,7 @@ body { /* Apply to body if this CSS is global for the dashboard view */
 #distribution-charts-container {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-around;
+    justify-content: flex-start;
     gap: 20px;
 }
 
@@ -187,7 +189,10 @@ body { /* Apply to body if this CSS is global for the dashboard view */
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     width: 100%; 
     min-height: 320px; /* Minimum height for chart visibility */
-    /* Height will be controlled by canvas itself or specific chart options */
+    flex-grow: 1;
+    flex-shrink: 1;
+    /* Default to full width on small screens, adjust with media queries */
+    flex-basis: 100%; 
 }
 
 /* Responsive adjustments for scorecards and charts */
@@ -242,4 +247,30 @@ body { /* Apply to body if this CSS is global for the dashboard view */
 .chart-wrapper canvas {
     max-width: 100%;
     height: auto !important; /* Override any inline Chart.js height if using maintainAspectRatio: false */
+}
+
+/* Responsive adjustments */
+
+/* For 2 items per row (scorecards or charts) */
+@media (min-width: 600px) { 
+    .vespa-score-card, .chart-wrapper {
+        flex-basis: calc(50% - 10px); /* (100% / 2) - half of the gap */
+    }
+}
+
+/* For 3 items per row */
+@media (min-width: 992px) { 
+    .vespa-score-card, .chart-wrapper {
+        flex-basis: calc(33.333% - 14px); /* (100% / 3) - two-thirds of the gap (approx) */
+    }
+}
+
+/* For ~6 scorecards in a row, and maybe 4 chart-wrappers */
+@media (min-width: 1400px) {
+    .vespa-score-card {
+        flex-basis: calc(16.666% - 17px); /* (100% / 6) - approx */
+    }
+    .chart-wrapper {
+        flex-basis: calc(25% - 15px); /* (100% / 4) - three-quarters of the gap */
+    }
 }
