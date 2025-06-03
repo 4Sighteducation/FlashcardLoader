@@ -1,0 +1,178 @@
+/* dashboard_styles.css */
+
+#dashboard-container {
+    font-family: sans-serif;
+    padding: 15px;
+}
+
+#dashboard-container header h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+#dashboard-container h2 {
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+
+#dashboard-container .controls {
+    margin-bottom: 20px;
+    text-align: center; /* Center the cycle selector */
+}
+
+#dashboard-container .controls label {
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+#dashboard-container #cycle-select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+#averages-chart-container {
+    width: 100%;
+    max-width: 800px; /* Adjust as needed */
+    height: 400px;    /* Adjust as needed */
+    margin: 0 auto 30px auto; /* Center the averages chart */
+}
+
+#distribution-charts-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around; /* Distribute charts evenly */
+    gap: 20px; /* Adds space between chart wrappers */
+}
+
+.chart-wrapper {
+    width: 100%; /* Full width on small screens */
+    height: 300px; /* Fixed height for consistency, adjust as needed */
+    /* On larger screens, you might want them side-by-side */
+}
+
+/* Example for a 2-column layout on wider screens */
+@media (min-width: 768px) {
+    .chart-wrapper {
+        width: calc(50% - 10px); /* Two columns with gap */
+    }
+}
+
+/* Example for a 3-column layout on even wider screens if needed */
+@media (min-width: 1200px) {
+    #distribution-charts-container {
+        /* You might want to constrain the max width of the container itself */
+        /* max-width: 1500px; */
+        /* margin-left: auto; */
+        /* margin-right: auto; */
+    }
+    .chart-wrapper {
+         /* If you have 5 charts, maybe 3 then 2 below them */
+        width: calc(33.333% - 14px); /* Adjust for 3 columns considering gap */
+    }
+     /* Target the last two for a 3-2 layout if you have 5 charts */
+    .chart-wrapper:nth-last-child(-n+2) {
+      /* width: calc(50% - 10px); /* Or keep them at 33% and let them center */
+    }
+}
+/* Styles for the VESPA Scorecards */
+.vespa-scores-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around; /* Distributes space around items */
+    gap: 15px; /* Space between cards */
+    margin-bottom: 30px;
+    padding: 10px 0; /* Add some padding if cards are too close to section borders */
+}
+
+.vespa-score-card {
+    /* flex-basis: calc(16.666% - 15px); /* For 6 cards, adjust based on actual gap and container width */
+    /* A more flexible approach for different numbers of cards: */
+    flex-grow: 1; /* Allow cards to grow */
+    flex-basis: 150px; /* Minimum basis, they will grow from this */
+    max-width: 200px; /* Maximum width to prevent them from becoming too wide */
+    min-height: 120px; /* Ensure a minimum height */
+    padding: 15px;
+    border-radius: 8px;
+    color: white; /* Text color on the cards */
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    position: relative; /* For positioning the national score corner */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center content vertically */
+    align-items: center; /* Center content horizontally */
+    transition: transform 0.2s ease-in-out; /* Smooth hover effect */
+}
+
+.vespa-score-card:hover {
+    transform: translateY(-5px); /* Slight lift on hover */
+}
+
+.vespa-score-card h3 { /* Element Name (e.g., VISION) */
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 1rem;   /* Adjusted for better fit */
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.vespa-score-card .score-value { /* School Score (e.g., 6.0) */
+    font-size: 2.8rem; /* Make it prominent */
+    font-weight: bold;
+    line-height: 1.1;   /* Adjusted for better fit */
+    margin-bottom: 8px;
+}
+
+.vespa-score-card .national-comparison {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 0.8rem; /* Adjusted for better fit */
+    background-color: rgba(0,0,0,0.25); /* Slightly darker for better contrast */
+    padding: 4px 6px;
+    border-radius: 4px;
+    line-height: 1.2;
+}
+
+.vespa-score-card .national-comparison .arrow {
+    font-weight: bold;
+    margin: 0 2px;
+}
+
+.vespa-score-card .national-comparison .arrow.up {
+    color: #a7f3d0; /* Light Green - ensure good contrast on all backgrounds */
+}
+
+.vespa-score-card .national-comparison .arrow.down {
+    color: #fca5a5; /* Light Red - ensure good contrast on all backgrounds */
+}
+
+/* Responsive adjustments for the grid */
+@media (max-width: 1200px) { /* Example: 3 cards per row */
+    .vespa-score-card {
+        flex-basis: calc(33.333% - 20px); /* Adjust basis and gap if needed */
+        max-width: none; /* Allow them to fill the 33% */
+    }
+}
+
+@media (max-width: 768px) { /* Example: 2 cards per row */
+    .vespa-score-card {
+        flex-basis: calc(50% - 20px); /* Adjust basis and gap if needed */
+    }
+}
+
+@media (max-width: 520px) { /* Example: 1 card per row */
+    .vespa-score-card {
+        flex-basis: 100%;
+        max-width: 300px; /* Max width for single column on small screens */
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
