@@ -880,7 +880,6 @@ function initializeDashboardApp() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 3v18h18M9 17V9m4 8V5m4 12V11"/>
                     </svg>
-                    Stats
                 </button>
             `;
             container.appendChild(card);
