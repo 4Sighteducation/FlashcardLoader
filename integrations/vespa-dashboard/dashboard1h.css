@@ -12,16 +12,16 @@
     --text-muted: #64748b;
     
     /* VESPA Theme Colors with Glow */
-    --vision-color: #ff6b35;
-    --vision-glow: rgba(255, 107, 53, 0.4);
-    --effort-color: #4ecdc4;
-    --effort-glow: rgba(78, 205, 196, 0.4);
-    --systems-color: #95e1d3;
-    --systems-glow: rgba(149, 225, 211, 0.4);
-    --practice-color: #c56cf0;
-    --practice-glow: rgba(197, 108, 240, 0.4);
-    --attitude-color: #ff4757;
-    --attitude-glow: rgba(255, 71, 87, 0.4);
+    --vision-color: #ff8f00;
+    --vision-glow: rgba(255, 143, 0, 0.4);
+    --effort-color: #86b4f0;
+    --effort-glow: rgba(134, 180, 240, 0.4);
+    --systems-color: #72cb44;
+    --systems-glow: rgba(114, 203, 68, 0.4);
+    --practice-color: #7f31a4;
+    --practice-glow: rgba(127, 49, 164, 0.4);
+    --attitude-color: #f032e6;
+    --attitude-glow: rgba(240, 50, 230, 0.4);
     --overall-color: #ffd93d;
     --overall-glow: rgba(255, 217, 61, 0.4);
     
@@ -312,13 +312,17 @@ body.knack-body .kn-content {
 
 .vespa-score-card:hover {
     transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 8px 24px currentColor;
     border-color: currentColor;
 }
 
 .vespa-score-card:hover::before {
     height: 100%;
-    opacity: 0.1;
+    opacity: 0.15;
+}
+
+.vespa-score-card:hover .score-value {
+    transform: scale(1.05);
 }
 
 .vespa-score-card h3 {
@@ -338,6 +342,7 @@ body.knack-body .kn-content {
     margin-bottom: 0.25rem;
     z-index: 1;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
 }
 
 .vespa-score-card .national-comparison {
@@ -395,29 +400,45 @@ body.knack-body .kn-content {
 /* --- Distribution Charts Container --- */
 #distribution-charts-container {
     display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     gap: 1rem !important;
     margin-bottom: var(--spacing-xl);
     width: 100% !important;
-    min-width: 1200px; /* Force minimum width */
+    min-width: 900px; /* Force minimum width */
 }
 
-@media (max-width: 1400px) {
-    #distribution-charts-container {
-        grid-template-columns: repeat(5, minmax(200px, 1fr)) !important;
+/* Center the last 2 items in their own row */
+#distribution-charts-container {
+    justify-content: center;
+}
+
+.chart-wrapper:nth-child(4),
+.chart-wrapper:nth-child(5) {
+    max-width: calc(33.333% - 0.5rem);
+}
+
+@media (min-width: 1200px) {
+    .chart-wrapper {
+        min-height: 280px;
+        height: 280px;
     }
 }
 
 @media (max-width: 1200px) {
     #distribution-charts-container {
-        grid-template-columns: repeat(3, 1fr) !important;
+        grid-template-columns: repeat(2, 1fr) !important;
         min-width: auto;
+    }
+    
+    .chart-wrapper:nth-child(4),
+    .chart-wrapper:nth-child(5) {
+        max-width: none;
     }
 }
 
 @media (max-width: 768px) {
     #distribution-charts-container {
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(1, 1fr) !important;
         min-width: auto;
     }
 }
@@ -427,9 +448,9 @@ body.knack-body .kn-content {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: 0.75rem;
-    min-height: 220px;
-    height: 220px;
+    padding: 1rem;
+    min-height: 260px;
+    height: auto;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -461,6 +482,8 @@ body.knack-body .kn-content {
 .chart-wrapper canvas {
     position: relative;
     z-index: 1;
+    max-width: 100%;
+    height: auto !important;
 }
 
 /* --- Sections --- */
@@ -714,8 +737,8 @@ body.knack-body .kn-content {
     }
     
     .chart-wrapper {
-        min-height: 180px;
-        height: 180px;
+        min-height: 200px;
+        height: auto;
     }
 }
 
