@@ -401,20 +401,11 @@ body.knack-body .kn-content {
 #distribution-charts-container {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr) !important;
     gap: 1rem !important;
     margin-bottom: var(--spacing-xl);
     width: 100% !important;
     min-width: 900px; /* Force minimum width */
-}
-
-/* Center the last 2 items in their own row */
-#distribution-charts-container {
-    justify-content: center;
-}
-
-.chart-wrapper:nth-child(4),
-.chart-wrapper:nth-child(5) {
-    max-width: calc(33.333% - 0.5rem);
 }
 
 @media (min-width: 1200px) {
@@ -427,18 +418,15 @@ body.knack-body .kn-content {
 @media (max-width: 1200px) {
     #distribution-charts-container {
         grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-rows: repeat(3, 1fr) !important;
         min-width: auto;
-    }
-    
-    .chart-wrapper:nth-child(4),
-    .chart-wrapper:nth-child(5) {
-        max-width: none;
     }
 }
 
 @media (max-width: 768px) {
     #distribution-charts-container {
         grid-template-columns: repeat(1, 1fr) !important;
+        grid-template-rows: auto !important;
         min-width: auto;
     }
 }
@@ -687,6 +675,7 @@ body.knack-body .kn-content {
 .chart-wrapper:nth-child(3) { animation-delay: 0.9s; }
 .chart-wrapper:nth-child(4) { animation-delay: 1.0s; }
 .chart-wrapper:nth-child(5) { animation-delay: 1.1s; }
+.chart-wrapper:nth-child(6) { animation-delay: 1.2s; }
 
 /* --- Scrollbar Styling --- */
 ::-webkit-scrollbar {
@@ -762,3 +751,4 @@ body.knack-body .kn-content {
         border: 1px solid #ddd;
     }
 }
+
