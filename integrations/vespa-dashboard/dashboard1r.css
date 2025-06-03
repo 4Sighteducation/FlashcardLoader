@@ -405,6 +405,7 @@ body.knack-body .kn-content {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 0.75rem;
+    padding-top: 1.5rem; /* Extra padding to account for top button */
     min-height: 120px;
     height: 120px;
     position: relative;
@@ -873,7 +874,7 @@ body.knack-body .kn-content {
 /* --- Advanced Statistics Button --- */
 .advanced-stats-btn {
     position: absolute;
-    bottom: 8px;
+    top: 8px;
     right: 8px;
     padding: 0.3rem 0.6rem;
     background: rgba(255, 255, 255, 0.1);
@@ -1178,3 +1179,142 @@ body.knack-body .kn-content {
     margin-bottom: var(--spacing-md);
 }
 
+/* --- Stats Info Button --- */
+.stats-info-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: var(--spacing-sm);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.stats-info-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--accent-primary);
+    transform: scale(1.1);
+}
+
+/* --- Stats Info Modal --- */
+.stats-info-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.stats-info-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.stats-info-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.stats-info-modal.active .stats-info-content {
+    transform: scale(1);
+}
+
+.stats-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stats-info-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.stats-info-header h3::before {
+    content: 'ℹ️';
+    font-size: 1.8rem;
+}
+
+.stats-info-close {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.stats-info-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.stats-info-body {
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+.stats-term {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--secondary-bg);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--accent-primary);
+}
+
+.stats-term h4 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.stats-term p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.stats-term .example {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-style: italic;
+    color: var(--text-muted);
+}
