@@ -460,7 +460,10 @@ function initializeDashboardApp() {
             
             const nationalAverageForElement = nationalAveragesData ? nationalAveragesData[element.key] : null;
             const canvasId = `${element.key}-distribution-chart`;
-            const chartTitle = `${element.name} Score Distribution - Cycle ${cycle}`;
+            let chartTitle = `${element.name} Score Distribution - Cycle ${cycle}`;
+            if (nationalAverageForElement !== null && nationalAverageForElement !== undefined) {
+                chartTitle += ` (Nat Avg: ${nationalAverageForElement.toFixed(2)})`;
+            }
 
             log(`For ${element.name} Distribution - National Avg: ${nationalAverageForElement}`); // Log national average for this element
 
@@ -485,6 +488,7 @@ function initializeDashboardApp() {
 
         // Prepare national distribution data if available
         let nationalDistributionData = null;
+        let nationalPatternData = null; // Scaled pattern for display
         if (nationalDistributions && elementKey) {
             // Map element key to the name used in the JSON (e.g., 'vision' -> 'Vision')
             const elementNameMap = {
@@ -502,7 +506,29 @@ function initializeDashboardApp() {
                 nationalDistributionData = labels.map(label => {
                     return nationalDistributions[elementName][label] || 0;
                 });
-                log(`National distribution data for ${elementName}:`, nationalDistributionData);
+                
+                // Option 1: Scale national data to match school data range for pattern comparison
+                const schoolMax = Math.max(...schoolScoreDistribution);
+                const nationalMax = Math.max(...nationalDistributionData);
+                
+                // Option 2: Convert to percentages (uncomment to use this approach instead)
+                // const schoolTotal = schoolScoreDistribution.reduce((sum, val) => sum + val, 0);
+                // const nationalTotal = nationalDistributionData.reduce((sum, val) => sum + val, 0);
+                // if (schoolTotal > 0 && nationalTotal > 0) {
+                //     schoolScoreDistribution = schoolScoreDistribution.map(val => (val / schoolTotal) * 100);
+                //     nationalPatternData = nationalDistributionData.map(val => (val / nationalTotal) * 100);
+                //     // Would also need to update y-axis label to "Percentage of Students"
+                // }
+                
+                // Using Option 1: Scale to match
+                if (nationalMax > 0 && schoolMax > 0) {
+                    // Scale national data to match school's maximum, preserving the pattern
+                    const scaleFactor = schoolMax / nationalMax * 0.8; // 0.8 to keep it slightly below school max
+                    nationalPatternData = nationalDistributionData.map(value => value * scaleFactor);
+                    log(`Scaled national pattern for ${elementName} with factor ${scaleFactor}`);
+                } else {
+                    nationalPatternData = nationalDistributionData;
+                }
             }
         }
 
@@ -515,20 +541,20 @@ function initializeDashboardApp() {
             order: 2 // Draw bars first
         }];
 
-        // Add national distribution as a line if data is available
-        if (nationalDistributionData) {
+        // Add national distribution pattern as a line if data is available
+        if (nationalPatternData) {
             datasets.push({
-                label: 'National Distribution',
-                data: nationalDistributionData,
+                label: 'National Pattern',
+                data: nationalPatternData,
                 type: 'line',
-                borderColor: 'rgba(255, 217, 61, 0.8)', // Golden yellow for national
-                backgroundColor: 'rgba(255, 217, 61, 0.1)',
+                borderColor: 'rgba(255, 217, 61, 0.5)', // More subtle golden yellow
+                backgroundColor: 'rgba(255, 217, 61, 0.05)',
                 borderWidth: 2,
-                borderDash: [5, 3], // Dashed line for subtlety
-                pointRadius: 3,
-                pointBackgroundColor: 'rgba(255, 217, 61, 0.8)',
-                pointBorderColor: 'rgba(255, 217, 61, 1)',
-                tension: 0.3, // Smooth curve
+                borderDash: [8, 4], // Longer dashes for pattern indication
+                pointRadius: 2, // Smaller points
+                pointBackgroundColor: 'rgba(255, 217, 61, 0.5)',
+                pointBorderColor: 'rgba(255, 217, 61, 0.7)',
+                tension: 0.4, // Smoother curve to emphasize pattern
                 order: 1 // Draw line on top
             });
         }
@@ -554,13 +580,23 @@ function initializeDashboardApp() {
                         }
                     },
                     legend: {
-                        display: nationalDistributionData ? true : false, // Show legend only if we have national data
+                        display: nationalPatternData ? true : false, // Show legend only if we have national data
                         labels: {
                             color: '#a8b2d1',
                             usePointStyle: true,
                             padding: 10,
                             font: {
                                 size: 11
+                            },
+                            generateLabels: function(chart) {
+                                const defaultLabels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                // Customize the national pattern label
+                                defaultLabels.forEach(label => {
+                                    if (label.text === 'National Pattern') {
+                                        label.text = 'National Pattern (scaled for comparison)';
+                                    }
+                                });
+                                return defaultLabels;
                             }
                         }
                     },
@@ -575,9 +611,12 @@ function initializeDashboardApp() {
                                 const datasetLabel = context.dataset.label;
                                 const value = context.raw;
                                 if (datasetLabel === 'School Score Distribution') {
-                                    return `School - Score ${context.label}: ${value} students`;
-                                } else if (datasetLabel === 'National Distribution') {
-                                    return `National - Score ${context.label}: ${value} students`;
+                                    return `Your School: ${value} students`;
+                                } else if (datasetLabel === 'National Pattern') {
+                                    // For national pattern, show it as a relative indicator
+                                    const scoreIndex = parseInt(context.label);
+                                    const nationalValue = nationalDistributionData ? nationalDistributionData[scoreIndex] : 0;
+                                    return `National Pattern (${nationalValue.toLocaleString()} students nationally)`;
                                 }
                                 return `${datasetLabel}: ${value}`;
                             }
@@ -1060,4 +1099,3 @@ if (document.readyState === 'loading') {
 // If it's not already, you might need:
 // window.initializeDashboardApp = initializeDashboardApp;
 // However, since it's a top-level function in the script, it should be.
-
