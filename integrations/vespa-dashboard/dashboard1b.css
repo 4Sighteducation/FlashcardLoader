@@ -1,0 +1,245 @@
+/* dashboard1b.css - Enhanced Styles */
+
+/* --- Global & Typography (Assuming a modern sans-serif font is loaded elsewhere) --- */
+body { /* Apply to body if this CSS is global for the dashboard view */
+    background-color: #f8f9fa; /* Light off-white background */
+}
+
+#dashboard-container {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Common system font stack */
+    padding: 20px;
+    max-width: 1600px; /* Max width for the whole dashboard */
+    margin: 0 auto; /* Center the dashboard */
+}
+
+#dashboard-container header h1 {
+    text-align: center;
+    color: #343a40; /* Darker grey */
+    margin-bottom: 30px;
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+#dashboard-container h2 {
+    color: #495057; /* Medium grey */
+    border-bottom: 2px solid #e9ecef; /* Slightly more prominent border */
+    padding-bottom: 8px;
+    margin-top: 40px;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    font-weight: 500;
+}
+
+#dashboard-container .controls {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+#dashboard-container .controls label {
+    margin-right: 10px;
+    font-weight: 500;
+    color: #495057;
+}
+
+#dashboard-container #cycle-select {
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    background-color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+#dashboard-container #cycle-select:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* --- Loading Indicator --- */
+#loading-indicator {
+    display: none; /* Hidden by default */
+    text-align: center;
+    padding: 40px 20px;
+    width: 100%;
+}
+
+#loading-indicator p {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin-bottom: 20px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #e9ecef; /* Light grey border */
+    border-top-color: #007bff; /* Blue spinner color (adjust as needed) */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* --- VESPA Scorecards --- */
+.vespa-scores-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Center cards if they don't fill the row */
+    gap: 20px; 
+    margin-bottom: 40px;
+}
+
+.vespa-score-card {
+    flex-grow: 1;
+    flex-basis: 160px; 
+    max-width: 220px;
+    min-height: 140px; 
+    padding: 20px 15px;
+    border-radius: 12px; 
+    color: white; 
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1); /* Softer shadow */
+    position: relative; 
+    display: flex;
+    flex-direction: column;
+    justify-content: center; 
+    align-items: center; 
+    transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+    overflow: hidden; /* For pseudo-element gradient if used */
+}
+
+.vespa-score-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* Example for adding subtle gradient - apply specific colors in JS or here if fixed */
+/* .vespa-score-card.vision-card { background-image: linear-gradient(135deg, #ffac33 0%, #ff8f00 100%); } */
+
+.vespa-score-card h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 0.9rem; 
+    font-weight: 600; /* Bold but not overly so */
+    text-transform: uppercase;
+    letter-spacing: 0.8px; /* More spacing */
+    opacity: 0.9; /* Slightly transparent for softer look */
+}
+
+.vespa-score-card .score-value {
+    font-size: 3rem; 
+    font-weight: 700; /* Bolder */
+    line-height: 1.1;  
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1); /* Subtle text shadow */
+}
+
+.vespa-score-card .national-comparison {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.75rem; 
+    background-color: rgba(0,0,0,0.3); /* Slightly more pronounced bg */
+    padding: 5px 8px;
+    border-radius: 6px;
+    line-height: 1.3;
+    font-weight: 500;
+}
+
+.vespa-score-card .national-comparison .arrow {
+    font-weight: bold;
+    margin: 0 3px;
+    font-size: 0.85rem;
+}
+
+.vespa-score-card .national-comparison .arrow.up {
+    color: #c6f6d5; /* Lighter green */
+}
+
+.vespa-score-card .national-comparison .arrow.down {
+    color: #fed7d7; /* Lighter red */
+}
+
+/* --- Chart Containers --- */
+#averages-summary-container { /* This is now the scorecards grid */
+    /* Styles are covered by .vespa-scores-grid */
+}
+
+#distribution-charts-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 20px;
+}
+
+.chart-wrapper {
+    background-color: #ffffff; /* White background for charts */
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    width: 100%; 
+    min-height: 320px; /* Minimum height for chart visibility */
+    /* Height will be controlled by canvas itself or specific chart options */
+}
+
+/* Responsive adjustments for scorecards and charts */
+@media (min-width: 600px) {
+    .vespa-score-card {
+        flex-basis: calc(50% - 20px); /* 2 cards per row */
+    }
+     .chart-wrapper {
+        width: calc(100% - 20px); /* Still one chart per row, but with gap */
+    }
+}
+
+
+@media (min-width: 992px) { /* Medium devices (tablets, small desktops) */
+    .vespa-score-card {
+        flex-basis: calc(33.333% - 20px); /* 3 cards per row */
+    }
+    .chart-wrapper {
+        width: calc(50% - 20px); /* Two charts per row */
+    }
+}
+
+@media (min-width: 1200px) { /* Large devices (desktops) */
+    .vespa-score-card {
+         /* Allow 6 cards if space, or adjust basis like 160px */
+        flex-basis: 160px; 
+        max-width: 180px; /* Slightly smaller max if many cards */
+    }
+     .chart-wrapper {
+        /* For 5 distribution charts, this might lead to 3 on first row, 2 on second */
+        width: calc(33.333% - 20px); 
+    }
+    /* If you want the last two charts (if 5 total) to center on the second row: */
+    #distribution-charts-container .chart-wrapper:nth-last-child(-n+2):first-child {
+        /* This selector targets the 4th chart if there are 5 total and it's the first on its "new row" if items are centered */
+        /* margin-left: calc(16.666% + 10px); /* Approximate centering for 2 items in a 3-col grid space */
+    }
+}
+
+@media (min-width: 1400px) { /* Extra large devices */
+     .vespa-score-card {
+        flex-basis: 150px;
+        max-width: 170px;
+    }
+    .chart-wrapper {
+        /* could go up to 4 if space allows and desired */
+        width: calc(33.333% - 20px); /* Keep 3 per row for clarity */
+    }
+}
+
+/* Ensure canvas elements are responsive within their wrappers */
+.chart-wrapper canvas {
+    max-width: 100%;
+    height: auto !important; /* Override any inline Chart.js height if using maintainAspectRatio: false */
+}
