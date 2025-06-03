@@ -106,6 +106,90 @@ function initializeDashboardApp() {
     // --- UI Rendering ---
     function renderDashboardUI(container) {
         log("Rendering Dashboard UI into:", container);
+        
+        // Add styles for the filters
+        const style = document.createElement('style');
+        style.textContent = `
+            .filters-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px;
+                margin: 20px 0;
+                padding: 20px;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .filter-item {
+                display: flex;
+                flex-direction: column;
+                min-width: 150px;
+                flex: 1;
+            }
+            
+            .filter-item label {
+                color: #a8b2d1;
+                font-size: 12px;
+                margin-bottom: 5px;
+                font-weight: 600;
+            }
+            
+            .filter-item input,
+            .filter-item select {
+                padding: 8px 12px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background-color: rgba(0, 0, 0, 0.3);
+                color: #ffffff;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            
+            .filter-item input:focus,
+            .filter-item select:focus {
+                outline: none;
+                border-color: #86b4f0;
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+            
+            .filter-item button {
+                padding: 8px 16px;
+                margin-right: 10px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            
+            #apply-filters-btn {
+                background-color: #86b4f0;
+                color: #0f0f23;
+                font-weight: 600;
+            }
+            
+            #apply-filters-btn:hover {
+                background-color: #6a9bd8;
+            }
+            
+            #clear-filters-btn {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: #a8b2d1;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            #clear-filters-btn:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+            
+            .filter-item:last-child {
+                flex-direction: row;
+                align-items: flex-end;
+                min-width: auto;
+            }
+        `;
+        document.head.appendChild(style);
+        
         container.innerHTML = `
             <div id="dashboard-container">
                 <header>
@@ -120,6 +204,40 @@ function initializeDashboardApp() {
                             <option value="2">Cycle 2</option>
                             <option value="3">Cycle 3</option>
                         </select>
+                    </div>
+                    <div class="filters-container">
+                        <div class="filter-item">
+                            <label for="student-search">Student:</label>
+                            <input type="text" id="student-search" placeholder="Search by name..." />
+                        </div>
+                        <div class="filter-item">
+                            <label for="group-filter">Group:</label>
+                            <select id="group-filter">
+                                <option value="">All Groups</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="course-filter">Course:</label>
+                            <select id="course-filter">
+                                <option value="">All Courses</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="year-group-filter">Year Group:</label>
+                            <select id="year-group-filter">
+                                <option value="">All Year Groups</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="faculty-filter">Faculty:</label>
+                            <select id="faculty-filter">
+                                <option value="">All Faculties</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <button id="apply-filters-btn">Apply Filters</button>
+                            <button id="clear-filters-btn">Clear Filters</button>
+                        </div>
                     </div>
                    <div id="loading-indicator" style="display:none;">
                         <p>Loading chart data...</p>
@@ -181,8 +299,169 @@ function initializeDashboardApp() {
         document.getElementById('qla-chat-submit').addEventListener('click', handleQLAChatSubmit);
     }
 
+    // --- Filter Management Functions ---
+    function getActiveFilters() {
+        const filters = [];
+        
+        // Student search filter
+        const studentSearch = document.getElementById('student-search')?.value.trim();
+        if (studentSearch) {
+            // For name fields in Knack, we typically need to search both first and last name
+            filters.push({
+                match: 'or',
+                rules: [
+                    {
+                        field: 'field_187', // Student name field
+                        operator: 'contains',
+                        value: studentSearch,
+                        field_name: 'first' // Search in first name
+                    },
+                    {
+                        field: 'field_187',
+                        operator: 'contains', 
+                        value: studentSearch,
+                        field_name: 'last' // Search in last name
+                    }
+                ]
+            });
+        }
+        
+        // Group filter (field_223 is an array/connection field)
+        const groupFilter = document.getElementById('group-filter')?.value;
+        if (groupFilter) {
+            filters.push({
+                field: 'field_223',
+                operator: 'contains',
+                value: groupFilter
+            });
+        }
+        
+        // Course filter
+        const courseFilter = document.getElementById('course-filter')?.value;
+        if (courseFilter) {
+            filters.push({
+                field: 'field_2299',
+                operator: 'is',
+                value: courseFilter
+            });
+        }
+        
+        // Year Group filter
+        const yearGroupFilter = document.getElementById('year-group-filter')?.value;
+        if (yearGroupFilter) {
+            filters.push({
+                field: 'field_144',
+                operator: 'is',
+                value: yearGroupFilter
+            });
+        }
+        
+        // Faculty filter
+        const facultyFilter = document.getElementById('faculty-filter')?.value;
+        if (facultyFilter) {
+            filters.push({
+                field: 'field_782',
+                operator: 'is',
+                value: facultyFilter
+            });
+        }
+        
+        return filters;
+    }
+
+    async function populateFilterDropdowns(staffAdminId) {
+        log("Populating filter dropdowns");
+        
+        try {
+            // Fetch all records for this staff admin to extract unique values
+            let allRecords = [];
+            if (staffAdminId) {
+                const staffAdminFilter = [{
+                    field: 'field_439',
+                    operator: 'is',
+                    value: staffAdminId
+                }];
+                allRecords = await fetchDataFromKnack(objectKeys.vespaResults, staffAdminFilter);
+            }
+            
+            if (!allRecords || allRecords.length === 0) {
+                log("No records found to populate filters");
+                return;
+            }
+            
+            // Extract unique values for each filter
+            const groups = new Set();
+            const courses = new Set();
+            const yearGroups = new Set();
+            const faculties = new Set();
+            
+            allRecords.forEach(record => {
+                // Group (field_223) - connected field
+                if (record.field_223_raw && Array.isArray(record.field_223_raw)) {
+                    record.field_223_raw.forEach(groupId => {
+                        if (groupId && record.field_223) {
+                            // field_223 contains the display value
+                            const displayValues = record.field_223.split(',').map(v => v.trim());
+                            displayValues.forEach(displayValue => {
+                                if (displayValue) {
+                                    groups.add(JSON.stringify({ id: groupId, name: displayValue }));
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                // Course (field_2299)
+                if (record.field_2299_raw) {
+                    courses.add(record.field_2299_raw);
+                }
+                
+                // Year Group (field_144)
+                if (record.field_144_raw) {
+                    yearGroups.add(record.field_144_raw);
+                }
+                
+                // Faculty (field_782)
+                if (record.field_782_raw) {
+                    faculties.add(record.field_782_raw);
+                }
+            });
+            
+            // Populate dropdowns
+            populateDropdown('group-filter', Array.from(groups).map(g => JSON.parse(g)), 'name', 'id');
+            populateDropdown('course-filter', Array.from(courses).sort());
+            populateDropdown('year-group-filter', Array.from(yearGroups).sort());
+            populateDropdown('faculty-filter', Array.from(faculties).sort());
+            
+        } catch (error) {
+            errorLog("Failed to populate filter dropdowns", error);
+        }
+    }
+    
+    function populateDropdown(dropdownId, items, displayProperty = null, valueProperty = null) {
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+        
+        // Keep the "All" option
+        const allOption = dropdown.querySelector('option[value=""]');
+        dropdown.innerHTML = '';
+        if (allOption) dropdown.appendChild(allOption);
+        
+        items.forEach(item => {
+            const option = document.createElement('option');
+            if (displayProperty && valueProperty && typeof item === 'object') {
+                option.value = item[valueProperty];
+                option.textContent = item[displayProperty];
+            } else {
+                option.value = item;
+                option.textContent = item;
+            }
+            dropdown.appendChild(option);
+        });
+    }
+
     // --- Section 1: Overview and Benchmarking ---
-    async function loadOverviewData(staffAdminId, cycle = 1) {
+    async function loadOverviewData(staffAdminId, cycle = 1, additionalFilters = []) {
         log(`Loading overview data with Staff Admin ID: ${staffAdminId} for Cycle: ${cycle}`);
         const loadingIndicator = document.getElementById('loading-indicator');
         const averagesContainer = document.getElementById('averages-summary-container');
@@ -195,13 +474,19 @@ function initializeDashboardApp() {
         try {
             let schoolVespaResults = [];
             if (staffAdminId) {
-                const staffAdminFilter = [{
+                const filters = [{
                     field: 'field_439',
                     operator: 'is',
                     value: staffAdminId
                 }];
-                schoolVespaResults = await fetchDataFromKnack(objectKeys.vespaResults, staffAdminFilter);
-                log("Fetched School VESPA Results (filtered by Staff Admin ID):", schoolVespaResults ? schoolVespaResults.length : 0);
+                
+                // Add any additional filters
+                if (additionalFilters && additionalFilters.length > 0) {
+                    filters.push(...additionalFilters);
+                }
+                
+                schoolVespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched School VESPA Results (filtered):", schoolVespaResults ? schoolVespaResults.length : 0);
             } else {
                 log("No Staff Admin ID provided to loadOverviewData. Cannot filter school-specific data.");
             }
@@ -599,6 +884,9 @@ function initializeDashboardApp() {
                                 return defaultLabels;
                             }
                         }
+                    },
+                    datalabels: {
+                        display: false // Disable data labels on bars and line points
                     },
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.9)',
@@ -1054,6 +1342,9 @@ function initializeDashboardApp() {
         if (staffAdminRecordId) {
             log("Successfully obtained Staff Admin Record ID (from object_5):", staffAdminRecordId);
             
+            // Populate filter dropdowns
+            await populateFilterDropdowns(staffAdminRecordId);
+            
             // Initial data load (defaulting to cycle 1 or what's selected)
             const cycleSelectElement = document.getElementById('cycle-select');
             const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
@@ -1066,10 +1357,39 @@ function initializeDashboardApp() {
                 cycleSelectElement.addEventListener('change', (event) => {
                     const selectedCycle = parseInt(event.target.value, 10);
                     log(`Cycle changed to: ${selectedCycle}`);
-                    loadOverviewData(staffAdminRecordId, selectedCycle);
+                    const activeFilters = getActiveFilters();
+                    loadOverviewData(staffAdminRecordId, selectedCycle, activeFilters);
                     // Potentially re-load or filter QLA and Comment data too if they become cycle-dependent
                     // loadQLAData(staffAdminRecordId, selectedCycle);
                     // loadStudentCommentInsights(staffAdminRecordId, selectedCycle);
+                });
+            }
+            
+            // Add event listeners for filter buttons
+            const applyFiltersBtn = document.getElementById('apply-filters-btn');
+            if (applyFiltersBtn) {
+                applyFiltersBtn.addEventListener('click', () => {
+                    const selectedCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
+                    const activeFilters = getActiveFilters();
+                    log("Applying filters:", activeFilters);
+                    loadOverviewData(staffAdminRecordId, selectedCycle, activeFilters);
+                });
+            }
+            
+            const clearFiltersBtn = document.getElementById('clear-filters-btn');
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', () => {
+                    // Clear all filter inputs
+                    document.getElementById('student-search').value = '';
+                    document.getElementById('group-filter').value = '';
+                    document.getElementById('course-filter').value = '';
+                    document.getElementById('year-group-filter').value = '';
+                    document.getElementById('faculty-filter').value = '';
+                    
+                    // Reload data without filters
+                    const selectedCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
+                    log("Clearing all filters");
+                    loadOverviewData(staffAdminRecordId, selectedCycle, []);
                 });
             }
 
