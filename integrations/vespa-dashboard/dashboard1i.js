@@ -1,4 +1,4 @@
-// dashboard1h.js
+// dashboard1f.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -121,29 +121,31 @@ function initializeDashboardApp() {
                             <option value="3">Cycle 3</option>
                         </select>
                     </div>
-                   <div id="loading-indicator" style="display:none;"> {/* Style via CSS */}
+                   <div id="loading-indicator" style="display:none;">
                         <p>Loading chart data...</p>
                         <div class="spinner"></div>
                     </div>
-                    <div id="averages-summary-container" class="vespa-scores-grid">
-                        <!-- Scorecards will be dynamically inserted here -->
-                    </div>
-                    <div id="distribution-charts-container">
-                        <!-- Containers for Vision, Effort, Systems, Practice, Attitude -->
-                        <div class="chart-wrapper">
-                            <canvas id="vision-distribution-chart"></canvas>
+                    <div class="dashboard-content-wrapper">
+                        <div id="averages-summary-container" class="vespa-scores-grid">
+                            <!-- Scorecards will be dynamically inserted here -->
                         </div>
-                        <div class="chart-wrapper">
-                            <canvas id="effort-distribution-chart"></canvas>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="systems-distribution-chart"></canvas>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="practice-distribution-chart"></canvas>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="attitude-distribution-chart"></canvas>
+                        <div id="distribution-charts-container">
+                            <!-- Containers for Vision, Effort, Systems, Practice, Attitude -->
+                            <div class="chart-wrapper">
+                                <canvas id="vision-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="effort-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="systems-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="practice-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="attitude-distribution-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -351,11 +353,11 @@ function initializeDashboardApp() {
         ];
 
         const defaultThemeColors = {
-            vision: '#ff6b35',
-            effort: '#4ecdc4',
-            systems: '#95e1d3',
-            practice: '#c56cf0',
-            attitude: '#ff4757',
+            vision: '#ff8f00',
+            effort: '#86b4f0',
+            systems: '#72cb44',
+            practice: '#7f31a4',
+            attitude: '#f032e6',
             overall: '#ffd93d'
         };
 
@@ -414,11 +416,11 @@ function initializeDashboardApp() {
 
         // VESPA elements and their corresponding field prefixes in Object_10 for historical data
         const vespaElements = [
-            { name: 'Vision', key: 'vision', color: themeColorsConfig?.vision || '#ff6b35', fieldCycle1: 'field_155', fieldCycle2: 'field_161', fieldCycle3: 'field_167' },
-            { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#4ecdc4', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168' },
-            { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#95e1d3', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169' },
-            { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#c56cf0', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170' },
-            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#ff4757', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' }
+            { name: 'Vision', key: 'vision', color: themeColorsConfig?.vision || '#ff8f00', fieldCycle1: 'field_155', fieldCycle2: 'field_161', fieldCycle3: 'field_167' },
+            { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#86b4f0', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168' },
+            { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#72cb44', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169' },
+            { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#7f31a4', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170' },
+            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' }
         ];
 
         vespaElements.forEach(element => {
@@ -475,7 +477,8 @@ function initializeDashboardApp() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
+                aspectRatio: 1.5,
                 plugins: {
                     title: {
                         display: true,
@@ -978,3 +981,4 @@ if (document.readyState === 'loading') {
 // If it's not already, you might need:
 // window.initializeDashboardApp = initializeDashboardApp;
 // However, since it's a top-level function in the script, it should be.
+
