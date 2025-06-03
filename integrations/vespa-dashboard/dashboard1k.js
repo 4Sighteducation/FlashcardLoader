@@ -130,7 +130,7 @@ function initializeDashboardApp() {
                             <!-- Scorecards will be dynamically inserted here -->
                         </div>
                         <div id="distribution-charts-container">
-                            <!-- Containers for Vision, Effort, Systems, Practice, Attitude -->
+                            <!-- Containers for Vision, Effort, Systems, Practice, Attitude, Overall -->
                             <div class="chart-wrapper">
                                 <canvas id="vision-distribution-chart"></canvas>
                             </div>
@@ -145,6 +145,9 @@ function initializeDashboardApp() {
                             </div>
                             <div class="chart-wrapper">
                                 <canvas id="attitude-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="overall-distribution-chart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -227,21 +230,36 @@ function initializeDashboardApp() {
             const schoolAverages = calculateSchoolVespaAverages(schoolVespaResults, cycle);
             log(`School Averages (Cycle ${cycle}):`, schoolAverages);
 
-            let nationalAverages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0 };
+            let nationalAverages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0, overall: 0 };
+            let nationalDistributions = null; // Will hold parsed JSON distribution data
+            
             if (nationalBenchmarkRecord) {
                 nationalAverages = getNationalVespaAveragesFromRecord(nationalBenchmarkRecord, cycle);
-                log("Processed National Averages for charts:", nationalAverages); // Log processed national averages
+                log("Processed National Averages for charts:", nationalAverages);
+                
+                // Parse national distribution JSON data
+                const distributionFieldMap = {
+                    1: 'field_3409', // distribution_json_cycle1
+                    2: 'field_3410', // distribution_json_cycle2
+                    3: 'field_3411'  // distribution_json_cycle3
+                };
+                
+                const distributionField = distributionFieldMap[cycle];
+                if (distributionField && nationalBenchmarkRecord[distributionField + '_raw']) {
+                    try {
+                        nationalDistributions = JSON.parse(nationalBenchmarkRecord[distributionField + '_raw']);
+                        log(`Parsed National Distribution data for Cycle ${cycle}:`, nationalDistributions);
+                    } catch (e) {
+                        errorLog(`Failed to parse national distribution JSON for cycle ${cycle}:`, e);
+                    }
+                }
             } else {
                 log("National benchmark record was null, nationalAverages will be default/empty.");
             }
             log(`National Averages (Cycle ${cycle}):`, nationalAverages); // This log was already there, good.
             
-            // The old nationalAverages from allVespaResultsForBenchmark is removed for now.
-            // If you need a "all your schools average" vs "national average from object_120", 
-            // that would be a separate calculation.
-
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
-            renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle);
+            renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
 
         } catch (error) {
             errorLog("Failed to load overview data", error);
@@ -308,13 +326,13 @@ function initializeDashboardApp() {
     }
 
     function getNationalVespaAveragesFromRecord(record, cycle) {
-        const nationalAverages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0 };
+        const nationalAverages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0, overall: 0 };
         if (!record) return nationalAverages;
 
         const fieldMappings = {
-            cycle1: { v: 'field_3292', e: 'field_3293', s: 'field_3294', p: 'field_3295', a: 'field_3296' },
-            cycle2: { v: 'field_3297', e: 'field_3298', s: 'field_3299', p: 'field_3300', a: 'field_3301' },
-            cycle3: { v: 'field_3302', e: 'field_3303', s: 'field_3304', p: 'field_3305', a: 'field_3306' }
+            cycle1: { v: 'field_3292', e: 'field_3293', s: 'field_3294', p: 'field_3295', a: 'field_3296', o: 'field_3406' },
+            cycle2: { v: 'field_3297', e: 'field_3298', s: 'field_3299', p: 'field_3300', a: 'field_3301', o: 'field_3407' },
+            cycle3: { v: 'field_3302', e: 'field_3303', s: 'field_3304', p: 'field_3305', a: 'field_3306', o: 'field_3408' }
         };
 
         const currentCycleFields = fieldMappings[`cycle${cycle}`];
@@ -328,6 +346,7 @@ function initializeDashboardApp() {
         nationalAverages.systems = parseFloat(record[currentCycleFields.s + '_raw']) || 0;
         nationalAverages.practice = parseFloat(record[currentCycleFields.p + '_raw']) || 0;
         nationalAverages.attitude = parseFloat(record[currentCycleFields.a + '_raw']) || 0;
+        nationalAverages.overall = parseFloat(record[currentCycleFields.o + '_raw']) || 0;
         
         log(`Parsed National Averages from Object_120 for Cycle ${cycle}:`, nationalAverages);
         return nationalAverages;
@@ -406,7 +425,7 @@ function initializeDashboardApp() {
 
     let vespaDistributionChartInstances = {}; // To store multiple chart instances
 
-    function renderDistributionCharts(schoolResults, nationalAveragesData, themeColorsConfig, cycle) {
+    function renderDistributionCharts(schoolResults, nationalAveragesData, themeColorsConfig, cycle, nationalDistributions) {
         const container = document.getElementById('distribution-charts-container');
         if (!container) {
             errorLog("Distribution charts container not found");
@@ -420,7 +439,8 @@ function initializeDashboardApp() {
             { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#86b4f0', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168' },
             { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#72cb44', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169' },
             { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#7f31a4', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170' },
-            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' }
+            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' },
+            { name: 'Overall', key: 'overall', color: themeColorsConfig?.overall || '#ffd93d', fieldCycle1: 'field_160', fieldCycle2: 'field_166', fieldCycle3: 'field_172' }
         ];
 
         vespaElements.forEach(element => {
@@ -444,11 +464,11 @@ function initializeDashboardApp() {
 
             log(`For ${element.name} Distribution - National Avg: ${nationalAverageForElement}`); // Log national average for this element
 
-            createSingleHistogram(canvasId, chartTitle, scoreDistribution, nationalAverageForElement, element.color, cycle, element.key);
+            createSingleHistogram(canvasId, chartTitle, scoreDistribution, nationalAverageForElement, element.color, cycle, element.key, nationalDistributions);
         });
     }
 
-    function createSingleHistogram(canvasId, title, schoolScoreDistribution, nationalAverageScore, color, cycle, elementKey) {
+    function createSingleHistogram(canvasId, title, schoolScoreDistribution, nationalAverageScore, color, cycle, elementKey, nationalDistributions) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) {
             errorLog(`Canvas element ${canvasId} not found for histogram.`);
@@ -463,17 +483,61 @@ function initializeDashboardApp() {
 
         const labels = Array.from({ length: 11 }, (_, i) => i.toString()); // Scores 0-10
 
+        // Prepare national distribution data if available
+        let nationalDistributionData = null;
+        if (nationalDistributions && elementKey) {
+            // Map element key to the name used in the JSON (e.g., 'vision' -> 'Vision')
+            const elementNameMap = {
+                'vision': 'Vision',
+                'effort': 'Effort',
+                'systems': 'Systems',
+                'practice': 'Practice',
+                'attitude': 'Attitude',
+                'overall': 'Overall'
+            };
+            
+            const elementName = elementNameMap[elementKey];
+            if (elementName && nationalDistributions[elementName]) {
+                // Convert the distribution object to an array for Chart.js
+                nationalDistributionData = labels.map(label => {
+                    return nationalDistributions[elementName][label] || 0;
+                });
+                log(`National distribution data for ${elementName}:`, nationalDistributionData);
+            }
+        }
+
+        const datasets = [{
+            label: 'School Score Distribution',
+            data: schoolScoreDistribution,
+            backgroundColor: color || 'rgba(75, 192, 192, 0.8)',
+            borderColor: color || 'rgba(75, 192, 192, 1)',
+            borderWidth: 2,
+            order: 2 // Draw bars first
+        }];
+
+        // Add national distribution as a line if data is available
+        if (nationalDistributionData) {
+            datasets.push({
+                label: 'National Distribution',
+                data: nationalDistributionData,
+                type: 'line',
+                borderColor: 'rgba(255, 217, 61, 0.8)', // Golden yellow for national
+                backgroundColor: 'rgba(255, 217, 61, 0.1)',
+                borderWidth: 2,
+                borderDash: [5, 3], // Dashed line for subtlety
+                pointRadius: 3,
+                pointBackgroundColor: 'rgba(255, 217, 61, 0.8)',
+                pointBorderColor: 'rgba(255, 217, 61, 1)',
+                tension: 0.3, // Smooth curve
+                order: 1 // Draw line on top
+            });
+        }
+
         const chartConfig = {
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'School Score Distribution',
-                    data: schoolScoreDistribution,
-                    backgroundColor: color || 'rgba(75, 192, 192, 0.8)',
-                    borderColor: color || 'rgba(75, 192, 192, 1)',
-                    borderWidth: 2
-                }]
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -490,7 +554,15 @@ function initializeDashboardApp() {
                         }
                     },
                     legend: {
-                        display: false // Typically hide legend for a simple histogram
+                        display: nationalDistributionData ? true : false, // Show legend only if we have national data
+                        labels: {
+                            color: '#a8b2d1',
+                            usePointStyle: true,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
                     },
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.9)',
@@ -500,7 +572,14 @@ function initializeDashboardApp() {
                         borderWidth: 1,
                         callbacks: {
                             label: function(context) {
-                                return `Score ${context.label}: ${context.raw} students`;
+                                const datasetLabel = context.dataset.label;
+                                const value = context.raw;
+                                if (datasetLabel === 'School Score Distribution') {
+                                    return `School - Score ${context.label}: ${value} students`;
+                                } else if (datasetLabel === 'National Distribution') {
+                                    return `National - Score ${context.label}: ${value} students`;
+                                }
+                                return `${datasetLabel}: ${value}`;
                             }
                         }
                     },
