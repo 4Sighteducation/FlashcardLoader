@@ -88,7 +88,7 @@ function initializeDashboardApp() {
 
         try {
             log(`Checking Super User status for email: ${userEmail}`);
-            const superUserRecords = await fetchDataFromKnack('object_21', filters);
+            const superUserRecords = await fetchDataFromKnack(objectKeys.superUserRoles || 'object_21', filters);
             if (superUserRecords && superUserRecords.length > 0) {
                 log("Found Super User record:", superUserRecords[0]);
                 return superUserRecords[0].id;
