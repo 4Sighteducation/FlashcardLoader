@@ -1,4 +1,4 @@
-// dashboard1f.js
+// dashboard1o.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -205,6 +205,12 @@ function initializeDashboardApp() {
                             <option value="3">Cycle 3</option>
                         </select>
                     </div>
+                    <div id="active-filters-display" style="display:none;">
+                        <div class="active-filters-header">
+                            <h3>Currently Viewing:</h3>
+                            <div id="active-filters-list"></div>
+                        </div>
+                    </div>
                     <div class="filters-container">
                         <div class="filter-item">
                             <label for="student-search">Student:</label>
@@ -302,10 +308,12 @@ function initializeDashboardApp() {
     // --- Filter Management Functions ---
     function getActiveFilters() {
         const filters = [];
+        const activeFilterDisplay = [];
         
         // Student search filter
         const studentSearch = document.getElementById('student-search')?.value.trim();
         if (studentSearch) {
+            activeFilterDisplay.push({ type: 'Student', value: studentSearch, priority: true });
             // For name fields in Knack, we typically need to search both first and last name
             filters.push({
                 match: 'or',
@@ -326,19 +334,26 @@ function initializeDashboardApp() {
             });
         }
         
-        // Group filter (field_223 is an array/connection field)
+        // Group filter - could be text or connection field
         const groupFilter = document.getElementById('group-filter')?.value;
-        if (groupFilter) {
+        const groupText = document.getElementById('group-filter')?.selectedOptions[0]?.textContent;
+        if (groupFilter && groupText !== 'All Groups') {
+            activeFilterDisplay.push({ type: 'Group', value: groupText });
+            // Check if the value looks like an object ID (for connected fields)
+            // Otherwise treat as text field
+            const isObjectId = /^[a-f0-9]{24}$/i.test(groupFilter);
             filters.push({
                 field: 'field_223',
-                operator: 'contains',
+                operator: isObjectId ? 'contains' : 'is',
                 value: groupFilter
             });
         }
         
         // Course filter
         const courseFilter = document.getElementById('course-filter')?.value;
-        if (courseFilter) {
+        const courseText = document.getElementById('course-filter')?.selectedOptions[0]?.textContent;
+        if (courseFilter && courseText !== 'All Courses') {
+            activeFilterDisplay.push({ type: 'Course', value: courseText });
             filters.push({
                 field: 'field_2299',
                 operator: 'is',
@@ -348,7 +363,9 @@ function initializeDashboardApp() {
         
         // Year Group filter
         const yearGroupFilter = document.getElementById('year-group-filter')?.value;
-        if (yearGroupFilter) {
+        const yearGroupText = document.getElementById('year-group-filter')?.selectedOptions[0]?.textContent;
+        if (yearGroupFilter && yearGroupText !== 'All Year Groups') {
+            activeFilterDisplay.push({ type: 'Year Group', value: yearGroupText });
             filters.push({
                 field: 'field_144',
                 operator: 'is',
@@ -358,7 +375,9 @@ function initializeDashboardApp() {
         
         // Faculty filter
         const facultyFilter = document.getElementById('faculty-filter')?.value;
-        if (facultyFilter) {
+        const facultyText = document.getElementById('faculty-filter')?.selectedOptions[0]?.textContent;
+        if (facultyFilter && facultyText !== 'All Faculties') {
+            activeFilterDisplay.push({ type: 'Faculty', value: facultyText });
             filters.push({
                 field: 'field_782',
                 operator: 'is',
@@ -366,7 +385,45 @@ function initializeDashboardApp() {
             });
         }
         
+        // Update the active filters display
+        updateActiveFiltersDisplay(activeFilterDisplay);
+        
         return filters;
+    }
+
+    function updateActiveFiltersDisplay(activeFilters) {
+        const displayContainer = document.getElementById('active-filters-display');
+        const filtersList = document.getElementById('active-filters-list');
+        
+        if (!displayContainer || !filtersList) return;
+        
+        if (activeFilters.length === 0) {
+            displayContainer.style.display = 'none';
+            return;
+        }
+        
+        displayContainer.style.display = 'block';
+        filtersList.innerHTML = '';
+        
+        // Sort filters to show priority (student) first
+        activeFilters.sort((a, b) => {
+            if (a.priority && !b.priority) return -1;
+            if (!a.priority && b.priority) return 1;
+            return 0;
+        });
+        
+        activeFilters.forEach(filter => {
+            const filterTag = document.createElement('div');
+            filterTag.className = 'active-filter-tag';
+            if (filter.priority) filterTag.classList.add('priority');
+            
+            filterTag.innerHTML = `
+                <span class="filter-type">${filter.type}:</span>
+                <span class="filter-value">${filter.value}</span>
+            `;
+            
+            filtersList.appendChild(filterTag);
+        });
     }
 
     async function populateFilterDropdowns(staffAdminId) {
@@ -389,47 +446,153 @@ function initializeDashboardApp() {
                 return;
             }
             
+            log(`Processing ${allRecords.length} records for filter values`);
+            
             // Extract unique values for each filter
             const groups = new Set();
             const courses = new Set();
             const yearGroups = new Set();
             const faculties = new Set();
             
-            allRecords.forEach(record => {
-                // Group (field_223) - connected field
-                if (record.field_223_raw && Array.isArray(record.field_223_raw)) {
-                    record.field_223_raw.forEach(groupId => {
-                        if (groupId && record.field_223) {
-                            // field_223 contains the display value
-                            const displayValues = record.field_223.split(',').map(v => v.trim());
-                            displayValues.forEach(displayValue => {
-                                if (displayValue) {
-                                    groups.add(JSON.stringify({ id: groupId, name: displayValue }));
+            // Debug: Log first record to see field structure
+            if (allRecords.length > 0) {
+                log("Sample record for debugging:", {
+                    field_223: allRecords[0].field_223,
+                    field_223_raw: allRecords[0].field_223_raw,
+                    field_2299: allRecords[0].field_2299,
+                    field_2299_raw: allRecords[0].field_2299_raw,
+                    field_144_raw: allRecords[0].field_144_raw,
+                    field_782_raw: allRecords[0].field_782_raw
+                });
+            }
+            
+            allRecords.forEach((record, index) => {
+                // Group (field_223) - Handle as text field
+                // Try both field_223_raw and field_223 as Knack might store text fields differently
+                const groupFieldValue = record.field_223_raw || record.field_223;
+                if (groupFieldValue) {
+                    if (index < 3) { // Log first few records for debugging
+                        log(`Record ${index} - Group field_223_raw:`, record.field_223_raw, "field_223:", record.field_223);
+                    }
+                    // If it's an array (connected field), handle differently
+                    if (Array.isArray(groupFieldValue)) {
+                        groupFieldValue.forEach((groupId, idx) => {
+                            if (groupId) {
+                                // Try to get display value
+                                let displayValue = record.field_223 || groupId;
+                                if (Array.isArray(record.field_223)) {
+                                    displayValue = record.field_223[idx] || groupId;
                                 }
-                            });
+                                groups.add(JSON.stringify({ id: groupId, name: displayValue }));
+                            }
+                        });
+                    } else if (typeof groupFieldValue === 'object' && groupFieldValue !== null) {
+                        // Sometimes Knack returns objects for connected fields
+                        if (groupFieldValue.id) {
+                            groups.add(JSON.stringify({ 
+                                id: groupFieldValue.id, 
+                                name: groupFieldValue.identifier || groupFieldValue.value || groupFieldValue.id 
+                            }));
                         }
-                    });
+                    } else {
+                        // It's a text field - use the value directly
+                        const groupValue = groupFieldValue.toString().trim();
+                        if (groupValue && groupValue !== 'null' && groupValue !== 'undefined') {
+                            groups.add(groupValue);
+                        }
+                    }
                 }
                 
-                // Course (field_2299)
-                if (record.field_2299_raw) {
-                    courses.add(record.field_2299_raw);
+                // Course (field_2299) - Handle both text and connected fields
+                const courseFieldValue = record.field_2299_raw || record.field_2299;
+                if (courseFieldValue) {
+                    if (index < 3) { // Log first few records for debugging
+                        log(`Record ${index} - Course field_2299_raw:`, record.field_2299_raw, "field_2299:", record.field_2299);
+                    }
+                    if (Array.isArray(courseFieldValue)) {
+                        // Connected field
+                        courseFieldValue.forEach((courseId, idx) => {
+                            if (courseId) {
+                                let displayValue = record.field_2299 || courseId;
+                                if (Array.isArray(record.field_2299)) {
+                                    displayValue = record.field_2299[idx] || courseId;
+                                }
+                                courses.add(JSON.stringify({ id: courseId, name: displayValue }));
+                            }
+                        });
+                    } else if (typeof courseFieldValue === 'object' && courseFieldValue !== null) {
+                        // Sometimes Knack returns objects for connected fields
+                        if (courseFieldValue.id) {
+                            courses.add(JSON.stringify({ 
+                                id: courseFieldValue.id, 
+                                name: courseFieldValue.identifier || courseFieldValue.value || courseFieldValue.id 
+                            }));
+                        }
+                    } else {
+                        // Text field
+                        const courseValue = courseFieldValue.toString().trim();
+                        if (courseValue && courseValue !== 'null' && courseValue !== 'undefined') {
+                            courses.add(courseValue);
+                        }
+                    }
                 }
                 
                 // Year Group (field_144)
                 if (record.field_144_raw) {
-                    yearGroups.add(record.field_144_raw);
+                    const yearGroupValue = record.field_144_raw.toString().trim();
+                    if (yearGroupValue) {
+                        yearGroups.add(yearGroupValue);
+                    }
                 }
                 
                 // Faculty (field_782)
                 if (record.field_782_raw) {
-                    faculties.add(record.field_782_raw);
+                    const facultyValue = record.field_782_raw.toString().trim();
+                    if (facultyValue) {
+                        faculties.add(facultyValue);
+                    }
                 }
             });
             
+            // Debug: Log collected values
+            log("Collected filter values:", {
+                groups: Array.from(groups),
+                courses: Array.from(courses),
+                yearGroups: Array.from(yearGroups),
+                faculties: Array.from(faculties)
+            });
+            
             // Populate dropdowns
-            populateDropdown('group-filter', Array.from(groups).map(g => JSON.parse(g)), 'name', 'id');
-            populateDropdown('course-filter', Array.from(courses).sort());
+            // Process groups - could be strings or JSON objects
+            const groupItems = Array.from(groups).map(g => {
+                try {
+                    return JSON.parse(g);
+                } catch (e) {
+                    // It's a plain string, not JSON
+                    return g;
+                }
+            }).sort((a, b) => {
+                const aName = typeof a === 'object' ? a.name : a;
+                const bName = typeof b === 'object' ? b.name : b;
+                return aName.localeCompare(bName);
+            });
+            
+            // Process courses - could be strings or JSON objects
+            const courseItems = Array.from(courses).map(c => {
+                try {
+                    return JSON.parse(c);
+                } catch (e) {
+                    // It's a plain string, not JSON
+                    return c;
+                }
+            }).sort((a, b) => {
+                const aName = typeof a === 'object' ? a.name : a;
+                const bName = typeof b === 'object' ? b.name : b;
+                return aName.localeCompare(bName);
+            });
+            
+            populateDropdown('group-filter', groupItems, 'name', 'id');
+            populateDropdown('course-filter', courseItems, 'name', 'id');
             populateDropdown('year-group-filter', Array.from(yearGroups).sort());
             populateDropdown('faculty-filter', Array.from(faculties).sort());
             
@@ -449,15 +612,25 @@ function initializeDashboardApp() {
         
         items.forEach(item => {
             const option = document.createElement('option');
-            if (displayProperty && valueProperty && typeof item === 'object') {
-                option.value = item[valueProperty];
-                option.textContent = item[displayProperty];
+            if (typeof item === 'object' && item !== null) {
+                // It's an object
+                if (displayProperty && item[displayProperty] !== undefined) {
+                    option.textContent = item[displayProperty];
+                    option.value = valueProperty && item[valueProperty] !== undefined ? item[valueProperty] : item[displayProperty];
+                } else {
+                    // Fallback if properties don't exist
+                    option.value = JSON.stringify(item);
+                    option.textContent = JSON.stringify(item);
+                }
             } else {
+                // It's a simple value (string/number)
                 option.value = item;
                 option.textContent = item;
             }
             dropdown.appendChild(option);
         });
+        
+        log(`Populated ${dropdownId} with ${items.length} items`);
     }
 
     // --- Section 1: Overview and Benchmarking ---
@@ -1386,6 +1559,9 @@ function initializeDashboardApp() {
                     document.getElementById('year-group-filter').value = '';
                     document.getElementById('faculty-filter').value = '';
                     
+                    // Clear the active filters display
+                    updateActiveFiltersDisplay([]);
+                    
                     // Reload data without filters
                     const selectedCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
                     log("Clearing all filters");
@@ -1419,3 +1595,4 @@ if (document.readyState === 'loading') {
 // If it's not already, you might need:
 // window.initializeDashboardApp = initializeDashboardApp;
 // However, since it's a top-level function in the script, it should be.
+
