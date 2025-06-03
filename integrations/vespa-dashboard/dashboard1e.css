@@ -1,0 +1,376 @@
+/* dashboard.css - Enhanced Styles */
+
+/* --- Global & Typography --- */
+body {
+    background-color: #f4f6f9; /* Slightly different light background for a fresh look */
+    color: #333; /* Default text color */
+}
+
+#dashboard-container {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 20px; /* Slightly reduced padding */
+    max-width: 100%; /* Use full width available */
+    margin: 0 auto;
+}
+
+#dashboard-container header h1 {
+    text-align: center;
+    color: #2c3e50; /* Slightly darker, more professional blue/grey */
+    margin-bottom: 25px; /* Reduced margin */
+    font-size: 2rem; /* Reduced font size */
+    font-weight: 600;
+}
+
+#dashboard-container h2 {
+    color: #34495e; /* Another shade of dark blue/grey */
+    border-bottom: 1px solid #dee2e6; /* Thinner border */
+    padding-bottom: 8px;
+    margin-top: 30px; /* Reduced margin */
+    margin-bottom: 20px;
+    font-size: 1.6rem; /* Reduced font size */
+    font-weight: 500;
+}
+
+#dashboard-container .controls {
+    margin-bottom: 20px; /* Reduced margin */
+    text-align: center;
+}
+
+#dashboard-container .controls label {
+    margin-right: 8px;
+    font-weight: 500;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+#dashboard-container #cycle-select {
+    padding: 8px 12px; /* Reduced padding */
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    background-color: #fff;
+    font-size: 0.9rem; /* Reduced font size */
+    cursor: pointer;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+#dashboard-container #cycle-select:focus {
+    border-color: #007bff; /* Standard blue focus */
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* --- Loading Indicator --- */
+#loading-indicator {
+    display: none;
+    text-align: center;
+    padding: 30px 15px;
+    width: 100%;
+}
+
+#loading-indicator p {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 15px;
+}
+
+.spinner {
+    width: 40px; /* Smaller spinner */
+    height: 40px;
+    border: 4px solid #e9ecef;
+    border-top-color: #007bff; /* Consistent blue */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* --- VESPA Scorecards --- */
+.vespa-scores-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Center cards for better alignment if row not full */
+    gap: 15px; /* Reduced gap */
+    margin-bottom: 25px; /* Reduced margin */
+    padding: 5px 0;
+}
+
+.vespa-score-card {
+    flex-grow: 1;
+    flex-shrink: 1;
+    /* Default flex-basis and max-width for small screens / base */
+    flex-basis: calc(100% - 15px); 
+    max-width: 300px; 
+    min-height: 100px; /* Reduced min-height */
+    padding: 12px; /* Reduced padding */
+    border-radius: 10px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    overflow: hidden;
+}
+
+.vespa-score-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.12);
+}
+
+.vespa-score-card h3 {
+    margin-top: 0;
+    margin-bottom: 5px; /* Reduced margin */
+    font-size: 0.75rem; /* Reduced font size */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    opacity: 0.95;
+}
+
+.vespa-score-card .score-value {
+    font-size: 2.2rem; /* Reduced font size */
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 8px; /* Reduced margin */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.vespa-score-card .national-comparison {
+    position: absolute;
+    top: 5px; /* Adjusted for compactness */
+    right: 5px;
+    font-size: 0.65rem; /* Reduced font size */
+    background-color: rgba(0,0,0,0.35); /* Darker background for contrast */
+    padding: 3px 6px; /* Reduced padding */
+    border-radius: 6px;
+    line-height: 1.2;
+    font-weight: 500;
+    text-align: left; /* Ensure text aligns left if it wraps */
+}
+
+.vespa-score-card .national-comparison .arrow {
+    font-weight: bold;
+    margin: 0 2px;
+    font-size: 0.75rem;
+}
+
+.vespa-score-card .national-comparison .arrow.up {
+    color: #a7f3d0; /* Brighter, more accessible green */
+}
+
+.vespa-score-card .national-comparison .arrow.down {
+    color: #fecaca; /* Brighter, more accessible red */
+}
+
+/* --- Chart Containers --- */
+#distribution-charts-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start; /* Align items to the start of the container */
+    gap: 15px; /* Reduced gap */
+    margin-bottom: 25px;
+}
+
+.chart-wrapper {
+    background-color: #ffffff;
+    padding: 10px; /* Reduced padding */
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    min-height: 220px; /* Significantly reduced min-height */
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 100%; /* Mobile first: full width */
+    display: flex; 
+    flex-direction: column; 
+}
+
+.chart-wrapper canvas {
+    max-width: 100%;
+    flex-grow: 1; /* Allow canvas to grow to fill the wrapper */
+    height: auto !important; /* Maintain aspect ratio, but allow Chart.js to control it */
+}
+
+/* --- Responsive Adjustments for Scorecards and Charts --- */
+
+/* Small devices (e.g., landscape phones, small tablets) */
+@media (min-width: 576px) {
+    .vespa-score-card {
+        flex-basis: calc(50% - 7.5px); /* 2 cards per row (gap 15px / 2) */
+        max-width: calc(50% - 7.5px);
+    }
+    /* Charts remain 1 per row for clarity unless screen is wider */
+    .chart-wrapper {
+        flex-basis: calc(50% - 7.5px); /* 2 charts per row */
+    }
+}
+
+/* Medium devices (e.g., tablets, small desktops) */
+@media (min-width: 768px) {
+    .vespa-score-card {
+        flex-basis: calc(33.333% - 10px); /* 3 cards (gap 15px: 2*15/3) */
+        max-width: calc(33.333% - 10px);
+    }
+    .chart-wrapper {
+        flex-basis: calc(33.333% - 10px); /* 3 charts per row */
+        min-height: 200px; /* Further reduce min-height for 3 per row */
+    }
+}
+
+/* Large devices (e.g., desktops) */
+@media (min-width: 992px) {
+    .vespa-score-card {
+        flex-basis: 130px; /* More compact fixed basis */
+        max-width: 150px;
+        min-height: 90px;
+        padding: 10px;
+    }
+    .vespa-score-card .score-value {
+        font-size: 2rem; 
+    }
+    .vespa-score-card h3 {
+        font-size: 0.7rem;
+    }
+    .chart-wrapper {
+        flex-basis: calc(33.333% - 10px); /* Maintain 3 charts */
+        min-height: 180px; /* Can be smaller if content fits */
+    }
+}
+
+/* Extra large devices (to fit 5 charts, aim for ~20% basis) */
+@media (min-width: 1200px) {
+    .vespa-score-card {
+        flex-basis: 120px; /* Even more compact */
+        max-width: 140px;
+    }
+    .chart-wrapper {
+        /* For 5 charts: 100% / 5 = 20%. Gap: (4 * 15px) / 5 = 12px per item */
+        flex-basis: calc(20% - 12px); 
+        min-height: 160px; /* very compact */
+    }
+     /* If you have exactly 5 charts and want them centered if they wrap to a new line */
+    #distribution-charts-container {
+        justify-content: center; /* Center items in the container */
+    }
+}
+
+/* Wider screens, allow more scorecards if needed */
+@media (min-width: 1400px) {
+    .vespa-score-card {
+        flex-basis: 110px; 
+        max-width: 130px;
+    }
+     .chart-wrapper {
+        /* Keep 5 charts per row, or adjust if behavior is off */
+        flex-basis: calc(20% - 12px); 
+        min-height: 150px; 
+    }
+}
+
+
+/* QLA and Student Insights Section Styling */
+#qla-section, #student-insights-section {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+#qla-controls {
+    display: flex;
+    flex-wrap: wrap; /* Allow controls to wrap on smaller screens */
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+#qla-question-dropdown, #qla-chat-input {
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+
+#qla-question-dropdown {
+    min-width: 180px;
+}
+
+#qla-chat-input {
+    min-width: 220px;
+}
+
+#qla-chat-submit {
+    padding: 10px 18px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+#qla-chat-submit:hover {
+    background-color: #0056b3;
+}
+
+#qla-ai-response {
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #e6f7ff;
+    border-left: 4px solid #007bff;
+    min-height: 50px;
+    border-radius: 6px;
+    line-height: 1.5;
+    font-size: 0.9rem;
+}
+
+#qla-top-bottom-questions h3 {
+    font-size: 1.1rem;
+    color: #34495e;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+#qla-top-bottom-questions ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#qla-top-bottom-questions ul li {
+    padding: 8px 5px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+#qla-top-bottom-questions ul li:last-child {
+    border-bottom: none;
+}
+
+/* Word Cloud & Themes styling (basic) */
+#word-cloud-container, #common-themes-container {
+    padding: 20px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-top: 20px;
+    min-height: 150px;
+    background-color: #fdfdfd;
+}
+
+#word-cloud-container p, #common-themes-container p { /* Style placeholder text */
+    color: #777;
+    font-style: italic;
+}
