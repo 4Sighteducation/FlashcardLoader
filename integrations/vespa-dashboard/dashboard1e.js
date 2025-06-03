@@ -1,4 +1,4 @@
-// dashboard1d.js
+// dashboard1c.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -121,8 +121,12 @@ function initializeDashboardApp() {
                             <option value="3">Cycle 3</option>
                         </select>
                     </div>
-                    <div id="averages-chart-container">
-                        <canvas id="vespa-averages-chart"></canvas>
+                    <div id="loading-indicator" style="display:none; text-align:center; padding:20px;">
+                        <p>Loading chart data...</p>
+                        <!-- Optional: Add a CSS spinner image or animation -->
+                    </div>
+                    <div id="averages-summary-container" class="vespa-scores-grid">
+                        <!-- Scorecards will be dynamically inserted here -->
                     </div>
                     <div id="distribution-charts-container">
                         <!-- Containers for Vision, Effort, Systems, Practice, Attitude -->
@@ -175,6 +179,14 @@ function initializeDashboardApp() {
     // --- Section 1: Overview and Benchmarking ---
     async function loadOverviewData(staffAdminId, cycle = 1) {
         log(`Loading overview data with Staff Admin ID: ${staffAdminId} for Cycle: ${cycle}`);
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const averagesContainer = document.getElementById('averages-summary-container');
+        const distributionContainer = document.getElementById('distribution-charts-container');
+
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+        if (averagesContainer) averagesContainer.style.display = 'none'; // Hide while loading
+        if (distributionContainer) distributionContainer.style.display = 'none'; // Hide while loading
+
         try {
             let schoolVespaResults = [];
             if (staffAdminId) {
@@ -216,8 +228,11 @@ function initializeDashboardApp() {
             let nationalAverages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0 };
             if (nationalBenchmarkRecord) {
                 nationalAverages = getNationalVespaAveragesFromRecord(nationalBenchmarkRecord, cycle);
+                log("Processed National Averages for charts:", nationalAverages); // Log processed national averages
+            } else {
+                log("National benchmark record was null, nationalAverages will be default/empty.");
             }
-            log(`National Averages (Cycle ${cycle}):`, nationalAverages);
+            log(`National Averages (Cycle ${cycle}):`, nationalAverages); // This log was already there, good.
             
             // The old nationalAverages from allVespaResultsForBenchmark is removed for now.
             // If you need a "all your schools average" vs "national average from object_120", 
@@ -230,6 +245,10 @@ function initializeDashboardApp() {
             errorLog("Failed to load overview data", error);
             const overviewSection = document.getElementById('overview-section');
             if(overviewSection) overviewSection.innerHTML = "<p>Error loading overview data. Please check console.</p>";
+        } finally {
+            if (loadingIndicator) loadingIndicator.style.display = 'none';
+            if (averagesContainer) averagesContainer.style.display = 'block'; // Show again
+            if (distributionContainer) distributionContainer.style.display = 'block'; // Show again
         }
     }
 
@@ -312,159 +331,75 @@ function initializeDashboardApp() {
         return nationalAverages;
     }
 
-    let vespaChartInstance = null; // Keep a reference to the chart to destroy it before redrawing
-
     function renderAveragesChart(schoolData, nationalData, cycle) {
-        const container = document.getElementById('averages-chart-container');
+        const container = document.getElementById('averages-summary-container');
         if (!container) {
-            errorLog("Averages chart container not found");
+            errorLog("Averages summary container not found");
             return;
         }
-        const canvas = document.getElementById('vespa-averages-chart');
-        if (!canvas) {
-            errorLog("VESPA averages chart canvas element not found");
-            return;
-        }
-        const ctx = canvas.getContext('2d');
+        container.innerHTML = ''; // Clear previous content
 
-        log(`Rendering averages chart for Cycle ${cycle} with School:`, schoolData, "National:", nationalData);
+        log(`Rendering averages scorecards for Cycle ${cycle}. School:`, schoolData, "National:", nationalData);
 
-        // Destroy previous chart instance if it exists
-        if (vespaChartInstance) {
-            vespaChartInstance.destroy();
-        }
-
-        const labels = ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'];
-        const schoolScores = [
-            schoolData.vision,
-            schoolData.effort,
-            schoolData.systems,
-            schoolData.practice,
-            schoolData.attitude
-        ];
-        const nationalScores = [
-            nationalData.vision,
-            nationalData.effort,
-            nationalData.systems,
-            nationalData.practice,
-            nationalData.attitude
+        const elementsToDisplay = [
+            { key: 'vision', name: 'VISION' },
+            { key: 'effort', name: 'EFFORT' },
+            { key: 'systems', name: 'SYSTEMS' },
+            { key: 'practice', name: 'PRACTICE' },
+            { key: 'attitude', name: 'ATTITUDE' },
+            { key: 'overall', name: 'OVERALL' } // Assuming 'overall' is available in schoolData and nationalData
         ];
 
-        // TODO: Calculate and display percentage differences. 
-        // This could be done by adding annotations to the chart or separate text.
-        // Example for one category:
-        // let visionDiff = 0;
-        // if (nationalData.vision > 0) { // Avoid division by zero
-        //     visionDiff = ((schoolData.vision - nationalData.vision) / nationalData.vision) * 100;
-        // }
-        // Display logic for visionDiff (e.g., with an arrow icon) would go here or in chart tooltips/datalabels.
+        const defaultThemeColors = {
+            vision: '#ff8f00',
+            effort: '#86b4f0',
+            systems: '#72cb44',
+            practice: '#7f31a4',
+            attitude: '#f032e6',
+            overall: '#ffd700' // Gold/Yellow for overall
+        };
 
-        try {
-            // Register the datalabels plugin if it's available
-            if (typeof ChartDataLabels !== 'undefined') {
-                Chart.register(ChartDataLabels);
+        const currentThemeColors = config.themeColors || defaultThemeColors;
+
+        elementsToDisplay.forEach(element => {
+            const schoolScore = schoolData[element.key];
+            const nationalScore = nationalData[element.key];
+
+            const card = document.createElement('div');
+            card.className = 'vespa-score-card';
+            card.style.backgroundColor = currentThemeColors[element.key] || defaultThemeColors[element.key];
+
+            let percentageDiffText = '';
+            let arrow = '';
+            let arrowClass = '';
+
+            if (nationalScore !== null && typeof nationalScore !== 'undefined' && nationalScore > 0 && schoolScore !== null && typeof schoolScore !== 'undefined') {
+                const diff = ((schoolScore - nationalScore) / nationalScore) * 100;
+                arrow = diff >= 0 ? '↑' : '↓';
+                arrowClass = diff >= 0 ? 'up' : 'down';
+                percentageDiffText = `${diff.toFixed(1)}%`;
+            } else if (schoolScore !== null && typeof schoolScore !== 'undefined') {
+                if (nationalScore === 0) {
+                    percentageDiffText = 'Nat Avg 0';
+                } else {
+                    percentageDiffText = 'Nat N/A';
+                }
             }
 
-            vespaChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'School Average',
-                            data: schoolScores,
-                            backgroundColor: themeColors && themeColors.schoolAverage ? themeColors.schoolAverage : 'rgba(54, 162, 235, 0.6)', // Blue
-                            borderColor: themeColors && themeColors.schoolAverageBorder ? themeColors.schoolAverageBorder : 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1,
-                            datalabels: {
-                                anchor: 'end',
-                                align: 'top',
-                                formatter: function(value, context) {
-                                    const schoolScore = value;
-                                    const nationalScore = nationalScores[context.dataIndex];
-                                    let diffText = '';
-                                    if (nationalScore > 0 && schoolScore !== null && typeof schoolScore !== 'undefined') {
-                                        const diff = ((schoolScore - nationalScore) / nationalScore) * 100;
-                                        const arrow = diff >= 0 ? '↑' : '↓';
-                                        diffText = `${arrow} ${diff.toFixed(1)}%`;
-                                    } else if (schoolScore !== null && typeof schoolScore !== 'undefined') {
-                                        diffText = 'N/A (Nat Avg 0 or Undefined)'; // Or just blank if preferred
-                                    }
-                                    return diffText;
-                                },
-                                color: function(context) {
-                                    const schoolScore = schoolScores[context.dataIndex];
-                                    const nationalScore = nationalScores[context.dataIndex];
-                                    if (nationalScore > 0 && schoolScore !== null && typeof schoolScore !== 'undefined') {
-                                        const diff = ((schoolScore - nationalScore) / nationalScore) * 100;
-                                        return diff >= 0 ? 'green' : 'red';
-                                    }
-                                    return '#808080'; // Grey for N/A
-                                },
-                                font: {
-                                    weight: 'bold'
-                                }
-                            }
-                        },
-                        {
-                            label: 'National Average',
-                            data: nationalScores,
-                            backgroundColor: themeColors && themeColors.nationalAverage ? themeColors.nationalAverage : 'rgba(255, 99, 132, 0.6)', // Red
-                            borderColor: themeColors && themeColors.nationalAverageBorder ? themeColors.nationalAverageBorder : 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1,
-                            datalabels: {
-                                display: false // No labels for the national average bars themselves by default
-                            }
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `VESPA Averages - Cycle ${cycle}`
-                        },
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toFixed(2);
-                                    }
-                                    return label;
-                                }
-                            }
-                        },
-                        // Datalabels plugin configuration (global for the chart)
-                        datalabels: {
-                            // display: true, // Can be true to enable for all datasets by default
-                            // We configured it per dataset for more control
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 10, // Assuming VESPA scores are 0-10
-                            title: {
-                                display: true,
-                                text: 'Average Score'
-                            }
-                        }
-                    }
-                }
-            });
-        } catch (e) {
-            errorLog("Chart.js error (possibly with datalabels plugin): ", e);
-            container.innerHTML = "<p>Error rendering chart. Is Chart.js library and datalabels plugin included and correctly initialized?</p>";
-        }
+            // Determine if overall score should have different decimal places (e.g., 1 vs 2 for others)
+            // The image shows scores like 6, 6.3, 5.4, 6.1, 5.9 - mostly one decimal place.
+            const scoreToDisplay = (typeof schoolScore === 'number') ? schoolScore.toFixed(1) : 'N/A';
+            const nationalScoreToDisplay = (typeof nationalScore === 'number') ? nationalScore.toFixed(1) : 'N/A';
+
+            card.innerHTML = `
+                <h3>${element.name}</h3>
+                <div class="score-value">${scoreToDisplay}</div>
+                <div class="national-comparison">
+                    National: ${nationalScoreToDisplay} <span class="arrow ${arrowClass}">${arrow}</span> ${percentageDiffText}
+                </div>
+            `;
+            container.appendChild(card);
+        });
     }
 
     let vespaDistributionChartInstances = {}; // To store multiple chart instances
@@ -493,16 +428,20 @@ function initializeDashboardApp() {
             // For Chart.js v3, plugins are registered directly on Chart object
             // Chart.register(ChartDataLabels); // Already registered for the average chart
             if (typeof Annotation !== 'undefined') {
-                 // Chart.register(Annotation); // For Chart.js v3+ ; for v2 use Chart.plugins.register(). Let's assume v3+ for now.
-                 // Check if Annotation is an object and has an id, typical for v3 plugins
-                 if (typeof Annotation === 'object' && Annotation.id) Chart.register(Annotation);
-                 else if (typeof Chart.plugins === 'object' && typeof Chart.plugins.register === 'function') {
-                     // Fallback for potential Chart.js v2 style plugin registration if Annotation is structured that way
-                     try { Chart.plugins.register(Annotation); } catch(e){ errorLog("Failed to register Annotation plugin v2 style", e); }
+                 if (typeof Annotation === 'object' && Annotation.id) {
+                    Chart.register(Annotation);
+                    log("Annotation plugin registered (v3+ style).");
+                 } else if (typeof Chart.plugins === 'object' && typeof Chart.plugins.register === 'function') {
+                     try { 
+                         Chart.plugins.register(Annotation); 
+                         log("Annotation plugin registered (v2 style).");
+                     } catch(e){ errorLog("Failed to register Annotation plugin v2 style", e); }
                  }
             } else {
-                log("Annotation plugin not found. National average line will not be drawn on histograms.");
+                log("Annotation plugin global object not found. National average line may not be drawn on histograms.");
             }
+        } else {
+            log("Chart object or ChartDataLabels not defined, cannot register Annotation plugin.");
         }
 
 
@@ -524,6 +463,8 @@ function initializeDashboardApp() {
             const nationalAverageForElement = nationalAveragesData ? nationalAveragesData[element.key] : null;
             const canvasId = `${element.key}-distribution-chart`;
             const chartTitle = `${element.name} Score Distribution - Cycle ${cycle}`;
+
+            log(`For ${element.name} Distribution - National Avg: ${nationalAverageForElement}`); // Log national average for this element
 
             createSingleHistogram(canvasId, chartTitle, scoreDistribution, nationalAverageForElement, element.color, cycle, element.key);
         });
@@ -622,6 +563,8 @@ function initializeDashboardApp() {
             // As a fallback, add it to the title if annotation is not available
             chartConfig.options.plugins.title.text += ` (Nat Avg: ${nationalAverageScore.toFixed(2)})`;
         }
+
+        log(`Creating histogram for ${canvasId} with title: '${chartConfig.options.plugins.title.text}'`); // Log final title
 
         try {
             vespaDistributionChartInstances[canvasId] = new Chart(ctx, chartConfig);
