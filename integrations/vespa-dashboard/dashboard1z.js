@@ -1,4 +1,5 @@
-// dashboard1y.js
+// dashboard1f.js
+// @ts-nocheck
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -1732,10 +1733,21 @@ function initializeDashboardApp() {
             const diff = value - compareValue;
             const percentage = compareValue !== 0 ? (diff / compareValue * 100).toFixed(1) : 0;
             const isPositive = diff > 0;
-            return `<span class="stat-diff ${isPositive ? 'positive' : 'negative'}">
-                ${isPositive ? '+' : ''}${percentage}%
-            </span>`;
+            const className = isPositive ? 'positive' : 'negative';
+            const sign = isPositive ? '+' : '';
+            return '<span class="stat-diff ' + className + '">' + sign + percentage + '%</span>';
         };
+
+        let meanDiff = '';
+        let stdDevDiff = '';
+        
+        if (compareStats && typeof compareStats.mean === 'number') {
+            meanDiff = formatDiff(stats.mean, compareStats.mean);
+        }
+        
+        if (compareStats && typeof compareStats.std_dev === 'number') {
+            stdDevDiff = formatDiff(stats.std_dev, compareStats.std_dev);
+        }
 
         return `
             <div class="stats-section">
@@ -1745,14 +1757,14 @@ function initializeDashboardApp() {
                         <div class="stat-label">Mean</div>
                         <div class="stat-value">
                             ${stats.mean}
-                            ${formatDiff(stats.mean, compareStats?.mean)}
+                            ${meanDiff}
                         </div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-label">Standard Deviation</div>
                         <div class="stat-value">
                             ${stats.std_dev}
-                            ${formatDiff(stats.std_dev, compareStats?.std_dev)}
+                            ${stdDevDiff}
                         </div>
                     </div>
                     <div class="stat-item">
@@ -1785,6 +1797,7 @@ function initializeDashboardApp() {
             </div>
         `;
     }
+
 
     function generateInsights(schoolStats, nationalStats, elementKey) {
         const insights = [];
@@ -2288,9 +2301,9 @@ function initializeDashboardApp() {
                 });
                 allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, qlaFilters);
                 log("Fetched QLA Responses (filtered by Staff Admin ID):", allQuestionResponses ? allQuestionResponses.length : 0);
-            } else {
-                log("No Staff Admin ID or Establishment ID provided to loadQLAData. Cannot filter QLA data.");
-                // Fetch all if no specific filtering is possible, or show an error.
+            } else { 
+                log("No Staff Admin ID or Establishment ID provided to loadQLAData. Cannot filter QLA data. Attempting to fetch all.");
+                allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, []); // Fetch all if no filter
             }
             // log("QLA data loaded:", allQuestionResponses.length, "responses"); // Already logged above if filtered
 
@@ -2303,11 +2316,6 @@ function initializeDashboardApp() {
             const qlaSection = document.getElementById('qla-section');
             if(qlaSection) qlaSection.innerHTML = "<p>Error loading Question Level Analysis data. Please check console.</p>";
         }
-    }
-    
-    async function getQuestionTextMapping() {
-        // Now uses the ached mappings from the backend
-        return questionMappings.id_to_text || {};
     }
 
 
@@ -2382,6 +2390,16 @@ function initializeDashboardApp() {
         return psychometricDetailsArray.some(qDetail => qDetail.currentCycleFieldId === fieldId);
     }
 
+    // Helper function to get question text mapping
+    async function getQuestionTextMapping() {
+        // Return the cached mapping or fetch it if needed
+        if (questionMappings.id_to_text && Object.keys(questionMappings.id_to_text).length > 0) {
+            return questionMappings.id_to_text;
+        }
+        
+        // If not cached, return an empty object (the mapping should have been loaded in loadQLAData)
+        return {};
+    }
 
     async function displayTopBottomQuestions(responses) {
         if (!responses || responses.length === 0) return;
@@ -2566,7 +2584,30 @@ function initializeDashboardApp() {
             return;
         }
 
-        // Check if user is a Super User first
+        // Get logged in user email from config or Knack directly
+        let loggedInUserEmail = config.loggedInUserEmail;
+    
+        // If not in config, try to get from Knack
+        if (!loggedInUserEmail && typeof Knack !== 'undefined' && Knack.getUserAttributes) {
+            try {
+                const userAttributes = Knack.getUserAttributes();
+                loggedInUserEmail = userAttributes.email || userAttributes.values?.email;
+                console.log("Got user email from Knack:", loggedInUserEmail);
+            } catch (e) {
+                console.error("Failed to get user email from Knack:", e);
+            }
+        }
+    
+        // If still no email, try alternative Knack method
+        if (!loggedInUserEmail && typeof Knack !== 'undefined' && Knack.session && Knack.session.user) {
+            try {
+                loggedInUserEmail = Knack.session.user.email;
+                console.log("Got user email from Knack session:", loggedInUserEmail);
+            } catch (e) {
+                console.error("Failed to get user email from Knack session:", e);
+            }
+        }
+
         if (!loggedInUserEmail) {
             errorLog("No loggedInUserEmail found in config. Cannot check user status.");
             renderDashboardUI(targetElement); // Render basic UI
@@ -2576,12 +2617,34 @@ function initializeDashboardApp() {
             return;
         }
 
-        // Check Super User status
-        const checkSuperUser = await checkSuperUserStatus(loggedInUserEmail);
-        if (checkSuperUser) {
-            superUserRecordId = checkSuperUser;
-            isSuperUser = true;
-            log("User is a Super User!");
+        // --- New Logic: Prioritize Staff Admin check ---
+        let staffAdminRecordId = null;
+        let isStaffAdmin = false;
+
+        try {
+            staffAdminRecordId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
+            if (staffAdminRecordId) {
+                isStaffAdmin = true;
+                log("User is a Staff Admin! Staff Admin Record ID:", staffAdminRecordId);
+            } else {
+                log("User is NOT a Staff Admin.");
+            }
+        } catch (e) {
+            errorLog("Error checking Staff Admin status:", e);
+        }
+
+        // Only check Super User status if not already a Staff Admin
+        if (!isStaffAdmin) {
+            const checkSuperUser = await checkSuperUserStatus(loggedInUserEmail);
+            if (checkSuperUser) {
+                superUserRecordId = checkSuperUser;
+                isSuperUser = true;
+                log("User is a Super User!");
+            } else {
+                log("User is NOT a Super User.");
+            }
+        } else {
+             log("User is a Staff Admin, skipping Super User check for primary role determination.");
         }
 
         renderDashboardUI(targetElement, isSuperUser); // Render main structure with Super User controls if applicable
@@ -2619,24 +2682,9 @@ function initializeDashboardApp() {
             log("Chart.js core (Chart) not found globally during init. All charts will fail.");
         }
 
-        if (!loggedInUserEmail) {
-            errorLog("No loggedInUserEmail found in config. Cannot fetch Staff Admin ID or dependent data.");
-            document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
-            document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
-            document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
-            return;
-        }
-
-        // If Super User, stop here and wait for establishment selection
-        if (isSuperUser) {
-            log("Super User mode active. Waiting for establishment selection.");
-            return; // Exit here for Super Users
-        }
-
-        const staffAdminRecordId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
-
-        if (staffAdminRecordId) {
-            log("Successfully obtained Staff Admin Record ID (from object_5):", staffAdminRecordId);
+        // Load data based on role
+        if (isStaffAdmin) {
+            log("Loading dashboard for Staff Admin:", staffAdminRecordId);
             
             // Populate filter dropdowns
             await populateFilterDropdowns(staffAdminRecordId);
@@ -2645,8 +2693,8 @@ function initializeDashboardApp() {
             const cycleSelectElement = document.getElementById('cycle-select');
             const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
             loadOverviewData(staffAdminRecordId, initialCycle);
-            loadQLAData(staffAdminRecordId); // QLA might also need cycle awareness later
-            loadStudentCommentInsights(staffAdminRecordId); // Comments might also need cycle awareness
+            loadQLAData(staffAdminRecordId);
+            loadStudentCommentInsights(staffAdminRecordId);
 
             // Add event listener for cycle selector
             if (cycleSelectElement) {
@@ -2692,14 +2740,20 @@ function initializeDashboardApp() {
                 });
             }
 
+        } else if (isSuperUser) {
+            log("Super User mode active. Waiting for establishment selection.");
+            document.getElementById('overview-section').style.display = 'none'; // Hide if super user and waiting for selection
+            document.getElementById('qla-section').style.display = 'none';
+            document.getElementById('student-insights-section').style.display = 'none';
+            return; // Exit here for Super Users if they are not Staff Admins
         } else {
-            errorLog("Failed to obtain Staff Admin Record ID. Dependent data will not be loaded.");
-            document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: Staff Admin role not found for your account email.</p>";
-            document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: Staff Admin role not found for your account email.</p>";
-            document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: Staff Admin role not found for your account email.</p>";
+            errorLog("Neither Staff Admin nor Super User role found. Cannot load dashboard.");
+            document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
+            document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
+            document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
         }
     }
-
+    
     initializeFullDashboard(); // Call the main async initialization function
 }
 
