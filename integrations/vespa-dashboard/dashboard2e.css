@@ -951,7 +951,7 @@ body.knack-body .kn-content {
     background: var(--card-bg);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -1009,7 +1009,7 @@ body.knack-body .kn-content {
 }
 
 .eri-header h3 {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
@@ -1020,7 +1020,7 @@ body.knack-body .kn-content {
 
 .eri-header h3::before {
     content: '📊';
-    font-size: 1.6rem;
+    font-size: 1.3rem;
 }
 
 /* ERI Info Button */
@@ -1030,23 +1030,30 @@ body.knack-body .kn-content {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px solid rgba(59, 130, 246, 0.4);
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.3s ease;
+    outline: none;
 }
 
 .eri-info-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.6);
     transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.eri-info-btn:active {
+    transform: scale(0.95);
 }
 
 .eri-info-btn svg {
     width: 16px;
     height: 16px;
-    stroke: var(--text-secondary);
+    stroke: var(--accent-primary);
+    stroke-width: 3;
 }
 
 /* ERI Content */
@@ -1067,7 +1074,7 @@ body.knack-body .kn-content {
 /* ERI Gauge Container */
 .eri-gauge-container {
     position: relative;
-    height: 200px;
+    height: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1102,10 +1109,10 @@ body.knack-body .kn-content {
 
 .eri-stat-value {
     display: block;
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 900;
     line-height: 1;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .eri-stat-value.positive {
@@ -1119,8 +1126,8 @@ body.knack-body .kn-content {
 /* ERI Interpretation */
 .eri-interpretation {
     grid-column: 1 / -1;
-    margin-top: var(--spacing-md);
-    padding: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
     background: rgba(255, 255, 255, 0.05);
     border-radius: var(--radius-md);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1128,15 +1135,16 @@ body.knack-body .kn-content {
 
 .eri-interpretation strong {
     display: block;
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    margin-bottom: 0.3rem;
     color: var(--text-primary);
 }
 
 .eri-interpretation p {
     margin: 0;
     color: var(--text-secondary);
-    line-height: 1.6;
+    line-height: 1.4;
+    font-size: 0.85rem;
 }
 
 /* ERI Info Modal */
@@ -1217,6 +1225,9 @@ body.knack-body .kn-content {
 .eri-info-body {
     color: var(--text-secondary);
     line-height: 1.8;
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+    padding-right: 10px;
 }
 
 .eri-section {
@@ -1351,27 +1362,28 @@ body.knack-body .kn-content {
 
 @media (max-width: 768px) {
     .eri-speedometer-card {
-        padding: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
     }
     
     .eri-header h3 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
     
     .eri-gauge-container {
-        height: 150px;
+        height: 80px;
     }
     
     .eri-stat-item {
-        min-width: 100px;
+        min-width: 90px;
     }
     
     .eri-stat-value {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
     }
     
     .eri-interpretation {
         padding: var(--spacing-sm);
+        font-size: 0.9rem;
     }
 }
 
