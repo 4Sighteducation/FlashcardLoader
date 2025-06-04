@@ -1226,7 +1226,7 @@ function initializeDashboardApp() {
         eriCard.innerHTML = `
             <div class="eri-header">
                 <h3>Exam Readiness Index (ERI) - Cycle ${cycle}</h3>
-                <button class="eri-info-btn" onclick="showERIInfoModal()">
+                <button class="eri-info-btn" onclick="window.showERIInfoModal()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -1344,13 +1344,13 @@ function initializeDashboardApp() {
                     
                     // Draw scale labels
                     ctx.fillStyle = '#64748b';
-                    ctx.font = '12px Inter';
+                    ctx.font = '10px Inter';
                     ctx.textAlign = 'center';
                     
                     // Position labels around the arc
                     const centerX = width / 2;
-                    const centerY = height - 20;
-                    const radius = Math.min(width, height) / 2 - 30;
+                    const centerY = height - 10;
+                    const radius = Math.min(width, height) / 2 - 20;
                     
                     // Draw scale numbers (1-5)
                     for (let i = 0; i <= 4; i++) {
@@ -1362,18 +1362,24 @@ function initializeDashboardApp() {
                     
                     // Draw center value
                     if (schoolValue) {
-                        ctx.font = 'bold 36px Inter';
+                        ctx.font = 'bold 24px Inter';
                         ctx.fillStyle = fillColor;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(schoolValue.toFixed(1), centerX, centerY - 20);
+                        ctx.fillText(schoolValue.toFixed(1), centerX, centerY - 10);
                     }
                     
                     // Draw national average marker if available
                     if (nationalValue) {
-                        const nationalAngle = Math.PI - (Math.PI * ((nationalValue - 1) / 4));
+                        // Calculate angle for national value position
+                        // The gauge goes from 1 to 5, displayed as a 180-degree arc
+                        // Angle calculation: PI (leftmost) to 0 (rightmost)
+                        const valueRange = 5 - 1; // 4
+                        const normalizedValue = (nationalValue - 1) / valueRange; // 0 to 1
+                        const nationalAngle = Math.PI * (1 - normalizedValue); // PI to 0
+                        
                         const markerRadius = radius - 15;
-                        const markerX = centerX - markerRadius * Math.cos(nationalAngle);
+                        const markerX = centerX + markerRadius * Math.cos(nationalAngle);
                         const markerY = centerY - markerRadius * Math.sin(nationalAngle);
                         
                         // Draw marker line
@@ -1381,16 +1387,22 @@ function initializeDashboardApp() {
                         ctx.lineWidth = 3;
                         ctx.setLineDash([5, 3]);
                         ctx.beginPath();
-                        ctx.moveTo(centerX - (markerRadius - 10) * Math.cos(nationalAngle), 
-                                  centerY - (markerRadius - 10) * Math.sin(nationalAngle));
-                        ctx.lineTo(centerX - (markerRadius + 10) * Math.cos(nationalAngle), 
-                                  centerY - (markerRadius + 10) * Math.sin(nationalAngle));
+                        
+                        // Draw radial line from inner to outer edge
+                        const innerRadius = markerRadius - 10;
+                        const outerRadius = markerRadius + 10;
+                        ctx.moveTo(centerX + innerRadius * Math.cos(nationalAngle), 
+                                  centerY - innerRadius * Math.sin(nationalAngle));
+                        ctx.lineTo(centerX + outerRadius * Math.cos(nationalAngle), 
+                                  centerY - outerRadius * Math.sin(nationalAngle));
                         ctx.stroke();
                         
                         // Draw label
                         ctx.setLineDash([]);
                         ctx.fillStyle = '#ffd93d';
                         ctx.font = 'bold 10px Inter';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
                         ctx.fillText('Nat', markerX, markerY - 15);
                     }
                     
@@ -1426,27 +1438,67 @@ function initializeDashboardApp() {
                 <div class="eri-info-content">
                     <div class="eri-info-header">
                         <h3>Understanding the Exam Readiness Index (ERI)</h3>
-                        <button class="eri-info-close" onclick="hideERIInfoModal()">
+                        <button class="eri-info-close" onclick="window.hideERIInfoModal()">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M18 6L6 18M6 6l12 12"/>
                             </svg>
                         </button>
                     </div>
                     <div class="eri-info-body">
-                        <div class="eri-section">
-                            <h4>What is ERI?</h4>
-                            <p>The Exam Readiness Index (ERI) is a composite measure that gauges how prepared students feel for their exams. It combines three key psychological factors that predict exam performance.</p>
+                        <div class="eri-section" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h4 style="color: #f59e0b; margin-top: 0;">⚠️ Development Notice</h4>
+                            <p style="margin-bottom: 0;">The ERI is in early stages of development. We are continuously analyzing data and refining the methodology to improve its accuracy and predictive value. Current results should be interpreted as indicative rather than definitive.</p>
                         </div>
                         
                         <div class="eri-section">
-                            <h4>How is it calculated?</h4>
-                            <p>ERI = (Support + Preparedness + Confidence) / 3</p>
+                            <h4>What is ERI?</h4>
+                            <p>The Exam Readiness Index (ERI) is a composite measure that gauges how prepared students feel for their exams. It combines three key psychological factors that research shows correlate with exam performance.</p>
+                        </div>
+                        
+                        <div class="eri-section">
+                            <h4>Questions Used</h4>
+                            <p>The ERI is calculated from responses to three psychometric questions:</p>
+                            <ol style="padding-left: 1.5rem;">
+                                <li style="margin-bottom: 0.5rem;"><strong>Support Awareness:</strong><br/>
+                                    <em>"I know where to get support if I need it"</em><br/>
+                                    <span style="color: var(--text-muted); font-size: 0.9rem;">Measures whether students are aware of available support systems</span>
+                                </li>
+                                <li style="margin-bottom: 0.5rem;"><strong>Exam Preparedness:</strong><br/>
+                                    <em>"I feel prepared for my exams"</em><br/>
+                                    <span style="color: var(--text-muted); font-size: 0.9rem;">Assesses students' perceived readiness for assessments</span>
+                                </li>
+                                <li style="margin-bottom: 0.5rem;"><strong>Achievement Confidence:</strong><br/>
+                                    <em>"I feel I will achieve my potential"</em><br/>
+                                    <span style="color: var(--text-muted); font-size: 0.9rem;">Evaluates students' belief in their ability to succeed</span>
+                                </li>
+                            </ol>
+                        </div>
+                        
+                        <div class="eri-section">
+                            <h4>Calculation Method</h4>
+                            <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px; font-family: monospace;">
+                                ERI = (Support + Preparedness + Confidence) / 3
+                            </div>
+                            <p style="margin-top: 1rem;">Each question is answered on a 1-5 scale:</p>
                             <ul>
-                                <li><strong>Support:</strong> "I know where to get support if I need it"</li>
-                                <li><strong>Preparedness:</strong> "I feel prepared for my exams"</li>
-                                <li><strong>Confidence:</strong> "I feel I will achieve my potential"</li>
+                                <li>1 = Strongly Disagree</li>
+                                <li>2 = Disagree</li>
+                                <li>3 = Neutral</li>
+                                <li>4 = Agree</li>
+                                <li>5 = Strongly Agree</li>
                             </ul>
-                            <p>Each component is rated on a 1-5 scale, giving an overall ERI score between 1 and 5.</p>
+                            <p>The three scores are averaged to produce an overall ERI score between 1 and 5.</p>
+                        </div>
+                        
+                        <div class="eri-section">
+                            <h4>Rationale</h4>
+                            <p>These three factors were selected because they represent:</p>
+                            <ul>
+                                <li><strong>Environmental factors:</strong> Access to support (external resources)</li>
+                                <li><strong>Cognitive factors:</strong> Preparation level (knowledge and skills)</li>
+                                <li><strong>Affective factors:</strong> Confidence (emotional readiness)</li>
+                            </ul>
+                            <p>Together, they provide a holistic view of exam readiness that goes beyond academic ability alone.</p>
                         </div>
                         
                         <div class="eri-section">
@@ -1476,17 +1528,12 @@ function initializeDashboardApp() {
                         </div>
                         
                         <div class="eri-section">
-                            <h4>Actionable Insights</h4>
+                            <h4>Using ERI Results</h4>
                             <ul>
-                                <li><strong>Low Support Scores:</strong> Improve visibility of support services, peer mentoring, and teacher availability</li>
-                                <li><strong>Low Preparedness:</strong> Review revision strategies, provide study resources, and increase practice opportunities</li>
-                                <li><strong>Low Confidence:</strong> Focus on building self-efficacy through achievable goals and positive feedback</li>
+                                <li><strong>Low Support Scores:</strong> Improve visibility of support services, implement peer mentoring, increase teacher availability</li>
+                                <li><strong>Low Preparedness:</strong> Review revision strategies, provide study resources, increase practice opportunities</li>
+                                <li><strong>Low Confidence:</strong> Build self-efficacy through achievable goals, positive feedback, and success experiences</li>
                             </ul>
-                        </div>
-                        
-                        <div class="eri-section">
-                            <h4>Why it matters</h4>
-                            <p>Research shows that students who feel supported, prepared, and confident perform significantly better in exams. The ERI helps identify cohorts or groups that may need additional intervention before it's too late.</p>
                         </div>
                     </div>
                 </div>
@@ -1495,14 +1542,15 @@ function initializeDashboardApp() {
             
             modal.addEventListener('click', function(e) {
                 if (e.target === modal) {
-                    hideERIInfoModal();
+                    window.hideERIInfoModal();
                 }
             });
         }
         
-        requestAnimationFrame(() => {
+        // Ensure modal shows with animation
+        setTimeout(() => {
             modal.classList.add('active');
-        });
+        }, 10);
     };
     
     window.hideERIInfoModal = function() {
