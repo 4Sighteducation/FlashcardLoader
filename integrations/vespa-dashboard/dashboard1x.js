@@ -1,4 +1,4 @@
-// dashboard1f.js
+// dashboard1x.js
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
@@ -864,187 +864,200 @@ function initializeDashboardApp() {
 
     async function populateFilterDropdowns(staffAdminId, establishmentId = null) {
         log("Populating filter dropdowns");
-        
+
         try {
-            // Fetch all records based on mode
-            let allRecords = [];
-            const filters = [];
-            
+            // Fetch records relevant to the current view (staff admin or super user/establishment)
+            let recordsForFilters = []; // This variable is only used in the staffAdminId block now
+
             if (establishmentId) {
-                // Super User mode - filter by establishment
-                filters.push({
-                    field: 'field_133',
-                    operator: 'is',
-                    value: establishmentId
-                });
+                // **Super User mode - Fetch filter options via new backend endpoint**
+                log(`Fetching filter options for establishment ID: ${establishmentId}`);
+                const filterFields = ['field_223', 'field_2299', 'field_144', 'field_782']; // Group, Course, Year Group, Faculty field keys
+                const url = `${config.herokuAppUrl}/api/filter-options?objectKey=${objectKeys.vespaResults}&establishmentId=${establishmentId}&fields=${filterFields.join(',')}`;
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                     const errorData = await response.json().catch(() => ({ message: `Failed to fetch filter options with status ${response.status}` }));
+                     throw new Error(errorData.message || `Failed to fetch filter options with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                const filterOptions = data.filter_options || {};
+
+                // Populate dropdowns with fetched options
+                // The backend now returns sorted lists of objects/strings
+                populateDropdown('group-filter', filterOptions['field_223'] || [], 'name', 'id'); // Pass displayProperty and valueProperty for objects
+                populateDropdown('course-filter', filterOptions['field_2299'] || [], 'name', 'id'); // Pass displayProperty and valueProperty for objects
+                populateDropdown('year-group-filter', filterOptions['field_144'] || []);
+                populateDropdown('faculty-filter', filterOptions['field_782'] || []);
+
+                log("Successfully populated filter dropdowns using backend endpoint.");
+
             } else if (staffAdminId) {
-                // Normal mode - filter by staff admin
-                filters.push({
+                // **Normal mode - filter by staff admin**
+                // Original logic to fetch records for staff admin and extract unique values
+                const baseFilters = []; // Re-declare or ensure it's in scope if not already
+                baseFilters.push({
                     field: 'field_439',
                     operator: 'is',
                     value: staffAdminId
                 });
-            }
-            
-            if (filters.length > 0) {
-                allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
-            }
-            
-            if (!allRecords || allRecords.length === 0) {
-                log("No records found to populate filters");
+
+                // Fetch records from object_10 (Vespa Results) with the base filter applied
+                // Fetch all records for the selected school/staff admin to ensure all relevant filter options are available
+                // We will rely on the backend\'s pagination handling (rows_per_page=1000 is default for fetchDataFromKnack)
+                // NOTE: With the backend pagination limit, this will now only fetch up to the limit (e.g., 5000 records)
+                // which might not include *all* possible filter options for large staff admin datasets.
+                // A dedicated backend endpoint for staff admin filter options might be needed later if this is an issue.
+                recordsForFilters = await fetchDataFromKnack(
+                    objectKeys.vespaResults,
+                    baseFilters
+                );
+
+                if (!recordsForFilters || recordsForFilters.length === 0) {
+                    log("No records found to populate filters for the current view");
+                    // Clear dropdowns if no data
+                    populateDropdown('group-filter', []);
+                    populateDropdown('course-filter', []);
+                    populateDropdown('year-group-filter', []);
+                    populateDropdown('faculty-filter', []);
+                    return;
+                }
+
+                log(`Using ${recordsForFilters.length} records to populate filter values`);
+
+                // Extract unique values for each filter from the fetched records
+                const groups = new Set();
+                const courses = new Set();
+                const yearGroups = new Set();
+                const faculties = new Set();
+
+                recordsForFilters.forEach((record) => {
+                    // Group (field_223) - Handle as text or connected field
+                    const groupFieldValue = record.field_223_raw || record.field_223;
+                    if (groupFieldValue !== null && groupFieldValue !== undefined && groupFieldValue !== '') {
+                        if (Array.isArray(groupFieldValue)) {
+                            groupFieldValue.forEach((item) => {
+                                 if (item && typeof item === 'object' && item.id) {
+                                    const displayValue = item.identifier || item.value || item.id;
+                                    groups.add(JSON.stringify({ id: item.id, name: displayValue }));
+                                } else if (item && typeof item === 'string' && item.trim()) {
+                                    groups.add(item.trim());
+                                }
+                            });
+                        } else if (typeof groupFieldValue === 'object' && groupFieldValue !== null && groupFieldValue.id) {
+                             groups.add(JSON.stringify({
+                                id: field_value.id, // Corrected typo here
+                                name: field_value.identifier || field_value.value || field_value.id // Corrected typo here
+                            }));
+                        } else if (typeof groupFieldValue === 'string' && groupFieldValue.trim()) {
+                            const groupValue = groupFieldValue.trim();
+                            if (groupValue && groupValue !== 'null' && groupValue !== 'undefined') {
+                                groups.add(groupValue);
+                            }
+                        }
+                    }
+
+                    // Course (field_2299) - Handle as text or connected field
+                    const courseFieldValue = record.field_2299_raw || record.field_2299;
+                     if (courseFieldValue !== null && courseFieldValue !== undefined && courseFieldValue !== '') {
+                        if (Array.isArray(courseFieldValue)) {
+                            courseFieldValue.forEach((item) => {
+                                 if (item && typeof item === 'object' && item.id) {
+                                    const displayValue = item.identifier || item.value || item.id;
+                                    courses.add(JSON.stringify({ id: item.id, name: displayValue }));
+                                } else if (item && typeof item === 'string' && item.trim()) {
+                                    courses.add(item.trim());
+                                }
+                            });
+                        } else if (typeof courseFieldValue === 'object' && courseFieldValue !== null && courseFieldValue.id) {
+                             courses.add(JSON.stringify({
+                                id: field_value.id, // Corrected typo here
+                                name: field_value.identifier || field_value.value || field_value.id // Corrected typo here
+                            }));
+                        } else if (typeof courseFieldValue === 'string' && courseFieldValue.trim()) {
+                             const courseValue = courseFieldValue.trim();
+                            if (courseValue && courseValue !== 'null' && courseValue !== 'undefined') {
+                                courses.add(courseValue);
+                            }
+                        }
+                    }
+
+                    // Year Group (field_144)
+                    if (record.field_144_raw !== null && record.field_144_raw !== undefined && record.field_144_raw !== '') {
+                        const yearGroupValue = record.field_144_raw.toString().trim();
+                        if (yearGroupValue) {
+                            yearGroups.add(yearGroupValue);
+                        }
+                    }
+
+                    // Faculty (field_782)
+                    if (record.field_782_raw !== null && record.field_782_raw !== undefined && record.field_782_raw !== '') {
+                        const facultyValue = record.field_782_raw.toString().trim();
+                        if (facultyValue) {
+                            faculties.add(facultyValue);
+                        }
+                    }
+                });
+
+                // Process groups - could be strings or JSON objects
+                const groupItems = Array.from(groups).map(g => {
+                    try {
+                        const parsed = JSON.parse(g);
+                         // Validate structure before returning
+                        if (parsed && typeof parsed === 'object' && parsed.id && parsed.name !== undefined) {
+                             return parsed;
+                        } else {
+                            // If parsing fails or structure is unexpected, treat as plain string
+                             return g;
+                        }
+                    } catch (e) {
+                        // It's a plain string, not valid JSON
+                        return g;
+                    }
+                }).sort((a, b) => {
+                    const aName = typeof a === 'object' ? a.name : (typeof a === 'string' ? a : '');
+                    const bName = typeof b === 'object' ? b.name : (typeof b === 'string' ? b : '');
+                    return aName.localeCompare(bName);
+                });
+
+                // Process courses - could be strings or JSON objects
+                const courseItems = Array.from(courses).map(c => {
+                    try {
+                        const parsed = JSON.parse(c);
+                         // Validate structure before returning
+                        if (parsed && typeof parsed === 'object' && parsed.id && parsed.name !== undefined) {
+                             return parsed;
+                        } else {
+                             // If parsing fails or structure is unexpected, treat as plain string
+                             return c;
+                        }
+                    } catch (e) {
+                        // It's a plain string, not JSON
+                        return c;
+                    }
+                }).sort((a, b) => {
+                    const aName = typeof a === 'object' ? a.name : (typeof a === 'string' ? a : '');
+                    const bName = typeof b === 'object' ? b.name : (typeof b === 'string' ? b : '');
+                    return aName.localeCompare(bName);
+                });
+
+                populateDropdown('group-filter', groupItems, 'name', 'id'); // Pass displayProperty and valueProperty
+                populateDropdown('course-filter', courseItems, 'name', 'id'); // Pass displayProperty and valueProperty
+                populateDropdown('year-group-filter', Array.from(yearGroups).sort());
+                populateDropdown('faculty-filter', Array.from(faculties).sort());
+
+
+            } else {
+                log("No Staff Admin ID or Establishment ID provided to populateFilterDropdowns. Cannot filter data for dropdowns.");
+                 // Clear dropdowns if no data
+                populateDropdown('group-filter', []);
+                populateDropdown('course-filter', []);
+                populateDropdown('year-group-filter', []);
+                populateDropdown('faculty-filter', []);
                 return;
             }
-            
-            log(`Processing ${allRecords.length} records for filter values`);
-            
-            // Extract unique values for each filter
-            const groups = new Set();
-            const courses = new Set();
-            const yearGroups = new Set();
-            const faculties = new Set();
-            
-            // Debug: Log first record to see field structure
-            if (allRecords.length > 0) {
-                log("Sample record for debugging:", {
-                    field_223: allRecords[0].field_223,
-                    field_223_raw: allRecords[0].field_223_raw,
-                    field_2299: allRecords[0].field_2299,
-                    field_2299_raw: allRecords[0].field_2299_raw,
-                    field_144_raw: allRecords[0].field_144_raw,
-                    field_782_raw: allRecords[0].field_782_raw
-                });
-            }
-            
-            allRecords.forEach((record, index) => {
-                // Group (field_223) - Handle as text field
-                // Try both field_223_raw and field_223 as Knack might store text fields differently
-                const groupFieldValue = record.field_223_raw || record.field_223;
-                if (groupFieldValue) {
-                    if (index < 3) { // Log first few records for debugging
-                        log(`Record ${index} - Group field_223_raw:`, record.field_223_raw, "field_223:", record.field_223);
-                    }
-                    // If it's an array (connected field), handle differently
-                    if (Array.isArray(groupFieldValue)) {
-                        groupFieldValue.forEach((groupId, idx) => {
-                            if (groupId) {
-                                // Try to get display value
-                                let displayValue = record.field_223 || groupId;
-                                if (Array.isArray(record.field_223)) {
-                                    displayValue = record.field_223[idx] || groupId;
-                                }
-                                groups.add(JSON.stringify({ id: groupId, name: displayValue }));
-                            }
-                        });
-                    } else if (typeof groupFieldValue === 'object' && groupFieldValue !== null) {
-                        // Sometimes Knack returns objects for connected fields
-                        if (groupFieldValue.id) {
-                            groups.add(JSON.stringify({ 
-                                id: groupFieldValue.id, 
-                                name: groupFieldValue.identifier || groupFieldValue.value || groupFieldValue.id 
-                            }));
-                        }
-                    } else {
-                        // It's a text field - use the value directly
-                        const groupValue = groupFieldValue.toString().trim();
-                        if (groupValue && groupValue !== 'null' && groupValue !== 'undefined') {
-                            groups.add(groupValue);
-                        }
-                    }
-                }
-                
-                // Course (field_2299) - Handle both text and connected fields
-                const courseFieldValue = record.field_2299_raw || record.field_2299;
-                if (courseFieldValue) {
-                    if (index < 3) { // Log first few records for debugging
-                        log(`Record ${index} - Course field_2299_raw:`, record.field_2299_raw, "field_2299:", record.field_2299);
-                    }
-                    if (Array.isArray(courseFieldValue)) {
-                        // Connected field
-                        courseFieldValue.forEach((courseId, idx) => {
-                            if (courseId) {
-                                let displayValue = record.field_2299 || courseId;
-                                if (Array.isArray(record.field_2299)) {
-                                    displayValue = record.field_2299[idx] || courseId;
-                                }
-                                courses.add(JSON.stringify({ id: courseId, name: displayValue }));
-                            }
-                        });
-                    } else if (typeof courseFieldValue === 'object' && courseFieldValue !== null) {
-                        // Sometimes Knack returns objects for connected fields
-                        if (courseFieldValue.id) {
-                            courses.add(JSON.stringify({ 
-                                id: courseFieldValue.id, 
-                                name: courseFieldValue.identifier || courseFieldValue.value || courseFieldValue.id 
-                            }));
-                        }
-                    } else {
-                        // Text field
-                        const courseValue = courseFieldValue.toString().trim();
-                        if (courseValue && courseValue !== 'null' && courseValue !== 'undefined') {
-                            courses.add(courseValue);
-                        }
-                    }
-                }
-                
-                // Year Group (field_144)
-                if (record.field_144_raw) {
-                    const yearGroupValue = record.field_144_raw.toString().trim();
-                    if (yearGroupValue) {
-                        yearGroups.add(yearGroupValue);
-                    }
-                }
-                
-                // Faculty (field_782)
-                if (record.field_782_raw) {
-                    const facultyValue = record.field_782_raw.toString().trim();
-                    if (facultyValue) {
-                        faculties.add(facultyValue);
-                    }
-                }
-            });
-            
-            // Debug: Log collected values
-            log("Collected filter values:", {
-                groups: Array.from(groups),
-                courses: Array.from(courses),
-                yearGroups: Array.from(yearGroups),
-                faculties: Array.from(faculties)
-            });
-            
-            // Populate dropdowns
-            // Process groups - could be strings or JSON objects
-            const groupItems = Array.from(groups).map(g => {
-                try {
-                    return JSON.parse(g);
-                } catch (e) {
-                    // It's a plain string, not JSON
-                    return g;
-                }
-            }).sort((a, b) => {
-                const aName = typeof a === 'object' ? a.name : a;
-                const bName = typeof b === 'object' ? b.name : b;
-                return aName.localeCompare(bName);
-            });
-            
-            // Process courses - could be strings or JSON objects
-            const courseItems = Array.from(courses).map(c => {
-                try {
-                    return JSON.parse(c);
-                } catch (e) {
-                    // It's a plain string, not JSON
-                    return c;
-                }
-            }).sort((a, b) => {
-                const aName = typeof a === 'object' ? a.name : a;
-                const bName = typeof b === 'object' ? b.name : b;
-                return aName.localeCompare(bName);
-            });
-            
-            populateDropdown('group-filter', groupItems, 'name', 'id');
-            populateDropdown('course-filter', courseItems, 'name', 'id');
-            populateDropdown('year-group-filter', Array.from(yearGroups).sort());
-            populateDropdown('faculty-filter', Array.from(faculties).sort());
-            
+
         } catch (error) {
             errorLog("Failed to populate filter dropdowns", error);
         }
