@@ -484,6 +484,9 @@ function initializeDashboardApp() {
                             </div>
                         </div>
                     </div>
+                    <div id="eri-speedometer-container">
+                        <!-- ERI Speedometer will be rendered here -->
+                    </div>
                     <div id="active-filters-display" style="display:none;">
                         <div class="active-filters-header">
                             <h3>Currently Viewing:</h3>
@@ -1108,6 +1111,410 @@ function initializeDashboardApp() {
     }
 
     // --- Section 1: Overview and Benchmarking ---
+    // --- ERI (Exam Readiness Index) Functions ---
+    async function calculateSchoolERI(staffAdminId, cycle, additionalFilters = [], establishmentId = null) {
+        log(`Fetching School ERI for Cycle ${cycle} from backend`);
+        
+        try {
+            // Build URL with parameters
+            let url = `${config.herokuAppUrl}/api/calculate-eri?cycle=${cycle}`;
+            
+            if (establishmentId) {
+                url += `&establishmentId=${establishmentId}`;
+            } else if (staffAdminId) {
+                url += `&staffAdminId=${staffAdminId}`;
+            } else {
+                log("No Staff Admin ID or Establishment ID provided for ERI calculation");
+                return null;
+            }
+            
+            // Note: Additional filters would need to be handled server-side if needed
+            // For now, the backend calculates ERI for all records matching the establishment/staff admin
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: `ERI calculation failed with status ${response.status}` }));
+                throw new Error(errorData.message || `ERI calculation failed with status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.school_eri === null || data.school_eri === undefined) {
+                log("No ERI data returned from backend");
+                return null;
+            }
+            
+            log(`Received School ERI: ${data.school_eri} from ${data.response_count} responses`);
+            
+            return {
+                value: data.school_eri,
+                responseCount: data.response_count
+            };
+            
+        } catch (error) {
+            errorLog("Failed to fetch school ERI from backend", error);
+            return null;
+        }
+    }
+    
+    async function getNationalERI(cycle) {
+        log(`Fetching National ERI for Cycle ${cycle} from backend`);
+        
+        try {
+            const url = `${config.herokuAppUrl}/api/national-eri?cycle=${cycle}`;
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: `National ERI fetch failed with status ${response.status}` }));
+                throw new Error(errorData.message || `National ERI fetch failed with status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            log(`Received National ERI: ${data.national_eri} (${data.source})`);
+            if (data.message) {
+                log(`National ERI message: ${data.message}`);
+            }
+            
+            return data.national_eri;
+            
+        } catch (error) {
+            errorLog("Failed to fetch national ERI from backend", error);
+            // Return fallback value
+            return 3.5;
+        }
+    }
+    
+    function renderERISpeedometer(schoolERI, nationalERI, cycle) {
+        const container = document.getElementById('eri-speedometer-container');
+        if (!container) {
+            errorLog("ERI speedometer container not found");
+            return;
+        }
+        
+        // Clear previous content
+        container.innerHTML = '';
+        
+        // Create the main ERI card
+        const eriCard = document.createElement('div');
+        eriCard.className = 'eri-speedometer-card';
+        
+        // Determine color based on ERI value
+        let colorClass = 'eri-low';
+        let interpretation = 'Low Readiness';
+        let colorHex = '#ef4444'; // red
+        
+        if (schoolERI && schoolERI.value) {
+            if (schoolERI.value >= 4) {
+                colorClass = 'eri-excellent';
+                interpretation = 'Excellent Readiness';
+                colorHex = '#3b82f6'; // blue
+            } else if (schoolERI.value >= 3) {
+                colorClass = 'eri-good';
+                interpretation = 'Good Readiness';
+                colorHex = '#10b981'; // green
+            } else if (schoolERI.value >= 2) {
+                colorClass = 'eri-below-average';
+                interpretation = 'Below Average';
+                colorHex = '#f59e0b'; // orange
+            }
+        }
+        
+        eriCard.classList.add(colorClass);
+        
+        // Build the card HTML
+        eriCard.innerHTML = `
+            <div class="eri-header">
+                <h3>Exam Readiness Index (ERI) - Cycle ${cycle}</h3>
+                <button class="eri-info-btn" onclick="showERIInfoModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12" y2="8"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="eri-content">
+                <div class="eri-gauge-container">
+                    <canvas id="eri-gauge-chart"></canvas>
+                </div>
+                <div class="eri-stats">
+                    <div class="eri-stat-item">
+                        <span class="eri-stat-label">Your School</span>
+                        <span class="eri-stat-value" style="color: ${colorHex}">
+                            ${schoolERI ? schoolERI.value.toFixed(1) : 'N/A'}
+                        </span>
+                    </div>
+                    <div class="eri-stat-item">
+                        <span class="eri-stat-label">National Average</span>
+                        <span class="eri-stat-value">
+                            ${nationalERI ? nationalERI.toFixed(1) : 'N/A'}
+                        </span>
+                    </div>
+                    <div class="eri-stat-item">
+                        <span class="eri-stat-label">Difference</span>
+                        <span class="eri-stat-value ${schoolERI && nationalERI && schoolERI.value >= nationalERI ? 'positive' : 'negative'}">
+                            ${schoolERI && nationalERI ? 
+                                ((schoolERI.value > nationalERI ? '+' : '') + ((schoolERI.value - nationalERI) / nationalERI * 100).toFixed(1) + '%') 
+                                : 'N/A'}
+                        </span>
+                    </div>
+                </div>
+                <div class="eri-interpretation">
+                    <strong>${interpretation}</strong>
+                    ${getERIInterpretationText(schoolERI ? schoolERI.value : null)}
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(eriCard);
+        
+        // Create the gauge chart
+        setTimeout(() => {
+            createERIGaugeChart(schoolERI ? schoolERI.value : null, nationalERI);
+        }, 100);
+    }
+    
+    function createERIGaugeChart(schoolValue, nationalValue) {
+        const canvas = document.getElementById('eri-gauge-chart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Destroy previous chart if exists
+        if (window.eriGaugeChart) {
+            window.eriGaugeChart.destroy();
+        }
+        
+        // Create data for the gauge (using doughnut chart)
+        const gaugeData = schoolValue || 0;
+        const remainingData = 5 - gaugeData;
+        
+        // Color segments based on value ranges
+        const backgroundColors = [
+            '#ef4444', // 0-1: Red
+            '#f59e0b', // 1-2: Orange
+            '#10b981', // 2-3: Green
+            '#3b82f6', // 3-4: Blue
+            '#1e40af'  // 4-5: Dark Blue
+        ];
+        
+        // Determine which color to use for the filled portion
+        let fillColor = backgroundColors[0];
+        if (gaugeData >= 4) fillColor = backgroundColors[4];
+        else if (gaugeData >= 3) fillColor = backgroundColors[3];
+        else if (gaugeData >= 2) fillColor = backgroundColors[2];
+        else if (gaugeData >= 1) fillColor = backgroundColors[1];
+        
+        window.eriGaugeChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [gaugeData, remainingData],
+                    backgroundColor: [fillColor, 'rgba(255, 255, 255, 0.1)'],
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: 270
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    },
+                    datalabels: {
+                        display: false
+                    }
+                }
+            },
+            plugins: [{
+                id: 'eri-text',
+                afterDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const width = chart.width;
+                    const height = chart.height;
+                    
+                    ctx.save();
+                    
+                    // Draw scale labels
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '12px Inter';
+                    ctx.textAlign = 'center';
+                    
+                    // Position labels around the arc
+                    const centerX = width / 2;
+                    const centerY = height - 20;
+                    const radius = Math.min(width, height) / 2 - 30;
+                    
+                    // Draw scale numbers (1-5)
+                    for (let i = 0; i <= 4; i++) {
+                        const angle = (Math.PI) * (i / 4); // 0 to PI (180 degrees)
+                        const x = centerX - radius * Math.cos(angle);
+                        const y = centerY - radius * Math.sin(angle);
+                        ctx.fillText((i + 1).toString(), x, y);
+                    }
+                    
+                    // Draw center value
+                    if (schoolValue) {
+                        ctx.font = 'bold 36px Inter';
+                        ctx.fillStyle = fillColor;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(schoolValue.toFixed(1), centerX, centerY - 20);
+                    }
+                    
+                    // Draw national average marker if available
+                    if (nationalValue) {
+                        const nationalAngle = Math.PI - (Math.PI * ((nationalValue - 1) / 4));
+                        const markerRadius = radius - 15;
+                        const markerX = centerX - markerRadius * Math.cos(nationalAngle);
+                        const markerY = centerY - markerRadius * Math.sin(nationalAngle);
+                        
+                        // Draw marker line
+                        ctx.strokeStyle = '#ffd93d';
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([5, 3]);
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - (markerRadius - 10) * Math.cos(nationalAngle), 
+                                  centerY - (markerRadius - 10) * Math.sin(nationalAngle));
+                        ctx.lineTo(centerX - (markerRadius + 10) * Math.cos(nationalAngle), 
+                                  centerY - (markerRadius + 10) * Math.sin(nationalAngle));
+                        ctx.stroke();
+                        
+                        // Draw label
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = '#ffd93d';
+                        ctx.font = 'bold 10px Inter';
+                        ctx.fillText('Nat', markerX, markerY - 15);
+                    }
+                    
+                    ctx.restore();
+                }
+            }]
+        });
+    }
+    
+    function getERIInterpretationText(eriValue) {
+        if (!eriValue) {
+            return '<p>No ERI data available. Complete psychometric assessments to see your readiness index.</p>';
+        }
+        
+        if (eriValue >= 4) {
+            return '<p>Students feel highly supported, well-prepared, and confident about their exam performance.</p>';
+        } else if (eriValue >= 3) {
+            return '<p>Students generally feel ready for exams but there\'s room for improvement in support or preparation.</p>';
+        } else if (eriValue >= 2) {
+            return '<p>Students show concerns about exam readiness. Consider enhancing support systems and preparation strategies.</p>';
+        } else {
+            return '<p>Urgent attention needed. Students feel unprepared and lack confidence. Implement comprehensive support interventions.</p>';
+        }
+    }
+    
+    // Make ERI info modal function globally accessible
+    window.showERIInfoModal = function() {
+        let modal = document.querySelector('.eri-info-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'eri-info-modal';
+            modal.innerHTML = `
+                <div class="eri-info-content">
+                    <div class="eri-info-header">
+                        <h3>Understanding the Exam Readiness Index (ERI)</h3>
+                        <button class="eri-info-close" onclick="hideERIInfoModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="eri-info-body">
+                        <div class="eri-section">
+                            <h4>What is ERI?</h4>
+                            <p>The Exam Readiness Index (ERI) is a composite measure that gauges how prepared students feel for their exams. It combines three key psychological factors that predict exam performance.</p>
+                        </div>
+                        
+                        <div class="eri-section">
+                            <h4>How is it calculated?</h4>
+                            <p>ERI = (Support + Preparedness + Confidence) / 3</p>
+                            <ul>
+                                <li><strong>Support:</strong> "I know where to get support if I need it"</li>
+                                <li><strong>Preparedness:</strong> "I feel prepared for my exams"</li>
+                                <li><strong>Confidence:</strong> "I feel I will achieve my potential"</li>
+                            </ul>
+                            <p>Each component is rated on a 1-5 scale, giving an overall ERI score between 1 and 5.</p>
+                        </div>
+                        
+                        <div class="eri-section">
+                            <h4>Score Interpretation</h4>
+                            <div class="eri-score-guide">
+                                <div class="score-range excellent">
+                                    <span class="range">4.0 - 5.0</span>
+                                    <span class="label">Excellent Readiness</span>
+                                    <p>Students are confident, well-prepared, and know where to find help.</p>
+                                </div>
+                                <div class="score-range good">
+                                    <span class="range">3.0 - 3.9</span>
+                                    <span class="label">Good Readiness</span>
+                                    <p>Most students feel ready, but some areas could be strengthened.</p>
+                                </div>
+                                <div class="score-range below-average">
+                                    <span class="range">2.0 - 2.9</span>
+                                    <span class="label">Below Average</span>
+                                    <p>Significant concerns exist. Focus on support systems and preparation.</p>
+                                </div>
+                                <div class="score-range low">
+                                    <span class="range">1.0 - 1.9</span>
+                                    <span class="label">Low Readiness</span>
+                                    <p>Urgent intervention needed across all three areas.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="eri-section">
+                            <h4>Actionable Insights</h4>
+                            <ul>
+                                <li><strong>Low Support Scores:</strong> Improve visibility of support services, peer mentoring, and teacher availability</li>
+                                <li><strong>Low Preparedness:</strong> Review revision strategies, provide study resources, and increase practice opportunities</li>
+                                <li><strong>Low Confidence:</strong> Focus on building self-efficacy through achievable goals and positive feedback</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="eri-section">
+                            <h4>Why it matters</h4>
+                            <p>Research shows that students who feel supported, prepared, and confident perform significantly better in exams. The ERI helps identify cohorts or groups that may need additional intervention before it's too late.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hideERIInfoModal();
+                }
+            });
+        }
+        
+        requestAnimationFrame(() => {
+            modal.classList.add('active');
+        });
+    };
+    
+    window.hideERIInfoModal = function() {
+        const modal = document.querySelector('.eri-info-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.remove();
+            }, 300);
+        }
+    };
+
     async function loadOverviewData(staffAdminId, cycle = 1, additionalFilters = [], establishmentId = null) {
         log(`Loading overview data with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId} for Cycle: ${cycle}`);
         const loadingIndicator = document.getElementById('loading-indicator');
@@ -1206,6 +1613,11 @@ function initializeDashboardApp() {
             
             // Update response statistics
             await updateResponseStats(staffAdminId, cycle, additionalFilters, establishmentId);
+            
+            // Calculate and render ERI
+            const schoolERI = await calculateSchoolERI(staffAdminId, cycle, additionalFilters, establishmentId);
+            const nationalERI = await getNationalERI(cycle);
+            renderERISpeedometer(schoolERI, nationalERI, cycle);
             
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
             renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
