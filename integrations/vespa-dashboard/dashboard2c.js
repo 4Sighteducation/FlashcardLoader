@@ -2617,35 +2617,34 @@ function initializeDashboardApp() {
             return;
         }
 
-        // --- New Logic: Prioritize Super User check over Staff Admin ---
+        // --- New Logic: Prioritize Staff Admin check ---
         let staffAdminRecordId = null;
         let isStaffAdmin = false;
 
-        // Check Super User status first (takes precedence)
-        const checkSuperUser = await checkSuperUserStatus(loggedInUserEmail);
-        if (checkSuperUser) {
-            superUserRecordId = checkSuperUser;
-            isSuperUser = true;
-            log("User is a Super User! Super User mode will take precedence.");
-        } else {
-            log("User is NOT a Super User.");
+        try {
+            staffAdminRecordId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
+            if (staffAdminRecordId) {
+                isStaffAdmin = true;
+                log("User is a Staff Admin! Staff Admin Record ID:", staffAdminRecordId);
+            } else {
+                log("User is NOT a Staff Admin.");
+            }
+        } catch (e) {
+            errorLog("Error checking Staff Admin status:", e);
         }
 
-        // Only check Staff Admin status if not a Super User
-        if (!isSuperUser) {
-            try {
-                staffAdminRecordId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
-                if (staffAdminRecordId) {
-                    isStaffAdmin = true;
-                    log("User is a Staff Admin! Staff Admin Record ID:", staffAdminRecordId);
-                } else {
-                    log("User is NOT a Staff Admin.");
-                }
-            } catch (e) {
-                errorLog("Error checking Staff Admin status:", e);
+        // Only check Super User status if not already a Staff Admin
+        if (!isStaffAdmin) {
+            const checkSuperUser = await checkSuperUserStatus(loggedInUserEmail);
+            if (checkSuperUser) {
+                superUserRecordId = checkSuperUser;
+                isSuperUser = true;
+                log("User is a Super User!");
+            } else {
+                log("User is NOT a Super User.");
             }
         } else {
-            log("User is a Super User, skipping Staff Admin check as Super User role takes precedence.");
+             log("User is a Staff Admin, skipping Super User check for primary role determination.");
         }
 
         renderDashboardUI(targetElement, isSuperUser); // Render main structure with Super User controls if applicable
