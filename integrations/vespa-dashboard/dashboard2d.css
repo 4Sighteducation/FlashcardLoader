@@ -28,6 +28,7 @@
     /* Accent Colors */
     --accent-primary: #3b82f6;
     --accent-success: #10b981;
+    --accent-warning: #f59e0b;
     --accent-danger: #ef4444;
     --border-color: rgba(255, 255, 255, 0.1);
     
@@ -937,6 +938,440 @@ body.knack-body .kn-content {
         break-inside: avoid;
         box-shadow: none;
         border: 1px solid #ddd;
+    }
+}
+
+/* --- ERI Speedometer Styles --- */
+#eri-speedometer-container {
+    margin: var(--spacing-lg) 0;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.eri-speedometer-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.eri-speedometer-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent-danger), var(--accent-warning), var(--accent-success), var(--accent-primary));
+    transition: height 0.3s ease;
+}
+
+.eri-speedometer-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.eri-speedometer-card:hover::before {
+    height: 100%;
+    opacity: 0.1;
+}
+
+/* ERI Color Classes */
+.eri-speedometer-card.eri-low {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+.eri-speedometer-card.eri-below-average {
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+.eri-speedometer-card.eri-good {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+.eri-speedometer-card.eri-excellent {
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+/* ERI Header */
+.eri-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.eri-header h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.eri-header h3::before {
+    content: '📊';
+    font-size: 1.6rem;
+}
+
+/* ERI Info Button */
+.eri-info-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.eri-info-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.eri-info-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--text-secondary);
+}
+
+/* ERI Content */
+.eri-content {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: var(--spacing-xl);
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .eri-content {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+}
+
+/* ERI Gauge Container */
+.eri-gauge-container {
+    position: relative;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.eri-gauge-container canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* ERI Stats */
+.eri-stats {
+    display: flex;
+    gap: var(--spacing-xl);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.eri-stat-item {
+    text-align: center;
+    min-width: 120px;
+}
+
+.eri-stat-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.eri-stat-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.eri-stat-value.positive {
+    color: var(--accent-success);
+}
+
+.eri-stat-value.negative {
+    color: var(--accent-danger);
+}
+
+/* ERI Interpretation */
+.eri-interpretation {
+    grid-column: 1 / -1;
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.eri-interpretation strong {
+    display: block;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.eri-interpretation p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* ERI Info Modal */
+.eri-info-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: var(--spacing-md);
+}
+
+.eri-info-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.eri-info-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.eri-info-modal.active .eri-info-content {
+    transform: scale(1);
+}
+
+.eri-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.eri-info-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.eri-info-close {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.eri-info-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.eri-info-body {
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+.eri-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.eri-section h4 {
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.eri-section h4::before {
+    content: '▸';
+    color: var(--accent-primary);
+}
+
+.eri-section p {
+    margin-bottom: var(--spacing-sm);
+}
+
+.eri-section ul {
+    margin: var(--spacing-sm) 0;
+    padding-left: var(--spacing-lg);
+}
+
+.eri-section ul li {
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-secondary);
+}
+
+.eri-section ul li strong {
+    color: var(--text-primary);
+}
+
+/* ERI Score Guide */
+.eri-score-guide {
+    display: grid;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.score-range {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.score-range:hover {
+    transform: translateX(5px);
+}
+
+.score-range .range {
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.score-range .label {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.score-range p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.score-range.excellent {
+    border-color: rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.score-range.excellent .range {
+    color: #3b82f6;
+}
+
+.score-range.good {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.score-range.good .range {
+    color: #10b981;
+}
+
+.score-range.below-average {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.score-range.below-average .range {
+    color: #f59e0b;
+}
+
+.score-range.low {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.score-range.low .range {
+    color: #ef4444;
+}
+
+/* Responsive adjustments for ERI */
+@media (max-width: 1200px) {
+    .eri-content {
+        grid-template-columns: 250px 1fr;
+        gap: var(--spacing-md);
+    }
+    
+    .eri-stats {
+        gap: var(--spacing-md);
+    }
+    
+    .eri-stat-value {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .eri-speedometer-card {
+        padding: var(--spacing-md);
+    }
+    
+    .eri-header h3 {
+        font-size: 1.2rem;
+    }
+    
+    .eri-gauge-container {
+        height: 150px;
+    }
+    
+    .eri-stat-item {
+        min-width: 100px;
+    }
+    
+    .eri-stat-value {
+        font-size: 1.8rem;
+    }
+    
+    .eri-interpretation {
+        padding: var(--spacing-sm);
     }
 }
 
