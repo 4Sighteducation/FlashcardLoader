@@ -500,7 +500,83 @@ function initializeDashboardApp() {
                 color: #ffffff;
             }
             
-            /* Keep existing filter styles but remove from here since they're in CSS */
+            .filters-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px;
+                margin: 20px 0;
+                padding: 20px;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .filter-item {
+                display: flex;
+                flex-direction: column;
+                min-width: 150px;
+                flex: 1;
+            }
+            
+            .filter-item label {
+                color: #a8b2d1;
+                font-size: 12px;
+                margin-bottom: 5px;
+                font-weight: 600;
+            }
+            
+            .filter-item input,
+            .filter-item select {
+                padding: 8px 12px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background-color: rgba(0, 0, 0, 0.3);
+                color: #ffffff;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            
+            .filter-item input:focus,
+            .filter-item select:focus {
+                outline: none;
+                border-color: #86b4f0;
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+            
+            .filter-item button {
+                padding: 8px 16px;
+                margin-right: 10px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            
+            #apply-filters-btn {
+                background-color: #86b4f0;
+                color: #0f0f23;
+                font-weight: 600;
+            }
+            
+            #apply-filters-btn:hover {
+                background-color: #6a9bd8;
+            }
+            
+            #clear-filters-btn {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: #a8b2d1;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            #clear-filters-btn:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+            
+            .filter-item:last-child {
+                flex-direction: row;
+                align-items: flex-end;
+                min-width: auto;
+            }
         `;
         document.head.appendChild(style);
         
@@ -537,48 +613,31 @@ function initializeDashboardApp() {
                 <section id="overview-section" style="${showSuperUserControls ? 'display: none;' : ''}">
                     <h2>School Overview & Benchmarking</h2>
                     <div class="controls">
-                        <div class="controls-left">
-                            <label for="cycle-select">Select Cycle:</label>
-                            <select id="cycle-select">
-                                <option value="1">Cycle 1</option>
-                                <option value="2">Cycle 2</option>
-                                <option value="3">Cycle 3</option>
-                            </select>
-                        </div>
-                        <div class="controls-right">
-                            <div class="eri-compact-container" id="eri-compact-container">
-                                <div class="eri-gauge-small">
-                                    <canvas id="eri-gauge-small-chart"></canvas>
+                        <label for="cycle-select">Select Cycle:</label>
+                        <select id="cycle-select">
+                            <option value="1">Cycle 1</option>
+                            <option value="2">Cycle 2</option>
+                            <option value="3">Cycle 3</option>
+                        </select>
+                        <div class="response-stats-card">
+                            <div class="response-stats-content">
+                                <div class="stat-item">
+                                    <span class="stat-label">Responses</span>
+                                    <span class="stat-value" id="cycle-responses">-</span>
                                 </div>
-                                <div class="eri-value-label">
-                                    <span>ERI</span>
-                                    <strong id="eri-value-display">-</strong>
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Students</span>
+                                    <span class="stat-value" id="total-students">-</span>
                                 </div>
-                                <button class="eri-info-btn" id="eri-info-btn" aria-label="ERI Information">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                                        <line x1="12" y1="8" x2="12" y2="8"></line>
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="response-stats-card">
-                                <div class="response-stats-content">
-                                    <div class="stat-item">
-                                        <span class="stat-label">Responses</span>
-                                        <span class="stat-value" id="cycle-responses">-</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Total Students</span>
-                                        <span class="stat-value" id="total-students">-</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Completion Rate</span>
-                                        <span class="stat-value" id="completion-rate">-</span>
-                                    </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Completion Rate</span>
+                                    <span class="stat-value" id="completion-rate">-</span>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    <div id="eri-speedometer-container">
+                        <!-- ERI Speedometer will be rendered here -->
                     </div>
                     <div id="active-filters-display" style="display:none;">
                         <div class="active-filters-header">
@@ -586,15 +645,7 @@ function initializeDashboardApp() {
                             <div id="active-filters-list"></div>
                         </div>
                     </div>
-                    <div class="filter-toggle-container">
-                        <button class="filter-toggle-btn" id="filter-toggle-btn">
-                            <span>Filters</span>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="filters-container" id="filters-container">
+                    <div class="filters-container">
                         <div class="filter-item">
                             <label for="student-search">Student:</label>
                             <input type="text" id="student-search" placeholder="Search by name..." />
@@ -687,35 +738,6 @@ function initializeDashboardApp() {
         
         // Add event listeners for UI elements
         document.getElementById('qla-chat-submit')?.addEventListener('click', handleQLAChatSubmit);
-        
-        // Add filter toggle functionality
-        const filterToggleBtn = document.getElementById('filter-toggle-btn');
-        const filtersContainer = document.getElementById('filters-container');
-        
-        if (filterToggleBtn && filtersContainer) {
-            filterToggleBtn.addEventListener('click', () => {
-                const isCollapsed = filtersContainer.classList.contains('collapsed');
-                if (isCollapsed) {
-                    filtersContainer.classList.remove('collapsed');
-                    filterToggleBtn.classList.remove('collapsed');
-                } else {
-                    filtersContainer.classList.add('collapsed');
-                    filterToggleBtn.classList.add('collapsed');
-                }
-            });
-        }
-        
-        // Fix ERI info button click handler
-        const eriInfoBtn = document.getElementById('eri-info-btn');
-        if (eriInfoBtn) {
-            // Remove any existing listeners and add new one with better handling
-            eriInfoBtn.onclick = null;
-            eriInfoBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.showERIInfoModal();
-            });
-        }
         
         // Add Super User specific event listeners
         if (showSuperUserControls) {
@@ -1383,121 +1405,133 @@ function initializeDashboardApp() {
         }
     }
     
-    function renderCompactERI(schoolERI, nationalERI, cycle) {
-        const container = document.getElementById('eri-compact-container');
-        const valueDisplay = document.getElementById('eri-value-display');
-        
+    function renderERISpeedometer(schoolERI, nationalERI, cycle) {
+        const container = document.getElementById('eri-speedometer-container');
         if (!container) {
-            errorLog("Compact ERI container not found");
+            errorLog("ERI speedometer container not found");
             return;
         }
         
-        const schoolValue = schoolERI?.value || null;
-        const nationalValue = nationalERI || null;
+        // Clear previous content
+        container.innerHTML = '';
         
-        // Update value display
-        if (valueDisplay) {
-            valueDisplay.textContent = schoolValue ? schoolValue.toFixed(1) : 'N/A';
+        // Create the main ERI card
+        const eriCard = document.createElement('div');
+        eriCard.className = 'eri-speedometer-card';
+        
+        // Determine color based on ERI value
+        let colorClass = 'eri-low';
+        let interpretation = 'Low Readiness';
+        let colorHex = '#ef4444'; // red
+        
+        if (schoolERI && schoolERI.value) {
+            if (schoolERI.value >= 4) {
+                colorClass = 'eri-excellent';
+                interpretation = 'Excellent Readiness';
+                colorHex = '#3b82f6'; // blue
+            } else if (schoolERI.value >= 3) {
+                colorClass = 'eri-good';
+                interpretation = 'Good Readiness';
+                colorHex = '#10b981'; // green
+            } else if (schoolERI.value >= 2) {
+                colorClass = 'eri-below-average';
+                interpretation = 'Below Average';
+                colorHex = '#f59e0b'; // orange
+            }
         }
         
-        // Create compact gauge
-        const canvas = document.getElementById('eri-gauge-small-chart');
+        eriCard.classList.add(colorClass);
+        
+        // Build the card HTML
+        eriCard.innerHTML = `
+            <div class="eri-header">
+                <h3>Exam Readiness Index (ERI) - Cycle ${cycle}</h3>
+                <button class="eri-info-btn" onclick="window.showERIInfoModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12" y2="8"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="eri-content">
+                <div class="eri-gauge-container">
+                    <canvas id="eri-gauge-chart"></canvas>
+                </div>
+                <div class="eri-stats">
+                    <div class="eri-stat-item">
+                        <span class="eri-stat-label">Your School</span>
+                        <span class="eri-stat-value" style="color: ${colorHex}">
+                            ${schoolERI ? schoolERI.value.toFixed(1) : 'N/A'}
+                        </span>
+                    </div>
+                    <div class="eri-stat-item">
+                        <span class="eri-stat-label">National Average</span>
+                        <span class="eri-stat-value">
+                            ${nationalERI ? nationalERI.toFixed(1) : 'N/A'}
+                        </span>
+                    </div>
+                    <div class="eri-stat-item">
+                        <span class="eri-stat-label">Difference</span>
+                        <span class="eri-stat-value ${schoolERI && nationalERI && schoolERI.value >= nationalERI ? 'positive' : 'negative'}">
+                            ${schoolERI && nationalERI ? 
+                                ((schoolERI.value > nationalERI ? '+' : '') + ((schoolERI.value - nationalERI) / nationalERI * 100).toFixed(1) + '%') 
+                                : 'N/A'}
+                        </span>
+                    </div>
+                </div>
+                <div class="eri-interpretation">
+                    <strong>${interpretation}</strong>
+                    ${getERIInterpretationText(schoolERI ? schoolERI.value : null)}
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(eriCard);
+        
+        // Create the gauge chart
+        setTimeout(() => {
+            createERIGaugeChart(schoolERI ? schoolERI.value : null, nationalERI);
+        }, 100);
+    }
+    
+    function createERIGaugeChart(schoolValue, nationalValue) {
+        const canvas = document.getElementById('eri-gauge-chart');
         if (!canvas) return;
         
         const ctx = canvas.getContext('2d');
         
         // Destroy previous chart if exists
-        if (window.compactERIGauge) {
-            window.compactERIGauge.destroy();
+        if (window.eriGaugeChart) {
+            window.eriGaugeChart.destroy();
         }
         
-        // Check if gauge plugin is available
-        const hasGaugePlugin = typeof Chart !== 'undefined' && 
-                             (Chart.controllers?.gauge || 
-                              Chart.registry?.controllers?.gauge ||
-                              window.GaugeController);
-        
-        if (hasGaugePlugin) {
-            // Use proper gauge chart
-            try {
-                // Register gauge controller if needed
-                if (window.GaugeController && !Chart.registry?.controllers?.gauge) {
-                    Chart.register(window.GaugeController, window.ArcElement);
-                }
-                
-                window.compactERIGauge = new Chart(ctx, {
-                    type: 'gauge',
-                    data: {
-                        datasets: [{
-                            value: schoolValue || 0,
-                            data: [1, 5],
-                            backgroundColor: [
-                                getERIColor(schoolValue),
-                                'rgba(255, 255, 255, 0.1)'
-                            ],
-                            borderWidth: 0,
-                            cutout: '80%'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        circumference: 180,
-                        rotation: 270,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                enabled: true,
-                                callbacks: {
-                                    label: function(context) {
-                                        const lines = [`School: ${schoolValue?.toFixed(1) || 'N/A'}`];
-                                        if (nationalValue) {
-                                            lines.push(`National: ${nationalValue.toFixed(1)}`);
-                                            if (schoolValue) {
-                                                const diff = ((schoolValue - nationalValue) / nationalValue * 100).toFixed(1);
-                                                lines.push(`Difference: ${diff > 0 ? '+' : ''}${diff}%`);
-                                            }
-                                        }
-                                        return lines;
-                                    }
-                                }
-                            },
-                            // Add needle if plugin supports it
-                            needle: {
-                                radiusPercentage: 2,
-                                widthPercentage: 3.2,
-                                lengthPercentage: 80,
-                                color: '#464646'
-                            },
-                            valueLabel: {
-                                display: false
-                            }
-                        }
-                    });
-            } catch (e) {
-                log("Error creating gauge chart, falling back to doughnut:", e);
-                createCompactDoughnutFallback(ctx, schoolValue, nationalValue);
-            }
-        } else {
-            // Fallback to styled doughnut chart
-            createCompactDoughnutFallback(ctx, schoolValue, nationalValue);
-        }
-    }
-    
-    function createCompactDoughnutFallback(ctx, schoolValue, nationalValue) {
+        // Create data for the gauge (using doughnut chart)
         const gaugeData = schoolValue || 0;
-        const normalizedValue = ((gaugeData - 1) / 4) * 100; // Convert 1-5 scale to 0-100%
-        const remainingData = 100 - normalizedValue;
+        const remainingData = 5 - gaugeData;
         
-        window.compactERIGauge = new Chart(ctx, {
+        // Color segments based on value ranges
+        const backgroundColors = [
+            '#ef4444', // 0-1: Red
+            '#f59e0b', // 1-2: Orange
+            '#10b981', // 2-3: Green
+            '#3b82f6', // 3-4: Blue
+            '#1e40af'  // 4-5: Dark Blue
+        ];
+        
+        // Determine which color to use for the filled portion
+        let fillColor = backgroundColors[0];
+        if (gaugeData >= 4) fillColor = backgroundColors[4];
+        else if (gaugeData >= 3) fillColor = backgroundColors[3];
+        else if (gaugeData >= 2) fillColor = backgroundColors[2];
+        else if (gaugeData >= 1) fillColor = backgroundColors[1];
+        
+        window.eriGaugeChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 datasets: [{
-                    data: [normalizedValue, remainingData],
-                    backgroundColor: [
-                        getERIColor(schoolValue),
-                        'rgba(255, 255, 255, 0.1)'
-                    ],
+                    data: [gaugeData, remainingData],
+                    backgroundColor: [fillColor, 'rgba(255, 255, 255, 0.1)'],
                     borderWidth: 0,
                     circumference: 180,
                     rotation: 270
@@ -1508,33 +1542,94 @@ function initializeDashboardApp() {
                 maintainAspectRatio: false,
                 cutout: '75%',
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: false
+                    },
                     tooltip: {
-                        enabled: true,
-                        callbacks: {
-                            label: function(context) {
-                                const lines = [`School: ${schoolValue?.toFixed(1) || 'N/A'}`];
-                                if (nationalValue) {
-                                    lines.push(`National: ${nationalValue.toFixed(1)}`);
-                                    if (schoolValue) {
-                                        const diff = ((schoolValue - nationalValue) / nationalValue * 100).toFixed(1);
-                                        lines.push(`Difference: ${diff > 0 ? '+' : ''}${diff}%`);
-                                    }
-                                }
-                                return lines;
-                            }
-                        }
+                        enabled: false
+                    },
+                    datalabels: {
+                        display: false
                     }
                 }
-            });
-    }
-    
-    function getERIColor(value) {
-        if (!value) return '#64748b'; // gray for no data
-        if (value >= 4) return '#3b82f6'; // blue - excellent
-        if (value >= 3) return '#10b981'; // green - good
-        if (value >= 2) return '#f59e0b'; // orange - below average
-        return '#ef4444'; // red - low
+            },
+            plugins: [{
+                id: 'eri-text',
+                afterDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const width = chart.width;
+                    const height = chart.height;
+                    
+                    ctx.save();
+                    
+                    // Draw scale labels
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '10px Inter';
+                    ctx.textAlign = 'center';
+                    
+                    // Position labels around the arc
+                    const centerX = width / 2;
+                    const centerY = height - 10;
+                    const radius = Math.min(width, height) / 2 - 20;
+                    
+                    // Draw scale numbers (1-5)
+                    for (let i = 0; i <= 4; i++) {
+                        const angle = (Math.PI) * (i / 4); // 0 to PI (180 degrees)
+                        const x = centerX - radius * Math.cos(angle);
+                        const y = centerY - radius * Math.sin(angle);
+                        ctx.fillText((i + 1).toString(), x, y);
+                    }
+                    
+                    // Draw center value
+                    if (schoolValue) {
+                        ctx.font = 'bold 24px Inter';
+                        ctx.fillStyle = fillColor;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(schoolValue.toFixed(1), centerX, centerY - 10);
+                    }
+                    
+                    // Draw national average marker if available
+                    if (nationalValue) {
+                        // Calculate angle for national value position
+                        // The gauge goes from 1 to 5, displayed as a 180-degree arc
+                        // Angle calculation: PI (leftmost) to 0 (rightmost)
+                        const valueRange = 5 - 1; // 4
+                        const normalizedValue = (nationalValue - 1) / valueRange; // 0 to 1
+                        const nationalAngle = Math.PI * (1 - normalizedValue); // PI to 0
+                        
+                        const markerRadius = radius - 15;
+                        const markerX = centerX + markerRadius * Math.cos(nationalAngle);
+                        const markerY = centerY - markerRadius * Math.sin(nationalAngle);
+                        
+                        // Draw marker line
+                        ctx.strokeStyle = '#ffd93d';
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([5, 3]);
+                        ctx.beginPath();
+                        
+                        // Draw radial line from inner to outer edge
+                        const innerRadius = markerRadius - 10;
+                        const outerRadius = markerRadius + 10;
+                        ctx.moveTo(centerX + innerRadius * Math.cos(nationalAngle), 
+                                  centerY - innerRadius * Math.sin(nationalAngle));
+                        ctx.lineTo(centerX + outerRadius * Math.cos(nationalAngle), 
+                                  centerY - outerRadius * Math.sin(nationalAngle));
+                        ctx.stroke();
+                        
+                        // Draw label
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = '#ffd93d';
+                        ctx.font = 'bold 10px Inter';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText('Nat', markerX, markerY - 15);
+                    }
+                    
+                    ctx.restore();
+                }
+            }]
+        });
     }
     
     function getERIInterpretationText(eriValue) {
@@ -1755,8 +1850,7 @@ function initializeDashboardApp() {
             
             GlobalLoader.updateProgress(80, 'Rendering visualizations...');
             
-            // Render compact ERI in controls instead of full speedometer
-            renderCompactERI(schoolERI, nationalERI, cycle);
+            renderERISpeedometer(schoolERI, nationalERI, cycle);
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
             renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
 
