@@ -931,29 +931,44 @@ function initializeDashboardApp() {
                 // but serves as a fallback or if called directly elsewhere without pre-fetched data.
                 log("Warning: preFetchedVespaResults not provided or empty for establishment mode in populateFilterDropdowns. Fetching now.");
                 const filters = [{
-                    field: 'field_133',
+                    field: 'field_133', // VESPA Customer connection in object_10
                     operator: 'is',
                     value: establishmentId
                 }];
-                allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                showGlobalLoader("Fetching filter data for establishment..."); // Show loader for this specific fetch
+                try {
+                    allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                } finally {
+                    hideGlobalLoader();
+                }
             } else if (staffAdminId) {
                 // Normal mode - filter by staff admin
                 log("Fetching VESPA results for Staff Admin in populateFilterDropdowns.");
                 const filters = [{
-                    field: 'field_439',
+                    field: 'field_439', // Staff Admin connection in object_10
                     operator: 'is',
                     value: staffAdminId
                 }];
-                 allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                showGlobalLoader("Fetching filter data for staff admin..."); // Show loader for this specific fetch
+                try {
+                    allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                } finally {
+                    hideGlobalLoader();
+                }
             } else {
-                log("populateFilterDropdowns: Insufficient parameters to fetch or use data.");
-                // Clear dropdowns or show an error message?
-                // For now, just return to prevent errors with empty allRecords.
+                log("populateFilterDropdowns: Insufficient parameters to fetch or use data (no staffAdminId, establishmentId, or valid preFetchedVespaResults).");
+                // Optionally clear dropdowns or display a message
+                // For now, just return to prevent errors trying to process empty allRecords.
                 return;
             }
             
             if (!allRecords || allRecords.length === 0) {
-                log("No records found to populate filters");
+                log("No records found to populate filters after fetch/check.");
+                // Clear dropdowns to avoid showing stale data if they were previously populated
+                populateDropdown('group-filter', [], 'name', 'id');
+                populateDropdown('course-filter', [], 'name', 'id');
+                populateDropdown('year-group-filter', []);
+                populateDropdown('faculty-filter', []);
                 return;
             }
             
@@ -965,107 +980,77 @@ function initializeDashboardApp() {
             const yearGroups = new Set();
             const faculties = new Set();
             
-            // Debug: Log first record to see field structure
-            if (allRecords.length > 0) {
-                log("Sample record for debugging:", {
-                    field_223: allRecords[0].field_223,
-                    field_223_raw: allRecords[0].field_223_raw,
-                    field_2299: allRecords[0].field_2299,
-                    field_2299_raw: allRecords[0].field_2299_raw,
-                    field_144_raw: allRecords[0].field_144_raw,
-                    field_782_raw: allRecords[0].field_782_raw
+            if (allRecords.length > 0 && debugMode) { // Added debugMode check for sample logging
+                log("Sample record for debugging filters:", {
+                    field_223_raw: allRecords[0].field_223_raw, // Group
+                    field_2299_raw: allRecords[0].field_2299_raw, // Course
+                    field_144_raw: allRecords[0].field_144_raw,   // Year Group
+                    field_782_raw: allRecords[0].field_782_raw    // Faculty
                 });
             }
             
             allRecords.forEach((record, index) => {
-                // Group (field_223) - Handle as text field
-                // Try both field_223_raw and field_223 as Knack might store text fields differently
+                // Group (field_223)
                 const groupFieldValue = record.field_223_raw || record.field_223;
                 if (groupFieldValue) {
-                    if (index < 3) { // Log first few records for debugging
-                        log(`Record ${index} - Group field_223_raw:`, record.field_223_raw, "field_223:", record.field_223);
-                    }
-                    // If it's an array (connected field), handle differently
                     if (Array.isArray(groupFieldValue)) {
-                        groupFieldValue.forEach((groupId, idx) => {
-                            if (groupId) {
-                                // Try to get display value
-                                let displayValue = record.field_223 || groupId;
-                                if (Array.isArray(record.field_223)) {
-                                    displayValue = record.field_223[idx] || groupId;
-                                }
-                                groups.add(JSON.stringify({ id: groupId, name: displayValue }));
+                        groupFieldValue.forEach((item, idx) => {
+                            if (item && typeof item === 'object' && item.id) { // Check if item itself is an object with id (connection)
+                                const displayName = (Array.isArray(record.field_223) && record.field_223[idx] && typeof record.field_223[idx] === 'string') ? record.field_223[idx] : (item.identifier || item.id);
+                                groups.add(JSON.stringify({ id: item.id, name: displayName }));
+                            } else if (typeof item === 'string' && item.trim()) { // If it's an array of strings
+                                groups.add(item.trim());
                             }
                         });
-                    } else if (typeof groupFieldValue === 'object' && groupFieldValue !== null) {
-                        // Sometimes Knack returns objects for connected fields
-                        if (groupFieldValue.id) {
-                            groups.add(JSON.stringify({ 
-                                id: groupFieldValue.id, 
-                                name: groupFieldValue.identifier || groupFieldValue.value || groupFieldValue.id 
-                            }));
-                        }
-                    } else {
-                        // It's a text field - use the value directly
-                        const groupValue = groupFieldValue.toString().trim();
+                    } else if (typeof groupFieldValue === 'object' && groupFieldValue.id) { // Single connection object
+                         groups.add(JSON.stringify({ id: groupFieldValue.id, name: groupFieldValue.identifier || groupFieldValue.id }));
+                    } else if (typeof groupFieldValue === 'string') { // Plain text field
+                        const groupValue = groupFieldValue.trim();
                         if (groupValue && groupValue !== 'null' && groupValue !== 'undefined') {
                             groups.add(groupValue);
                         }
                     }
                 }
                 
-                // Course (field_2299) - Handle both text and connected fields
+                // Course (field_2299)
                 const courseFieldValue = record.field_2299_raw || record.field_2299;
                 if (courseFieldValue) {
-                    if (index < 3) { // Log first few records for debugging
-                        log(`Record ${index} - Course field_2299_raw:`, record.field_2299_raw, "field_2299:", record.field_2299);
-                    }
-                    if (Array.isArray(courseFieldValue)) {
-                        // Connected field
-                        courseFieldValue.forEach((courseId, idx) => {
-                            if (courseId) {
-                                let displayValue = record.field_2299 || courseId;
-                                if (Array.isArray(record.field_2299)) {
-                                    displayValue = record.field_2299[idx] || courseId;
-                                }
-                                courses.add(JSON.stringify({ id: courseId, name: displayValue }));
+                     if (Array.isArray(courseFieldValue)) {
+                        courseFieldValue.forEach((item, idx) => {
+                             if (item && typeof item === 'object' && item.id) {
+                                const displayName = (Array.isArray(record.field_2299) && record.field_2299[idx] && typeof record.field_2299[idx] === 'string') ? record.field_2299[idx] : (item.identifier || item.id);
+                                courses.add(JSON.stringify({ id: item.id, name: displayName }));
+                            } else if (typeof item === 'string' && item.trim()) {
+                                courses.add(item.trim());
                             }
                         });
-                    } else if (typeof courseFieldValue === 'object' && courseFieldValue !== null) {
-                        // Sometimes Knack returns objects for connected fields
-                        if (courseFieldValue.id) {
-                            courses.add(JSON.stringify({ 
-                                id: courseFieldValue.id, 
-                                name: courseFieldValue.identifier || courseFieldValue.value || courseFieldValue.id 
-                            }));
-                        }
-                    } else {
-                        // Text field
-                        const courseValue = courseFieldValue.toString().trim();
+                    } else if (typeof courseFieldValue === 'object' && courseFieldValue.id) {
+                        courses.add(JSON.stringify({ id: courseFieldValue.id, name: courseFieldValue.identifier || courseFieldValue.id }));
+                    } else if (typeof courseFieldValue === 'string') {
+                        const courseValue = courseFieldValue.trim();
                         if (courseValue && courseValue !== 'null' && courseValue !== 'undefined') {
                             courses.add(courseValue);
                         }
                     }
                 }
                 
-                // Year Group (field_144)
+                // Year Group (field_144) - Assuming text or simple choice
                 if (record.field_144_raw) {
-                    const yearGroupValue = record.field_144_raw.toString().trim();
-                    if (yearGroupValue) {
+                    const yearGroupValue = String(record.field_144_raw).trim();
+                    if (yearGroupValue && yearGroupValue !== 'null' && yearGroupValue !== 'undefined') {
                         yearGroups.add(yearGroupValue);
                     }
                 }
                 
-                // Faculty (field_782)
+                // Faculty (field_782) - Assuming text or simple choice
                 if (record.field_782_raw) {
-                    const facultyValue = record.field_782_raw.toString().trim();
-                    if (facultyValue) {
+                    const facultyValue = String(record.field_782_raw).trim();
+                    if (facultyValue && facultyValue !== 'null' && facultyValue !== 'undefined') {
                         faculties.add(facultyValue);
                     }
                 }
             });
             
-            // Debug: Log collected values
             log("Collected filter values:", {
                 groups: Array.from(groups),
                 courses: Array.from(courses),
@@ -1073,34 +1058,13 @@ function initializeDashboardApp() {
                 faculties: Array.from(faculties)
             });
             
-            // Populate dropdowns
-            // Process groups - could be strings or JSON objects
             const groupItems = Array.from(groups).map(g => {
-                try {
-                    return JSON.parse(g);
-                } catch (e) {
-                    // It's a plain string, not JSON
-                    return g;
-                }
-            }).sort((a, b) => {
-                const aName = typeof a === 'object' ? a.name : a;
-                const bName = typeof b === 'object' ? b.name : b;
-                return aName.localeCompare(bName);
-            });
+                try { return JSON.parse(g); } catch (e) { return g; }
+            }).sort((a, b) => (typeof a === 'object' ? a.name : a).localeCompare(typeof b === 'object' ? b.name : b));
             
-            // Process courses - could be strings or JSON objects
             const courseItems = Array.from(courses).map(c => {
-                try {
-                    return JSON.parse(c);
-                } catch (e) {
-                    // It's a plain string, not JSON
-                    return c;
-                }
-            }).sort((a, b) => {
-                const aName = typeof a === 'object' ? a.name : a;
-                const bName = typeof b === 'object' ? b.name : b;
-                return aName.localeCompare(bName);
-            });
+                try { return JSON.parse(c); } catch (e) { return c; }
+            }).sort((a, b) => (typeof a === 'object' ? a.name : a).localeCompare(typeof b === 'object' ? b.name : b));
             
             populateDropdown('group-filter', groupItems, 'name', 'id');
             populateDropdown('course-filter', courseItems, 'name', 'id');
@@ -1109,7 +1073,9 @@ function initializeDashboardApp() {
             
         } catch (error) {
             errorLog("Failed to populate filter dropdowns", error);
-        }
+        } 
+        // No hideGlobalLoader() here, as it's assumed the caller handles it or it's a quick operation
+        // when using preFetchedVespaResults. If direct fetches occur, they have their own try/finally for loader.
     }
     
     function populateDropdown(dropdownId, items, displayProperty = null, valueProperty = null) {
