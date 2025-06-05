@@ -1834,3 +1834,46 @@ body.knack-body .kn-content {
     font-style: italic;
     color: var(--text-muted);
 }
+
+/* --- Global Loading Overlay --- */
+.global-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(15, 15, 35, 0.85); /* Slightly darker than primary-bg with more opacity */
+    backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000; /* Highest z-index */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s; /* Delay visibility transition for fade out */
+}
+
+.global-loading-overlay.active {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.3s ease, visibility 0s linear 0s;
+}
+
+.global-loading-overlay .spinner { /* Reusing and slightly enhancing existing spinner */
+    width: 70px;
+    height: 70px;
+    border: 5px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    margin-bottom: var(--spacing-lg);
+}
+
+.global-loading-overlay p {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
