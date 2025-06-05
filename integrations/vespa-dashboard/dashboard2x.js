@@ -1,4 +1,4 @@
-// dashboard2w.js
+// dashboard2x.js
 // @ts-nocheck
 
 // Global loader management
@@ -621,16 +621,22 @@ function initializeDashboardApp() {
                                 <option value="3">Cycle 3</option>
                             </select>
                             <div class="eri-compact-container">
-                                <div class="eri-gauge-small">
-                                    <canvas id="eri-gauge-small-chart"></canvas>
+                                <div class="eri-gauge-section">
+                                    <div class="eri-gauge-small">
+                                        <canvas id="eri-gauge-small-chart"></canvas>
+                                    </div>
+                                    <button class="eri-info-btn" id="eri-info-button">
+                                        <span style="font-weight: bold; font-size: 14px;">i</span>
+                                    </button>
                                 </div>
-                                <div class="eri-value-label">
-                                    <span>ERI</span>
-                                    <strong id="eri-value-display">-</strong>
+                                <div class="eri-context-section">
+                                    <div class="eri-title">Exam Readiness Index</div>
+                                    <div class="eri-values">
+                                        <span class="eri-school-value">School: <strong id="eri-value-display">-</strong></span>
+                                        <span class="eri-national-value">National: <strong id="eri-national-display">-</strong></span>
+                                    </div>
+                                    <div class="eri-interpretation" id="eri-interpretation-text">Loading...</div>
                                 </div>
-                                <button class="eri-info-btn" id="eri-info-button">
-                                    <span style="font-weight: bold; font-size: 14px;">i</span>
-                                </button>
                             </div>
                         </div>
                         <div class="controls-right">
@@ -900,13 +906,8 @@ function initializeDashboardApp() {
         log(`Loading dashboard data for VESPA Customer: ${establishmentName} (${establishmentId})`);
         
         // Show global loader
-        const loader = GlobalLoader.init ? GlobalLoader : {
-            init() {},
-            updateProgress() {},
-            hide() {}
-        };
-        loader.init();
-        loader.updateProgress(10, `Loading data for ${establishmentName}...`);
+        GlobalLoader.init();
+        GlobalLoader.updateProgress(10, `Loading data for ${establishmentName}...`);
         
         try {
             // Load initial data
@@ -914,22 +915,22 @@ function initializeDashboardApp() {
             const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
             
             // Fetch all initial data using batch endpoint
-            loader.updateProgress(30, 'Fetching dashboard data...');
+            GlobalLoader.updateProgress(30, 'Fetching dashboard data...');
             const batchData = await fetchDashboardInitialData(null, establishmentId, initialCycle);
             
             // Populate filter dropdowns from cached data
-            loader.updateProgress(50, 'Setting up filters...');
+            GlobalLoader.updateProgress(50, 'Setting up filters...');
             populateFilterDropdownsFromCache(batchData.filterOptions);
             
             // Load all sections with cached data
-            loader.updateProgress(70, 'Rendering visualizations...');
+            GlobalLoader.updateProgress(70, 'Rendering visualizations...');
             await Promise.all([
                 loadOverviewData(null, initialCycle, [], establishmentId),
                 loadQLAData(null, establishmentId),
                 loadStudentCommentInsights(null, establishmentId)
             ]);
             
-            loader.updateProgress(90, 'Finalizing...');
+            GlobalLoader.updateProgress(90, 'Finalizing...');
             
             // Update event listeners to use establishment filter
             if (cycleSelectElement) {
@@ -949,12 +950,12 @@ function initializeDashboardApp() {
                 });
             }
             
-            loader.updateProgress(100, 'Dashboard ready!');
-            setTimeout(() => loader.hide(), 500);
+            GlobalLoader.updateProgress(100, 'Dashboard ready!');
+            setTimeout(() => GlobalLoader.hide(), 500);
             
         } catch (error) {
             errorLog("Failed to load establishment dashboard", error);
-            loader.hide();
+            GlobalLoader.hide();
             document.getElementById('overview-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
             document.getElementById('qla-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
             document.getElementById('student-insights-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
@@ -1615,6 +1616,18 @@ function initializeDashboardApp() {
         
         const ctx = canvas.getContext('2d');
         
+        // Update the ERI display values
+        const eriValueDisplay = document.getElementById('eri-value-display');
+        const eriNationalDisplay = document.getElementById('eri-national-display');
+        const eriInterpretationText = document.getElementById('eri-interpretation-text');
+        
+        if (eriValueDisplay) eriValueDisplay.textContent = schoolValue ? schoolValue.toFixed(1) : '-';
+        if (eriNationalDisplay) eriNationalDisplay.textContent = nationalValue ? nationalValue.toFixed(1) : '-';
+        if (eriInterpretationText) {
+            const interpretation = getERIInterpretationText(schoolValue);
+            eriInterpretationText.textContent = interpretation;
+        }
+        
         // Destroy previous chart if exists
         if (window.eriCompactGauge) {
             window.eriCompactGauge.destroy();
@@ -1689,17 +1702,17 @@ function initializeDashboardApp() {
     
     function getERIInterpretationText(eriValue) {
         if (!eriValue) {
-            return '<p>No ERI data available. Complete psychometric assessments to see your readiness index.</p>';
+            return 'No data available';
         }
         
         if (eriValue >= 4) {
-            return '<p>Students feel highly supported, well-prepared, and confident about their exam performance.</p>';
+            return 'Excellent readiness - Students confident & prepared';
         } else if (eriValue >= 3) {
-            return '<p>Students generally feel ready for exams but there\'s room for improvement in support or preparation.</p>';
+            return 'Good readiness - Room for improvement';
         } else if (eriValue >= 2) {
-            return '<p>Students show concerns about exam readiness. Consider enhancing support systems and preparation strategies.</p>';
+            return 'Below average - Support needed';
         } else {
-            return '<p>Urgent attention needed. Students feel unprepared and lack confidence. Implement comprehensive support interventions.</p>';
+            return 'Low readiness - Urgent intervention required';
         }
     }
     
@@ -1747,7 +1760,7 @@ function initializeDashboardApp() {
                             </div>
                         </div>
                         <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                            ${schoolValue ? getERIInterpretationText(schoolValue).replace(/<\/?p>/g, '') : 'No data available'}
+                            ${schoolValue ? getERIInterpretationText(schoolValue) : 'No data available'}
                         </div>
                     </div>
                 `;
