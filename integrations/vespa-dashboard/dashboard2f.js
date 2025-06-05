@@ -12,6 +12,38 @@ function initializeDashboardApp() {
 
     console.log("Initializing Dashboard App with config:", config);
     
+    // --- Global Loader ---
+    let globalLoaderElement = null;
+    function createGlobalLoader() {
+        if (document.getElementById('global-loading-overlay')) return; // Already created
+
+        globalLoaderElement = document.createElement('div');
+        globalLoaderElement.id = 'global-loading-overlay';
+        globalLoaderElement.className = 'global-loading-overlay'; // CSS will hide it initially
+        globalLoaderElement.innerHTML = `
+            <div class="spinner"></div>
+            <p>Loading dashboard...</p>
+        `;
+        document.body.appendChild(globalLoaderElement);
+    }
+
+    function showGlobalLoader(message = "Loading data...") {
+        if (!globalLoaderElement) createGlobalLoader(); // Ensure it's created
+        const messageElement = globalLoaderElement.querySelector('p');
+        if (messageElement) messageElement.textContent = message;
+        // Use requestAnimationFrame to ensure the class is added after the element is painted, making the transition work reliably
+        requestAnimationFrame(() => {
+            if (globalLoaderElement) globalLoaderElement.classList.add('active');
+        });
+    }
+
+    function hideGlobalLoader() {
+        if (globalLoaderElement) {
+            globalLoaderElement.classList.remove('active');
+        }
+    }
+    // --- End Global Loader ---
+    
     // Get logged in user email from config or Knack directly
     let loggedInUserEmail = config.loggedInUserEmail;
     
@@ -619,6 +651,8 @@ function initializeDashboardApp() {
             return;
         }
         
+        showGlobalLoader("Loading establishment dashboard..."); // Show loader
+        
         selectedEstablishmentId = establishmentSelect.value;
         selectedEstablishmentName = selectedOption.textContent;
         
@@ -636,7 +670,13 @@ function initializeDashboardApp() {
         document.getElementById('student-insights-section').style.display = 'block';
         
         // Load data with establishment filter
-        await loadDashboardWithEstablishment(selectedEstablishmentId, selectedEstablishmentName);
+        try {
+            await loadDashboardWithEstablishment(selectedEstablishmentId, selectedEstablishmentName);
+        } catch (error) {
+            errorLog("Error in handleEstablishmentLoad after showing sections:", error);
+        } finally {
+            hideGlobalLoader(); // Hide loader
+        }
     }
     
     // New function to load establishments dropdown
@@ -3044,6 +3084,9 @@ function initializeDashboardApp() {
             return;
         }
 
+        createGlobalLoader(); // Create the loader HTML structure once on init
+        showGlobalLoader("Initializing dashboard..."); // Show initial loader
+
         // Get logged in user email from config or Knack directly
         let loggedInUserEmail = config.loggedInUserEmail;
     
@@ -3074,6 +3117,7 @@ function initializeDashboardApp() {
             document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
             document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
             document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
+            hideGlobalLoader(); // Hide loader
             return;
         }
 
@@ -3202,15 +3246,18 @@ function initializeDashboardApp() {
 
         } else if (isSuperUser) {
             log("Super User mode active. Waiting for establishment selection.");
+            // Super user mode will show loader via handleEstablishmentLoad when selection is made
             document.getElementById('overview-section').style.display = 'none'; // Hide if super user and waiting for selection
             document.getElementById('qla-section').style.display = 'none';
             document.getElementById('student-insights-section').style.display = 'none';
+            hideGlobalLoader(); // Hide initial "Initializing" loader
             return; // Exit here for Super Users if they are not Staff Admins
         } else {
             errorLog("Neither Staff Admin nor Super User role found. Cannot load dashboard.");
             document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
             document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
             document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
+            hideGlobalLoader(); // Hide loader
         }
     }
     
