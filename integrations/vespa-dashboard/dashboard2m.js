@@ -1,12 +1,101 @@
 // dashboard1f.js
 // @ts-nocheck
 
+// Global loader management
+const GlobalLoader = {
+    overlay: null,
+    progressBar: null,
+    progressText: null,
+    
+    init() {
+        // Create loader HTML immediately
+        const loaderHTML = `
+            <div class="global-loading-overlay active" id="global-loading-overlay">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Initializing VESPA Dashboard</div>
+                    <div class="loading-subtext">Loading your performance data...</div>
+                    <div class="loading-progress">
+                        <div class="loading-progress-bar" id="loading-progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Insert at the beginning of body
+        document.body.insertAdjacentHTML('afterbegin', loaderHTML);
+        
+        this.overlay = document.getElementById('global-loading-overlay');
+        this.progressBar = document.getElementById('loading-progress-bar');
+        this.progressText = this.overlay.querySelector('.loading-subtext');
+    },
+    
+    updateProgress(percentage, text) {
+        if (this.progressBar) {
+            this.progressBar.style.width = `${percentage}%`;
+        }
+        if (this.progressText && text) {
+            this.progressText.textContent = text;
+        }
+    },
+    
+    hide() {
+        if (this.overlay) {
+            this.overlay.classList.remove('active');
+            // Remove after animation
+            setTimeout(() => {
+                if (this.overlay && this.overlay.parentNode) {
+                    this.overlay.parentNode.removeChild(this.overlay);
+                }
+            }, 300);
+        }
+    }
+};
+
+// Initialize loader immediately
+GlobalLoader.init();
+
+// Data cache management
+const DataCache = {
+    vespaResults: null,
+    nationalBenchmark: null,
+    filterOptions: null,
+    psychometricResponses: null,
+    lastFetchTime: null,
+    cacheTimeout: 5 * 60 * 1000, // 5 minutes
+    
+    set(key, value) {
+        this[key] = value;
+        this.lastFetchTime = Date.now();
+    },
+    
+    get(key) {
+        // Check if cache is still valid
+        if (this.lastFetchTime && (Date.now() - this.lastFetchTime) < this.cacheTimeout) {
+            return this[key];
+        }
+        return null;
+    },
+    
+    clear() {
+        this.vespaResults = null;
+        this.nationalBenchmark = null;
+        this.filterOptions = null;
+        this.psychometricResponses = null;
+        this.lastFetchTime = null;
+    }
+};
+
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
+    // Update progress
+    GlobalLoader.updateProgress(10, 'Checking configuration...');
+    
     // Get the configuration set by WorkingBridge.js
     const config = window.DASHBOARD_CONFIG;
     if (!config) {
         console.error("DASHBOARD_CONFIG not found. Dashboard cannot initialize.");
+        GlobalLoader.hide();
         return;
     }
 
@@ -53,6 +142,10 @@ function initializeDashboardApp() {
     let superUserRecordId = null;
     let selectedEstablishmentId = null;
     let selectedEstablishmentName = null;
+    
+    // Track current data context
+    let currentStaffAdminId = null;
+    let currentEstablishmentId = null;
 
     // --- Helper Functions (General) ---
     function log(message, data) {
@@ -82,6 +175,9 @@ function initializeDashboardApp() {
         if (options.sort_order) {
             url += `&sort_order=${options.sort_order}`;
         }
+        if (options.fields) {
+            url += `&fields=${encodeURIComponent(JSON.stringify(options.fields))}`;
+        }
 
         log("Fetching from backend URL:", url); 
         try {
@@ -95,6 +191,62 @@ function initializeDashboardApp() {
         } catch (error) {
             errorLog(`Failed to fetch data for ${objectKey}`, error);
             throw error; // Re-throw to be handled by the caller
+        }
+    }
+    
+    // New batch data fetching function
+    async function fetchDashboardInitialData(staffAdminId, establishmentId, cycle = 1) {
+        // Check cache first
+        const cachedData = DataCache.get('initialData');
+        if (cachedData && cachedData.cycle === cycle && 
+            cachedData.staffAdminId === staffAdminId && 
+            cachedData.establishmentId === establishmentId) {
+            log("Using cached initial data");
+            return cachedData;
+        }
+        
+        const url = `${config.herokuAppUrl}/api/dashboard-initial-data`;
+        const requestData = {
+            staffAdminId,
+            establishmentId,
+            cycle
+        };
+        
+        log("Fetching dashboard initial data from batch endpoint:", requestData);
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: `Batch data request failed with status ${response.status}` }));
+                throw new Error(errorData.message || `Batch data request failed with status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Cache the data
+            const cacheData = {
+                ...data,
+                cycle,
+                staffAdminId,
+                establishmentId
+            };
+            DataCache.set('initialData', cacheData);
+            DataCache.set('vespaResults', data.vespaResults);
+            DataCache.set('nationalBenchmark', data.nationalBenchmark);
+            DataCache.set('filterOptions', data.filterOptions);
+            DataCache.set('psychometricResponses', data.psychometricResponses);
+            
+            return data;
+        } catch (error) {
+            errorLog("Failed to fetch dashboard initial data", error);
+            throw error;
         }
     }
 
@@ -700,33 +852,65 @@ function initializeDashboardApp() {
     async function loadDashboardWithEstablishment(establishmentId, establishmentName) {
         log(`Loading dashboard data for VESPA Customer: ${establishmentName} (${establishmentId})`);
         
-        // Note: establishmentId is now a VESPA Customer record ID from object_2
-        // When filtering VESPA Results (object_10), field_133 contains the connected VESPA Customer
+        // Show global loader
+        const loader = GlobalLoader.init ? GlobalLoader : {
+            init() {},
+            updateProgress() {},
+            hide() {}
+        };
+        loader.init();
+        loader.updateProgress(10, `Loading data for ${establishmentName}...`);
         
-        // Populate filter dropdowns using establishment filter
-        await populateFilterDropdowns(null, establishmentId);
-        
-        // Load initial data
-        const cycleSelectElement = document.getElementById('cycle-select');
-        const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
-        
-        // Load data with establishment filter (VESPA Customer ID)
-        await loadOverviewData(null, initialCycle, [], establishmentId);
-        await loadQLAData(null, establishmentId);
-        await loadStudentCommentInsights(null, establishmentId);
-        
-        // Update event listeners to use establishment filter
-        if (cycleSelectElement) {
-            // Remove old listeners
-            const newCycleSelect = cycleSelectElement.cloneNode(true);
-            cycleSelectElement.parentNode.replaceChild(newCycleSelect, cycleSelectElement);
+        try {
+            // Load initial data
+            const cycleSelectElement = document.getElementById('cycle-select');
+            const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
             
-            newCycleSelect.addEventListener('change', (event) => {
-                const selectedCycle = parseInt(event.target.value, 10);
-                log(`Cycle changed to: ${selectedCycle}`);
-                const activeFilters = getActiveFilters();
-                loadOverviewData(null, selectedCycle, activeFilters, establishmentId);
-            });
+            // Fetch all initial data using batch endpoint
+            loader.updateProgress(30, 'Fetching dashboard data...');
+            const batchData = await fetchDashboardInitialData(null, establishmentId, initialCycle);
+            
+            // Populate filter dropdowns from cached data
+            loader.updateProgress(50, 'Setting up filters...');
+            populateFilterDropdownsFromCache(batchData.filterOptions);
+            
+            // Load all sections with cached data
+            loader.updateProgress(70, 'Rendering visualizations...');
+            await Promise.all([
+                loadOverviewData(null, initialCycle, [], establishmentId),
+                loadQLAData(null, establishmentId),
+                loadStudentCommentInsights(null, establishmentId)
+            ]);
+            
+            loader.updateProgress(90, 'Finalizing...');
+            
+            // Update event listeners to use establishment filter
+            if (cycleSelectElement) {
+                // Remove old listeners
+                const newCycleSelect = cycleSelectElement.cloneNode(true);
+                cycleSelectElement.parentNode.replaceChild(newCycleSelect, cycleSelectElement);
+                
+                newCycleSelect.addEventListener('change', async (event) => {
+                    const selectedCycle = parseInt(event.target.value, 10);
+                    log(`Cycle changed to: ${selectedCycle}`);
+                    
+                    // Clear cache to force refresh for new cycle
+                    DataCache.clear();
+                    
+                    const activeFilters = getActiveFilters();
+                    await loadOverviewData(null, selectedCycle, activeFilters, establishmentId);
+                });
+            }
+            
+            loader.updateProgress(100, 'Dashboard ready!');
+            setTimeout(() => loader.hide(), 500);
+            
+        } catch (error) {
+            errorLog("Failed to load establishment dashboard", error);
+            loader.hide();
+            document.getElementById('overview-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
+            document.getElementById('qla-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
+            document.getElementById('student-insights-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
         }
         
         // Update filter buttons
@@ -1108,6 +1292,42 @@ function initializeDashboardApp() {
         });
         
         log(`Populated ${dropdownId} with ${items.length} items`);
+    }
+    
+    // New function to populate filter dropdowns from cached data
+    function populateFilterDropdownsFromCache(filterOptions) {
+        if (!filterOptions) {
+            log("No filter options provided to populateFilterDropdownsFromCache");
+            return;
+        }
+        
+        log("Populating filter dropdowns from cache");
+        
+        // Populate each dropdown
+        populateDropdown('group-filter', filterOptions.groups || []);
+        populateDropdown('course-filter', filterOptions.courses || []);
+        populateDropdown('year-group-filter', filterOptions.yearGroups || []);
+        populateDropdown('faculty-filter', filterOptions.faculties || []);
+        
+        log("Filter dropdowns populated from cache");
+    }
+
+    // New function to populate filter dropdowns from cached data
+    function populateFilterDropdownsFromCache(filterOptions) {
+        if (!filterOptions) {
+            log("No filter options provided to populateFilterDropdownsFromCache");
+            return;
+        }
+        
+        log("Populating filter dropdowns from cache");
+        
+        // Populate each dropdown
+        populateDropdown('group-filter', filterOptions.groups || []);
+        populateDropdown('course-filter', filterOptions.courses || []);
+        populateDropdown('year-group-filter', filterOptions.yearGroups || []);
+        populateDropdown('faculty-filter', filterOptions.faculties || []);
+        
+        log("Filter dropdowns populated from cache");
     }
 
     // --- Section 1: Overview and Benchmarking ---
@@ -1574,60 +1794,21 @@ function initializeDashboardApp() {
         if (distributionContainer) distributionContainer.style.display = 'none'; // Hide while loading
 
         try {
-            let schoolVespaResults = [];
+            // Use batch endpoint to fetch all data at once
+            GlobalLoader.updateProgress(40, 'Loading dashboard data...');
+            const batchData = await fetchDashboardInitialData(staffAdminId, establishmentId, cycle);
             
-            // Build filters based on whether we're in Super User mode or normal mode
-            const filters = [];
+            let schoolVespaResults = batchData.vespaResults || [];
+            let nationalBenchmarkRecord = batchData.nationalBenchmark;
             
-            if (establishmentId) {
-                // Super User mode - filter by establishment
-                filters.push({
-                    field: 'field_133',
-                    operator: 'is',
-                    value: establishmentId
-                });
-            } else if (staffAdminId) {
-                // Normal mode - filter by staff admin
-                filters.push({
-                    field: 'field_439',
-                    operator: 'is',
-                    value: staffAdminId
-                });
-            }
-            
-            // Add any additional filters
+            // Apply additional filters if any
             if (additionalFilters && additionalFilters.length > 0) {
-                filters.push(...additionalFilters);
+                schoolVespaResults = applyFiltersToRecords(schoolVespaResults, additionalFilters);
+                log(`Applied additional filters, results: ${schoolVespaResults.length}`);
             }
             
-            if (filters.length > 0) {
-                schoolVespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
-                log("Fetched School VESPA Results (filtered):", schoolVespaResults ? schoolVespaResults.length : 0);
-            } else {
-                log("No Staff Admin ID or Establishment ID provided to loadOverviewData. Cannot filter school-specific data.");
-            }
-
-            // Fetch National Benchmark Data from Object_120
-            let nationalBenchmarkRecord = null;
-            if (objectKeys.nationalBenchmarkData) {
-                // Fetch only the latest record, sorted by field_3307 (Date Time) in descending order
-                const nationalDataResults = await fetchDataFromKnack(
-                    objectKeys.nationalBenchmarkData, 
-                    [], // No specific filters for national data
-                    { rows_per_page: 1, sort_field: 'field_3307', sort_order: 'desc' } // Options for fetching latest
-                );
-
-                if (nationalDataResults && nationalDataResults.length > 0) {
-                    // No need to sort here anymore as we requested sorted data and only one record
-                    nationalBenchmarkRecord = nationalDataResults[0];
-                    log("Fetched latest National Benchmark Record (Object_120 - actually object_10 for national):", nationalBenchmarkRecord);
-                } else {
-                    log("No National Benchmark Data (Object_120 - object_10 for national) found or objectKey not configured.");
-                }
-            } else {
-                log("nationalBenchmarkData object key not configured in DASHBOARD_CONFIG.objectKeys");
-            }
-
+            GlobalLoader.updateProgress(60, 'Processing VESPA scores...');
+            
             const schoolAverages = calculateSchoolVespaAverages(schoolVespaResults, cycle);
             log(`School Averages (Cycle ${cycle}):`, schoolAverages);
 
@@ -1657,16 +1838,19 @@ function initializeDashboardApp() {
             } else {
                 log("National benchmark record was null, nationalAverages will be default/empty.");
             }
-            log(`National Averages (Cycle ${cycle}):`, nationalAverages); // This log was already there, good.
             
-            // Update response statistics
-            await updateResponseStats(staffAdminId, cycle, additionalFilters, establishmentId);
+            GlobalLoader.updateProgress(70, 'Calculating statistics...');
             
-            // Calculate and render ERI
-            const schoolERI = await calculateSchoolERI(staffAdminId, cycle, additionalFilters, establishmentId);
-            const nationalERI = await getNationalERI(cycle);
+            // Update response statistics using cached data
+            updateResponseStatsFromCache(schoolVespaResults, cycle);
+            
+            // ERI data is already calculated in batch response
+            const schoolERI = batchData.schoolERI;
+            const nationalERI = batchData.nationalERI || 3.5; // Default if not available
+            
+            GlobalLoader.updateProgress(80, 'Rendering visualizations...');
+            
             renderERISpeedometer(schoolERI, nationalERI, cycle);
-            
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
             renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
 
@@ -1679,6 +1863,94 @@ function initializeDashboardApp() {
             if (averagesContainer) averagesContainer.style.display = 'block'; // Show again
             if (distributionContainer) distributionContainer.style.display = 'block'; // Show again
         }
+    }
+
+    // Helper function to apply filters to records in memory
+    function applyFiltersToRecords(records, filters) {
+        return records.filter(record => {
+            return filters.every(filter => {
+                const fieldValue = record[filter.field + '_raw'] || record[filter.field];
+                
+                if (filter.match === 'or' && filter.rules) {
+                    // Handle OR conditions
+                    return filter.rules.some(rule => {
+                        const ruleValue = record[rule.field + '_raw'] || record[rule.field];
+                        return matchesFilter(ruleValue, rule.operator, rule.value, rule.field_name);
+                    });
+                }
+                
+                return matchesFilter(fieldValue, filter.operator, filter.value);
+            });
+        });
+    }
+    
+    // Helper function to match filter conditions
+    function matchesFilter(fieldValue, operator, filterValue, fieldName = null) {
+        if (fieldValue === null || fieldValue === undefined) return false;
+        
+        // Handle name fields with first/last
+        if (fieldName && typeof fieldValue === 'object') {
+            fieldValue = fieldValue[fieldName] || '';
+        }
+        
+        // Convert to string for comparison
+        const fieldStr = String(fieldValue).toLowerCase();
+        const filterStr = String(filterValue).toLowerCase();
+        
+        switch (operator) {
+            case 'is':
+                return fieldStr === filterStr;
+            case 'is not':
+                return fieldStr !== filterStr;
+            case 'contains':
+                return fieldStr.includes(filterStr);
+            case 'does not contain':
+                return !fieldStr.includes(filterStr);
+            default:
+                return false;
+        }
+    }
+    
+    // Update response stats from cached data
+    function updateResponseStatsFromCache(vespaResults, cycle) {
+        const totalStudents = vespaResults.length;
+        
+        // Count responses where vision score (V1) is not empty for the selected cycle
+        const fieldMappings = {
+            cycle1: { v: 'field_155' },
+            cycle2: { v: 'field_161' },
+            cycle3: { v: 'field_167' }
+        };
+        
+        const visionField = fieldMappings[`cycle${cycle}`]?.v;
+        if (!visionField) {
+            errorLog(`Invalid cycle number ${cycle} for response counting.`);
+            return;
+        }
+        
+        let responseCount = 0;
+        vespaResults.forEach(record => {
+            const visionScore = record[visionField + '_raw'];
+            if (visionScore !== null && visionScore !== undefined && visionScore !== '') {
+                responseCount++;
+            }
+        });
+        
+        // Calculate completion rate
+        const completionRate = totalStudents > 0 
+            ? ((responseCount / totalStudents) * 100).toFixed(1) 
+            : '0.0';
+        
+        // Update the UI
+        const cycleResponsesElement = document.getElementById('cycle-responses');
+        const totalStudentsElement = document.getElementById('total-students');
+        const completionRateElement = document.getElementById('completion-rate');
+        
+        if (cycleResponsesElement) cycleResponsesElement.textContent = responseCount.toLocaleString();
+        if (totalStudentsElement) totalStudentsElement.textContent = totalStudents.toLocaleString();
+        if (completionRateElement) completionRateElement.textContent = `${completionRate}%`;
+        
+        log(`Response Stats - Total Students: ${totalStudents}, Responses: ${responseCount}, Completion: ${completionRate}%`);
     }
 
     // Renamed to be specific for school data and to potentially handle cycles
@@ -3145,28 +3417,55 @@ function initializeDashboardApp() {
         // Load data based on role
         if (isStaffAdmin) {
             log("Loading dashboard for Staff Admin:", staffAdminRecordId);
+            GlobalLoader.updateProgress(20, 'Authenticating user...');
             
-            // Populate filter dropdowns
-            await populateFilterDropdowns(staffAdminRecordId);
-            
-            // Initial data load (defaulting to cycle 1 or what's selected)
-            const cycleSelectElement = document.getElementById('cycle-select');
-            const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
-            loadOverviewData(staffAdminRecordId, initialCycle);
-            loadQLAData(staffAdminRecordId);
-            loadStudentCommentInsights(staffAdminRecordId);
-
-            // Add event listener for cycle selector
-            if (cycleSelectElement) {
-                cycleSelectElement.addEventListener('change', (event) => {
-                    const selectedCycle = parseInt(event.target.value, 10);
-                    log(`Cycle changed to: ${selectedCycle}`);
-                    const activeFilters = getActiveFilters();
-                    loadOverviewData(staffAdminRecordId, selectedCycle, activeFilters);
-                    // Potentially re-load or filter QLA and Comment data too if they become cycle-dependent
-                    // loadQLAData(staffAdminRecordId, selectedCycle);
-                    // loadStudentCommentInsights(staffAdminRecordId, selectedCycle);
-                });
+            try {
+                // Initial data load (defaulting to cycle 1 or what's selected)
+                const cycleSelectElement = document.getElementById('cycle-select');
+                const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
+                
+                // Fetch all initial data using batch endpoint
+                GlobalLoader.updateProgress(30, 'Loading dashboard data...');
+                const batchData = await fetchDashboardInitialData(staffAdminRecordId, null, initialCycle);
+                
+                // Populate filter dropdowns from cached data
+                GlobalLoader.updateProgress(50, 'Setting up filters...');
+                populateFilterDropdownsFromCache(batchData.filterOptions);
+                
+                // Load all sections with cached data
+                GlobalLoader.updateProgress(70, 'Rendering dashboard...');
+                await Promise.all([
+                    loadOverviewData(staffAdminRecordId, initialCycle),
+                    loadQLAData(staffAdminRecordId),
+                    loadStudentCommentInsights(staffAdminRecordId)
+                ]);
+                
+                GlobalLoader.updateProgress(90, 'Finalizing...');
+                
+                // Hide global loader
+                GlobalLoader.updateProgress(100, 'Dashboard ready!');
+                setTimeout(() => GlobalLoader.hide(), 500);
+                
+                // Add event listener for cycle selector
+                if (cycleSelectElement) {
+                    cycleSelectElement.addEventListener('change', async (event) => {
+                        const selectedCycle = parseInt(event.target.value, 10);
+                        log(`Cycle changed to: ${selectedCycle}`);
+                        
+                        // Clear cache to force refresh for new cycle
+                        DataCache.clear();
+                        
+                        const activeFilters = getActiveFilters();
+                        await loadOverviewData(staffAdminRecordId, selectedCycle, activeFilters);
+                    });
+                }
+                
+            } catch (error) {
+                errorLog("Failed to initialize dashboard", error);
+                GlobalLoader.hide();
+                document.getElementById('overview-section').innerHTML = `<p>Error loading dashboard: ${error.message}</p>`;
+                document.getElementById('qla-section').innerHTML = `<p>Error loading dashboard: ${error.message}</p>`;
+                document.getElementById('student-insights-section').innerHTML = `<p>Error loading dashboard: ${error.message}</p>`;
             }
             
             // Add event listeners for filter buttons
@@ -3202,12 +3501,15 @@ function initializeDashboardApp() {
 
         } else if (isSuperUser) {
             log("Super User mode active. Waiting for establishment selection.");
+            GlobalLoader.updateProgress(100, 'Please select an establishment to continue...');
+            GlobalLoader.hide();
             document.getElementById('overview-section').style.display = 'none'; // Hide if super user and waiting for selection
             document.getElementById('qla-section').style.display = 'none';
             document.getElementById('student-insights-section').style.display = 'none';
             return; // Exit here for Super Users if they are not Staff Admins
         } else {
             errorLog("Neither Staff Admin nor Super User role found. Cannot load dashboard.");
+            GlobalLoader.hide();
             document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
             document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
             document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
