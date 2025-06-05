@@ -2297,16 +2297,16 @@ function initializeDashboardApp() {
             const nationalScoreToDisplay = (typeof nationalScore === 'number') ? nationalScore.toFixed(1) : 'N/A';
 
             card.innerHTML = `
+                <button class="advanced-stats-btn" data-element="${element.key}" data-cycle="${cycle}" title="Advanced Statistics">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18M9 17V9m4 8V5m4 12V11"/>
+                    </svg>
+                </button>
                 <h3>${element.name}</h3>
                 <div class="score-value">${scoreToDisplay}</div>
                 <div class="national-comparison">
                     National: ${nationalScoreToDisplay} <span class="arrow ${arrowClass}">${arrow}</span> ${percentageDiffText}
                 </div>
-                <button class="advanced-stats-btn" data-element="${element.key}" data-cycle="${cycle}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 3v18h18M9 17V9m4 8V5m4 12V11"/>
-                    </svg>
-                </button>
             `;
             container.appendChild(card);
         });
