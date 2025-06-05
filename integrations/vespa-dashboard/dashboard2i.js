@@ -679,118 +679,133 @@ function initializeDashboardApp() {
         }
     }
     
-     // New function to load dashboard with establishment filter
-     async function loadDashboardWithEstablishment(establishmentId, establishmentName) {
-        log(`Loading dashboard data for VESPA Customer: ${establishmentName} (${establishmentId})`);
-        showGlobalLoader(`Fetching initial data for ${establishmentName}...`);
-
-        let vespaResultsForEstablishment = []; // Store all vespa results for this establishment
-
-        try {
-            // Fetch ALL VESPA results for this establishment ONCE
-            if (establishmentId && objectKeys.vespaResults) {
-                const vespaFilters = [{
-                    field: 'field_133', // VESPA Customer connection field in object_10
-                    operator: 'is',
-                    value: establishmentId
-                }];
-                vespaResultsForEstablishment = await fetchDataFromKnack(objectKeys.vespaResults, vespaFilters);
-                log(`Fetched all ${vespaResultsForEstablishment.length} VESPA results for ${establishmentName}`);
-            } else {
-                log("Establishment ID or vespaResults objectKey missing, cannot fetch initial VESPA data.");
-                // Depending on desired behavior, you might want to throw an error here
-                // or ensure downstream functions handle an empty vespaResultsForEstablishment gracefully.
-            }
-
-            // Populate filter dropdowns using the fetched data
-            // The 'null' for staffAdminId indicates we are in establishment mode.
-            // The 'vespaResultsForEstablishment' is the new parameter being passed.
-            await populateFilterDropdowns(null, establishmentId, vespaResultsForEstablishment);
-            
-            // Load initial data for sections, passing the pre-fetched results
-            const cycleSelectElement = document.getElementById('cycle-select');
-            const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
-            
-            // Pass vespaResultsForEstablishment to data loading functions
-            await loadOverviewData(null, initialCycle, [], establishmentId, vespaResultsForEstablishment);
-            await loadQLAData(null, establishmentId); // QLA data is from a different object, so it fetches separately
-            await loadStudentCommentInsights(null, establishmentId, vespaResultsForEstablishment);
+    // New function to load establishments dropdown
+    async function loadEstablishmentsDropdown() {
+        const establishmentSelect = document.getElementById('establishment-select');
+        if (!establishmentSelect) return;
         
-            // Update event listeners to use the pre-fetched establishment filter data
-            if (cycleSelectElement) {
-                const newCycleSelect = cycleSelectElement.cloneNode(true); // Clone to remove old listeners
-                cycleSelectElement.parentNode.replaceChild(newCycleSelect, cycleSelectElement);
-                
-                newCycleSelect.addEventListener('change', async (event) => {
-                    showGlobalLoader("Switching cycle...");
-                    try {
-                        const selectedCycle = parseInt(event.target.value, 10);
-                        log(`Cycle changed to: ${selectedCycle}`);
-                        const activeFilters = getActiveFilters(); // These are UI filters
-                        // Pass the already fetched vespaResultsForEstablishment for the overview
-                        await loadOverviewData(null, selectedCycle, activeFilters, establishmentId, vespaResultsForEstablishment);
-                        // QLA and Comments insights are typically not cycle-dependent for a full re-fetch triggered by cycle change alone.
-                        // If they were, you'd re-call their load functions here, potentially with a cycle parameter.
-                    } finally {
-                        hideGlobalLoader();
-                    }
-                });
+        establishmentSelect.innerHTML = '<option value="">Loading VESPA Customers...</option>';
+        establishmentSelect.disabled = true; // Disable during loading
+        
+        try {
+            const establishments = await getAllEstablishments();
+            
+            if (establishments.length === 0) {
+                establishmentSelect.innerHTML = '<option value="">No active VESPA Customers found</option>';
+                log("No establishments found");
+                return;
             }
             
-            const applyFiltersBtn = document.getElementById('apply-filters-btn');
-            if (applyFiltersBtn) {
-                const newApplyBtn = applyFiltersBtn.cloneNode(true); // Clone to remove old listeners
-                applyFiltersBtn.parentNode.replaceChild(newApplyBtn, applyFiltersBtn);
-                
-                newApplyBtn.addEventListener('click', async () => {
-                    showGlobalLoader("Applying filters...");
-                    try {
-                        const selectedCycle = document.getElementById('cycle-select') ? 
-                            parseInt(document.getElementById('cycle-select').value, 10) : 1;
-                        const activeFilters = getActiveFilters(); // These are UI filters
-                        log("Applying filters:", activeFilters);
-                        // Pass the already fetched vespaResultsForEstablishment.
-                        // loadOverviewData will need to handle applying 'activeFilters' to this pre-fetched set.
-                        await loadOverviewData(null, selectedCycle, activeFilters, establishmentId, vespaResultsForEstablishment);
-                    } finally {
-                        hideGlobalLoader();
-                    }
-                });
-            }
+            establishmentSelect.innerHTML = '<option value="">Select a VESPA Customer...</option>';
+            establishments.forEach(est => {
+                const option = document.createElement('option');
+                option.value = est.id;
+                option.textContent = est.name;
+                // Add data attribute for status if available
+                if (est.status) {
+                    option.setAttribute('data-status', est.status);
+                }
+                establishmentSelect.appendChild(option);
+            });
             
-            const clearFiltersBtn = document.getElementById('clear-filters-btn');
-            if (clearFiltersBtn) {
-                const newClearBtn = clearFiltersBtn.cloneNode(true); // Clone to remove old listeners
-                clearFiltersBtn.parentNode.replaceChild(newClearBtn, clearFiltersBtn);
-                
-                newClearBtn.addEventListener('click', async () => {
-                    showGlobalLoader("Clearing filters...");
-                    try {
-                        // Clear all filter inputs in the UI
-                        document.getElementById('student-search').value = '';
-                        document.getElementById('group-filter').value = '';
-                        document.getElementById('course-filter').value = '';
-                        document.getElementById('year-group-filter').value = '';
-                        document.getElementById('faculty-filter').value = '';
-                        
-                        updateActiveFiltersDisplay([]); // Clear the active filters display
-                        
-                        const selectedCycle = document.getElementById('cycle-select') ? 
-                            parseInt(document.getElementById('cycle-select').value, 10) : 1;
-                        log("Clearing all filters, reloading overview with full establishment data.");
-                        // Pass the original full vespaResultsForEstablishment, with no additional UI filters
-                        await loadOverviewData(null, selectedCycle, [], establishmentId, vespaResultsForEstablishment);
-                    } finally {
-                        hideGlobalLoader();
-                    }
-                });
-            }
+            establishmentSelect.disabled = false; // Re-enable after loading
+            log(`Loaded ${establishments.length} VESPA Customers in dropdown`);
+            
         } catch (error) {
-            errorLog(`Error during loadDashboardWithEstablishment for ${establishmentName}:`, error);
-            // Consider showing an error message to the user in the UI
-            // For example, by updating a status div or using an alert.
-        } finally {
-            hideGlobalLoader(); // Ensure the global loader is hidden
+            errorLog("Failed to load establishments", error);
+            establishmentSelect.innerHTML = '<option value="">Error loading VESPA Customers - Please refresh</option>';
+            establishmentSelect.disabled = false;
+        }
+    }
+    
+    // New function to filter establishment dropdown
+    function filterEstablishmentDropdown(searchTerm) {
+        const establishmentSelect = document.getElementById('establishment-select');
+        if (!establishmentSelect) return;
+        
+        const options = establishmentSelect.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value === '') return; // Keep the placeholder
+            
+            const text = option.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    }
+    
+    // New function to load dashboard with establishment filter
+    async function loadDashboardWithEstablishment(establishmentId, establishmentName) {
+        log(`Loading dashboard data for VESPA Customer: ${establishmentName} (${establishmentId})`);
+        
+        // Note: establishmentId is now a VESPA Customer record ID from object_2
+        // When filtering VESPA Results (object_10), field_133 contains the connected VESPA Customer
+        
+        // Populate filter dropdowns using establishment filter
+        await populateFilterDropdowns(null, establishmentId);
+        
+        // Load initial data
+        const cycleSelectElement = document.getElementById('cycle-select');
+        const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
+        
+        // Load data with establishment filter (VESPA Customer ID)
+        await loadOverviewData(null, initialCycle, [], establishmentId);
+        await loadQLAData(null, establishmentId);
+        await loadStudentCommentInsights(null, establishmentId);
+        
+        // Update event listeners to use establishment filter
+        if (cycleSelectElement) {
+            // Remove old listeners
+            const newCycleSelect = cycleSelectElement.cloneNode(true);
+            cycleSelectElement.parentNode.replaceChild(newCycleSelect, cycleSelectElement);
+            
+            newCycleSelect.addEventListener('change', (event) => {
+                const selectedCycle = parseInt(event.target.value, 10);
+                log(`Cycle changed to: ${selectedCycle}`);
+                const activeFilters = getActiveFilters();
+                loadOverviewData(null, selectedCycle, activeFilters, establishmentId);
+            });
+        }
+        
+        // Update filter buttons
+        const applyFiltersBtn = document.getElementById('apply-filters-btn');
+        if (applyFiltersBtn) {
+            const newApplyBtn = applyFiltersBtn.cloneNode(true);
+            applyFiltersBtn.parentNode.replaceChild(newApplyBtn, applyFiltersBtn);
+            
+            newApplyBtn.addEventListener('click', () => {
+                const selectedCycle = document.getElementById('cycle-select') ? 
+                    parseInt(document.getElementById('cycle-select').value, 10) : 1;
+                const activeFilters = getActiveFilters();
+                log("Applying filters:", activeFilters);
+                loadOverviewData(null, selectedCycle, activeFilters, establishmentId);
+            });
+        }
+        
+        const clearFiltersBtn = document.getElementById('clear-filters-btn');
+        if (clearFiltersBtn) {
+            const newClearBtn = clearFiltersBtn.cloneNode(true);
+            clearFiltersBtn.parentNode.replaceChild(newClearBtn, clearFiltersBtn);
+            
+            newClearBtn.addEventListener('click', () => {
+                // Clear all filter inputs
+                document.getElementById('student-search').value = '';
+                document.getElementById('group-filter').value = '';
+                document.getElementById('course-filter').value = '';
+                document.getElementById('year-group-filter').value = '';
+                document.getElementById('faculty-filter').value = '';
+                
+                // Clear the active filters display
+                updateActiveFiltersDisplay([]);
+                
+                // Reload data without filters
+                const selectedCycle = document.getElementById('cycle-select') ? 
+                    parseInt(document.getElementById('cycle-select').value, 10) : 1;
+                log("Clearing all filters");
+                loadOverviewData(null, selectedCycle, [], establishmentId);
+            });
         }
     }
 
@@ -915,60 +930,36 @@ function initializeDashboardApp() {
         });
     }
 
-     async function populateFilterDropdowns(staffAdminId, establishmentId = null, preFetchedVespaResults = null) {
+    async function populateFilterDropdowns(staffAdminId, establishmentId = null) {
         log("Populating filter dropdowns");
-        // Loader is typically handled by the calling function like loadDashboardWithEstablishment or initializeFullDashboard
-        // showGlobalLoader("Populating filters..."); 
         
         try {
+            // Fetch all records based on mode
             let allRecords = [];
+            const filters = [];
             
-            if (establishmentId && preFetchedVespaResults && preFetchedVespaResults.length > 0) {
-                log(`Using pre-fetched VESPA results (${preFetchedVespaResults.length}) for populating filters.`);
-                allRecords = preFetchedVespaResults;
-            } else if (establishmentId) {
-                // This case should be less common now if loadDashboardWithEstablishment pre-fetches,
-                // but serves as a fallback or if called directly elsewhere without pre-fetched data.
-                log("Warning: preFetchedVespaResults not provided or empty for establishment mode in populateFilterDropdowns. Fetching now.");
-                const filters = [{
-                    field: 'field_133', // VESPA Customer connection in object_10
+            if (establishmentId) {
+                // Super User mode - filter by establishment
+                filters.push({
+                    field: 'field_133',
                     operator: 'is',
                     value: establishmentId
-                }];
-                showGlobalLoader("Fetching filter data for establishment..."); // Show loader for this specific fetch
-                try {
-                    allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
-                } finally {
-                    hideGlobalLoader();
-                }
+                });
             } else if (staffAdminId) {
                 // Normal mode - filter by staff admin
-                log("Fetching VESPA results for Staff Admin in populateFilterDropdowns.");
-                const filters = [{
-                    field: 'field_439', // Staff Admin connection in object_10
+                filters.push({
+                    field: 'field_439',
                     operator: 'is',
                     value: staffAdminId
-                }];
-                showGlobalLoader("Fetching filter data for staff admin..."); // Show loader for this specific fetch
-                try {
-                    allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
-                } finally {
-                    hideGlobalLoader();
-                }
-            } else {
-                log("populateFilterDropdowns: Insufficient parameters to fetch or use data (no staffAdminId, establishmentId, or valid preFetchedVespaResults).");
-                // Optionally clear dropdowns or display a message
-                // For now, just return to prevent errors trying to process empty allRecords.
-                return;
+                });
+            }
+            
+            if (filters.length > 0) {
+                allRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
             }
             
             if (!allRecords || allRecords.length === 0) {
-                log("No records found to populate filters after fetch/check.");
-                // Clear dropdowns to avoid showing stale data if they were previously populated
-                populateDropdown('group-filter', [], 'name', 'id');
-                populateDropdown('course-filter', [], 'name', 'id');
-                populateDropdown('year-group-filter', []);
-                populateDropdown('faculty-filter', []);
+                log("No records found to populate filters");
                 return;
             }
             
@@ -980,77 +971,107 @@ function initializeDashboardApp() {
             const yearGroups = new Set();
             const faculties = new Set();
             
-            if (allRecords.length > 0 && debugMode) { // Added debugMode check for sample logging
-                log("Sample record for debugging filters:", {
-                    field_223_raw: allRecords[0].field_223_raw, // Group
-                    field_2299_raw: allRecords[0].field_2299_raw, // Course
-                    field_144_raw: allRecords[0].field_144_raw,   // Year Group
-                    field_782_raw: allRecords[0].field_782_raw    // Faculty
+            // Debug: Log first record to see field structure
+            if (allRecords.length > 0) {
+                log("Sample record for debugging:", {
+                    field_223: allRecords[0].field_223,
+                    field_223_raw: allRecords[0].field_223_raw,
+                    field_2299: allRecords[0].field_2299,
+                    field_2299_raw: allRecords[0].field_2299_raw,
+                    field_144_raw: allRecords[0].field_144_raw,
+                    field_782_raw: allRecords[0].field_782_raw
                 });
             }
             
             allRecords.forEach((record, index) => {
-                // Group (field_223)
+                // Group (field_223) - Handle as text field
+                // Try both field_223_raw and field_223 as Knack might store text fields differently
                 const groupFieldValue = record.field_223_raw || record.field_223;
                 if (groupFieldValue) {
+                    if (index < 3) { // Log first few records for debugging
+                        log(`Record ${index} - Group field_223_raw:`, record.field_223_raw, "field_223:", record.field_223);
+                    }
+                    // If it's an array (connected field), handle differently
                     if (Array.isArray(groupFieldValue)) {
-                        groupFieldValue.forEach((item, idx) => {
-                            if (item && typeof item === 'object' && item.id) { // Check if item itself is an object with id (connection)
-                                const displayName = (Array.isArray(record.field_223) && record.field_223[idx] && typeof record.field_223[idx] === 'string') ? record.field_223[idx] : (item.identifier || item.id);
-                                groups.add(JSON.stringify({ id: item.id, name: displayName }));
-                            } else if (typeof item === 'string' && item.trim()) { // If it's an array of strings
-                                groups.add(item.trim());
+                        groupFieldValue.forEach((groupId, idx) => {
+                            if (groupId) {
+                                // Try to get display value
+                                let displayValue = record.field_223 || groupId;
+                                if (Array.isArray(record.field_223)) {
+                                    displayValue = record.field_223[idx] || groupId;
+                                }
+                                groups.add(JSON.stringify({ id: groupId, name: displayValue }));
                             }
                         });
-                    } else if (typeof groupFieldValue === 'object' && groupFieldValue.id) { // Single connection object
-                         groups.add(JSON.stringify({ id: groupFieldValue.id, name: groupFieldValue.identifier || groupFieldValue.id }));
-                    } else if (typeof groupFieldValue === 'string') { // Plain text field
-                        const groupValue = groupFieldValue.trim();
+                    } else if (typeof groupFieldValue === 'object' && groupFieldValue !== null) {
+                        // Sometimes Knack returns objects for connected fields
+                        if (groupFieldValue.id) {
+                            groups.add(JSON.stringify({ 
+                                id: groupFieldValue.id, 
+                                name: groupFieldValue.identifier || groupFieldValue.value || groupFieldValue.id 
+                            }));
+                        }
+                    } else {
+                        // It's a text field - use the value directly
+                        const groupValue = groupFieldValue.toString().trim();
                         if (groupValue && groupValue !== 'null' && groupValue !== 'undefined') {
                             groups.add(groupValue);
                         }
                     }
                 }
                 
-                // Course (field_2299)
+                // Course (field_2299) - Handle both text and connected fields
                 const courseFieldValue = record.field_2299_raw || record.field_2299;
                 if (courseFieldValue) {
-                     if (Array.isArray(courseFieldValue)) {
-                        courseFieldValue.forEach((item, idx) => {
-                             if (item && typeof item === 'object' && item.id) {
-                                const displayName = (Array.isArray(record.field_2299) && record.field_2299[idx] && typeof record.field_2299[idx] === 'string') ? record.field_2299[idx] : (item.identifier || item.id);
-                                courses.add(JSON.stringify({ id: item.id, name: displayName }));
-                            } else if (typeof item === 'string' && item.trim()) {
-                                courses.add(item.trim());
+                    if (index < 3) { // Log first few records for debugging
+                        log(`Record ${index} - Course field_2299_raw:`, record.field_2299_raw, "field_2299:", record.field_2299);
+                    }
+                    if (Array.isArray(courseFieldValue)) {
+                        // Connected field
+                        courseFieldValue.forEach((courseId, idx) => {
+                            if (courseId) {
+                                let displayValue = record.field_2299 || courseId;
+                                if (Array.isArray(record.field_2299)) {
+                                    displayValue = record.field_2299[idx] || courseId;
+                                }
+                                courses.add(JSON.stringify({ id: courseId, name: displayValue }));
                             }
                         });
-                    } else if (typeof courseFieldValue === 'object' && courseFieldValue.id) {
-                        courses.add(JSON.stringify({ id: courseFieldValue.id, name: courseFieldValue.identifier || courseFieldValue.id }));
-                    } else if (typeof courseFieldValue === 'string') {
-                        const courseValue = courseFieldValue.trim();
+                    } else if (typeof courseFieldValue === 'object' && courseFieldValue !== null) {
+                        // Sometimes Knack returns objects for connected fields
+                        if (courseFieldValue.id) {
+                            courses.add(JSON.stringify({ 
+                                id: courseFieldValue.id, 
+                                name: courseFieldValue.identifier || courseFieldValue.value || courseFieldValue.id 
+                            }));
+                        }
+                    } else {
+                        // Text field
+                        const courseValue = courseFieldValue.toString().trim();
                         if (courseValue && courseValue !== 'null' && courseValue !== 'undefined') {
                             courses.add(courseValue);
                         }
                     }
                 }
                 
-                // Year Group (field_144) - Assuming text or simple choice
+                // Year Group (field_144)
                 if (record.field_144_raw) {
-                    const yearGroupValue = String(record.field_144_raw).trim();
-                    if (yearGroupValue && yearGroupValue !== 'null' && yearGroupValue !== 'undefined') {
+                    const yearGroupValue = record.field_144_raw.toString().trim();
+                    if (yearGroupValue) {
                         yearGroups.add(yearGroupValue);
                     }
                 }
                 
-                // Faculty (field_782) - Assuming text or simple choice
+                // Faculty (field_782)
                 if (record.field_782_raw) {
-                    const facultyValue = String(record.field_782_raw).trim();
-                    if (facultyValue && facultyValue !== 'null' && facultyValue !== 'undefined') {
+                    const facultyValue = record.field_782_raw.toString().trim();
+                    if (facultyValue) {
                         faculties.add(facultyValue);
                     }
                 }
             });
             
+            // Debug: Log collected values
             log("Collected filter values:", {
                 groups: Array.from(groups),
                 courses: Array.from(courses),
@@ -1058,13 +1079,34 @@ function initializeDashboardApp() {
                 faculties: Array.from(faculties)
             });
             
+            // Populate dropdowns
+            // Process groups - could be strings or JSON objects
             const groupItems = Array.from(groups).map(g => {
-                try { return JSON.parse(g); } catch (e) { return g; }
-            }).sort((a, b) => (typeof a === 'object' ? a.name : a).localeCompare(typeof b === 'object' ? b.name : b));
+                try {
+                    return JSON.parse(g);
+                } catch (e) {
+                    // It's a plain string, not JSON
+                    return g;
+                }
+            }).sort((a, b) => {
+                const aName = typeof a === 'object' ? a.name : a;
+                const bName = typeof b === 'object' ? b.name : b;
+                return aName.localeCompare(bName);
+            });
             
+            // Process courses - could be strings or JSON objects
             const courseItems = Array.from(courses).map(c => {
-                try { return JSON.parse(c); } catch (e) { return c; }
-            }).sort((a, b) => (typeof a === 'object' ? a.name : a).localeCompare(typeof b === 'object' ? b.name : b));
+                try {
+                    return JSON.parse(c);
+                } catch (e) {
+                    // It's a plain string, not JSON
+                    return c;
+                }
+            }).sort((a, b) => {
+                const aName = typeof a === 'object' ? a.name : a;
+                const bName = typeof b === 'object' ? b.name : b;
+                return aName.localeCompare(bName);
+            });
             
             populateDropdown('group-filter', groupItems, 'name', 'id');
             populateDropdown('course-filter', courseItems, 'name', 'id');
@@ -1073,9 +1115,7 @@ function initializeDashboardApp() {
             
         } catch (error) {
             errorLog("Failed to populate filter dropdowns", error);
-        } 
-        // No hideGlobalLoader() here, as it's assumed the caller handles it or it's a quick operation
-        // when using preFetchedVespaResults. If direct fetches occur, they have their own try/finally for loader.
+        }
     }
     
     function populateDropdown(dropdownId, items, displayProperty = null, valueProperty = null) {
@@ -1563,213 +1603,257 @@ function initializeDashboardApp() {
         }
     };
 
-    async function loadOverviewData(staffAdminId, cycle = 1, additionalFilters = [], establishmentId = null, preFetchedVespaResults = null) {
-        log(`Loading overview data with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId}, Cycle: ${cycle}, AdditionalFilters: ${additionalFilters.length}, PreFetched: ${preFetchedVespaResults ? preFetchedVespaResults.length : 'No'}`);
-        showGlobalLoader(`Loading overview for Cycle ${cycle}...`);
-    
+    async function loadOverviewData(staffAdminId, cycle = 1, additionalFilters = [], establishmentId = null) {
+        log(`Loading overview data with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId} for Cycle: ${cycle}`);
+        const loadingIndicator = document.getElementById('loading-indicator');
         const averagesContainer = document.getElementById('averages-summary-container');
         const distributionContainer = document.getElementById('distribution-charts-container');
-        if (averagesContainer) averagesContainer.style.display = 'none';
-        if (distributionContainer) distributionContainer.style.display = 'none';
-    
+
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+        if (averagesContainer) averagesContainer.style.display = 'none'; // Hide while loading
+        if (distributionContainer) distributionContainer.style.display = 'none'; // Hide while loading
+
         try {
             let schoolVespaResults = [];
             
-            if (establishmentId && preFetchedVespaResults && preFetchedVespaResults.length > 0) {
-                log(`Using pre-fetched VESPA results (${preFetchedVespaResults.length}) for overview data.`);
-                if (additionalFilters && additionalFilters.length > 0) {
-                    log("Applying additional UI filters to pre-fetched VESPA results for overview.", additionalFilters);
-                    schoolVespaResults = applyClientSideFilters(preFetchedVespaResults, additionalFilters);
-                    log(`Filtered ${preFetchedVespaResults.length} pre-fetched records down to ${schoolVespaResults.length} for overview display using UI filters.`);
-                } else {
-                    schoolVespaResults = preFetchedVespaResults; // Use the full pre-fetched set if no additional filters
-                }
-            } else {
-                // Fallback or staffAdminId mode: Fetch data from Knack
-                log("Not using pre-fetched data for overview. Constructing filters for Knack fetch.");
-                const filters = [];
-                if (establishmentId) {
-                    // This path would be hit if preFetchedVespaResults was null/empty for some reason in establishment mode
-                    filters.push({
-                        field: 'field_133', // VESPA Customer connection
-                        operator: 'is',
-                        value: establishmentId
-                    });
-                } else if (staffAdminId) {
-                    filters.push({
-                        field: 'field_439', // Staff Admin connection
-                        operator: 'is',
-                        value: staffAdminId
-                    });
-                }
-                
-                // Add any additional UI filters from getActiveFilters()
-                if (additionalFilters && additionalFilters.length > 0) {
-                    filters.push(...additionalFilters);
-                }
-                
-                if (filters.length > 0) {
-                    log("Fetching School VESPA Results for overview via Knack with filters:", filters);
-                    schoolVespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
-                    log("Fetched School VESPA Results (via Knack):", schoolVespaResults ? schoolVespaResults.length : 0);
-                } else {
-                    log("No Staff Admin ID or Establishment ID provided, and no additional filters for loadOverviewData Knack fetch. School data will be empty.");
-                    schoolVespaResults = []; // Ensure it's an empty array
-                }
+            // Build filters based on whether we're in Super User mode or normal mode
+            const filters = [];
+            
+            if (establishmentId) {
+                // Super User mode - filter by establishment
+                filters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
+            } else if (staffAdminId) {
+                // Normal mode - filter by staff admin
+                filters.push({
+                    field: 'field_439',
+                    operator: 'is',
+                    value: staffAdminId
+                });
             }
-    
-            // Fetch National Benchmark Data from Object_120 (remains the same)
+            
+            // Add any additional filters
+            if (additionalFilters && additionalFilters.length > 0) {
+                filters.push(...additionalFilters);
+            }
+            
+            if (filters.length > 0) {
+                schoolVespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched School VESPA Results (filtered):", schoolVespaResults ? schoolVespaResults.length : 0);
+            } else {
+                log("No Staff Admin ID or Establishment ID provided to loadOverviewData. Cannot filter school-specific data.");
+            }
+
+            // Fetch National Benchmark Data from Object_120
             let nationalBenchmarkRecord = null;
             if (objectKeys.nationalBenchmarkData) {
+                // Fetch only the latest record, sorted by field_3307 (Date Time) in descending order
                 const nationalDataResults = await fetchDataFromKnack(
                     objectKeys.nationalBenchmarkData, 
-                    [], 
-                    { rows_per_page: 1, sort_field: 'field_3307', sort_order: 'desc' }
+                    [], // No specific filters for national data
+                    { rows_per_page: 1, sort_field: 'field_3307', sort_order: 'desc' } // Options for fetching latest
                 );
+
                 if (nationalDataResults && nationalDataResults.length > 0) {
+                    // No need to sort here anymore as we requested sorted data and only one record
                     nationalBenchmarkRecord = nationalDataResults[0];
-                    log("Fetched latest National Benchmark Record:", nationalBenchmarkRecord);
+                    log("Fetched latest National Benchmark Record (Object_120 - actually object_10 for national):", nationalBenchmarkRecord);
                 } else {
-                    log("No National Benchmark Data found.");
+                    log("No National Benchmark Data (Object_120 - object_10 for national) found or objectKey not configured.");
                 }
             } else {
-                log("nationalBenchmarkData object key not configured.");
+                log("nationalBenchmarkData object key not configured in DASHBOARD_CONFIG.objectKeys");
             }
-    
+
             const schoolAverages = calculateSchoolVespaAverages(schoolVespaResults, cycle);
             log(`School Averages (Cycle ${cycle}):`, schoolAverages);
-    
+
             let nationalAverages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0, overall: 0 };
-            let nationalDistributions = null;
+            let nationalDistributions = null; // Will hold parsed JSON distribution data
             
             if (nationalBenchmarkRecord) {
                 nationalAverages = getNationalVespaAveragesFromRecord(nationalBenchmarkRecord, cycle);
-                const distributionFieldMap = { 1: 'field_3409', 2: 'field_3410', 3: 'field_3411' };
+                log("Processed National Averages for charts:", nationalAverages);
+                
+                // Parse national distribution JSON data
+                const distributionFieldMap = {
+                    1: 'field_3409', // distribution_json_cycle1
+                    2: 'field_3410', // distribution_json_cycle2
+                    3: 'field_3411'  // distribution_json_cycle3
+                };
+                
                 const distributionField = distributionFieldMap[cycle];
                 if (distributionField && nationalBenchmarkRecord[distributionField + '_raw']) {
                     try {
                         nationalDistributions = JSON.parse(nationalBenchmarkRecord[distributionField + '_raw']);
+                        log(`Parsed National Distribution data for Cycle ${cycle}:`, nationalDistributions);
                     } catch (e) {
                         errorLog(`Failed to parse national distribution JSON for cycle ${cycle}:`, e);
                     }
                 }
+            } else {
+                log("National benchmark record was null, nationalAverages will be default/empty.");
             }
-            log(`National Averages (Cycle ${cycle}):`, nationalAverages);
+            log(`National Averages (Cycle ${cycle}):`, nationalAverages); // This log was already there, good.
             
-            // Update response statistics - pass the correct total student count for establishment mode
-            const totalStudentsForRate = (establishmentId && preFetchedVespaResults) ? preFetchedVespaResults.length : null;
-            await updateResponseStats(staffAdminId, cycle, schoolVespaResults, establishmentId, totalStudentsForRate);
+            // Update response statistics
+            await updateResponseStats(staffAdminId, cycle, additionalFilters, establishmentId);
             
+            // Calculate and render ERI
             const schoolERI = await calculateSchoolERI(staffAdminId, cycle, additionalFilters, establishmentId);
             const nationalERI = await getNationalERI(cycle);
             renderERISpeedometer(schoolERI, nationalERI, cycle);
             
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
             renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
-    
+
         } catch (error) {
             errorLog("Failed to load overview data", error);
             const overviewSection = document.getElementById('overview-section');
             if(overviewSection) overviewSection.innerHTML = "<p>Error loading overview data. Please check console.</p>";
         } finally {
-            if (averagesContainer) averagesContainer.style.display = 'block';
-            if (distributionContainer) distributionContainer.style.display = 'block';
-            hideGlobalLoader();
+            if (loadingIndicator) loadingIndicator.style.display = 'none';
+            if (averagesContainer) averagesContainer.style.display = 'block'; // Show again
+            if (distributionContainer) distributionContainer.style.display = 'block'; // Show again
         }
     }
-    
+
+    // Renamed to be specific for school data and to potentially handle cycles
+    function calculateSchoolVespaAverages(results, cycle) {
+        log(`Calculating School VESPA averages for Cycle ${cycle} using historical fields.`);
+        
+        const averages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0, overall: 0 };
+        let validRecordsCount = 0;
+
+        if (!Array.isArray(results) || results.length === 0) {
+            log("calculateSchoolVespaAverages: Input is not a valid array or is empty", results);
+            return averages;
+        }
+
+        const fieldMappings = {
+            cycle1: { v: 'field_155', e: 'field_156', s: 'field_157', p: 'field_158', a: 'field_159', o: 'field_160' },
+            cycle2: { v: 'field_161', e: 'field_162', s: 'field_163', p: 'field_164', a: 'field_165', o: 'field_166' },
+            cycle3: { v: 'field_167', e: 'field_168', s: 'field_169', p: 'field_170', a: 'field_171', o: 'field_172' }
+        };
+
+        const currentCycleFields = fieldMappings[`cycle${cycle}`];
+
+        if (!currentCycleFields) {
+            errorLog(`Invalid cycle number ${cycle} for school VESPA averages field mapping.`);
+            return averages; // Return default if cycle is invalid
+        }
+
+        results.forEach(record => {
+            // Read scores from the specific historical fields for the given cycle
+            const v = parseFloat(record[currentCycleFields.v + '_raw']);
+            const e = parseFloat(record[currentCycleFields.e + '_raw']);
+            const s = parseFloat(record[currentCycleFields.s + '_raw']);
+            const p = parseFloat(record[currentCycleFields.p + '_raw']);
+            const a = parseFloat(record[currentCycleFields.a + '_raw']);
+            const o = parseFloat(record[currentCycleFields.o + '_raw']);
+
+            if (!isNaN(o)) { // Using overall score to validate the record for this cycle
+                if (!isNaN(v)) averages.vision += v;
+                if (!isNaN(e)) averages.effort += e;
+                if (!isNaN(s)) averages.systems += s;
+                if (!isNaN(p)) averages.practice += p;
+                if (!isNaN(a)) averages.attitude += a;
+                averages.overall += o;
+                validRecordsCount++;
+            }
+        });
+
+        if (validRecordsCount > 0) {
+            for (const key in averages) {
+                averages[key] = parseFloat((averages[key] / validRecordsCount).toFixed(2));
+            }
+        }
+        return averages;
+    }
+
     // Function to calculate and update response statistics
-    async function updateResponseStats(staffAdminId, cycle, currentSchoolVespaResults, establishmentId = null, totalStudentsInEstablishmentForRate = null) {
-        log(`Updating response statistics for Cycle ${cycle}. Establishment ID: ${establishmentId}, StaffAdminID: ${staffAdminId}`);
+    async function updateResponseStats(staffAdminId, cycle, additionalFilters = [], establishmentId = null) {
+        log(`Updating response statistics for Cycle ${cycle}`);
         
         try {
-            let totalStudentsForCompletionRate;
-            let recordsToCountResponsesFrom = currentSchoolVespaResults || []; // Ensure it's an array
-    
+            // Get all records based on whether we're in Super User mode or normal mode
+            let allStudentRecords = [];
+            const baseFilters = [];
+            
             if (establishmentId) {
-                // In establishment mode, totalStudentsForCompletionRate should be the count of ALL students in that establishment.
-                // This is passed as totalStudentsInEstablishmentForRate (which is the length of the original preFetchedVespaResults).
-                if (totalStudentsInEstablishmentForRate !== null) {
-                    totalStudentsForCompletionRate = totalStudentsInEstablishmentForRate;
-                } else {
-                    // Fallback: if totalStudentsInEstablishmentForRate wasn't passed, try to fetch all for establishment
-                    // This is less ideal as it's an extra fetch if called from loadOverviewData which should have passed it.
-                    log("Warning: totalStudentsInEstablishmentForRate not provided for establishment in updateResponseStats. Fetching all records for establishment to get total student count.");
-                    showGlobalLoader("Calculating response rate...");
-                    try {
-                        const allEstablishmentRecordsFilters = [{ field: 'field_133', operator: 'is', value: establishmentId }];
-                        const allEstablishmentRecords = await fetchDataFromKnack(objectKeys.vespaResults, allEstablishmentRecordsFilters);
-                        totalStudentsForCompletionRate = allEstablishmentRecords ? allEstablishmentRecords.length : 0;
-                    } finally {
-                        hideGlobalLoader();
-                    }
-                }
-                log(`UpdateResponseStats (Establishment): Total students for rate = ${totalStudentsForCompletionRate}, Records for response count from current set = ${recordsToCountResponsesFrom.length}`);
+                // Super User mode - filter by establishment
+                baseFilters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
             } else if (staffAdminId) {
-                // Staff admin mode: fetch all records for this admin to get total students for rate calculation.
-                log("Fetching all staff records for total student count in updateResponseStats (Staff Admin mode).");
-                showGlobalLoader("Calculating response rate...");
-                try {
-                    const allStaffRecordsFilters = [{ field: 'field_439', operator: 'is', value: staffAdminId }];
-                    const allStaffRecords = await fetchDataFromKnack(objectKeys.vespaResults, allStaffRecordsFilters);
-                    totalStudentsForCompletionRate = allStaffRecords ? allStaffRecords.length : 0;
-                } finally {
-                    hideGlobalLoader();
-                }
-                log(`UpdateResponseStats (Staff): Total students for rate = ${totalStudentsForCompletionRate}, Records for response count from current set = ${recordsToCountResponsesFrom.length}`);
-            } else {
-                // Fallback if neither establishment nor staff admin ID.
-                // Use the length of currentSchoolVespaResults for total, which might not be accurate for completion rate
-                // if currentSchoolVespaResults is heavily filtered without a broader context.
-                totalStudentsForCompletionRate = recordsToCountResponsesFrom.length;
-                log(`UpdateResponseStats (Fallback/Direct): Total students for rate and records for response count = ${totalStudentsForCompletionRate}`);
+                // Normal mode - filter by staff admin
+                baseFilters.push({
+                    field: 'field_439',
+                    operator: 'is',
+                    value: staffAdminId
+                });
             }
             
+            if (baseFilters.length > 0) {
+                allStudentRecords = await fetchDataFromKnack(objectKeys.vespaResults, baseFilters);
+            }
+            
+            const totalStudents = allStudentRecords ? allStudentRecords.length : 0;
+            
+            // Get filtered records if there are additional filters
+            let filteredRecords = allStudentRecords;
+            if (additionalFilters && additionalFilters.length > 0) {
+                const filters = [...baseFilters, ...additionalFilters];
+                filteredRecords = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+            }
+            
+            // Count responses where vision score (V1) is not empty for the selected cycle
             const fieldMappings = {
-                cycle1: { v: 'field_155' }, // Vision score for Cycle 1
-                cycle2: { v: 'field_161' }, // Vision score for Cycle 2
-                cycle3: { v: 'field_167' }  // Vision score for Cycle 3
+                cycle1: { v: 'field_155' },
+                cycle2: { v: 'field_161' },
+                cycle3: { v: 'field_167' }
             };
             
-            const visionFieldForCycle = fieldMappings[`cycle${cycle}`]?.v;
-            if (!visionFieldForCycle) {
+            const visionField = fieldMappings[`cycle${cycle}`]?.v;
+            if (!visionField) {
                 errorLog(`Invalid cycle number ${cycle} for response counting.`);
-                // Clear UI fields to indicate error or missing data
-                const cycleResponsesElement = document.getElementById('cycle-responses');
-                const totalStudentsElement = document.getElementById('total-students');
-                const completionRateElement = document.getElementById('completion-rate');
-                if (cycleResponsesElement) cycleResponsesElement.textContent = '-';
-                if (totalStudentsElement) totalStudentsElement.textContent = '-';
-                if (completionRateElement) completionRateElement.textContent = '-';
                 return;
             }
             
             let responseCount = 0;
-            if (Array.isArray(recordsToCountResponsesFrom)) {
-                recordsToCountResponsesFrom.forEach(record => {
-                    const visionScore = record[visionFieldForCycle + '_raw'];
-                    if (visionScore !== null && visionScore !== undefined && String(visionScore).trim() !== '') {
+            if (filteredRecords && Array.isArray(filteredRecords)) {
+                filteredRecords.forEach(record => {
+                    const visionScore = record[visionField + '_raw'];
+                    if (visionScore !== null && visionScore !== undefined && visionScore !== '') {
                         responseCount++;
                     }
                 });
             }
             
-            const completionRate = totalStudentsForCompletionRate > 0 
-                ? ((responseCount / totalStudentsForCompletionRate) * 100).toFixed(1) 
+            // Calculate completion rate
+            const completionRate = totalStudents > 0 
+                ? ((responseCount / totalStudents) * 100).toFixed(1) 
                 : '0.0';
             
+            // Update the UI
             const cycleResponsesElement = document.getElementById('cycle-responses');
             const totalStudentsElement = document.getElementById('total-students');
             const completionRateElement = document.getElementById('completion-rate');
             
             if (cycleResponsesElement) cycleResponsesElement.textContent = responseCount.toLocaleString();
-            if (totalStudentsElement) totalStudentsElement.textContent = totalStudentsForCompletionRate.toLocaleString();
+            if (totalStudentsElement) totalStudentsElement.textContent = totalStudents.toLocaleString();
             if (completionRateElement) completionRateElement.textContent = `${completionRate}%`;
             
-            log(`Response Stats - Total Students (for rate): ${totalStudentsForCompletionRate}, Filtered Records (for response count): ${recordsToCountResponsesFrom.length}, Responses in filtered set: ${responseCount}, Completion Rate: ${completionRate}%`);
+            log(`Response Stats - Total Students: ${totalStudents}, Responses: ${responseCount}, Completion: ${completionRate}%`);
             
         } catch (error) {
             errorLog("Failed to update response statistics", error);
+            // Reset to dashes on error
             const cycleResponsesElement = document.getElementById('cycle-responses');
             const totalStudentsElement = document.getElementById('total-students');
             const completionRateElement = document.getElementById('completion-rate');
@@ -1779,6 +1863,7 @@ function initializeDashboardApp() {
             if (completionRateElement) completionRateElement.textContent = '-';
         }
     }
+
     function getNationalVespaAveragesFromRecord(record, cycle) {
         const nationalAverages = { vision: 0, effort: 0, systems: 0, practice: 0, attitude: 0, overall: 0 };
         if (!record) return nationalAverages;
@@ -2907,7 +2992,64 @@ function initializeDashboardApp() {
 
 
     // --- Section 3: Student Comment Insights ---
-// --- Section 3: Student Comment Insights ---async function loadStudentCommentInsights(staffAdminId, establishmentId = null, preFetchedVespaResults = null) {    log(`Loading student comment insights. StaffAdmin: ${staffAdminId}, Establishment: ${establishmentId}, PreFetched: ${preFetchedVespaResults ? preFetchedVespaResults.length : 'No'}`);    showGlobalLoader("Loading student comments...");    try {        let vespaResults = [];                 if (establishmentId && preFetchedVespaResults && preFetchedVespaResults.length > 0) {            log(`Using pre-fetched VESPA results (${preFetchedVespaResults.length}) for student comments.`);            vespaResults = preFetchedVespaResults;            // Comments are generally based on the entire dataset for an establishment,            // not typically further filtered by UI filters like cycle/group for this high-level insight.        } else {            // Fallback or Staff Admin mode            log("Not using pre-fetched data for comments. Constructing filters for Knack fetch.");            const filters = [];            if (establishmentId) {                 // This path would be hit if preFetchedVespaResults was null/empty for some reason                filters.push({                    field: 'field_133', // VESPA Customer connection                    operator: 'is',                    value: establishmentId                });            } else if (staffAdminId) {                filters.push({                    field: 'field_439', // Staff Admin connection                    operator: 'is',                    value: staffAdminId                });            }            if (filters.length > 0) {                log("Fetching VESPA Results for comments via Knack with filters:", filters);                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);                log("Fetched VESPA Results for comments (via Knack):", vespaResults ? vespaResults.length : 0);            } else {                log("No Staff Admin ID or Establishment ID for loadStudentCommentInsights, and no filters. Comment data will be empty.");                vespaResults = [];            }        }                if (!Array.isArray(vespaResults)) {            errorLog("loadStudentCommentInsights: vespaResults is not an array after fetch/assignment.", vespaResults);            vespaResults = []; // Ensure it's an array to prevent further errors        }        const allComments = [];        if (vespaResults.length > 0) {            vespaResults.forEach(record => {                // Consolidate comment fields - ensure these are the correct field IDs for comments                if (record.field_2302_raw) allComments.push(record.field_2302_raw); // RRC1                if (record.field_2303_raw) allComments.push(record.field_2303_raw); // RRC2                if (record.field_2304_raw) allComments.push(record.field_2304_raw); // RRC3                if (record.field_2499_raw) allComments.push(record.field_2499_raw); // GOAL1                if (record.field_2493_raw) allComments.push(record.field_2493_raw); // GOAL2                if (record.field_2494_raw) allComments.push(record.field_2494_raw); // GOAL3            });        }        log("Total comments extracted for insights:", allComments.length);        renderWordCloud(allComments);        identifyCommonThemes(allComments);    } catch (error) {        errorLog("Failed to load student comment insights", error);        const insightsSection = document.getElementById('student-insights-section');        if(insightsSection) insightsSection.innerHTML = "<p>Error loading student comment insights. Please check console.</p>";    } finally {        hideGlobalLoader();    }}
+    async function loadStudentCommentInsights(staffAdminId, establishmentId = null) {
+        log(`Loading student comment insights with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId}`);
+        try {
+            let vespaResults = []; // Initialize as empty array
+            const filters = [];
+            
+            if (establishmentId) {
+                // Super User mode - filter by establishment
+                filters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
+                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched VESPA Results for comments (filtered by Establishment):", vespaResults ? vespaResults.length : 0);
+            } else if (staffAdminId) {
+                // Normal mode - filter by staff admin
+                filters.push({
+                    field: 'field_439', 
+                    operator: 'is',
+                    value: staffAdminId
+                });
+                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched VESPA Results for comments (filtered by Staff Admin ID):", vespaResults ? vespaResults.length : 0);
+            } else {
+                 log("No Staff Admin ID or Establishment ID provided to loadStudentCommentInsights. Cannot filter comments.");
+            }
+            
+            if (!Array.isArray(vespaResults)) {
+                errorLog("loadStudentCommentInsights: vespaResults is not an array after fetch.", vespaResults);
+                vespaResults = []; // Ensure it's an array to prevent further errors
+            }
+
+            const allComments = [];
+            if (vespaResults.length > 0) { // Only proceed if we have results
+                vespaResults.forEach(record => {
+                    if (record.field_2302_raw) allComments.push(record.field_2302_raw); // RRC1
+                    if (record.field_2303_raw) allComments.push(record.field_2303_raw); // RRC2
+                    if (record.field_2304_raw) allComments.push(record.field_2304_raw); // RRC3
+                    if (record.field_2499_raw) allComments.push(record.field_2499_raw); // GOAL1
+                    if (record.field_2493_raw) allComments.push(record.field_2493_raw); // GOAL2
+                    if (record.field_2494_raw) allComments.push(record.field_2494_raw); // GOAL3
+                });
+            }
+
+            log("Total comments extracted:", allComments.length);
+
+            // Render Word Cloud
+            renderWordCloud(allComments);
+
+            // Identify and Display Common Themes (this is more complex, might need NLP on Heroku)
+            identifyCommonThemes(allComments);
+
+        } catch (error) {
+            errorLog("Failed to load student comment insights", error);
+        }
+    }
+
     function renderWordCloud(comments) {
         const container = document.getElementById('word-cloud-container');
         if (!container) return;
