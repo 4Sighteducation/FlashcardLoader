@@ -1461,19 +1461,10 @@ function initializeDashboardApp() {
                                         return lines;
                                     }
                                 }
-                            },
-                            // Add needle if plugin supports it
-                            needle: {
-                                radiusPercentage: 2,
-                                widthPercentage: 3.2,
-                                lengthPercentage: 80,
-                                color: '#464646'
-                            },
-                            valueLabel: {
-                                display: false
                             }
                         }
-                    });
+                    }
+                });
             } catch (e) {
                 log("Error creating gauge chart, falling back to doughnut:", e);
                 createCompactDoughnutFallback(ctx, schoolValue, nationalValue);
@@ -1526,7 +1517,8 @@ function initializeDashboardApp() {
                         }
                     }
                 }
-            });
+            }
+        });
     }
     
     function getERIColor(value) {
@@ -1758,7 +1750,7 @@ function initializeDashboardApp() {
             // Render compact ERI in controls instead of full speedometer
             renderCompactERI(schoolERI, nationalERI, cycle);
             renderAveragesChart(schoolAverages, nationalAverages, cycle);
-            renderDistributionCharts(schoolVespaResults, nationalAverages, themeColors, cycle, nationalDistributions);
+            renderDistributionCharts(schoolVespaResults, nationalAverages, config.themeColors, cycle, nationalDistributions);
 
         } catch (error) {
             errorLog("Failed to load overview data", error);
