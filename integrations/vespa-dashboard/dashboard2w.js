@@ -1,4 +1,4 @@
-// dashboard1f.js
+// dashboard2w.js
 // @ts-nocheck
 
 // Global loader management
@@ -613,31 +613,44 @@ function initializeDashboardApp() {
                 <section id="overview-section" style="${showSuperUserControls ? 'display: none;' : ''}">
                     <h2>School Overview & Benchmarking</h2>
                     <div class="controls">
-                        <label for="cycle-select">Select Cycle:</label>
-                        <select id="cycle-select">
-                            <option value="1">Cycle 1</option>
-                            <option value="2">Cycle 2</option>
-                            <option value="3">Cycle 3</option>
-                        </select>
-                        <div class="response-stats-card">
-                            <div class="response-stats-content">
-                                <div class="stat-item">
-                                    <span class="stat-label">Responses</span>
-                                    <span class="stat-value" id="cycle-responses">-</span>
+                        <div class="controls-left">
+                            <label for="cycle-select">Select Cycle:</label>
+                            <select id="cycle-select">
+                                <option value="1">Cycle 1</option>
+                                <option value="2">Cycle 2</option>
+                                <option value="3">Cycle 3</option>
+                            </select>
+                            <div class="eri-compact-container">
+                                <div class="eri-gauge-small">
+                                    <canvas id="eri-gauge-small-chart"></canvas>
                                 </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Total Students</span>
-                                    <span class="stat-value" id="total-students">-</span>
+                                <div class="eri-value-label">
+                                    <span>ERI</span>
+                                    <strong id="eri-value-display">-</strong>
                                 </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Completion Rate</span>
-                                    <span class="stat-value" id="completion-rate">-</span>
+                                <button class="eri-info-btn" id="eri-info-button">
+                                    <span style="font-weight: bold; font-size: 14px;">i</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="controls-right">
+                            <div class="response-stats-card">
+                                <div class="response-stats-content">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Responses</span>
+                                        <span class="stat-value" id="cycle-responses">-</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Total Students</span>
+                                        <span class="stat-value" id="total-students">-</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Completion Rate</span>
+                                        <span class="stat-value" id="completion-rate">-</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div id="eri-speedometer-container">
-                        <!-- ERI Speedometer will be rendered here -->
                     </div>
                     <div id="active-filters-display" style="display:none;">
                         <div class="active-filters-header">
@@ -645,7 +658,15 @@ function initializeDashboardApp() {
                             <div id="active-filters-list"></div>
                         </div>
                     </div>
-                    <div class="filters-container">
+                    <div class="filter-toggle-container">
+                        <button class="filter-toggle-btn" id="filter-toggle-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 9l-7 7-7-7"/>
+                            </svg>
+                            <span>Filters</span>
+                        </button>
+                    </div>
+                    <div class="filters-container" id="filters-container">
                         <div class="filter-item">
                             <label for="student-search">Student:</label>
                             <input type="text" id="student-search" placeholder="Search by name..." />
@@ -738,6 +759,32 @@ function initializeDashboardApp() {
         
         // Add event listeners for UI elements
         document.getElementById('qla-chat-submit')?.addEventListener('click', handleQLAChatSubmit);
+        
+        // Add filter toggle functionality
+        const filterToggleBtn = document.getElementById('filter-toggle-btn');
+        const filtersContainer = document.getElementById('filters-container');
+        if (filterToggleBtn && filtersContainer) {
+            filterToggleBtn.addEventListener('click', () => {
+                const isCollapsed = filtersContainer.classList.contains('collapsed');
+                if (isCollapsed) {
+                    filtersContainer.classList.remove('collapsed');
+                    filterToggleBtn.classList.remove('collapsed');
+                } else {
+                    filtersContainer.classList.add('collapsed');
+                    filterToggleBtn.classList.add('collapsed');
+                }
+            });
+        }
+        
+        // Add ERI info button event listener
+        const eriInfoBtn = document.getElementById('eri-info-button');
+        if (eriInfoBtn) {
+            eriInfoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.showERIInfoModal();
+            });
+        }
         
         // Add Super User specific event listeners
         if (showSuperUserControls) {
@@ -1406,92 +1453,22 @@ function initializeDashboardApp() {
     }
     
     function renderERISpeedometer(schoolERI, nationalERI, cycle) {
-        const container = document.getElementById('eri-speedometer-container');
-        if (!container) {
-            errorLog("ERI speedometer container not found");
-            return;
+        // Store ERI values globally for modal access
+        window.currentERIData = {
+            school: schoolERI,
+            national: nationalERI,
+            cycle: cycle
+        };
+        
+        // Update the compact ERI display
+        const eriValueDisplay = document.getElementById('eri-value-display');
+        if (eriValueDisplay) {
+            eriValueDisplay.textContent = schoolERI ? schoolERI.value.toFixed(1) : 'N/A';
         }
         
-        // Clear previous content
-        container.innerHTML = '';
-        
-        // Create the main ERI card
-        const eriCard = document.createElement('div');
-        eriCard.className = 'eri-speedometer-card';
-        
-        // Determine color based on ERI value
-        let colorClass = 'eri-low';
-        let interpretation = 'Low Readiness';
-        let colorHex = '#ef4444'; // red
-        
-        if (schoolERI && schoolERI.value) {
-            if (schoolERI.value >= 4) {
-                colorClass = 'eri-excellent';
-                interpretation = 'Excellent Readiness';
-                colorHex = '#3b82f6'; // blue
-            } else if (schoolERI.value >= 3) {
-                colorClass = 'eri-good';
-                interpretation = 'Good Readiness';
-                colorHex = '#10b981'; // green
-            } else if (schoolERI.value >= 2) {
-                colorClass = 'eri-below-average';
-                interpretation = 'Below Average';
-                colorHex = '#f59e0b'; // orange
-            }
-        }
-        
-        eriCard.classList.add(colorClass);
-        
-        // Build the card HTML
-        eriCard.innerHTML = `
-            <div class="eri-header">
-                <h3>Exam Readiness Index (ERI) - Cycle ${cycle}</h3>
-                <button class="eri-info-btn" onclick="window.showERIInfoModal()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12" y2="8"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="eri-content">
-                <div class="eri-gauge-container">
-                    <canvas id="eri-gauge-chart"></canvas>
-                </div>
-                <div class="eri-stats">
-                    <div class="eri-stat-item">
-                        <span class="eri-stat-label">Your School</span>
-                        <span class="eri-stat-value" style="color: ${colorHex}">
-                            ${schoolERI ? schoolERI.value.toFixed(1) : 'N/A'}
-                        </span>
-                    </div>
-                    <div class="eri-stat-item">
-                        <span class="eri-stat-label">National Average</span>
-                        <span class="eri-stat-value">
-                            ${nationalERI ? nationalERI.toFixed(1) : 'N/A'}
-                        </span>
-                    </div>
-                    <div class="eri-stat-item">
-                        <span class="eri-stat-label">Difference</span>
-                        <span class="eri-stat-value ${schoolERI && nationalERI && schoolERI.value >= nationalERI ? 'positive' : 'negative'}">
-                            ${schoolERI && nationalERI ? 
-                                ((schoolERI.value > nationalERI ? '+' : '') + ((schoolERI.value - nationalERI) / nationalERI * 100).toFixed(1) + '%') 
-                                : 'N/A'}
-                        </span>
-                    </div>
-                </div>
-                <div class="eri-interpretation">
-                    <strong>${interpretation}</strong>
-                    ${getERIInterpretationText(schoolERI ? schoolERI.value : null)}
-                </div>
-            </div>
-        `;
-        
-        container.appendChild(eriCard);
-        
-        // Create the gauge chart
+        // Create the small gauge chart
         setTimeout(() => {
-            createERIGaugeChart(schoolERI ? schoolERI.value : null, nationalERI);
+            createCompactERIGauge(schoolERI ? schoolERI.value : null, nationalERI);
         }, 100);
     }
     
@@ -1632,6 +1609,84 @@ function initializeDashboardApp() {
         });
     }
     
+    function createCompactERIGauge(schoolValue, nationalValue) {
+        const canvas = document.getElementById('eri-gauge-small-chart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Destroy previous chart if exists
+        if (window.eriCompactGauge) {
+            window.eriCompactGauge.destroy();
+        }
+        
+        // Determine color based on value
+        let gaugeColor = '#ef4444'; // red
+        if (schoolValue >= 4) gaugeColor = '#3b82f6'; // blue
+        else if (schoolValue >= 3) gaugeColor = '#10b981'; // green
+        else if (schoolValue >= 2) gaugeColor = '#f59e0b'; // orange
+        
+        // Check if gauge plugin is available
+        if (typeof Chart.controllers.gauge === 'undefined') {
+            log("Gauge plugin not found, using fallback doughnut chart");
+            // Fallback to doughnut chart
+            window.eriCompactGauge = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [schoolValue || 0, 5 - (schoolValue || 0)],
+                        backgroundColor: [gaugeColor, 'rgba(255, 255, 255, 0.1)'],
+                        borderWidth: 0,
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false },
+                        datalabels: { display: false }
+                    }
+                }
+            });
+        } else {
+            // Use proper gauge chart
+            window.eriCompactGauge = new Chart(ctx, {
+                type: 'gauge',
+                data: {
+                    datasets: [{
+                        value: schoolValue || 0,
+                        minValue: 0,
+                        data: [1, 2, 3, 4, 5],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#eab308', '#10b981', '#3b82f6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    needle: {
+                        radiusPercentage: 2,
+                        widthPercentage: 3.2,
+                        lengthPercentage: 80,
+                        color: 'rgba(0, 0, 0, 1)'
+                    },
+                    valueLabel: {
+                        display: false // We're showing the value separately
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false },
+                        datalabels: { display: false }
+                    }
+                }
+            });
+        }
+    }
+    
     function getERIInterpretationText(eriValue) {
         if (!eriValue) {
             return '<p>No ERI data available. Complete psychometric assessments to see your readiness index.</p>';
@@ -1654,6 +1709,50 @@ function initializeDashboardApp() {
         if (!modal) {
             modal = document.createElement('div');
             modal.className = 'eri-info-modal';
+            
+            // Build the current values section
+            let currentValuesSection = '';
+            if (window.currentERIData) {
+                const schoolValue = window.currentERIData.school ? window.currentERIData.school.value : null;
+                const nationalValue = window.currentERIData.national;
+                const cycle = window.currentERIData.cycle;
+                let colorHex = '#ef4444'; // red
+                if (schoolValue >= 4) colorHex = '#3b82f6'; // blue
+                else if (schoolValue >= 3) colorHex = '#10b981'; // green
+                else if (schoolValue >= 2) colorHex = '#f59e0b'; // orange
+                
+                currentValuesSection = `
+                    <div class="eri-section" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1)); border: 1px solid rgba(59, 130, 246, 0.3); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <h4 style="color: #3b82f6; margin-top: 0;">Current ERI Score - Cycle ${cycle}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Your School</div>
+                                <div style="font-size: 2rem; font-weight: 700; color: ${colorHex};">
+                                    ${schoolValue ? schoolValue.toFixed(1) : 'N/A'}
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">National Average</div>
+                                <div style="font-size: 2rem; font-weight: 700; color: var(--text-secondary);">
+                                    ${nationalValue ? nationalValue.toFixed(1) : 'N/A'}
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Difference</div>
+                                <div style="font-size: 2rem; font-weight: 700; color: ${schoolValue && nationalValue && schoolValue >= nationalValue ? '#10b981' : '#ef4444'};">
+                                    ${schoolValue && nationalValue ? 
+                                        ((schoolValue > nationalValue ? '+' : '') + ((schoolValue - nationalValue) / nationalValue * 100).toFixed(1) + '%') 
+                                        : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            ${schoolValue ? getERIInterpretationText(schoolValue).replace(/<\/?p>/g, '') : 'No data available'}
+                        </div>
+                    </div>
+                `;
+            }
+            
             modal.innerHTML = `
                 <div class="eri-info-content">
                     <div class="eri-info-header">
@@ -1665,6 +1764,7 @@ function initializeDashboardApp() {
                         </button>
                     </div>
                     <div class="eri-info-body">
+                        ${currentValuesSection}
                         <div class="eri-section" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
                             <h4 style="color: #f59e0b; margin-top: 0;">⚠️ Development Notice</h4>
                             <p style="margin-bottom: 0;">The ERI is in early stages of development. We are continuously analyzing data and refining the methodology to improve its accuracy and predictive value. Current results should be interpreted as indicative rather than definitive.</p>
@@ -3409,6 +3509,23 @@ function initializeDashboardApp() {
                 }
             } else {
                 log("Annotation plugin not found globally (checked Annotation, Chart.Annotation, window.ChartAnnotation) during init. National average lines on histograms may not appear.");
+            }
+            
+            // Register Gauge chart controller if available
+            if (typeof Chart.controllers.gauge !== 'undefined' || (window.ChartGauge && window.ChartGauge.GaugeController)) {
+                try {
+                    // The gauge plugin might auto-register, but let's ensure it's registered
+                    if (window.ChartGauge && window.ChartGauge.GaugeController) {
+                        Chart.register(window.ChartGauge.GaugeController, window.ChartGauge.ArcElement);
+                        log("Gauge chart plugin registered from ChartGauge global.");
+                    } else {
+                        log("Gauge chart controller appears to be auto-registered.");
+                    }
+                } catch (e) {
+                    errorLog("Error registering Gauge plugin: ", e);
+                }
+            } else {
+                log("Gauge chart plugin not found during init. Will use doughnut chart fallback for ERI gauge.");
             }
         } else {
             log("Chart.js core (Chart) not found globally during init. All charts will fail.");
