@@ -203,7 +203,12 @@ function initializeBulkPrintApp() {
         }
         fullUrl += `?${params.toString()}`;
 
-        if (debugMode) console.log(`[BulkPrintApp] API Request URL: ${fullUrl}`);
+        if (debugMode) {
+            console.log(`[BulkPrintApp] API Request URL: ${fullUrl}`);
+            if (filters) {
+                console.log(`[BulkPrintApp] Decoded filters:`, JSON.stringify(filters, null, 2));
+            }
+        }
 
         const response = await fetch(fullUrl, { headers });
         if (!response.ok) {
@@ -256,7 +261,16 @@ function initializeBulkPrintApp() {
         for (const connectionField in roleRecordIdsMap) {
             const idsForThisConnection = roleRecordIdsMap[connectionField];
             idsForThisConnection.forEach(id => {
-                studentApiRules.push({ field: connectionField, operator: 'is', value: id });
+                // Use 'is' operator like the coach summary does
+                studentApiRules.push({ 
+                    field: connectionField, 
+                    operator: 'is', 
+                    value: id 
+                });
+                
+                if (debugMode) {
+                    console.log(`[BulkPrintApp] Added filter rule: ${connectionField} is ${id}`);
+                }
             });
         }
 
@@ -265,6 +279,12 @@ function initializeBulkPrintApp() {
         }
 
         const filters = { match: 'or', rules: studentApiRules };
+        
+        if (debugMode) {
+            console.log('[BulkPrintApp] Filter being sent to API:', JSON.stringify(filters, null, 2));
+            console.log('[BulkPrintApp] Number of filter rules:', studentApiRules.length);
+        }
+        
         let allStudents = [];
         let page = 1;
         let hasMore = true;
@@ -294,6 +314,21 @@ function initializeBulkPrintApp() {
 
         if (debugMode) {
             console.log(`[BulkPrintApp] Total students fetched: ${allStudents.length}`);
+            
+            // Check if we're getting too many students (indicating filter failure)
+            if (allStudents.length > 100) {
+                console.warn(`[BulkPrintApp] WARNING: Fetched ${allStudents.length} students. This seems too high for a single tutor. The filter might not be working correctly.`);
+                
+                // Sample check: Look at first few students to see if they have the expected tutor connection
+                const sampleSize = Math.min(5, allStudents.length);
+                console.log(`[BulkPrintApp] Checking first ${sampleSize} students for tutor connection...`);
+                
+                for (let i = 0; i < sampleSize; i++) {
+                    const student = allStudents[i];
+                    const tutorConnection = student.field_145 || student.field_145_raw;
+                    console.log(`[BulkPrintApp] Student ${i + 1}: ${student.field_187_raw?.first} ${student.field_187_raw?.last}, Tutor connection: ${JSON.stringify(tutorConnection)}`);
+                }
+            }
         }
         
         return allStudents;
@@ -326,7 +361,7 @@ function initializeBulkPrintApp() {
         const lastName = getField(FIELD_KEYS.studentLastName, '');
         const fullName = (firstName + ' ' + lastName).trim() || 'N/A';
         
-        const currentCycle = getField(FIELD_KEYS.currentMCycle, 'C1');
+        const currentCycle = String(getField(FIELD_KEYS.currentMCycle, 'C1'));
         const cycleNumber = currentCycle.replace('C', '');
         
         // Get the appropriate score fields based on cycle
@@ -823,9 +858,21 @@ function initializeBulkPrintApp() {
                 let schoolLogoUrl = null;
                 
                 // Try to get school logo if establishment connection exists
-                if (student[FIELD_KEYS.establishmentConnection] && student[FIELD_KEYS.establishmentConnection][0]) {
-                    const establishmentId = student[FIELD_KEYS.establishmentConnection][0].id;
-                    schoolLogoUrl = await fetchSchoolLogo(establishmentId);
+                if (student[FIELD_KEYS.establishmentConnection]) {
+                    let establishmentId = null;
+                    
+                    // Handle different formats of connection field data
+                    if (Array.isArray(student[FIELD_KEYS.establishmentConnection]) && student[FIELD_KEYS.establishmentConnection][0]) {
+                        establishmentId = student[FIELD_KEYS.establishmentConnection][0].id;
+                    } else if (typeof student[FIELD_KEYS.establishmentConnection] === 'string') {
+                        establishmentId = student[FIELD_KEYS.establishmentConnection];
+                    } else if (student[FIELD_KEYS.establishmentConnection].id) {
+                        establishmentId = student[FIELD_KEYS.establishmentConnection].id;
+                    }
+                    
+                    if (establishmentId) {
+                        schoolLogoUrl = await fetchSchoolLogo(establishmentId);
+                    }
                 }
                 
                 // Generate report HTML
