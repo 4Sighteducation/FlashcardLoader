@@ -187,7 +187,7 @@ function initializeBulkPrintApp() {
     }
 
     // API request helper
-    async function makeKnackApiRequest(urlPath, filters = null, page = 1, rowsPerPage = 1000) {
+    async function makeKnackApiRequest(urlPath, filters = null, page = 1, rowsPerPage = 100) {
         const headers = {
             'X-Knack-Application-Id': knackAppId,
             'X-Knack-REST-API-Key': knackApiKey,
@@ -268,17 +268,28 @@ function initializeBulkPrintApp() {
         let allStudents = [];
         let page = 1;
         let hasMore = true;
+        const maxPages = 10; // Safety limit
 
-        while (hasMore) {
+        while (hasMore && page <= maxPages) {
             const studentData = await makeKnackApiRequest(`objects/${objectKeys.vespaResults}/records`, filters, page);
             
             if (debugMode) {
                 console.log(`[BulkPrintApp] Page ${page}: Found ${studentData.records?.length || 0} records. Total pages: ${studentData.total_pages}, Current page: ${studentData.current_page}`);
             }
             
-            allStudents = allStudents.concat(studentData.records || []);
+            // If no records returned, stop pagination
+            if (!studentData.records || studentData.records.length === 0) {
+                if (debugMode) console.log(`[BulkPrintApp] No records on page ${page}, stopping pagination`);
+                break;
+            }
+            
+            allStudents = allStudents.concat(studentData.records);
             hasMore = studentData.current_page < studentData.total_pages;
             page++;
+        }
+        
+        if (page > maxPages && hasMore) {
+            console.warn(`[BulkPrintApp] Reached maximum page limit (${maxPages}), stopping pagination`);
         }
 
         if (debugMode) {
