@@ -154,9 +154,35 @@ function initializeBulkPrintApp() {
         console.log('[BulkPrintApp] Initializing with config:', config);
     }
 
-    const targetElement = document.querySelector(elementSelector);
+    // Create modal instead of using the target element directly
+    let modalContainer = document.getElementById('bulkPrintModal');
+    if (!modalContainer) {
+        // Create modal structure
+        modalContainer = document.createElement('div');
+        modalContainer.id = 'bulkPrintModal';
+        modalContainer.className = 'bulk-print-modal';
+        modalContainer.innerHTML = `
+            <div class="bulk-print-modal-overlay"></div>
+            <div class="bulk-print-modal-content">
+                <div class="bulk-print-modal-header">
+                    <h2>VESPA Reports - Bulk Print</h2>
+                    <button class="bulk-print-modal-close" onclick="document.getElementById('bulkPrintModal').style.display='none';">&times;</button>
+                </div>
+                <div class="bulk-print-modal-body" id="bulkPrintModalBody">
+                    <!-- Content will be inserted here -->
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalContainer);
+    }
+    
+    // Show the modal
+    modalContainer.style.display = 'block';
+    
+    // Use the modal body as our target element
+    const targetElement = document.getElementById('bulkPrintModalBody');
     if (!targetElement) {
-        console.error(`[BulkPrintApp] Target element '${elementSelector}' not found. Exiting.`);
+        console.error(`[BulkPrintApp] Modal body element not found. Exiting.`);
         return;
     }
 
@@ -388,6 +414,78 @@ function initializeBulkPrintApp() {
         document.head.appendChild(printStyleSheet);
         
         printStyleSheet.innerHTML = `
+            /* Modal styles */
+            .bulk-print-modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 10000;
+            }
+            
+            .bulk-print-modal-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+            
+            .bulk-print-modal-content {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 90%;
+                max-width: 1200px;
+                height: 90%;
+                background-color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .bulk-print-modal-header {
+                padding: 20px;
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .bulk-print-modal-header h2 {
+                margin: 0;
+                color: #333;
+            }
+            
+            .bulk-print-modal-close {
+                background: none;
+                border: none;
+                font-size: 28px;
+                cursor: pointer;
+                color: #999;
+                padding: 0;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .bulk-print-modal-close:hover {
+                color: #333;
+            }
+            
+            .bulk-print-modal-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 20px;
+            }
+            
             /* Screen styles */
             .bulk-print-container {
                 padding: 20px;
@@ -572,6 +670,33 @@ function initializeBulkPrintApp() {
                     visibility: hidden;
                 }
                 
+                .bulk-print-modal {
+                    display: block !important;
+                    position: static !important;
+                    width: auto !important;
+                    height: auto !important;
+                }
+                
+                .bulk-print-modal-overlay,
+                .bulk-print-modal-header {
+                    display: none !important;
+                }
+                
+                .bulk-print-modal-content {
+                    position: static !important;
+                    transform: none !important;
+                    width: 100% !important;
+                    max-width: none !important;
+                    height: auto !important;
+                    box-shadow: none !important;
+                    border-radius: 0 !important;
+                }
+                
+                .bulk-print-modal-body {
+                    padding: 0 !important;
+                    overflow: visible !important;
+                }
+                
                 .bulk-print-container,
                 .bulk-print-container * {
                     visibility: visible;
@@ -695,6 +820,17 @@ function initializeBulkPrintApp() {
             // Auto-trigger print dialog after a short delay
             setTimeout(() => {
                 window.print();
+                
+                // Close modal after print dialog is closed
+                // Note: There's no reliable cross-browser way to detect print cancel,
+                // but we can add a close button and let users close it manually
+                setTimeout(() => {
+                    // Add a message that printing is complete
+                    const printInfo = document.querySelector('.print-preview-info');
+                    if (printInfo) {
+                        printInfo.innerHTML += '<p style="margin-top: 20px; font-weight: bold;">Print dialog closed. You can close this window using the X button above.</p>';
+                    }
+                }, 1000);
             }, 1000);
             
         } catch (error) {
