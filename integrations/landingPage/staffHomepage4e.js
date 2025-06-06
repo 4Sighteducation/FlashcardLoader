@@ -2546,7 +2546,7 @@ function renderProfileSection(profileData, hasAdminRole) {
   if (hasAdminRole) {
     dashboardButton = `
       <div class="profile-item">
-        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard/" class="dashboard-button">
+        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard3/" class="dashboard-button">
           <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
           <span>VESPA Dashboard</span>
         </a>
