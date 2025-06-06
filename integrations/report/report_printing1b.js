@@ -271,11 +271,20 @@ function initializeBulkPrintApp() {
 
         while (hasMore) {
             const studentData = await makeKnackApiRequest(`objects/${objectKeys.vespaResults}/records`, filters, page);
+            
+            if (debugMode) {
+                console.log(`[BulkPrintApp] Page ${page}: Found ${studentData.records?.length || 0} records. Total pages: ${studentData.total_pages}, Current page: ${studentData.current_page}`);
+            }
+            
             allStudents = allStudents.concat(studentData.records || []);
             hasMore = studentData.current_page < studentData.total_pages;
             page++;
         }
 
+        if (debugMode) {
+            console.log(`[BulkPrintApp] Total students fetched: ${allStudents.length}`);
+        }
+        
         return allStudents;
     }
 
