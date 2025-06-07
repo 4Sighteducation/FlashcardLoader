@@ -21,16 +21,8 @@
     const err = (...m) => console.error('[BulkPrint]', ...m);
 
     // --- CONFIG ---
-    const cfg = window.BULK_PRINT_CONFIG || {};
-    
-    // Debug log the config
-    log('Config received:', cfg);
-    
-    if (!cfg.knackAppId || !cfg.knackApiKey) {
-        err('Missing Knack credentials in BULK_PRINT_CONFIG', cfg);
-        // Don't return - the initializer still needs to be defined
-        // return;
-    }
+    // Don't read config here - it's not set yet!
+    let cfg = {};
 
     const FIELD_MAP = {
         // Object_10
@@ -232,8 +224,13 @@
     // Main execution when button clicked
     async function run() {
         try {
-            // Check config again before running
+            // Read config when we actually need it
+            cfg = window.BULK_PRINT_CONFIG || {};
+            log('Config at run time:', cfg);
+            
+            // Check config before running
             if (!cfg.knackAppId || !cfg.knackApiKey) {
+                err('Missing Knack credentials in BULK_PRINT_CONFIG', cfg);
                 alert('Configuration error: Missing Knack credentials. Please contact support.');
                 return;
             }
@@ -284,6 +281,10 @@
 
     // Expose init for loader (called immediately by WorkingBridge)
     window.initializeBulkPrintApp = function () {
+        // Read config when initializer is called
+        cfg = window.BULK_PRINT_CONFIG || {};
+        log('Config at initialization:', cfg);
+        
         log('BulkPrint app initialised. Waiting for button click.');
         injectStyles();
         
@@ -306,4 +307,3 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully');
 })();
-
