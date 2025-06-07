@@ -77,9 +77,19 @@
         const qs = new URLSearchParams({ rows_per_page: params.rows || 1000, page: params.page || 1 });
         if (params.filters) qs.append('filters', encodeURIComponent(JSON.stringify(params.filters)));
         const url = `https://api.knack.com/v1/${path}?${qs.toString()}`;
+        
+        log('Making API request to:', url);
+        log('With headers:', headers);
+        
         const res = await fetch(url, { headers });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        return res.json();
+        if (!res.ok) {
+            const errorText = await res.text();
+            err('API request failed:', { status: res.status, statusText: res.statusText, body: errorText });
+            throw new Error(`${res.status} ${res.statusText}: ${errorText}`);
+        }
+        const data = await res.json();
+        log('API response received:', data);
+        return data;
     }
 
     // Step 1: Staff-Admin record IDs (object_5 field_86 = email)
@@ -224,6 +234,13 @@
     // Main execution when button clicked
     async function run() {
         try {
+            log('Run function started');
+            
+            // Show loading indicator
+            const btn = $('#bulkPrintbtn');
+            const originalText = btn.text();
+            btn.text('Generating reports...').prop('disabled', true);
+            
             // Read config when we actually need it
             cfg = window.BULK_PRINT_CONFIG || {};
             log('Config at run time:', cfg);
@@ -232,13 +249,18 @@
             if (!cfg.knackAppId || !cfg.knackApiKey) {
                 err('Missing Knack credentials in BULK_PRINT_CONFIG', cfg);
                 alert('Configuration error: Missing Knack credentials. Please contact support.');
+                btn.text(originalText).prop('disabled', false);
                 return;
             }
             
             injectStyles();
             const user = Knack.getUserAttributes();
+            log('User attributes:', user);
             if (!user || !user.email) throw new Error('Cannot determine logged-in user');
+            
+            log('Fetching Staff-Admin records for email:', user.email);
             const staffIds = await getStaffAdminRecordIds(user.email);
+            log('Staff IDs found:', staffIds);
             if (!staffIds.length) throw new Error('No Staff-Admin record found for user');
 
             const students = await fetchStudents(staffIds);
@@ -263,11 +285,21 @@
             await setLogos(container, estLogoUrl);
 
             window.print();
+            
+            // Restore button
+            btn.text(originalText).prop('disabled', false);
+            
             // Optionally remove container afterwards
             // setTimeout(()=>container.remove(), 1000);
         } catch (e) {
             err(e);
             alert('Error generating reports: ' + e.message);
+            
+            // Restore button on error
+            const btn = $('#bulkPrintbtn');
+            if (btn.length) {
+                btn.text('Print All Reports').prop('disabled', false);
+            }
         }
     }
 
