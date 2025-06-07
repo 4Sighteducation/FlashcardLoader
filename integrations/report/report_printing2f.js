@@ -100,14 +100,71 @@
         return (data.records || []).map(r => r.id);
     }
 
-    // Step 2: Fetch students
-    async function fetchStudents(staffIds, page = 1, accum = []) {
+    // Step 1b: Get Tutor record ID from email (if provided)
+    async function getTutorIdByEmail(email) {
+        if (!email) return null;
+        const data = await knackRequest('objects/object_7/records', {
+            filters: { match: 'and', rules: [{ field: 'field_96', operator: 'is', value: email }] },
+            rows: 1
+        });
+        return (data.records && data.records.length > 0) ? data.records[0].id : null;
+    }
+
+    // Step 2: Fetch students (with limit and filters)
+    async function fetchStudents(staffIds, filters, maxStudents = 100) {
         if (!staffIds.length) return [];
-        const rules = staffIds.map(id => ({ field: 'field_439', operator: 'is', value: id }));
-        const filters = { match: 'or', rules };
-        const resp = await knackRequest('objects/object_10/records', { filters, page, rows: 500 });
-        const next = resp.current_page < resp.total_pages ? await fetchStudents(staffIds, page + 1, []) : [];
-        return [...accum, ...resp.records, ...next];
+
+        const baseRules = staffIds.map(id => ({ field: 'field_439', operator: 'is', value: id }));
+        const studentApiFilters = { match: 'or', rules: baseRules };
+        
+        const uiFilterRules = [];
+
+        // Apply UI filters
+        if (filters.cycle) {
+            uiFilterRules.push({ field: FIELD_MAP.cycle, operator: 'is', value: filters.cycle });
+        }
+        if (filters.yearGroup) {
+            // Assuming field_144 is a text field. If it's a connection, this needs adjustment.
+            uiFilterRules.push({ field: 'field_144', operator: 'contains', value: filters.yearGroup });
+        }
+        if (filters.group) {
+            uiFilterRules.push({ field: FIELD_MAP.group, operator: 'contains', value: filters.group });
+        }
+        if (filters.tutorId) {
+            // field_145 is the connection to the Tutor object
+            uiFilterRules.push({ field: 'field_145', operator: 'is', value: filters.tutorId });
+        }
+
+        // Combine base and UI filters
+        const finalFilters = {
+            match: 'and',
+            rules: [studentApiFilters, ...uiFilterRules]
+        };
+
+        const allStudents = [];
+        let page = 1;
+        const rowsPerPage = Math.min(maxStudents, 500);
+        
+        while (allStudents.length < maxStudents) {
+            log(`Fetching page ${page} of students...`);
+            const resp = await knackRequest('objects/object_10/records', { 
+                filters: finalFilters, 
+                page, 
+                rows: rowsPerPage 
+            });
+            
+            allStudents.push(...resp.records);
+            
+            // Stop if we've reached the max or there are no more pages
+            if (allStudents.length >= maxStudents || resp.current_page >= resp.total_pages) {
+                break;
+            }
+            
+            page++;
+        }
+        
+        // Return only up to maxStudents
+        return allStudents.slice(0, maxStudents);
     }
 
     // Step 3: Fetch coaching template records (Object_33)
@@ -134,7 +191,11 @@
 
     function getCycleKey(raw) {
         // field_146_raw stores something like "C1" / "C2" / "C3"
-        return (raw || '').toUpperCase();
+        // It can be an array if it's a connection, so we'll handle that.
+        if (Array.isArray(raw) && raw.length > 0) {
+            return (raw[0].identifier || '').toUpperCase();
+        }
+        return (raw || '').toString().toUpperCase();
     }
 
     // Build report HTML per student
@@ -193,6 +254,40 @@
         return html;
     }
 
+    // Add Filter UI
+    function renderFilterUI() {
+        const filterHtml = `
+            <div id="bulkPrintFilters" style="padding: 15px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 15px; background: #f9f9f9;">
+                <h3 style="margin-top: 0;">Filter Reports</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); grid-gap: 15px;">
+                    <div>
+                        <label for="filterCycle">Cycle:</label>
+                        <select id="filterCycle" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All Cycles</option>
+                            <option value="C1">Cycle 1</option>
+                            <option value="C2">Cycle 2</option>
+                            <option value="C3">Cycle 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filterYearGroup">Year Group:</label>
+                        <input type="text" id="filterYearGroup" placeholder="e.g., Year 12" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label for="filterGroup">Group:</label>
+                        <input type="text" id="filterGroup" placeholder="e.g., 12A/Sc1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label for="filterTutorEmail">Tutor Email:</label>
+                        <input type="email" id="filterTutorEmail" placeholder="e.g., tutor@example.com" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                </div>
+            </div>
+        `;
+        // Insert filters before the print button
+        $('#bulkPrintbtn').before(filterHtml);
+    }
+
     // Inject CSS once
     function injectStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
@@ -233,43 +328,70 @@
 
     // Main execution when button clicked
     async function run() {
+        const btn = $('#bulkPrintbtn');
+        const originalText = btn.text();
+        let overlay;
+
         try {
-            log('Run function started');
-            
-            // Show loading indicator
-            const btn = $('#bulkPrintbtn');
-            log('Button element found:', btn.length);
-            const originalText = btn.text();
-            log('Original button text:', originalText);
+            // Show loading overlay and update button
+            overlay = $('<div id="bulkPrintOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;display:flex;justify-content:center;align-items:center;color:white;font-size:20px;"></div>').appendTo('body');
             btn.text('Generating reports...').prop('disabled', true);
-            log('Button text after change:', btn.text());
-            
+            overlay.text('Preparing reports...');
+
             // Read config when we actually need it
             cfg = window.BULK_PRINT_CONFIG || {};
             log('Config at run time:', cfg);
-            
-            // Check config before running
+
             if (!cfg.knackAppId || !cfg.knackApiKey) {
-                err('Missing Knack credentials in BULK_PRINT_CONFIG', cfg);
-                alert('Configuration error: Missing Knack credentials. Please contact support.');
-                btn.text(originalText).prop('disabled', false);
-                return;
+                throw new Error('Missing Knack credentials. Please contact support.');
             }
             
             injectStyles();
             const user = Knack.getUserAttributes();
-            log('User attributes:', user);
             if (!user || !user.email) throw new Error('Cannot determine logged-in user');
             
-            log('Fetching Staff-Admin records for email:', user.email);
+            overlay.text('Fetching staff records...');
             const staffIds = await getStaffAdminRecordIds(user.email);
-            log('Staff IDs found:', staffIds);
             if (!staffIds.length) throw new Error('No Staff-Admin record found for user');
 
-            const students = await fetchStudents(staffIds);
-            log(`Fetched ${students.length} students.`);
+            const tutorEmail = $('#filterTutorEmail').val();
+            let tutorId = null;
+            if (tutorEmail) {
+                overlay.text('Fetching tutor record...');
+                tutorId = await getTutorIdByEmail(tutorEmail);
+                if (!tutorId) {
+                    throw new Error(`No tutor found with email: ${tutorEmail}`);
+                }
+            }
 
-            if (!students.length) { alert('No students linked to your account.'); return; }
+            overlay.text('Fetching students...');
+            const MAX_STUDENTS = 150; // Increased limit slightly
+            const filters = {
+                cycle: $('#filterCycle').val(),
+                yearGroup: $('#filterYearGroup').val(),
+                group: $('#filterGroup').val(),
+                tutorId: tutorId
+            };
+            const students = await fetchStudents(staffIds, filters, MAX_STUDENTS);
+            log(`Fetched ${students.length} students (limit: ${MAX_STUDENTS}).`);
+
+            if (!students.length) { 
+                alert('No students found matching the selected criteria.'); 
+                if (overlay) overlay.remove();
+                btn.text(originalText).prop('disabled', false);
+                return; 
+            }
+
+            if (students.length > 20) {
+                const proceed = confirm(`This will generate ${students.length} reports. This may take some time. Continue?`);
+                if (!proceed) {
+                    if (overlay) overlay.remove();
+                    btn.text(originalText).prop('disabled', false);
+                    return;
+                }
+            }
+            
+            overlay.text('Loading report templates...');
             const templates = await loadCoachingTemplates();
 
             const containerId = 'vespaBulkPrintContainer';
@@ -277,38 +399,45 @@
             if (container) container.remove();
             container = document.createElement('div');
             container.id = containerId;
+            container.style.visibility = 'hidden'; 
+            container.style.position = 'absolute';
             document.body.appendChild(container);
 
-            students.forEach(stu => {
+            for (let i = 0; i < students.length; i++) {
+                const stu = students[i];
                 container.insertAdjacentHTML('beforeend', buildStudentHTML(stu, templates));
-            });
-
-            // Attempt to fetch establishment logo URL from first student (field_3206)
+                const progressText = `Building reports... ${i + 1}/${students.length}`;
+                overlay.text(progressText);
+                if ((i + 1) % 10 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+            }
+            
             const estLogoUrl = students[0]?.field_3206 || students[0]?.field_61 || '';
             await setLogos(container, estLogoUrl);
 
-            window.print();
+            overlay.text('Preparing print view...');
             
-            // Restore button
-            btn.text(originalText).prop('disabled', false);
-            
-            // Optionally remove container afterwards
-            // setTimeout(()=>container.remove(), 1000);
+            setTimeout(() => {
+                window.print();
+                if (overlay) overlay.remove();
+                btn.text(originalText).prop('disabled', false);
+                // Optionally remove container
+                // $(`#${containerId}`).remove();
+            }, 500);
+
         } catch (e) {
             err('Error in run function:', e);
             console.error('Full error object:', e);
             console.error('Error stack:', e.stack);
-            alert('Error generating reports: ' + e.message);
+            alert('Error generating reports: ' + (e.message || 'Unknown error'));
             
-            // Restore button on error
-            const btn = $('#bulkPrintbtn');
-            if (btn.length) {
-                btn.text('Print All Reports').prop('disabled', false);
-            }
+            if (overlay) overlay.remove();
+            btn.text(originalText).prop('disabled', false);
         }
     }
 
-    // Bind click handler when view_3062 renders (already exists but we override)
+    // Bind click handler when view_3062 renders
     $(document).on('knack-view-render.view_3062', function (event, view) {
         $('#' + view.key + ' #bulkPrintbtn').off('click.bulk').on('click.bulk', function (e) {
             e.preventDefault();
@@ -318,24 +447,28 @@
 
     // Expose init for loader (called immediately by WorkingBridge)
     window.initializeBulkPrintApp = function () {
-        // Read config when initializer is called
         cfg = window.BULK_PRINT_CONFIG || {};
         log('Config at initialization:', cfg);
         
         log('BulkPrint app initialised. Waiting for button click.');
+        
+        // Render filters only once
+        if (!$('#bulkPrintFilters').length) {
+            renderFilterUI();
+        }
+
         injectStyles();
         
         // Debug: Check if we're on the right view
         console.log('[BulkPrint] Current scene:', Knack.scene?.key);
         console.log('[BulkPrint] Looking for button #bulkPrintbtn in view_3062');
         
-        // Try to bind immediately if view already rendered
         const btn = $('#view_3062 #bulkPrintbtn');
-        if (btn.length) {
-            console.log('[BulkPrint] Button found immediately, binding click handler');
+        if (btn.length && !btn.data('bulk-print-bound')) {
+            console.log('[BulkPrint] Button found, binding click handler');
+            btn.data('bulk-print-bound', true); // Mark as bound
             btn.off('click.bulk').on('click.bulk', function (e) {
                 e.preventDefault();
-                console.log('[BulkPrint] Button clicked via immediate binding');
                 run();
             });
         }
