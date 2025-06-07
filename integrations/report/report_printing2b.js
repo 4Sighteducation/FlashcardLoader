@@ -22,9 +22,14 @@
 
     // --- CONFIG ---
     const cfg = window.BULK_PRINT_CONFIG || {};
+    
+    // Debug log the config
+    log('Config received:', cfg);
+    
     if (!cfg.knackAppId || !cfg.knackApiKey) {
-        err('Missing Knack credentials in BULK_PRINT_CONFIG');
-        return;
+        err('Missing Knack credentials in BULK_PRINT_CONFIG', cfg);
+        // Don't return - the initializer still needs to be defined
+        // return;
     }
 
     const FIELD_MAP = {
@@ -227,6 +232,12 @@
     // Main execution when button clicked
     async function run() {
         try {
+            // Check config again before running
+            if (!cfg.knackAppId || !cfg.knackApiKey) {
+                alert('Configuration error: Missing Knack credentials. Please contact support.');
+                return;
+            }
+            
             injectStyles();
             const user = Knack.getUserAttributes();
             if (!user || !user.email) throw new Error('Cannot determine logged-in user');
@@ -295,3 +306,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully');
 })();
+
