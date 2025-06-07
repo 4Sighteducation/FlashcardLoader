@@ -238,8 +238,11 @@
             
             // Show loading indicator
             const btn = $('#bulkPrintbtn');
+            log('Button element found:', btn.length);
             const originalText = btn.text();
+            log('Original button text:', originalText);
             btn.text('Generating reports...').prop('disabled', true);
+            log('Button text after change:', btn.text());
             
             // Read config when we actually need it
             cfg = window.BULK_PRINT_CONFIG || {};
@@ -292,7 +295,9 @@
             // Optionally remove container afterwards
             // setTimeout(()=>container.remove(), 1000);
         } catch (e) {
-            err(e);
+            err('Error in run function:', e);
+            console.error('Full error object:', e);
+            console.error('Error stack:', e.stack);
             alert('Error generating reports: ' + e.message);
             
             // Restore button on error
@@ -339,3 +344,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully');
 })();
+
