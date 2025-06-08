@@ -1,13 +1,11 @@
 .view_2968 .kn-entries-summary {
     display: none !important;
-  }.
+  }
   
   .view_2968 .kn-label-none.field_2974 {
     border: 2px solid #00ff99;
     animation: glowing 1.5s infinite;
   }
-
-customStudentPrintBtn
 
 /* Custom CSS to fix table headings in Knack specifically for view_533 table */
 
@@ -1132,4 +1130,14 @@ hr {
 .coach-qs li { margin-bottom:2px; }
 .activities { margin-top:2px; font-style:italic; }
 .reflection, .action-plan { border:1px solid #888; padding:4px; flex:1; min-height:40mm; }
-.page { page-break-after: always; } 
+.page { page-break-after: always; }
+
+/* Added stacked layout for comment/goal section */
+.bottom-row {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6mm !important;
+}
+.bottom-row .comment-box {
+  width: 100% !important;
+} 
