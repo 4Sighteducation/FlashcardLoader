@@ -1,0 +1,926 @@
+.view_2968 .kn-entries-summary {
+    display: none !important;
+  }.
+  
+  .view_2968 .kn-label-none.field_2974 {
+    border: 2px solid #00ff99;
+    animation: glowing 1.5s infinite;
+  }
+
+customStudentPrintBtn
+
+/* Custom CSS to fix table headings in Knack specifically for view_533 table */
+
+/* Target the specific view */
+.view_533 .kn-table thead th {
+  display: table-cell !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: white !important;
+  background-color: #34495e !important; /* Darker blue background for better contrast */
+  font-weight: bold !important;
+  padding: 10px 8px !important;
+  border-bottom: 2px solid #2c3e50 !important;
+  text-transform: uppercase !important;
+  font-size: 14px !important;
+}
+
+/* Ensure the text in headers is visible with better contrast */
+.view_533 .kn-table thead th span {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: white !important;
+}
+
+/* Make sure sort icons are visible */
+.view_533 .kn-table thead th .icon {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: white !important;
+}
+
+/* Add some additional styling to improve overall table appearance */
+.view_533 .kn-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.1) !important;
+}
+
+/* Alternating row colors for better readability */
+.view_533 .kn-table tbody tr:nth-child(odd) {
+  background-color: #f9f9f9 !important;
+}
+
+.view_533 .kn-table tbody tr:hover {
+  background-color: #eaf2f8 !important;
+}
+
+.view_533 .kn-table tbody td {
+  padding: 8px !important;
+  border-bottom: 1px solid #ddd !important;
+}
+
+/* Fix any potential z-index issues that might be hiding headers */
+.view_533 .kn-table-wrapper {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.view_533 .kn-table thead {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Specifically style the red header area shown in the image */
+.view_533 .kn-table thead tr {
+  background-color: #34495e !important;
+  color: white !important;
+}
+
+/* Make "view" buttons more consistent */
+.view_533 .kn-table .knViewLink {
+  display: inline-block !important;
+  padding: 4px 8px !important;
+  border-radius: 3px !important;
+  background-color: #2ab27b !important;
+  color: white !important;
+  text-decoration: none !important;
+}
+
+/* Improve readability of colored cells */
+.view_533 .kn-table td[style*="background-color:#46db24"],
+.view_533 .kn-table td[style*="background-color:#53d310"] {
+  color: #333 !important;
+}
+
+.view_533 .kn-table td[style*="background-color:#df1313"],
+.view_533 .kn-table td[style*="background-color:#f29310"] {
+  color: white !important;
+}
+
+/* =======================================================
+   VESPA RESULTS TABLE (view_2721) - SPECIFIC STYLING
+   ======================================================= */
+
+/* Main table container styling */
+.kn-view.view_2721 {
+  font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+/* Title styling */
+.kn-view.view_2721 .kn-title {
+  background: #23356f;
+  color: white;
+  padding: 16px 20px;
+  margin: 0;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+/* View header */
+.kn-view.view_2721 .view-header {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/* Table wrapper */
+.kn-view.view_2721 .kn-table-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Main table */
+.kn-view.view_2721 .kn-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+/* ===== TABLE HEADERS ===== */
+.kn-view.view_2721 .kn-table thead th {
+  background: #23356f;
+  color: white;
+  font-weight: 600;
+  padding: 12px 8px;
+  text-align: center;
+  border-bottom: 2px solid #192550;
+  white-space: nowrap;
+}
+
+/* Ensure header text is visible */
+.kn-view.view_2721 .kn-table thead th span {
+  color: white;
+}
+
+/* Header sort links */
+.kn-view.view_2721 .kn-table thead th a.kn-sort {
+  color: white;
+}
+
+/* Name column header */
+.kn-view.view_2721 .kn-table thead th.field_187 {
+  text-align: left;
+}
+
+/* ===== TABLE CELLS ===== */
+.kn-view.view_2721 .kn-table td {
+  padding: 10px 8px;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+/* Name column styling */
+.kn-view.view_2721 .kn-table td.field_187 {
+  text-align: left;
+  font-weight: 500;
+  padding-left: 16px;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* Add spacing between VESPA categories */
+.kn-view.view_2721 .kn-table td:nth-child(5),
+.kn-view.view_2721 .kn-table th:nth-child(5),
+.kn-view.view_2721 .kn-table td:nth-child(9),
+.kn-view.view_2721 .kn-table th:nth-child(9),
+.kn-view.view_2721 .kn-table td:nth-child(13),
+.kn-view.view_2721 .kn-table th:nth-child(13),
+.kn-view.view_2721 .kn-table td:nth-child(17),
+.kn-view.view_2721 .kn-table th:nth-child(17),
+.kn-view.view_2721 .kn-table td:nth-child(21),
+.kn-view.view_2721 .kn-table th:nth-child(21) {
+  border-right: 1px solid #d1d5db;
+}
+
+/* ===== SCORE COLORS ===== */
+/* Green (highest) */
+.kn-view.view_2721 .kn-table td[style*="background-color:#10a22f"] {
+  background-color: #22c55e !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+/* Light Green */
+.kn-view.view_2721 .kn-table td[style*="background-color:#7acb20"] {
+  background-color: #84cc16 !important;
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+/* Orange */
+.kn-view.view_2721 .kn-table td[style*="background-color:#ff7a00"] {
+  background-color: #f59e0b !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+/* Red (lowest) */
+.kn-view.view_2721 .kn-table td[style*="background-color:#ff0000"] {
+  background-color: #ef4444 !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+/* ===== TREND INDICATORS ===== */
+/* Up trend */
+.kn-view.view_2721 i.fa-arrow-up {
+  color: #22c55e !important;
+  font-size: 1.2em !important;
+}
+
+/* Down trend */
+.kn-view.view_2721 i.fa-arrow-down {
+  color: #ef4444 !important;
+  font-size: 1.2em !important;
+}
+
+/* No change */
+.kn-view.view_2721 i.fa-arrows-h {
+  color: #94a3b8 !important;
+  font-size: 1.2em !important;
+}
+
+/* ===== AVERAGE ROW ===== */
+.kn-view.view_2721 .kn-table-totals td {
+  background: #f8fafc !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  border-top: 2px solid #e2e8f0 !important;
+}
+
+/* ===== SEARCH AND CONTROLS ===== */
+.kn-view.view_2721 .kn-records-nav {
+  padding: 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Search input */
+.kn-view.view_2721 .table-keyword-search .input {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px 0 0 6px;
+  padding: 8px 12px;
+}
+
+/* Search button */
+.kn-view.view_2721 .table-keyword-search .kn-button.search {
+  background: #3b82f6;
+  color: white;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Row hover effect */
+.kn-view.view_2721 .kn-table tbody tr:hover td {
+  opacity: 0.85;
+  filter: brightness(0.95);
+}
+
+/* ===== PAGINATION ===== */
+.kn-view.view_2721 .kn-pagination {
+  padding: 15px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.kn-view.view_2721 .kn-select select {
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+@media only screen and (max-width: 767px) { /* Hide kn-info-bar on mobile */ .kn-info-bar { display: none !important; } }
+
+/* Enhanced Styling for Student Report Table */
+
+/* Custom Scrollbars for Report Response and Action Plan text areas */
+/* Targeting the span within the 11th and 12th td elements */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a],
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a] {
+    scrollbar-width: thin !important; /* For Firefox */
+    scrollbar-color: #adb5bd #f1f3f5 !important; /* For Firefox - thumb and track */
+    padding-right: 5px !important; /* Add a little padding so text doesn't touch scrollbar */
+}
+
+/* WebKit (Chrome, Safari, Edge) scrollbar styles */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-track,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-track {
+    background: #f1f3f5 !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb {
+    background: #adb5bd !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover {
+    background: #868e96 !important;
+}
+
+/* VESPA Column Styling (V, E, S, P, A, O) - 5th to 10th columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    text-align: center !important;
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    font-size: 1.05em !important; /* Slightly larger font */
+    font-weight: bold !important; /* Bolder numbers */
+    text-align: center !important; /* Centered numbers */
+    padding: 8px 4px !important; /* Adjust padding */
+}
+
+/* Student Name and Group Column Styling - 1st and 2nd columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+    word-break: break-word; /* Helps prevent overly wide cells if names are long */
+}
+
+/* Optional: Adjust padding for all header cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th .p-column-header-content {
+    padding: 0.8rem 0.5rem !important; /* Reduced padding */
+}
+
+/* Optional: Adjust padding for all body cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td {
+    padding: 0.8rem 0.5rem !important; /* Consistent padding */
+}
+
+/* Ensure the Report Response and Action Plan columns still have enough space */
+/* Overriding the general td padding for these specific columns if needed */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) {
+    padding: 0.8rem 0.8rem !important; /* Give them a bit more horizontal padding */
+}
+
+/* Make the "Report" button column (3rd column) a bit more compact if desired */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(3),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
+    width: 80px !important; /* Reduced from 100px */
+    padding: 8px 4px !important;
+    text-align: center !important;
+}
+
+/* General Styles for the Details View */
+.kn-details-column.first.column.is-horizontal {
+    font-family: Arial, sans-serif !important;
+    background-color: #f9f9f9 !important; /* Light background for the whole area */
+    padding: 20px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+}
+
+/* Style for the main Name field */
+.kn-detail.field_187 .kn-detail-label span h2,
+.kn-detail.field_187 .kn-detail-body span h2 {
+    font-size: 1.8em !important;
+    color: #333 !important;
+    margin-bottom: 20px !important;
+    font-weight: bold !important;
+    text-align: left !important;
+}
+.kn-detail.field_187 .kn-detail-label {
+    display: none !important; /* Hide label if name is clear */
+}
+.kn-detail.field_187 .kn-detail-body {
+    width: 100% !important;
+}
+
+
+/* Container for the three cycle columns */
+.kn-details-group.column-3.columns {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 20px !important;
+    width: 100% !important;
+    margin-top: 20px !important;
+}
+
+/* Individual Cycle Column Styling */
+.kn-details-group.column-3.columns > .kn-details-group-column.column {
+    flex: 1 !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    padding: 20px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+}
+
+/* Cycle Titles (e.g., "Cycle 1") */
+.kn-special-title h3 {
+    font-size: 1.5em !important;
+    color: #2c3e50 !important;
+    margin-bottom: 15px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 2px solid #3498db !important;
+    font-weight: bold !important;
+}
+.kn-special-title p {
+    display: none !important; /* Hide empty paragraph if not used */
+}
+
+/* Styling for each detail row (label + value) within a cycle, e.g., VISION: 8 */
+.kn-detail {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    margin-bottom: 5px !important;
+}
+.kn-detail:last-child {
+    border-bottom: none !important;
+}
+
+.kn-detail .kn-detail-label {
+    min-width: auto !important; /* Override fixed widths */
+    max-width: none !important;
+    font-weight: bold !important;
+    color: #555 !important;
+    padding-right: 10px !important;
+    flex-basis: 40% !important; /* Give label some space */
+    text-align: left !important;
+}
+.kn-detail .kn-detail-label span,
+.kn-detail .kn-detail-label span strong span { /* Target nested spans for VESPA labels */
+    font-size: 0.95em !important;
+    font-weight: bold !important;
+    /* color: #34495e !important; */ /* Color will be handled by specific VESPA rules now */
+}
+
+/* VESPA Row Specific Label Styling */
+.kn-detail.field_155 .kn-detail-label, /* V C1 */
+.kn-detail.field_161 .kn-detail-label, /* V C2 */
+.kn-detail.field_167 .kn-detail-label  /* V C3 */ {
+    background-color: #ffab40 !important; /* Softer VISION - Orange */
+    color: #333333 !important; /* Dark text */
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+}
+
+.kn-detail.field_156 .kn-detail-label, /* E C1 */
+.kn-detail.field_162 .kn-detail-label, /* E C2 */
+.kn-detail.field_168 .kn-detail-label  /* E C3 */ {
+    background-color: #a9c8f5 !important; /* Softer EFFORT - Light Blue */
+    color: #333333 !important; /* Dark text */
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+}
+
+.kn-detail.field_157 .kn-detail-label, /* S C1 */
+.kn-detail.field_163 .kn-detail-label, /* S C2 */
+.kn-detail.field_169 .kn-detail-label  /* S C3 */ {
+    background-color: #90d66f !important; /* Softer SYSTEMS - Green */
+    color: white !important;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+}
+
+.kn-detail.field_158 .kn-detail-label, /* P C1 */
+.kn-detail.field_164 .kn-detail-label, /* P C2 */
+.kn-detail.field_170 .kn-detail-label  /* P C3 */ {
+    background-color: #9c57c0 !important; /* Softer PRACTICE - Purple */
+    color: white !important;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+}
+
+.kn-detail.field_159 .kn-detail-label, /* A C1 */
+.kn-detail.field_165 .kn-detail-label, /* A C2 */
+.kn-detail.field_171 .kn-detail-label  /* A C3 */ {
+    background-color: #f567ea !important; /* Softer ATTITUDE - Pink */
+    color: #333333 !important; /* Dark text */
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+}
+/* Ensure label text inside new backgrounds is visible */
+.kn-detail.field_155 .kn-detail-label span strong span,
+.kn-detail.field_161 .kn-detail-label span strong span,
+.kn-detail.field_167 .kn-detail-label span strong span,
+.kn-detail.field_156 .kn-detail-label span strong span,
+.kn-detail.field_162 .kn-detail-label span strong span,
+.kn-detail.field_168 .kn-detail-label span strong span,
+.kn-detail.field_159 .kn-detail-label span strong span,
+.kn-detail.field_165 .kn-detail-label span strong span,
+.kn-detail.field_171 .kn-detail-label span strong span {
+    color: inherit !important; /* Inherit from the .kn-detail-label color */
+}
+.kn-detail.field_157 .kn-detail-label span strong span,
+.kn-detail.field_163 .kn-detail-label span strong span,
+.kn-detail.field_169 .kn-detail-label span strong span,
+.kn-detail.field_158 .kn-detail-label span strong span,
+.kn-detail.field_164 .kn-detail-label span strong span,
+.kn-detail.field_170 .kn-detail-label span strong span {
+    color: white !important;
+}
+
+.kn-detail .kn-detail-body {
+    text-align: right !important;
+    flex-basis: 60% !important;
+    display: flex !important; /* Use flex to better control alignment */
+    justify-content: flex-end !important; /* Align score block to the right */
+    align-items: center !important; /* Vertically center */
+}
+.kn-detail .kn-detail-body span,
+.kn-detail .kn-detail-body span strong span {  /* Target nested spans for VESPA scores */
+    font-size: 0.95em !important;
+    color: #333 !important;
+    font-weight: normal !important; /* Scores might not need to be bold if labels are */
+}
+.kn-detail .kn-detail-body span strong span {
+     display: inline-block !important;
+     padding: 5px 10px !important;
+     background-color: #e9ecef !important; /* Light grey background for score */
+     border-radius: 4px !important;
+     font-size: 1.3em !important;
+     font-weight: bold !important;
+     color: #0056b3 !important; /* Distinct blue for score text */
+     min-width: 35px !important; /* Min width for consistency */
+     text-align: center !important;
+     line-height: 1.1 !important; /* Adjust for padding */
+}
+
+
+/* Horizontal Rule <hr> Styling */
+hr {
+    border: none !important;
+    border-top: 1px solid #ddd !important;
+    margin: 20px 0 !important;
+}
+
+/* Styling for label-on-top fields (Comments, Reflections, Goals) */
+.kn-label-top .kn-detail-label {
+    min-width: 100% !important; /* Full width for these labels */
+    max-width: 100% !important;
+    margin-bottom: 8px !important;
+    text-align: left !important;
+}
+.kn-label-top .kn-detail-label span span { /* Target the inner span for the label text */
+    font-size: 1.1em !important;
+    font-weight: bold !important;
+    color: #34495e !important;
+}
+
+/* Styling for the body/content of these text areas */
+.field_2302 .kn-detail-body, /* Student Comment C1 */
+.field_2303 .kn-detail-body, /* Student Comment C2 */
+.field_2304 .kn-detail-body, /* Student Comment C3 */
+.field_2499 .kn-detail-body, /* Goal Cycle 1 */
+.field_2493 .kn-detail-body, /* Goal Cycle 2 */
+.field_2494 .kn-detail-body, /* Goal Cycle 3 */
+.field_2488 .kn-detail-body, /* Coach Comment Cycle 1 */
+.field_2490 .kn-detail-body, /* Coach Comment Cycle 2 */
+.field_2491 .kn-detail-body  /* Coach Comment Cycle 3 */ {
+    font-size: 0.95em !important;
+    color: #444 !important;
+    line-height: 1.6 !important;
+    padding: 10px !important;
+    /* border: 1px dashed #ccc !important; */
+    border: 1px solid #d0d0d0 !important; /* MODIFIED BORDER */
+    background-color: #fdfdfd !important;
+    border-radius: 4px !important;
+    /* height: 120px !important; */
+    height: 160px !important; /* INCREASED HEIGHT */
+    overflow-y: auto !important; /* << ALLOW SCROLLING IF CONTENT OVERFLOWS */
+    /* margin-bottom: 100px !important; */ /* Space for handwritten notes */
+    margin-bottom: 20px !important; /* REDUCED MARGIN FOR SCREEN */
+    box-sizing: border-box !important; /* Ensure padding and border are included in height */
+}
+
+/* Remove the specific padding-bottom for :empty if we have a fixed height */
+/* The margin-bottom on the main rule above will provide the writing space */
+.field_2302 .kn-detail-body:empty,
+.field_2303 .kn-detail-body:empty,
+.field_2304 .kn-detail-body:empty,
+.field_2499 .kn-detail-body:empty,
+.field_2493 .kn-detail-body:empty,
+.field_2494 .kn-detail-body:empty,
+.field_2488 .kn-detail-body:empty,
+.field_2490 .kn-detail-body:empty,
+.field_2491 .kn-detail-body:empty {
+    /* The fixed height and margin-bottom from the rule above should suffice.
+       If you want empty boxes to *look* like they have lines, that's more complex.
+       For now, they will be 120px tall + 100px margin below. */
+}
+
+/* Goal Review Date styling - similar to other kn-detail rows */
+.kn-detail.field_2500, /* Cycle 1 Goal Review Date */
+.kn-detail.field_2495, /* Cycle 2 Goal Review Date */
+.kn-detail.field_2498  /* Cycle 3 Goal Review Date */ {
+    /* Uses general .kn-detail styles, add specifics if needed */
+}
+.kn-detail.field_2500 .kn-detail-label span span,
+.kn-detail.field_2495 .kn-detail-label span span,
+.kn-detail.field_2498 .kn-detail-label span span {
+    font-weight: bold !important;
+    color: #555 !important;
+}
+
+
+/* Hide the table structure if it's not helping */
+.kn-table.is-unbordered {
+    border: none !important;
+    background-color: transparent !important;
+}
+
+/* Clean up any residual Bulma column padding if necessary */
+.kn-details-group-column.column {
+    padding-left: 0 !important; /* Adjust if too much gap inside cycle boxes */
+    padding-right: 0 !important;
+}
+
+/* Custom Print Button Styles for Rich Text Field */
+#customStudentPrintBtn {
+    display: inline-flex !important; /* Use inline-flex for centering */
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 12px 25px !important; /* Made button bigger */
+    background-color: #00e5db !important; /* User changed */
+    color: white !important;
+    font-size: 1em !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    border-radius: 5px !important;
+    border: 2px solid #00b8a9 !important; /* Added border */
+    cursor: pointer !important;
+    margin: 10px 0 !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#customStudentPrintBtn:hover {
+    background-color: #00c2b3 !important; /* Darker shade on hover */
+    border-color: #008f7a !important; /* Darker border on hover */
+    transform: translateY(-1px); /* Slight lift */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15); /* Enhanced shadow on hover */
+}
+
+/* If you want to ensure it doesn't pick up unwanted .kn-button styles: */
+#customStudentPrintBtn.kn-button {
+    /* Override any specific .kn-button styles here if needed,
+       e.g., background-image: none !important; if Knack adds gradients */
+}
+
+
+
+
+@media print {
+    /* --- Page Setup --- */
+    @page {
+        size: A4 landscape;
+        margin: 0; /* MODIFIED: Request browser's minimum margins */
+    }
+
+    /* --- General Print Resets & Basic Styling --- */
+    body {
+        background-color: #fff !important; margin: 0 !important; padding: 0 !important;
+        font-family: 'Helvetica', Arial, sans-serif !important; font-size: 8pt !important; /* Further reduced base */
+        color: #000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+    }
+    
+    /* --- Default Visibility: Hide everything not explicitly shown --- */
+    body * { visibility: hidden !important; }
+
+    /* --- Explicitly Show Target Sections and ALL their Descendants --- */
+    /* This targets each student record block and ensures all its children become visible and styled for print */
+    .kn-details-column.column.is-horizontal,
+    .kn-details-column.column.is-horizontal * { /* Applies to the container AND ALL its descendants */
+        visibility: visible !important;
+        float: none !important;
+        position: static !important;
+        line-height: 1.2 !important; /* Tighter base line height, applied broadly */
+    }
+
+
+    /* --- Hide Unnecessary Knack UI & Custom Button (Keep this section as is) --- */
+    #kn-app-header, .kn-scene .kn-view > .level, .kn-scene .kn-rich-text[data-view-key="view_3054"],
+    .kn-backlink, .kn-pagination, .kn-entries-summary, .kn-filter-menu,
+    #customStudentPrintBtn, .kn-view[data-view-key="view_3054"],
+    body > header, body > nav, body > footer, body > aside,
+    .kn-view[data-view-key="scene_1224"] > .level {
+        display: none !important; visibility: hidden !important;
+    }
+
+    /* --- Style the MAIN STUDENT RECORD CONTAINER for ONE A4 LANDSCAPE PAGE --- */
+    .kn-details-column.column.is-horizontal {
+        display: flex !important; flex-direction: column !important;
+        width: calc(297mm - 14mm) !important;  /* A4 landscape width minus new page margins */
+        height: calc(210mm - 14mm - 1mm) !important; /* A4 landscape height minus new page margins and safety */
+        margin: 0 auto !important; padding: 1mm 0 0 0 !important; /* Small top padding, no other padding */
+        background-color: #fff !important; border: 0.5pt solid #777 !important;
+        box-shadow: none !important; overflow: hidden !important;
+        box-sizing: border-box !important; page-break-after: always !important;
+    }
+
+    /* Name Section */
+    .kn-details-column .kn-details-group.column-1.columns {
+        padding: 2mm 4mm 1.5mm 4mm !important; /* Reduced Top/Bottom padding */
+        margin: 0 !important; box-sizing: border-box !important;
+        height: auto; flex-shrink: 0;
+    }
+    .kn-details-column .kn-detail.field_187 { padding: 0 !important; }
+    .kn-details-column .kn-detail.field_187 .kn-detail-label { display: none !important; }
+    .kn-details-column .kn-detail.field_187 .kn-detail-body span h2 {
+        font-size: 14pt !important; text-align: center !important; /* Reduced font size */
+        margin: 0 !important; padding: 0 !important; color: #000 !important; font-weight: bold;
+    }
+
+    /* Cycles Section (parent of the 3 cycle columns) */
+    .kn-details-column .kn-details-group.column-3.columns {
+        display: flex !important; flex-grow: 1 !important;
+        justify-content: space-between !important;
+        gap: 2.5mm !important; /* Reduced gap */
+        padding: 0 3mm 3mm 3mm !important; /* Reduced padding */
+        margin: 0 !important; /* ADDED: Ensure no inherited top margin */
+        box-sizing: border-box !important; overflow: hidden;
+        min-height: 0; /* For flex children */
+    }
+
+    /* Individual Cycle Column */
+    .kn-details-column .kn-details-group.column-3.columns > .kn-details-group-column.column {
+        flex: 1 1 31% !important; /* Slightly adjust basis if needed */
+        min-width: 0; background-color: #fdfdfd !important; border: 0.5pt solid #b0b0b0 !important;
+        padding: 1.5mm !important; /* Reduced padding */
+        box-shadow: none !important; display: flex !important; flex-direction: column !important;
+        max-height: 100%; overflow-y: auto !important; /* Scroll if needed */
+    }
+
+    .kn-details-column .kn-special-title h3 {
+        font-size: 10pt !important; color: #000 !important; /* Reduced */
+        margin: 0 0 1mm 0 !important; padding-bottom: 0.5mm !important; /* Reduced */
+        border-bottom: 0.5pt solid #999 !important; text-align: center;
+        font-weight: bold; flex-shrink: 0;
+    }
+    
+    .kn-details-column .kn-label-left.kn-table.is-unbordered {
+        display: flex !important; flex-direction: column !important;
+        flex-grow: 1 !important; min-height: 0; /* For flex children to behave */
+    }
+
+    /* VESPA score rows, Goal review date */
+    .kn-details-column .kn-detail { /* This targets ALL kn-detail rows */
+        display: flex !important; justify-content: space-between !important;
+        align-items: center; /* Center align items vertically in the row */
+        padding: 0.3mm 0 !important; /* Reduced padding SIGNIFICANTLY */
+        margin-bottom: 0.3mm !important; /* Reduced margin */
+        font-size: 7pt !important; /* Reduced font */
+        border-bottom: 0.5pt solid #f0f0f0 !important;
+        line-height: 1.1 !important; /* Tighter line height */
+        flex-shrink: 0; min-height: 4mm; /* Give a small explicit min-height */
+    }
+    .kn-details-column .kn-detail:last-of-type { border-bottom: none !important; }
+
+    .kn-details-column .kn-detail .kn-detail-label {
+        min-width: auto !important; max-width: none !important;
+        flex-basis: 50% !important; text-align: left !important; font-weight: bold !important;
+        padding-right: 0.5mm !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .kn-details-column .kn-detail .kn-detail-label span, /* Generalize for all spans in label */
+    .kn-details-column .kn-detail .kn-detail-label span strong span, /* For nested strong spans */
+    .kn-details-column .kn-detail .kn-detail-label span h2 strong span { /* for H2 variants */
+        font-size: 7pt !important; font-weight: bold !important; color: #000 !important;
+    }
+    .kn-details-column .kn-detail .kn-detail-body {
+        flex-basis: 50% !important; text-align: right !important;
+        display: block !important; /* Revert from screen's flex for print */
+        padding: 0 !important; /* Ensure no body padding from screen styles */
+    }
+     .kn-details-column .kn-detail .kn-detail-body span, /* Generalize */
+     .kn-details-column .kn-detail .kn-detail-body span strong span,
+     .kn-details-column .kn-detail .kn-detail-body span h2 strong span {
+        font-size: 7pt !important; font-weight: normal !important; color: #000 !important;
+    }
+    .kn-details-column .kn-detail .kn-detail-body span strong span, /* Specifically make bold scores bold again */
+    .kn-details-column .kn-detail .kn-detail-body span h2 strong span {
+        font-weight: bold !important;
+        /* --- START: Print Resets for Screen-Styled VESPA Scores --- */
+        padding: 0 !important;
+        margin: 0 !important;
+        background-color: transparent !important;
+        border-radius: 0 !important;
+        min-width: auto !important;
+        display: inline !important; /* Revert from screen's inline-block */
+        line-height: 1.1 !important; /* Match .kn-detail line-height for print */
+        font-size: 7pt !important; /* Ensure print font size */
+        color: #000 !important; /* Ensure print color */
+        /* --- END: Print Resets for Screen-Styled VESPA Scores --- */
+    }
+
+    /* Text Area Labels and their containers */
+    .kn-details-column .kn-label-top { /* Generic for all label-on-top sections */
+        margin-top: 1mm !important; flex-shrink: 0; display: flex; flex-direction: column;
+    }
+    .kn-details-column .kn-label-top .kn-detail-label {
+        margin-bottom: 0.5mm !important; text-align: left !important; flex-shrink: 0;
+    }
+    .kn-details-column .kn-label-top .kn-detail-label span span {
+        font-size: 7.5pt !important; font-weight: bold !important; color: #000 !important;
+    }
+
+    /* Text Area Bodies (Student Comment, Goal, Academic Coach Comment) */
+    .kn-details-column div[class*="field_2302"] .kn-detail-body, /* Student Comments */
+    .kn-details-column div[class*="field_2303"] .kn-detail-body,
+    .kn-details-column div[class*="field_2304"] .kn-detail-body,
+    .kn-details-column div[class*="field_2499"] .kn-detail-body, /* Goals */
+    .kn-details-column div[class*="field_2493"] .kn-detail-body,
+    .kn-details-column div[class*="field_2494"] .kn-detail-body,
+    .kn-details-column div[class*="field_2488"] .kn-detail-body, /* Academic Coach Comments - ADDED */
+    .kn-details-column div[class*="field_2490"] .kn-detail-body, /* ADDED */
+    .kn-details-column div[class*="field_2491"] .kn-detail-body  /* ADDED */ {
+        font-size: 6.5pt !important; line-height: 1.2 !important; /* Even smaller for text blocks */
+        padding: 0.8mm 1mm !important; border: 0.5pt solid #ccc !important;
+        min-height: 7mm !important; /* Reduced min-height */
+        flex-grow: 1; overflow-y: auto !important;
+        margin-bottom: 1mm !important; background-color: #fdfdfd !important;
+        max-height: 30mm; /* Reduced max-height, critical tuning point */
+        word-break: break-word;
+    }
+    
+    .kn-details-column hr {
+        border-top: 0.5pt solid #ccc !important; margin: 0.5mm 0 !important; /* Reduced margin */
+        flex-shrink: 0;
+    }
+
+    /* --- START: Print Resets for Screen-Styled VESPA Labels --- */
+    .kn-details-column .kn-detail.field_155 .kn-detail-label, /* V C1 */
+    .kn-details-column .kn-detail.field_161 .kn-detail-label, /* V C2 */
+    .kn-details-column .kn-detail.field_167 .kn-detail-label, /* V C3 */
+    .kn-details-column .kn-detail.field_156 .kn-detail-label, /* E C1 */
+    .kn-details-column .kn-detail.field_162 .kn-detail-label, /* E C2 */
+    .kn-details-column .kn-detail.field_168 .kn-detail-label, /* E C3 */
+    .kn-details-column .kn-detail.field_157 .kn-detail-label, /* S C1 */
+    .kn-details-column .kn-detail.field_163 .kn-detail-label, /* S C2 */
+    .kn-details-column .kn-detail.field_169 .kn-detail-label, /* S C3 */
+    .kn-details-column .kn-detail.field_158 .kn-detail-label, /* P C1 */
+    .kn-details-column .kn-detail.field_164 .kn-detail-label, /* P C2 */
+    .kn-details-column .kn-detail.field_170 .kn-detail-label, /* P C3 */
+    .kn-details-column .kn-detail.field_159 .kn-detail-label, /* A C1 */
+    .kn-details-column .kn-detail.field_165 .kn-detail-label, /* A C2 */
+    .kn-details-column .kn-detail.field_171 .kn-detail-label, /* A C3 */
+    .kn-details-column .kn-detail.field_160 .kn-detail-label, /* O C1 */
+    .kn-details-column .kn-detail.field_166 .kn-detail-label, /* O C2 */
+    .kn-details-column .kn-detail.field_172 .kn-detail-label  /* O C3 */ {
+        padding: 0 !important;
+        margin: 0 !important;
+        background-color: transparent !important;
+        border-radius: 0 !important;
+        color: #000 !important; /* Ensure text color is black */
+    }
+    /* Reset inner span text color for these labels if explicitly set by screen styles */
+    .kn-details-column .kn-detail.field_155 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_161 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_167 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_156 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_162 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_168 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_159 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_165 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_171 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_160 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_166 .kn-detail-label span strong span,
+    .kn-details-column .kn-detail.field_172 .kn-detail-label span strong span {
+        color: #000 !important;
+    }
+    /* --- END: Print Resets for Screen-Styled VESPA Labels --- */
+}
