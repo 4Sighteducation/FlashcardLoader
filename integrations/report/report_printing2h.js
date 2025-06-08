@@ -141,11 +141,12 @@
             uiFilterRules.push({ field: FIELD_MAP.cycle, operator: 'is', value: filters.cycle });
         }
         if (filters.yearGroup) {
-            // Assuming field_144 is a text field. If it's a connection, this needs adjustment.
-            uiFilterRules.push({ field: 'field_144', operator: 'contains', value: filters.yearGroup });
+            // field_144 is Year Group, likely a connection. Filter on the raw value.
+            uiFilterRules.push({ field: 'field_144_raw', operator: 'contains', value: filters.yearGroup });
         }
         if (filters.group) {
-            uiFilterRules.push({ field: FIELD_MAP.group, operator: 'contains', value: filters.group });
+            // field_223 is Group, also likely a connection. Filter on the raw value.
+            uiFilterRules.push({ field: FIELD_MAP.group + '_raw', operator: 'contains', value: filters.group });
         }
         if (filters.tutorId) {
             // field_145 is the connection to the Tutor object
@@ -396,7 +397,8 @@
             }
 
             overlay.text('Fetching students...');
-            const MAX_STUDENTS = 150; // Increased limit slightly
+            // Increased limit to 450 as requested, can be adjusted here.
+            const MAX_STUDENTS = 450;
             const filters = {
                 cycle: $('#filterCycle').val(),
                 yearGroup: $('#filterYearGroup').val(),
@@ -429,8 +431,9 @@
             if (container) container.remove();
             container = document.createElement('div');
             container.id = containerId;
-            container.style.visibility = 'hidden'; 
+            // Position off-screen instead of hiding for print compatibility
             container.style.position = 'absolute';
+            container.style.left = '-9999px';
             document.body.appendChild(container);
 
             for (let i = 0; i < students.length; i++) {
