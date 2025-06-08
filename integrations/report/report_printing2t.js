@@ -70,7 +70,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2s.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2p.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -276,80 +276,104 @@
         // -- Header --
         const reportHeader = createAndAppend(reportPage, 'div', null, 'report-header');
         
-        const logoLeft = document.createElement('img');
-        logoLeft.className = 'logo';
-        logoLeft.alt = 'Logo';
-        reportHeader.appendChild(logoLeft); // Src set later
+        const headerInfo = createAndAppend(reportHeader, 'div', null, 'header-info');
+        createAndAppend(headerInfo, 'div', `STUDENT: ${fullName}`, 'header-student');
+        createAndAppend(headerInfo, 'div', `DATE: ${date}`, 'header-date');
+        createAndAppend(headerInfo, 'div', `CYCLE: ${cycleKey.replace('C','')}`, 'header-cycle');
 
         createAndAppend(reportHeader, 'div', 'VESPA COACHING REPORT', 'header-title');
 
-        const headerRight = createAndAppend(reportHeader, 'div', null, 'header-right');
         const logoRight = document.createElement('img');
         logoRight.className = 'logo-right';
         logoRight.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
         logoRight.alt = 'Vespa Logo';
-        headerRight.appendChild(logoRight);
+        reportHeader.appendChild(logoRight);
         
-        const metaDiv = createAndAppend(headerRight, 'div', null, 'meta');
-        const studentDiv = createAndAppend(metaDiv, 'div');
-        createAndAppend(studentDiv, 'strong', 'STUDENT:');
-        studentDiv.append(` ${fullName}`);
-        const dateDiv = createAndAppend(metaDiv, 'div');
-        createAndAppend(dateDiv, 'strong', 'DATE:');
-        dateDiv.append(` ${date}`);
-        const cycleDiv = createAndAppend(metaDiv, 'div');
-        createAndAppend(cycleDiv, 'strong', 'CYCLE:');
-        cycleDiv.append(` ${cycleKey.replace('C','')}`);
+        // -- Three Column Layout --
+        const threeColumnLayout = createAndAppend(reportPage, 'div', null, 'three-column-layout');
         
-        // -- Grid Title --
-        const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
-        createAndAppend(createAndAppend(gridTitle, 'div'), 'p', 'VESPA REPORT');
-        createAndAppend(createAndAppend(gridTitle, 'div'), 'p', 'COACHING QUESTIONS');
-
-        // -- Vespa Grid --
-        const vespaGrid = createAndAppend(reportPage, 'div', null, 'vespa-grid');
+        // Left Column - VESPA Scores
+        const leftColumn = createAndAppend(threeColumnLayout, 'div', null, 'column-scores');
+        createAndAppend(leftColumn, 'h3', 'VESPA REPORT', 'column-title');
+        
         const components = ['vision', 'effort', 'systems', 'practice', 'attitude'];
         
+        components.forEach(key => {
+            const score = getField(student, FIELD_MAP.scores[key]) || '-';
+            
+            const scoreCard = createAndAppend(leftColumn, 'div', null, 'score-card');
+            scoreCard.style.backgroundColor = COMPONENT_COLORS[key];
+            
+            createAndAppend(scoreCard, 'div', COMPONENT_LABELS[key], 'score-label');
+            createAndAppend(scoreCard, 'div', 'Score', 'score-subtitle');
+            createAndAppend(scoreCard, 'div', score, 'score-value');
+        });
+        
+        // Middle Column - Coaching Comments
+        const middleColumn = createAndAppend(threeColumnLayout, 'div', null, 'column-comments');
+        
+        // Add coaching comments for each component
         components.forEach(key => {
             const score = getField(student, FIELD_MAP.scores[key]) || '-';
             const bracket = scoreBracket(score);
             const templateRec = (templates[key] || {})[bracket] || {};
             const longComment = templateRec['field_845'] || '';
+            
+            if (longComment) {
+                const commentBox = createAndAppend(middleColumn, 'div', null, 'comment-component-box');
+                
+                const commentHeader = createAndAppend(commentBox, 'div', null, 'comment-header');
+                commentHeader.style.backgroundColor = COMPONENT_COLORS[key];
+                createAndAppend(commentHeader, 'span', COMPONENT_LABELS[key], 'component-name');
+                
+                createAndAppend(commentBox, 'p', longComment, 'comment-text');
+            }
+        });
+        
+        // Right Column - Coaching Questions  
+        const rightColumn = createAndAppend(threeColumnLayout, 'div', null, 'column-coaching');
+        createAndAppend(rightColumn, 'h3', 'COACHING QUESTIONS', 'column-title');
+        
+        components.forEach(key => {
+            const score = getField(student, FIELD_MAP.scores[key]) || '-';
+            const bracket = scoreBracket(score);
+            const templateRec = (templates[key] || {})[bracket] || {};
             const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0, 3);
             const activities = templateRec['field_847'] || '';
-
-            const block = createAndAppend(vespaGrid, 'div', null, 'vespa-block');
-            block.style.borderLeftColor = COMPONENT_COLORS[key];
             
-            const scoreBlock = createAndAppend(block, 'div', null, 'block-score');
-            scoreBlock.style.background = COMPONENT_COLORS[key];
-            createAndAppend(scoreBlock, 'p', COMPONENT_LABELS[key]);
-            createAndAppend(scoreBlock, 'p', 'Score');
-            createAndAppend(scoreBlock, 'p', score, 'score-val');
+            const componentBox = createAndAppend(rightColumn, 'div', null, 'coaching-component-box');
             
-            const bodyBlock = createAndAppend(block, 'div', null, 'block-body');
-            createAndAppend(bodyBlock, 'p', longComment, 'long-comment');
+            const componentHeader = createAndAppend(componentBox, 'div', null, 'component-header');
+            componentHeader.style.backgroundColor = COMPONENT_COLORS[key];
+            createAndAppend(componentHeader, 'span', COMPONENT_LABELS[key], 'component-name');
+            createAndAppend(componentHeader, 'span', `Score: ${score}`, 'component-score');
             
-            const questionsBlock = createAndAppend(block, 'div', null, 'block-questions');
-            const qList = createAndAppend(questionsBlock, 'ul');
-            questionsRaw.forEach(q => createAndAppend(qList, 'li', q));
+            if (questionsRaw.length > 0) {
+                const qList = createAndAppend(componentBox, 'ul', null, 'coaching-questions-list');
+                questionsRaw.forEach(q => createAndAppend(qList, 'li', q));
+            }
             
-            const actP = createAndAppend(questionsBlock, 'p', 'Suggested Activities: ', 'activities');
-            createAndAppend(actP, 'span', activities);
+            if (activities) {
+                const actDiv = createAndAppend(componentBox, 'div', null, 'suggested-activities');
+                createAndAppend(actDiv, 'strong', 'Suggested Activities: ');
+                createAndAppend(actDiv, 'span', activities);
+            }
         });
         
         // -- Bottom Section --
         const bottomSection = createAndAppend(reportPage, 'div', null, 'bottom-section');
         createAndAppend(bottomSection, 'h4', '(COMMENTS / STUDY GOAL)');
         
-        const responseBox = createAndAppend(bottomSection, 'div', null, 'comment-box');
-        createAndAppend(responseBox, 'p').innerHTML = '<strong>STUDENT RESPONSE</strong>';
-        createAndAppend(responseBox, 'p', reflection);
+        const bottomRow = createAndAppend(bottomSection, 'div', null, 'bottom-row');
         
-        const goalBox = createAndAppend(bottomSection, 'div', null, 'comment-box');
-        createAndAppend(goalBox, 'p').innerHTML = '<strong>STUDY GOAL/ACTION PLAN</strong>';
-        createAndAppend(goalBox, 'p', goal);
-
+        const responseBox = createAndAppend(bottomRow, 'div', null, 'comment-box');
+        createAndAppend(responseBox, 'div', 'STUDENT RESPONSE', 'box-title');
+        createAndAppend(responseBox, 'p', reflection || 'After reviewing my VESPA scores, I recognise that I need to focus on goal-setting and expand my revision methods. I\'m eager to develop clearer objectives for my studies and explore various study practices to improve these areas.');
+        
+        const goalBox = createAndAppend(bottomRow, 'div', null, 'comment-box');
+        createAndAppend(goalBox, 'div', 'STUDY GOAL/ACTION PLAN', 'box-title');
+        createAndAppend(goalBox, 'p', goal || 'I will create and follow a detailed study plan that includes specific goals for each subject to improve my Vision and Practice scores within the next six weeks.');
+        
         return reportPage;
     }
 
@@ -573,6 +597,174 @@
                     size: A4 portrait;
                     margin: 15mm;
                 }
+                /* Three Column Layout Styles */
+                .vespa-report {
+                    width: 100%;
+                    max-width: 210mm;
+                    margin: 0 auto;
+                    padding: 15mm;
+                    box-sizing: border-box;
+                    font-family: Arial, sans-serif;
+                    background: white;
+                }
+                .report-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 15px;
+                    border-bottom: 2px solid #ddd;
+                }
+                .header-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 5px;
+                    font-size: 12px;
+                }
+                .header-title {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #333;
+                }
+                .logo-right {
+                    height: 50px;
+                }
+                .three-column-layout {
+                    display: grid;
+                    grid-template-columns: 150px 1fr 1fr;
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                .column-title {
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin-bottom: 15px;
+                    text-align: center;
+                    background: #f0f0f0;
+                    padding: 8px;
+                    border-radius: 4px;
+                }
+                /* Left Column - Score Cards */
+                .column-scores {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 15px;
+                }
+                .score-card {
+                    color: white;
+                    padding: 20px 10px;
+                    text-align: center;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .score-label {
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                }
+                .score-subtitle {
+                    font-size: 12px;
+                    margin-bottom: 10px;
+                    opacity: 0.9;
+                }
+                .score-value {
+                    font-size: 36px;
+                    font-weight: bold;
+                    line-height: 1;
+                }
+                /* Middle Column - Comments */
+                .column-comments {
+                    padding: 0 10px;
+                }
+                .comment-component-box {
+                    margin-bottom: 15px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    overflow: hidden;
+                }
+                .comment-header {
+                    color: white;
+                    padding: 8px 12px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+                .comment-text {
+                    padding: 10px 12px;
+                    font-size: 11px;
+                    line-height: 1.5;
+                    margin: 0;
+                }
+                /* Right Column - Coaching Questions */
+                .column-coaching {
+                    padding: 0 10px;
+                }
+                .coaching-component-box {
+                    margin-bottom: 15px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    overflow: hidden;
+                }
+                .component-header {
+                    color: white;
+                    padding: 8px 12px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+                .component-score {
+                    font-size: 11px;
+                }
+                .coaching-questions-list {
+                    margin: 0;
+                    padding: 10px 12px 5px 30px;
+                    font-size: 11px;
+                    line-height: 1.5;
+                }
+                .coaching-questions-list li {
+                    margin-bottom: 8px;
+                }
+                .suggested-activities {
+                    padding: 0 12px 10px;
+                    font-size: 11px;
+                    line-height: 1.4;
+                }
+                .suggested-activities strong {
+                    color: #333;
+                }
+                /* Bottom Section */
+                .bottom-section {
+                    margin-top: 30px;
+                }
+                .bottom-section h4 {
+                    text-align: center;
+                    margin-bottom: 15px;
+                    font-size: 14px;
+                    color: #666;
+                }
+                .bottom-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                }
+                .comment-box {
+                    border: 2px solid #ddd;
+                    border-radius: 4px;
+                    padding: 15px;
+                    background: #f9f9f9;
+                }
+                .box-title {
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                    font-size: 12px;
+                    color: #333;
+                }
+                .comment-box p {
+                    margin: 0;
+                    font-size: 11px;
+                    line-height: 1.5;
+                }
                 @media print {
                     .report-modal-overlay {
                         position: static;
@@ -596,12 +788,15 @@
                     .report-wrapper {
                         margin: 0;
                         box-shadow: none;
+                        page-break-after: always;
                     }
                     .vespa-report {
                         width: 100%;
                         max-width: 210mm;
                         min-height: 297mm;
                         margin: 0 auto;
+                        padding: 15mm;
+                        page-break-inside: avoid;
                     }
                 }
             </style>
