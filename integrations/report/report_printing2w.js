@@ -67,10 +67,17 @@
         attitude: 'ATTITUDE'
     };
 
+    // Map cycle codes to their historical VESPA score field IDs
+    const SCORE_CYCLE_MAP = {
+        C1: { vision: 'field_155', effort: 'field_156', systems: 'field_157', practice: 'field_158', attitude: 'field_159', overall: 'field_160' },
+        C2: { vision: 'field_161', effort: 'field_162', systems: 'field_163', practice: 'field_164', attitude: 'field_165', overall: 'field_166' },
+        C3: { vision: 'field_167', effort: 'field_168', systems: 'field_169', practice: 'field_170', attitude: 'field_171', overall: 'field_172' }
+    };
+
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2v.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2w.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -267,8 +274,11 @@
         const date = getField(student, FIELD_MAP.dateCompleted) || '';
         const group = getField(student, FIELD_MAP.group) || '';
         const cycleKey = getCycleKey(getField(student, FIELD_MAP.cycle) || 'C1');
-        const reflection = getField(student, FIELD_MAP.reflections[cycleKey] || FIELD_MAP.reflections.C1) || '';
-        const goal = getField(student, FIELD_MAP.goals[cycleKey] || FIELD_MAP.goals.C1) || '';
+        const reflection = (getField(student, FIELD_MAP.reflections[cycleKey] || FIELD_MAP.reflections.C1) || '').replace(/<[^>]*>/g, ' ').trim();
+        const goal = (getField(student, FIELD_MAP.goals[cycleKey] || FIELD_MAP.goals.C1) || '').replace(/<[^>]*>/g, ' ').trim();
+
+        const goalReviewFieldMap = { C1: 'field_2500', C2: 'field_2495', C3: 'field_2498' };
+        const goalReviewDate = (getField(student, goalReviewFieldMap[cycleKey]) || '').replace(/<[^>]*>/g,' ').trim();
 
         // Main container
         const reportPage = document.createElement('div');
@@ -303,7 +313,6 @@
 
         // Title row
         const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
-        createAndAppend(gridTitle, 'div', ''); // Spacer for colored bar
         createAndAppend(gridTitle, 'div', 'Score', 'title-score');
         createAndAppend(gridTitle, 'div', 'Report Comment', 'title-report');
         createAndAppend(gridTitle, 'div', 'Coaching Questions', 'title-qs');
@@ -312,14 +321,15 @@
         const vespaGrid = createAndAppend(reportPage, 'div', null, 'vespa-grid');
 
         components.forEach(key => {
-            const score = getField(student, FIELD_MAP.scores[key]) || '-';
+            const scoresMap = SCORE_CYCLE_MAP[cycleKey] || FIELD_MAP.scores;
+            const score = getField(student, scoresMap[key]) || '-';
 
             // Support template aliasing (e.g. "system" vs "systems")
             const templateGroup = templates[key] || templates[key.replace(/s$/, '')] || {};
             const bracket = scoreBracket(score);
             const templateRec = templateGroup[bracket] || {};
 
-            const longComment = templateRec['field_845'] || '';
+            const longComment = (templateRec['field_845'] || '').replace(/<[^>]*>/g,' ').trim();
             const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0, 3);
             const activities = templateRec['field_847'] || '';
 
@@ -364,6 +374,9 @@
         const goalBox = createAndAppend(bottomRow, 'div', null, 'comment-box');
         createAndAppend(goalBox, 'div', 'STUDY GOAL/ACTION PLAN', 'box-title');
         createAndAppend(goalBox, 'p', goal || 'I will create and follow a detailed study plan that includes specific goals for each subject to improve my Vision and Practice scores within the next six weeks.');
+        if (goalReviewDate) {
+            createAndAppend(goalBox, 'p', `Review Date: ${goalReviewDate}`, 'goal-review-date');
+        }
         
         return reportPage;
     }
@@ -843,9 +856,8 @@
             });
             log(`Loaded ${tutors.length} tutors connected to this staff admin`);
 
-            // Fetch only the students relevant to the logged-in staff admin
-            const students = await fetchStudents(staffIds, {}, 1000); // Fetch up to 1000 students for this admin
-            log(`Found ${students.length} students for this user to populate filters.`);
+            // Fetch students to derive year group & group options
+            const students = await fetchStudents(staffIds, {}, 1000); // up to 1000 for option lists
 
             const yearGroups = [...new Set(students.map(s => s.field_144).filter(Boolean))].sort();
             const yearGroupSelect = $('#filterYearGroup');
@@ -903,8 +915,19 @@
             };
 
             // Fetch all matching students without a hard limit for the search result
-            const students = await fetchStudents(staffIds, filters, 1000); // Generous limit for search
-            log(`Search found ${students.length} students.`);
+            let students = await fetchStudents(staffIds, filters, 1000); // Generous limit for search
+
+            // If a specific cycle is chosen, ensure students actually have scores recorded
+            if (filters.cycle) {
+                const cycleScores = SCORE_CYCLE_MAP[filters.cycle] || {};
+                students = students.filter(stu => {
+                    const visionField = cycleScores.vision || FIELD_MAP.scores.vision;
+                    const visionScore = stu[visionField];
+                    return visionScore !== undefined && visionScore !== null && visionScore !== '';
+                });
+            }
+
+            log(`Search found ${students.length} students after validating cycle data.`);
 
             renderStudentPreview(students);
             
