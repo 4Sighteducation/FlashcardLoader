@@ -1017,10 +1017,7 @@
             });
             
             $('#printModalBtn').on('click', function() {
-                // Use setTimeout to avoid TrustedScript issues
-                setTimeout(() => {
-                    window.print();
-                }, 100);
+                printReportsFromModal();
             });
         }
 
@@ -1093,6 +1090,69 @@
         } else {
             $('#filterSummary').removeClass('active');
         }
+    }
+
+    function printReportsFromModal() {
+        const modalContent = $('#modalReportContainer').html();
+        const originalBody = $('body').html();
+        const printContainer = $('<div id="print-container"></div>');
+
+        // Create a dedicated print stylesheet
+        let printStyleSheet = document.getElementById('bulkPrintFinalStyles');
+        if (!printStyleSheet) {
+            printStyleSheet = document.createElement('style');
+            printStyleSheet.id = 'bulkPrintFinalStyles';
+            document.head.appendChild(printStyleSheet);
+        }
+        
+        // Define the styles for printing, very similar to your working example
+        printStyleSheet.innerHTML = `
+            @media print {
+                body * { 
+                    visibility: hidden !important; 
+                }
+                #print-container, #print-container * { 
+                    visibility: visible !important; 
+                }
+                #print-container { 
+                    position: absolute !important; 
+                    left: 0 !important; 
+                    top: 0 !important; 
+                    width: 100% !important;
+                }
+                .report-wrapper {
+                    page-break-after: always !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    margin: 0 !important;
+                }
+                .report-wrapper:last-child {
+                    page-break-after: auto !important;
+                }
+                .vespa-report {
+                    padding: 10mm !important; /* Adjust padding for print */
+                }
+                .block-score, .vespa-block {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+            }
+        `;
+        
+        // Prepare the body for printing
+        $('body').children().hide();
+        $('body').append(printContainer);
+        printContainer.html($('#modalReportContainer').html());
+
+        // Use a timeout to ensure the DOM is updated before printing
+        setTimeout(() => {
+            window.print();
+
+            // Cleanup after printing
+            printContainer.remove();
+            $('body').children().show();
+            $(printStyleSheet).remove();
+        }, 500); // 500ms delay to be safe
     }
 
     // Expose init for loader (called by WorkingBridge)
