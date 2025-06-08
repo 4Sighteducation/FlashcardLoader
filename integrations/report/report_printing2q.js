@@ -92,7 +92,7 @@
             'Content-Type': 'application/json'
         };
         const qs = new URLSearchParams({ rows_per_page: params.rows || 1000, page: params.page || 1 });
-        if (params.filters) qs.append('filters', encodeURIComponent(JSON.stringify(params.filters)));
+        if (params.filters) qs.append('filters', JSON.stringify(params.filters));
         const url = `https://api.knack.com/v1/${path}?${qs.toString()}`;
         
         log('Making API request to:', url);
@@ -129,7 +129,9 @@
         // Each Object_10 record stores connections to Staff-Admin users in field_439 (many-to-many).
         // Use this field when building the base filter so we only retrieve students attached to
         // the currently-logged-in administrator.
-        const baseRules = staffIds.map(id => ({ field: 'field_439', operator: 'is', value: id }));
+        // Knack API tip: for multi-select connection fields we must use the 'contains' operator.
+        // Using 'is' will match nothing and return the full table instead of a subset.
+        const baseRules = staffIds.map(id => ({ field: 'field_439', operator: 'contains', value: id }));
         const studentApiFilters = { match: 'or', rules: baseRules };
         
         const uiFilterRules = [];
