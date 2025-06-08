@@ -69,7 +69,7 @@
 
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2h.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2g.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -141,12 +141,12 @@
             uiFilterRules.push({ field: FIELD_MAP.cycle, operator: 'is', value: filters.cycle });
         }
         if (filters.yearGroup) {
-            // field_144 is Year Group, likely a connection. Filter on the raw value.
-            uiFilterRules.push({ field: 'field_144_raw', operator: 'contains', value: filters.yearGroup });
+            // field_144 is Year Group, which is a Short Text field.
+            uiFilterRules.push({ field: 'field_144', operator: 'contains', value: filters.yearGroup });
         }
         if (filters.group) {
-            // field_223 is Group, also likely a connection. Filter on the raw value.
-            uiFilterRules.push({ field: FIELD_MAP.group + '_raw', operator: 'contains', value: filters.group });
+            // field_223 is Group, which is a Short Text field.
+            uiFilterRules.push({ field: FIELD_MAP.group, operator: 'contains', value: filters.group });
         }
         if (filters.tutorId) {
             // field_145 is the connection to the Tutor object
@@ -397,8 +397,8 @@
             }
 
             overlay.text('Fetching students...');
-            // Increased limit to 450 as requested, can be adjusted here.
-            const MAX_STUDENTS = 450;
+            // Lowered limit for faster testing. Can be increased later.
+            const MAX_STUDENTS = 50;
             const filters = {
                 cycle: $('#filterCycle').val(),
                 yearGroup: $('#filterYearGroup').val(),
