@@ -259,7 +259,10 @@
 
     // Build report HTML per student
     function buildStudentHTML(student, templates) {
-        const getField = (obj, path) => path.split('.').reduce((o, k) => (o || {})[k], obj);
+        const getField = (obj, path) => {
+            if (!path) return '';
+            return path.split('.').reduce((o, k) => (o || {})[k], obj);
+        };
 
         // Helper to create an element with text and append it
         const createAndAppend = (parent, tag, text, className) => {
