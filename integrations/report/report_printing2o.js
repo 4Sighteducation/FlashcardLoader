@@ -69,7 +69,7 @@
 
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2h.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2o.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -371,6 +371,26 @@
         $('#bulkPrintbtn').before(filterHtml);
     }
 
+    // New: Renders a preview of the fetched students
+    function renderStudentPreview(students) {
+        const listContainer = $('#studentListContainer').empty();
+        if (!listContainer.length) {
+            $('<div id="studentListContainer"></div>').insertAfter('#bulkPrintFilters');
+        }
+
+        if (!students.length) {
+            listContainer.html('<p>No students found matching the selected criteria.</p>');
+            return;
+        }
+
+        const count = students.length;
+        let html = `<p><strong>Found ${count} students.</strong> Click below to generate a print preview.</p>`;
+        html += `<button id="generatePreviewBtn" class="Knack-button">Generate Preview for ${count} Students</button>`;
+        html += '<div id="reportPreviewContainer" style="margin-top: 15px;"></div>';
+        
+        listContainer.html(html);
+    }
+
     async function fetchFilterOptions(staffIds) {
         try {
             log('Fetching filter options for the current user...');
@@ -423,118 +443,110 @@
         imgs.forEach(img => { img.src = logoUrl; });
     }
 
-    // Main execution when button clicked
-    async function run() {
-        const btn = $('#bulkPrintbtn');
+    // New main execution function triggered by "Search Students"
+    async function searchStudents() {
+        const btn = $('#searchStudentsBtn');
         const originalText = btn.text();
         let overlay;
-        const containerId = 'vespaBulkPrintContainer';
 
         try {
-            // Show loading overlay and update button
             overlay = $('<div id="bulkPrintOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;display:flex;justify-content:center;align-items:center;color:white;font-size:20px;"></div>').appendTo('body');
-            btn.text('Generating reports...').prop('disabled', true);
-            overlay.text('Preparing reports...');
-            
-            addPrintStyles();
+            btn.text('Searching...').prop('disabled', true);
+            overlay.text('Fetching student data...');
 
-            // Read config when we actually need it
-            cfg = window.BULK_PRINT_CONFIG || {};
-            log('Config at run time:', cfg);
-
-            if (!cfg.knackAppId || !cfg.knackApiKey) {
-                throw new Error('Missing Knack credentials. Please contact support.');
-            }
-            
             const user = Knack.getUserAttributes();
             if (!user || !user.email) throw new Error('Cannot determine logged-in user');
             
-            overlay.text('Fetching staff records...');
             const staffIds = await getStaffAdminRecordIds(user.email);
             if (!staffIds.length) throw new Error('No Staff-Admin record found for user');
-
-            overlay.text('Fetching students...');
-            // Lowered limit for faster testing. Can be increased later.
-            const MAX_STUDENTS = 50;
+            
             const filters = {
                 cycle: $('#filterCycle').val(),
                 yearGroup: $('#filterYearGroup').val(),
                 group: $('#filterGroup').val(),
                 tutorId: $('#filterTutor').val()
             };
-            const students = await fetchStudents(staffIds, filters, MAX_STUDENTS);
-            log(`Fetched ${students.length} students (limit: ${MAX_STUDENTS}).`);
 
-            if (!students.length) { 
-                alert('No students found matching the selected criteria.'); 
-                if (overlay) overlay.remove();
-                btn.text(originalText).prop('disabled', false);
-                return; 
-            }
+            // Fetch all matching students without a hard limit for the search result
+            const students = await fetchStudents(staffIds, filters, 1000); // Generous limit for search
+            log(`Search found ${students.length} students.`);
 
-            if (students.length > 20) {
-                const proceed = confirm(`This will generate ${students.length} reports. This may take some time. Continue?`);
-                if (!proceed) {
-                    if (overlay) overlay.remove();
-                    btn.text(originalText).prop('disabled', false);
-                    return;
-                }
-            }
+            renderStudentPreview(students);
             
-            overlay.text('Loading report templates...');
-            const templates = await loadCoachingTemplates();
+            // Re-bind click handler for the new preview button
+            $('#generatePreviewBtn').on('click', function() {
+                generateReportPreview(students);
+            });
 
-            let container = document.getElementById(containerId);
-            if (container) container.remove();
-            container = document.createElement('div');
-            container.id = containerId;
-            // Position off-screen instead of hiding for print compatibility
-            container.style.position = 'absolute';
-            container.style.left = '-9999px';
-            document.body.appendChild(container);
+        } catch(e) {
+            err('Error in searchStudents function:', e);
+            alert('Error searching for students: ' + (e.message || 'Unknown error'));
+        } finally {
+            if (overlay) overlay.remove();
+            btn.text(originalText).prop('disabled', false);
+        }
+    }
+
+    // New function to generate and display the report previews
+    async function generateReportPreview(students) {
+        const btn = $('#generatePreviewBtn');
+        const originalText = btn.text();
+        let overlay;
+        const previewContainer = $('#reportPreviewContainer');
+
+        if (!students || !students.length) {
+            alert('No students to generate reports for.');
+            return;
+        }
+
+        try {
+            overlay = $('<div id="bulkPrintOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;display:flex;justify-content:center;align-items:center;color:white;font-size:20px;"></div>').appendTo('body');
+            btn.text('Generating Previews...').prop('disabled', true);
+            overlay.text('Loading report templates...');
+            
+            addPrintStyles(); // Ensure styles are present for preview
+            
+            const templates = await loadCoachingTemplates();
+            previewContainer.empty(); // Clear previous previews
 
             for (let i = 0; i < students.length; i++) {
                 const stu = students[i];
+                overlay.text(`Building report ${i + 1} of ${students.length}...`);
                 const reportElement = buildStudentHTML(stu, templates);
-                if (reportElement) { // Ensure the element was created
-                    container.appendChild(reportElement);
+                if (reportElement) {
+                    const reportWrapper = document.createElement('div');
+                    reportWrapper.className = 'report-wrapper';
+                    reportWrapper.appendChild(reportElement);
+                    previewContainer.append(reportWrapper);
                 }
-                const progressText = `Building reports... ${i + 1}/${students.length}`;
-                overlay.text(progressText);
+                 // Yield to the browser to prevent freezing
                 if ((i + 1) % 10 === 0) {
                     await new Promise(resolve => setTimeout(resolve, 10));
                 }
             }
-            
-            const estLogoUrl = students[0]?.field_3206 || students[0]?.field_61 || '';
-            await setLogos(container, estLogoUrl);
 
-            overlay.text('Preparing print view...');
+            // Get logo from the first student record
+            const estLogoUrl = students[0]?.field_3206 || students[0]?.field_61 || '';
+            await setLogos(previewContainer[0], estLogoUrl);
+
+            // Add the final print button
+            $('<button id="printFinalBtn" class="Knack-button">Print All Reports</button>')
+                .css('margin-bottom', '15px')
+                .prependTo(previewContainer)
+                .on('click', function() {
+                    window.print();
+                });
             
-            setTimeout(() => {
-                window.print();
-                if (overlay) overlay.remove();
-                btn.text(originalText).prop('disabled', false);
-                
-                // Clean up DOM to prevent affecting other pages
-                removePrintStyles();
-                $('#' + containerId).remove();
-                log('Print container removed.');
-            }, 500);
+            // Clean up old print container if it exists
+            $('#vespaBulkPrintContainer').remove();
+
 
         } catch (e) {
-            err('Error in run function:', e);
-            console.error('Full error object:', e);
-            console.error('Error stack:', e.stack);
-            alert('Error generating reports: ' + (e.message || 'Unknown error'));
-            
+            err('Error generating report previews:', e);
+            alert('Error generating previews: ' + (e.message || 'Unknown error'));
+        } finally {
             if (overlay) overlay.remove();
-            btn.text(originalText).prop('disabled', false);
-
-            // Clean up on error
-            removePrintStyles();
-            const container = document.getElementById(containerId);
-            if (container) container.remove();
+            btn.text('Preview Generated').css('background-color', '#5cb85c');
         }
     }
 
@@ -562,13 +574,15 @@
         console.log('[BulkPrint] Current scene:', Knack.scene?.key);
         console.log('[BulkPrint] Looking for button #bulkPrintbtn in view_3062');
         
-        const btn = $('#view_3062 #bulkPrintbtn');
+        // Change the button text and ID for clarity
+        const btn = $('#view_3062 #bulkPrintbtn').attr('id', 'searchStudentsBtn').text('Search Students');
+
         if (btn.length && !btn.data('bulk-print-bound')) {
             console.log('[BulkPrint] Button found, binding click handler');
             btn.data('bulk-print-bound', true); // Mark as bound
             btn.off('click.bulk').on('click.bulk', function (e) {
                 e.preventDefault();
-                run();
+                searchStudents();
             });
         }
     };
