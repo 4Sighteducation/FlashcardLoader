@@ -126,38 +126,71 @@
     async function fetchStudents(staffIds, filters, maxStudents = 100) {
         if (!staffIds.length) return [];
 
-        // Each Object_10 record stores connections to Staff-Admin users in field_439 (many-to-many).
-        // Use this field when building the base filter so we only retrieve students attached to
-        // the currently-logged-in administrator.
-        // Knack API tip: for multi-select connection fields we must use the 'contains' operator.
-        // Using 'is' will match nothing and return the full table instead of a subset.
-        const baseRules = staffIds.map(id => ({ field: 'field_439', operator: 'contains', value: id }));
-        const studentApiFilters = { match: 'or', rules: baseRules };
-        
+        /*
+         * --------------------------------------------------
+         * 1.  STAFF-ADMIN FILTER (field_439)
+         * --------------------------------------------------
+         * For connection fields the Knack REST API actually accepts the normal
+         *   operator: "is"  (with a Record ID) – provided we don't wrap it in
+         *   an unnecessary { match:"or" } block when there is only one ID.
+         */
+        let staffRules;
+        if (staffIds.length === 1) {
+            staffRules = [{ field: 'field_439', operator: 'is', value: staffIds[0] }];
+        } else {
+            staffRules = [{ match: 'or', rules: staffIds.map(id => ({ field: 'field_439', operator: 'is', value: id })) }];
+        }
+
+        /*
+         * --------------------------------------------------
+         * 2.  ESTABLISHMENT FILTER (field_133)
+         * --------------------------------------------------
+         * Every Object_10 record also carries a connection to its Organisation
+         * via field_133.  We fetch the first staff-admin record to discover
+         * which organisation they belong to and add an AND condition so that
+         * records from other schools never leak in.
+         */
+        let establishmentRule = null;
+        try {
+            const staffRec = await knackRequest(`objects/object_5/records/${staffIds[0]}`);
+            const estId = staffRec?.record?.field_133_raw || staffRec?.record?.field_133;
+            if (estId) {
+                establishmentRule = { field: 'field_133', operator: 'is', value: Array.isArray(estId) ? estId[0] : estId };
+            }
+        } catch (e) {
+            err('Could not resolve establishment for staff admin', e);
+        }
+
+        /*
+         * --------------------------------------------------
+         * 3.  USER-SELECTED UI FILTERS  (cycle / year group / etc.)
+         * --------------------------------------------------
+         */
         const uiFilterRules = [];
 
-        // Apply UI filters
         if (filters.cycle) {
             uiFilterRules.push({ field: FIELD_MAP.cycle, operator: 'is', value: filters.cycle });
         }
         if (filters.yearGroup) {
-            // field_144 is Year Group, which is a Short Text field.
             uiFilterRules.push({ field: 'field_144', operator: 'is', value: filters.yearGroup });
         }
         if (filters.group) {
-            // field_223 is Group, which is a Short Text field.
             uiFilterRules.push({ field: FIELD_MAP.group, operator: 'is', value: filters.group });
         }
         if (filters.tutorId) {
-            // field_145 is the connection to the Tutor object
             uiFilterRules.push({ field: 'field_145', operator: 'is', value: filters.tutorId });
         }
 
-        // Combine base and UI filters
-        const finalFilters = {
-            match: 'and',
-            rules: [studentApiFilters, ...uiFilterRules]
-        };
+        /*
+         * --------------------------------------------------
+         * 4.  BUILD THE FINAL FILTER OBJECT
+         * --------------------------------------------------
+         */
+        const finalRules = [...staffRules];
+        if (establishmentRule) finalRules.push(establishmentRule);
+        finalRules.push(...uiFilterRules);
+
+        const finalFilters = { match: 'and', rules: finalRules };
 
         const allStudents = [];
         let page = 1;
