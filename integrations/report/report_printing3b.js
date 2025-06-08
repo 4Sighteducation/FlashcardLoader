@@ -77,7 +77,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2w.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2x.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -605,14 +605,14 @@
                 }
                 @page {
                     size: A4 portrait;
-                    margin: 15mm;
+                    margin: 10mm;
                 }
-                /* Row-based Layout Styles */
+                /* Row-based Layout Styles - COMPACT VERSION */
                 .vespa-report {
                     width: 100%;
                     max-width: 210mm;
                     margin: 0 auto;
-                    padding: 15mm;
+                    padding: 10mm;
                     box-sizing: border-box;
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     background: white;
@@ -621,45 +621,35 @@
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 25px;
-                    padding-bottom: 20px;
-                    border-bottom: 3px solid #e0e0e0;
+                    margin-bottom: 15px;
+                    padding-bottom: 15px;
+                    border-bottom: 2px solid #e0e0e0;
                 }
                 .header-info {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 5px;
-                    font-size: 12px;
-                    color: #555;
-                }
-                .header-student {
-                    font-weight: 600;
-                    color: #2c3e50;
+                    font-size: 11px;
                 }
                 .header-title {
-                    font-size: 26px;
+                    font-size: 22px;
                     font-weight: 700;
                     color: #2c3e50;
-                    letter-spacing: 0.5px;
                 }
                 .logo-right {
-                    height: 55px;
+                    height: 50px;
                 }
                 /* Grid Title Row */
                 .vespa-grid-title {
                     display: grid;
-                    grid-template-columns: 120px 1fr 1fr;
+                    grid-template-columns: 80px 1.6fr 1fr;
                     gap: 15px;
-                    margin-bottom: 10px;
-                    padding: 12px 0;
-                    border-bottom: 2px solid #e0e0e0;
+                    margin-bottom: 8px;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #e0e0e0;
                 }
                 .vespa-grid-title > div {
                     font-weight: 700;
-                    font-size: 13px;
+                    font-size: 10pt;
                     color: #34495e;
                     text-transform: uppercase;
-                    letter-spacing: 0.5px;
                 }
                 .title-score {
                     text-align: center;
@@ -669,24 +659,19 @@
                     display: flex;
                     flex-direction: column;
                     gap: 0;
-                    margin-bottom: 30px;
+                    margin-bottom: 15px;
                 }
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 120px 1fr 1fr;
+                    grid-template-columns: 80px 1.6fr 1fr;
                     gap: 15px;
-                    min-height: 100px;
+                    min-height: auto;
                     border: 1px solid #e0e0e0;
-                    border-left: 5px solid;
-                    border-radius: 8px;
-                    margin-bottom: 12px;
+                    border-left-width: 5px;
+                    border-radius: 6px;
+                    margin-bottom: 8px;
                     background: #fafafa;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                    transition: all 0.3s ease;
-                }
-                .vespa-block:hover {
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
                 }
                 /* Score Column */
                 .block-score {
@@ -694,119 +679,102 @@
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding: 20px 10px;
-                    border-radius: 8px 0 0 8px;
+                    padding: 10px 5px;
+                    border-radius: 0;
                     text-align: center;
+                    color: white;
                 }
                 .block-score p:first-child {
-                    font-size: 14px;
+                    font-size: 12px;
                     font-weight: 700;
-                    margin: 0 0 10px 0;
-                    letter-spacing: 1px;
+                    margin: 0 0 5px 0;
                 }
                 .score-val {
-                    font-size: 48px;
+                    font-size: 40px;
                     font-weight: 700;
                     line-height: 1;
                     margin: 0;
                 }
                 /* Report Comment Column */
                 .block-body {
-                    padding: 20px;
-                    font-size: 12px;
-                    line-height: 1.6;
+                    padding: 10px;
+                    font-size: 9pt;
+                    line-height: 1.4;
                     color: #444;
                     display: flex;
                     align-items: center;
                 }
                 /* Coaching Questions Column */
                 .block-questions {
-                    padding: 20px;
-                    font-size: 12px;
-                    border-left: 1px solid #e0e0e0;
+                    padding: 10px;
+                    font-size: 9pt;
+                    border-left: 1px solid #e8e8e8;
                 }
                 .coach-qs {
                     margin: 0;
-                    padding-left: 20px;
+                    padding-left: 15px;
                     list-style-type: disc;
                 }
                 .coach-qs li {
-                    margin-bottom: 8px;
-                    line-height: 1.5;
+                    margin-bottom: 5px;
+                    line-height: 1.4;
                     color: #555;
                 }
                 .activities {
-                    margin-top: 12px;
-                    padding-top: 12px;
-                    border-top: 1px solid #e0e0e0;
-                    font-size: 11px;
+                    margin-top: 8px;
+                    padding-top: 8px;
+                    border-top: 1px solid #e8e8e8;
+                    font-size: 8pt;
                     color: #666;
                 }
-                .activities span:first-child {
+                .activities span:first-of-type {
                     font-weight: 600;
-                    color: #444;
                 }
                 /* Bottom Section */
                 .bottom-section {
-                    margin-top: 35px;
-                    padding-top: 25px;
-                    border-top: 3px solid #e0e0e0;
+                    margin-top: 15px;
+                    padding-top: 15px;
+                    border-top: 2px solid #e0e0e0;
                 }
                 .bottom-section h4 {
-                    text-align: center;
-                    margin-bottom: 20px;
-                    font-size: 15px;
-                    color: #34495e;
-                    font-weight: 600;
-                    letter-spacing: 0.5px;
+                    font-size: 12pt;
                 }
                 .bottom-row {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 25px;
+                    gap: 15px;
                 }
                 .comment-box {
-                    border: 2px solid #e0e0e0;
-                    border-radius: 8px;
-                    padding: 20px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 6px;
+                    padding: 10px;
                     background: #f8f9fa;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 }
                 .box-title {
                     font-weight: 700;
-                    margin-bottom: 12px;
-                    font-size: 13px;
+                    margin-bottom: 8px;
+                    font-size: 10pt;
                     color: #2c3e50;
                     text-transform: uppercase;
-                    letter-spacing: 0.5px;
                 }
                 .comment-box p {
-                    margin: 0 0 8px 0;
-                    font-size: 12px;
-                    line-height: 1.6;
+                    font-size: 9pt;
+                    line-height: 1.4;
                     color: #444;
+                    margin: 0;
                 }
                 .goal-review-date {
                     font-style: italic;
                     color: #666;
-                    margin-top: 10px;
+                    margin-top: 8px;
+                    font-size: 8pt;
                 }
                 @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    .report-modal-overlay,
-                    .report-modal-overlay * {
-                        visibility: visible;
-                    }
                     .report-modal-overlay {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        background: white !important;
-                        display: block !important;
+                        position: static;
+                        background: none;
                     }
-                    .report-modal {
+                    .report-modal, .report-wrapper {
                         width: 100%;
                         max-width: none;
                         margin: 0;
@@ -823,30 +791,13 @@
                         background: white;
                     }
                     .report-wrapper {
-                        margin: 0;
-                        box-shadow: none;
-                        border-radius: 0;
                         page-break-after: always;
                     }
-                    .report-wrapper:last-child {
+                     .report-wrapper:last-child {
                         page-break-after: auto;
                     }
                     .vespa-report {
-                        width: 100%;
-                        max-width: 100%;
-                        margin: 0;
-                        padding: 15mm;
                         page-break-inside: avoid;
-                        box-sizing: border-box;
-                    }
-                    .vespa-block {
-                        page-break-inside: avoid;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    .block-score {
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
                     }
                 }
             </style>
@@ -1025,8 +976,6 @@
             overlay = $('<div id="bulkPrintOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;display:flex;justify-content:center;align-items:center;color:white;font-size:20px;"></div>').appendTo('body');
             btn.text('Generating Previews...').prop('disabled', true);
             overlay.text('Loading report templates...');
-            
-            addPrintStyles(); // Ensure styles are present for preview
             
             const templates = await loadCoachingTemplates();
             const modalContainer = $('#modalReportContainer').empty();
