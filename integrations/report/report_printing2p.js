@@ -114,13 +114,21 @@
         const data = await knackRequest('objects/object_5/records', {
             filters: { match: 'and', rules: [{ field: 'field_86', operator: 'is', value: email }] }, rows: 50
         });
-        return (data.records || []).map(r => r.id);
+        const ids = (data.records || []).map(r => r.id);
+        // In practice there should be exactly one Staff-Admin record per user, but
+        // the database currently contains historical duplicates.  Using the first
+        // ID prevents us from matching students from other establishments that
+        // happen to point at one of the duplicate records.
+        return ids.length ? [ids[0]] : [];
     }
 
     // Step 2: Fetch students (with limit and filters)
     async function fetchStudents(staffIds, filters, maxStudents = 100) {
         if (!staffIds.length) return [];
 
+        // Each Object_10 record stores connections to Staff-Admin users in field_439 (many-to-many).
+        // Use this field when building the base filter so we only retrieve students attached to
+        // the currently-logged-in administrator.
         const baseRules = staffIds.map(id => ({ field: 'field_439', operator: 'is', value: id }));
         const studentApiFilters = { match: 'or', rules: baseRules };
         
