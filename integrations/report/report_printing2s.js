@@ -69,7 +69,8 @@
 
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2o.css';
+        // Updated to version 2p for better A4 portrait styling and modal support
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2s.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -300,21 +301,6 @@
         createAndAppend(cycleDiv, 'strong', 'CYCLE:');
         cycleDiv.append(` ${cycleKey.replace('C','')}`);
         
-        // -- Intro Section --
-        const introSection = createAndAppend(reportPage, 'div', null, 'intro-section');
-        const questionsDiv = createAndAppend(introSection, 'div', null, 'intro-questions');
-        createAndAppend(questionsDiv, 'h4', 'INTRODUCTORY QUESTIONS');
-        createAndAppend(questionsDiv, 'p', 'first, some general questions about your report:');
-        const introList = createAndAppend(questionsDiv, 'ul');
-        [
-            'To what extent is the report an accurate description of your current characteristics?',
-            'Does your highest score represent a personal strength? Your lowest an area for development?',
-            'If you had to challenge a score, or adjust it, which would it be, and why?',
-            'Think back over the last few weeks. What are you currently finding hard about study at this level?',
-            'Before we look at the rest of the report, remember it\'s quite normal to feel you don\'t know what you\'re trying to achieve or why you\'re studying. But by answering the questions below honestly, reflecting on this report, and making small, manageable changes, you could soon be feeling much more positive.'
-        ].forEach(q => createAndAppend(introList, 'li', q));
-        createAndAppend(introSection, 'div', null, 'chart-placeholder');
-        
         // -- Grid Title --
         const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
         createAndAppend(createAndAppend(gridTitle, 'div'), 'p', 'VESPA REPORT');
@@ -360,10 +346,6 @@
         createAndAppend(responseBox, 'p').innerHTML = '<strong>STUDENT RESPONSE</strong>';
         createAndAppend(responseBox, 'p', reflection);
         
-        const recordBox = createAndAppend(bottomSection, 'div', null, 'comment-box');
-        createAndAppend(recordBox, 'p').innerHTML = '<strong>COACHING RECORD</strong> (Currently visible to student)';
-        createAndAppend(recordBox, 'p', 'Coach input will appear here...').style.fontStyle = 'italic';
-        
         const goalBox = createAndAppend(bottomSection, 'div', null, 'comment-box');
         createAndAppend(goalBox, 'p').innerHTML = '<strong>STUDY GOAL/ACTION PLAN</strong>';
         createAndAppend(goalBox, 'p', goal);
@@ -374,35 +356,117 @@
     // Add Filter UI
     function renderFilterUI() {
         const filterHtml = `
-            <div id="bulkPrintFilters" style="padding: 15px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 15px; background: #f9f9f9;">
-                <h3 style="margin-top: 0;">Filter Reports</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); grid-gap: 15px;">
-                    <div>
-                        <label for="filterCycle">Cycle:</label>
-                        <select id="filterCycle" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <style>
+                #bulkPrintFilters {
+                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                    border-radius: 12px;
+                    padding: 25px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                }
+                #bulkPrintFilters h3 {
+                    margin: 0 0 20px 0;
+                    color: #2c3e50;
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                }
+                .filter-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 20px;
+                }
+                .filter-item {
+                    position: relative;
+                }
+                .filter-item label {
+                    display: block;
+                    margin-bottom: 8px;
+                    color: #34495e;
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .filter-item select {
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: 2px solid #e0e6ed;
+                    border-radius: 8px;
+                    background: white;
+                    font-size: 1rem;
+                    color: #2c3e50;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    appearance: none;
+                    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2334495e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                    background-repeat: no-repeat;
+                    background-position: right 12px center;
+                    background-size: 20px;
+                    padding-right: 40px;
+                }
+                .filter-item select:hover {
+                    border-color: #3498db;
+                    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+                }
+                .filter-item select:focus {
+                    outline: none;
+                    border-color: #2980b9;
+                    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+                }
+                .filter-summary {
+                    background: rgba(255,255,255,0.8);
+                    border-radius: 8px;
+                    padding: 12px 16px;
+                    margin-bottom: 20px;
+                    display: none;
+                }
+                .filter-summary.active {
+                    display: block;
+                }
+                .filter-tag {
+                    display: inline-block;
+                    background: #3498db;
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 16px;
+                    font-size: 0.85rem;
+                    margin-right: 8px;
+                    margin-bottom: 8px;
+                }
+            </style>
+            <div id="bulkPrintFilters">
+                <h3>🔍 Filter Student Reports</h3>
+                <div id="filterSummary" class="filter-summary">
+                    <strong>Active Filters:</strong> <span id="activeFiltersList"></span>
+                </div>
+                <div class="filter-grid">
+                    <div class="filter-item">
+                        <label for="filterCycle">📅 Cycle</label>
+                        <select id="filterCycle">
                             <option value="">All Cycles</option>
                             <option value="C1">Cycle 1</option>
                             <option value="C2">Cycle 2</option>
                             <option value="C3">Cycle 3</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="filterYearGroup">Year Group:</label>
-                        <select id="filterYearGroup" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <div class="filter-item">
+                        <label for="filterYearGroup">📚 Year Group</label>
+                        <select id="filterYearGroup">
                             <option value="">All Year Groups</option>
                             <option value="" disabled>Loading...</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="filterGroup">Group:</label>
-                        <select id="filterGroup" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <div class="filter-item">
+                        <label for="filterGroup">👥 Group</label>
+                        <select id="filterGroup">
                             <option value="">All Groups</option>
                             <option value="" disabled>Loading...</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="filterTutor">Tutor:</label>
-                        <select id="filterTutor" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <div class="filter-item">
+                        <label for="filterTutor">👨‍🏫 Tutor</label>
+                        <select id="filterTutor">
                             <option value="">All Tutors</option>
                             <option value="" disabled>Loading...</option>
                         </select>
@@ -418,28 +482,169 @@
     function renderStudentPreview(students) {
         const listContainer = $('#studentListContainer').empty();
         if (!listContainer.length) {
-            $('<div id="studentListContainer"></div>').insertAfter('#bulkPrintFilters');
+            listContainer = $('<div id="studentListContainer" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;"></div>').insertAfter('#bulkPrintFilters');
         }
 
         if (!students.length) {
-            listContainer.html('<p>No students found matching the selected criteria.</p>');
+            listContainer.html('<p style="color: #e74c3c; font-weight: 600;">⚠️ No students found matching the selected criteria.</p>');
             return;
         }
 
         const count = students.length;
-        let html = `<p><strong>Found ${count} students.</strong> Click below to generate a print preview.</p>`;
-        html += `<button id="generatePreviewBtn" class="Knack-button">Generate Preview for ${count} Students</button>`;
-        html += '<div id="reportPreviewContainer" style="margin-top: 15px;"></div>';
+        let html = `<p style="font-size: 1.1rem; color: #2c3e50;"><strong style="color: #27ae60;">✓ Found ${count} students</strong> matching your criteria.</p>`;
+        html += `<button id="generatePreviewBtn" class="Knack-button" style="background: #3498db; border: none; padding: 12px 24px; font-size: 1rem; border-radius: 6px; cursor: pointer; transition: all 0.3s;">📄 Generate Preview for ${count} Students</button>`;
         
         listContainer.html(html);
+    }
+
+    // Create modal HTML
+    function createReportModal() {
+        const modalHtml = `
+            <style>
+                .report-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.7);
+                    z-index: 9999;
+                    display: none;
+                    overflow: auto;
+                }
+                .report-modal {
+                    position: relative;
+                    width: 90%;
+                    max-width: 850px;
+                    margin: 30px auto;
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                }
+                .report-modal-header {
+                    background: #2c3e50;
+                    color: white;
+                    padding: 20px 30px;
+                    border-radius: 12px 12px 0 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .report-modal-close {
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 28px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    transition: background 0.3s;
+                }
+                .report-modal-close:hover {
+                    background: rgba(255,255,255,0.1);
+                }
+                .report-modal-body {
+                    padding: 30px;
+                    max-height: calc(100vh - 200px);
+                    overflow-y: auto;
+                    background: #f5f5f5;
+                }
+                .report-modal-controls {
+                    display: flex;
+                    gap: 15px;
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                .report-wrapper {
+                    background: white;
+                    margin-bottom: 20px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    page-break-after: always;
+                }
+                @page {
+                    size: A4 portrait;
+                    margin: 15mm;
+                }
+                @media print {
+                    .report-modal-overlay {
+                        position: static;
+                        background: none;
+                    }
+                    .report-modal {
+                        width: 100%;
+                        max-width: none;
+                        margin: 0;
+                        box-shadow: none;
+                    }
+                    .report-modal-header,
+                    .report-modal-controls {
+                        display: none;
+                    }
+                    .report-modal-body {
+                        padding: 0;
+                        max-height: none;
+                        background: white;
+                    }
+                    .report-wrapper {
+                        margin: 0;
+                        box-shadow: none;
+                    }
+                    .vespa-report {
+                        width: 100%;
+                        max-width: 210mm;
+                        min-height: 297mm;
+                        margin: 0 auto;
+                    }
+                }
+            </style>
+            <div class="report-modal-overlay" id="reportModalOverlay">
+                <div class="report-modal">
+                    <div class="report-modal-header">
+                        <h2 style="margin: 0;">📋 VESPA Report Preview</h2>
+                        <button class="report-modal-close" id="closeModalBtn">×</button>
+                    </div>
+                    <div class="report-modal-body">
+                        <div class="report-modal-controls">
+                            <button id="printModalBtn" class="Knack-button" style="background: #27ae60; border: none; padding: 10px 20px; font-size: 1rem; border-radius: 6px; cursor: pointer;">
+                                🖨️ Print All Reports
+                            </button>
+                            <span id="reportCount" style="display: flex; align-items: center; color: #7f8c8d;"></span>
+                        </div>
+                        <div id="modalReportContainer"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return modalHtml;
     }
 
     async function fetchFilterOptions(staffIds) {
         try {
             log('Fetching filter options for the current user...');
             
-            // Fetch Tutors from object_7 - this can remain fetching all, as tutors aren't staff-specific in the same way
-            const tutorResp = await knackRequest('objects/object_7/records', { rows: 1000 });
+            // Fetch Tutors connected to this staff admin via field_225
+            const tutorFilters = [];
+            if (staffIds.length === 1) {
+                tutorFilters.push({ field: 'field_225', operator: 'is', value: staffIds[0] });
+            } else if (staffIds.length > 1) {
+                tutorFilters.push({ 
+                    match: 'or', 
+                    rules: staffIds.map(id => ({ field: 'field_225', operator: 'is', value: id }))
+                });
+            }
+            
+            const tutorResp = await knackRequest('objects/object_7/records', { 
+                filters: tutorFilters.length > 0 ? { match: 'and', rules: tutorFilters } : undefined,
+                rows: 1000 
+            });
             const tutors = (tutorResp.records || [])
                 .map(t => ({ id: t.id, name: t.field_95 })) // field_95 should be the Tutor's name
                 .sort((a, b) => a.name.localeCompare(b.name));
@@ -449,11 +654,11 @@
             tutors.forEach(t => {
                 tutorSelect.append(`<option value="${t.id}">${t.name}</option>`);
             });
+            log(`Loaded ${tutors.length} tutors connected to this staff admin`);
 
             // Fetch only the students relevant to the logged-in staff admin
             const students = await fetchStudents(staffIds, {}, 1000); // Fetch up to 1000 students for this admin
             log(`Found ${students.length} students for this user to populate filters.`);
-
 
             const yearGroups = [...new Set(students.map(s => s.field_144).filter(Boolean))].sort();
             const yearGroupSelect = $('#filterYearGroup');
@@ -535,11 +740,30 @@
         const btn = $('#generatePreviewBtn');
         const originalText = btn.text();
         let overlay;
-        const previewContainer = $('#reportPreviewContainer');
 
         if (!students || !students.length) {
             alert('No students to generate reports for.');
             return;
+        }
+
+        // Create modal if it doesn't exist
+        if (!$('#reportModalOverlay').length) {
+            $('body').append(createReportModal());
+            
+            // Bind modal events
+            $('#closeModalBtn').on('click', function() {
+                $('#reportModalOverlay').fadeOut();
+            });
+            
+            $('#reportModalOverlay').on('click', function(e) {
+                if ($(e.target).is('#reportModalOverlay')) {
+                    $(this).fadeOut();
+                }
+            });
+            
+            $('#printModalBtn').on('click', function() {
+                window.print();
+            });
         }
 
         try {
@@ -550,7 +774,7 @@
             addPrintStyles(); // Ensure styles are present for preview
             
             const templates = await loadCoachingTemplates();
-            previewContainer.empty(); // Clear previous previews
+            const modalContainer = $('#modalReportContainer').empty();
 
             for (let i = 0; i < students.length; i++) {
                 const stu = students[i];
@@ -560,7 +784,7 @@
                     const reportWrapper = document.createElement('div');
                     reportWrapper.className = 'report-wrapper';
                     reportWrapper.appendChild(reportElement);
-                    previewContainer.append(reportWrapper);
+                    modalContainer.append(reportWrapper);
                 }
                  // Yield to the browser to prevent freezing
                 if ((i + 1) % 10 === 0) {
@@ -570,19 +794,13 @@
 
             // Get logo from the first student record
             const estLogoUrl = students[0]?.field_3206 || students[0]?.field_61 || '';
-            await setLogos(previewContainer[0], estLogoUrl);
+            await setLogos(modalContainer[0], estLogoUrl);
 
-            // Add the final print button
-            $('<button id="printFinalBtn" class="Knack-button">Print All Reports</button>')
-                .css('margin-bottom', '15px')
-                .prependTo(previewContainer)
-                .on('click', function() {
-                    window.print();
-                });
+            // Update report count
+            $('#reportCount').text(`${students.length} reports ready to print`);
             
-            // Clean up old print container if it exists
-            $('#vespaBulkPrintContainer').remove();
-
+            // Show modal
+            $('#reportModalOverlay').fadeIn();
 
         } catch (e) {
             err('Error generating report previews:', e);
@@ -590,6 +808,32 @@
         } finally {
             if (overlay) overlay.remove();
             btn.text('Preview Generated').css('background-color', '#5cb85c');
+        }
+    }
+
+    // Add filter change tracking
+    function updateActiveFilters() {
+        const filters = {
+            cycle: $('#filterCycle').val(),
+            yearGroup: $('#filterYearGroup').val(),  
+            group: $('#filterGroup').val(),
+            tutorId: $('#filterTutor').val()
+        };
+        
+        const activeFilters = [];
+        if (filters.cycle) activeFilters.push(`Cycle ${filters.cycle.replace('C', '')}`);
+        if (filters.yearGroup) activeFilters.push(`Year ${filters.yearGroup}`);
+        if (filters.group) activeFilters.push(`Group ${filters.group}`);
+        if (filters.tutorId) {
+            const tutorName = $('#filterTutor option:selected').text();
+            if (tutorName && tutorName !== 'All Tutors') activeFilters.push(`Tutor: ${tutorName}`);
+        }
+        
+        if (activeFilters.length > 0) {
+            $('#filterSummary').addClass('active');
+            $('#activeFiltersList').html(activeFilters.map(f => `<span class="filter-tag">${f}</span>`).join(''));
+        } else {
+            $('#filterSummary').removeClass('active');
         }
     }
 
@@ -603,6 +847,14 @@
         // Render filters only once, then populate them.
         if (!$('#bulkPrintFilters').length) {
             renderFilterUI();
+            
+            // Bind filter change events
+            $('#filterCycle, #filterYearGroup, #filterGroup, #filterTutor').on('change', function() {
+                updateActiveFilters();
+                // Clear any existing preview when filters change
+                $('#studentListContainer').empty();
+            });
+            
             try {
                 const user = Knack.getUserAttributes();
                 if (!user || !user.email) throw new Error('Cannot determine logged-in user for filter population');
@@ -618,7 +870,23 @@
         console.log('[BulkPrint] Looking for button #bulkPrintbtn in view_3062');
         
         // Change the button text and ID for clarity
-        const btn = $('#view_3062 #bulkPrintbtn').attr('id', 'searchStudentsBtn').text('Search Students');
+        const btn = $('#view_3062 #bulkPrintbtn')
+            .attr('id', 'searchStudentsBtn')
+            .text('🔍 Search Students')
+            .css({
+                'background': '#3498db',
+                'border': 'none',
+                'padding': '12px 24px',
+                'font-size': '1.1rem',
+                'border-radius': '6px',
+                'cursor': 'pointer',
+                'transition': 'all 0.3s',
+                'box-shadow': '0 2px 5px rgba(52, 152, 219, 0.3)'
+            })
+            .hover(
+                function() { $(this).css('background', '#2980b9'); },
+                function() { $(this).css('background', '#3498db'); }
+            );
 
         if (btn.length && !btn.data('bulk-print-bound')) {
             console.log('[BulkPrint] Button found, binding click handler');
