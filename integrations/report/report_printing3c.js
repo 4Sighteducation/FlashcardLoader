@@ -605,14 +605,14 @@
                 }
                 @page {
                     size: A4 portrait;
-                    margin: 10mm;
+                    margin: 6mm; /* Tighter page margins */
                 }
-                /* Row-based Layout Styles - COMPACT VERSION */
+                /* Row-based Layout Styles - HYPER COMPACT VERSION */
                 .vespa-report {
                     width: 100%;
                     max-width: 210mm;
                     margin: 0 auto;
-                    padding: 10mm;
+                    padding: 5mm; /* Reduced padding inside the report body */
                     box-sizing: border-box;
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     background: white;
@@ -621,33 +621,33 @@
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 15px;
-                    padding-bottom: 15px;
+                    margin-bottom: 10px; /* Reduced */
+                    padding-bottom: 10px; /* Reduced */
                     border-bottom: 2px solid #e0e0e0;
                 }
                 .header-info {
-                    font-size: 11px;
+                    font-size: 10pt; /* Slightly smaller */
                 }
                 .header-title {
-                    font-size: 22px;
+                    font-size: 20pt; /* Slightly smaller */
                     font-weight: 700;
                     color: #2c3e50;
                 }
                 .logo-right {
-                    height: 50px;
+                    height: 45px; /* Slightly smaller */
                 }
                 /* Grid Title Row */
                 .vespa-grid-title {
                     display: grid;
-                    grid-template-columns: 80px 1.6fr 1fr;
-                    gap: 15px;
-                    margin-bottom: 8px;
-                    padding: 8px 0;
+                    grid-template-columns: 75px 1.7fr 1fr; /* Adjusted columns */
+                    gap: 12px; /* Reduced gap */
+                    margin-bottom: 5px; /* Reduced */
+                    padding: 5px 0; /* Reduced */
                     border-bottom: 1px solid #e0e0e0;
                 }
                 .vespa-grid-title > div {
                     font-weight: 700;
-                    font-size: 10pt;
+                    font-size: 9pt; /* Reduced */
                     color: #34495e;
                     text-transform: uppercase;
                 }
@@ -659,18 +659,18 @@
                     display: flex;
                     flex-direction: column;
                     gap: 0;
-                    margin-bottom: 15px;
+                    margin-bottom: 10px; /* Reduced */
                 }
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 80px 1.6fr 1fr;
-                    gap: 15px;
+                    grid-template-columns: 75px 1.7fr 1fr; /* Adjusted columns */
+                    gap: 12px; /* Reduced gap */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
                     border-left-width: 5px;
                     border-radius: 6px;
-                    margin-bottom: 8px;
+                    margin-bottom: 6px; /* Reduced */
                     background: #fafafa;
                 }
                 /* Score Column */
@@ -679,52 +679,52 @@
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding: 10px 5px;
+                    padding: 8px 5px; /* Reduced */
                     border-radius: 0;
                     text-align: center;
                     color: white;
                 }
                 .block-score p:first-child {
-                    font-size: 12px;
+                    font-size: 11px; /* Reduced */
                     font-weight: 700;
-                    margin: 0 0 5px 0;
+                    margin: 0 0 4px 0; /* Reduced */
                 }
                 .score-val {
-                    font-size: 40px;
+                    font-size: 36px; /* Reduced */
                     font-weight: 700;
                     line-height: 1;
                     margin: 0;
                 }
                 /* Report Comment Column */
                 .block-body {
-                    padding: 10px;
-                    font-size: 9pt;
-                    line-height: 1.4;
+                    padding: 8px; /* Reduced */
+                    font-size: 8.5pt; /* Reduced */
+                    line-height: 1.3; /* Reduced */
                     color: #444;
                     display: flex;
                     align-items: center;
                 }
                 /* Coaching Questions Column */
                 .block-questions {
-                    padding: 10px;
-                    font-size: 9pt;
+                    padding: 8px; /* Reduced */
+                    font-size: 8.5pt; /* Reduced */
                     border-left: 1px solid #e8e8e8;
                 }
                 .coach-qs {
                     margin: 0;
-                    padding-left: 15px;
+                    padding-left: 12px; /* Reduced */
                     list-style-type: disc;
                 }
                 .coach-qs li {
-                    margin-bottom: 5px;
-                    line-height: 1.4;
+                    margin-bottom: 4px; /* Reduced */
+                    line-height: 1.3; /* Reduced */
                     color: #555;
                 }
                 .activities {
-                    margin-top: 8px;
-                    padding-top: 8px;
+                    margin-top: 6px; /* Reduced */
+                    padding-top: 6px; /* Reduced */
                     border-top: 1px solid #e8e8e8;
-                    font-size: 8pt;
+                    font-size: 7.5pt; /* Reduced */
                     color: #666;
                 }
                 .activities span:first-of-type {
@@ -732,42 +732,43 @@
                 }
                 /* Bottom Section */
                 .bottom-section {
-                    margin-top: 15px;
-                    padding-top: 15px;
+                    margin-top: 10px; /* Reduced */
+                    padding-top: 10px; /* Reduced */
                     border-top: 2px solid #e0e0e0;
                 }
                 .bottom-section h4 {
-                    font-size: 12pt;
+                    font-size: 11pt; /* Reduced */
+                    margin-bottom: 8px; /* Reduced */
                 }
                 .bottom-row {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 15px;
+                    gap: 12px; /* Reduced */
                 }
                 .comment-box {
                     border: 1px solid #e0e0e0;
                     border-radius: 6px;
-                    padding: 10px;
+                    padding: 8px; /* Reduced */
                     background: #f8f9fa;
                 }
                 .box-title {
                     font-weight: 700;
-                    margin-bottom: 8px;
-                    font-size: 10pt;
+                    margin-bottom: 6px; /* Reduced */
+                    font-size: 9pt; /* Reduced */
                     color: #2c3e50;
                     text-transform: uppercase;
                 }
                 .comment-box p {
-                    font-size: 9pt;
-                    line-height: 1.4;
+                    font-size: 8.5pt; /* Reduced */
+                    line-height: 1.3; /* Reduced */
                     color: #444;
                     margin: 0;
                 }
                 .goal-review-date {
                     font-style: italic;
                     color: #666;
-                    margin-top: 8px;
-                    font-size: 8pt;
+                    margin-top: 6px; /* Reduced */
+                    font-size: 7.5pt; /* Reduced */
                 }
                 @media print {
                     .report-modal-overlay {
