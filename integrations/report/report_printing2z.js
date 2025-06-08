@@ -548,7 +548,7 @@
                 .report-modal {
                     position: relative;
                     width: 90%;
-                    max-width: 850px;
+                    max-width: 900px;
                     margin: 30px auto;
                     background: white;
                     border-radius: 12px;
@@ -598,196 +598,224 @@
                 }
                 .report-wrapper {
                     background: white;
-                    margin-bottom: 20px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    page-break-after: always;
+                    margin-bottom: 30px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    overflow: hidden;
                 }
                 @page {
                     size: A4 portrait;
                     margin: 15mm;
                 }
-                /* Three Column Layout Styles */
+                /* Row-based Layout Styles */
                 .vespa-report {
                     width: 100%;
                     max-width: 210mm;
                     margin: 0 auto;
                     padding: 15mm;
                     box-sizing: border-box;
-                    font-family: Arial, sans-serif;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     background: white;
                 }
                 .report-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 20px;
-                    padding-bottom: 15px;
-                    border-bottom: 2px solid #ddd;
+                    margin-bottom: 25px;
+                    padding-bottom: 20px;
+                    border-bottom: 3px solid #e0e0e0;
                 }
                 .header-info {
                     display: flex;
                     flex-direction: column;
                     gap: 5px;
                     font-size: 12px;
+                    color: #555;
+                }
+                .header-student {
+                    font-weight: 600;
+                    color: #2c3e50;
                 }
                 .header-title {
-                    font-size: 24px;
-                    font-weight: bold;
-                    color: #333;
+                    font-size: 26px;
+                    font-weight: 700;
+                    color: #2c3e50;
+                    letter-spacing: 0.5px;
                 }
                 .logo-right {
-                    height: 50px;
+                    height: 55px;
                 }
-                .three-column-layout {
+                /* Grid Title Row */
+                .vespa-grid-title {
                     display: grid;
-                    grid-template-columns: 150px 1fr 1fr;
-                    gap: 20px;
-                    margin-bottom: 30px;
+                    grid-template-columns: 120px 1fr 1fr;
+                    gap: 15px;
+                    margin-bottom: 10px;
+                    padding: 12px 0;
+                    border-bottom: 2px solid #e0e0e0;
                 }
-                .column-title {
-                    font-size: 14px;
-                    font-weight: bold;
-                    margin-bottom: 15px;
+                .vespa-grid-title > div {
+                    font-weight: 700;
+                    font-size: 13px;
+                    color: #34495e;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .title-score {
                     text-align: center;
-                    background: #f0f0f0;
-                    padding: 8px;
-                    border-radius: 4px;
                 }
-                /* Left Column - Score Cards */
-                .column-scores {
+                /* Main Grid */
+                .vespa-grid {
                     display: flex;
                     flex-direction: column;
+                    gap: 0;
+                    margin-bottom: 30px;
+                }
+                /* Component Row Block */
+                .vespa-block {
+                    display: grid;
+                    grid-template-columns: 120px 1fr 1fr;
                     gap: 15px;
-                }
-                .score-card {
-                    color: white;
-                    padding: 20px 10px;
-                    text-align: center;
+                    min-height: 100px;
+                    border: 1px solid #e0e0e0;
+                    border-left: 5px solid;
                     border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    margin-bottom: 12px;
+                    background: #fafafa;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                    transition: all 0.3s ease;
                 }
-                .score-label {
-                    font-size: 14px;
-                    font-weight: bold;
-                    margin-bottom: 5px;
+                .vespa-block:hover {
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
                 }
-                .score-subtitle {
-                    font-size: 12px;
-                    margin-bottom: 10px;
-                    opacity: 0.9;
-                }
-                .score-value {
-                    font-size: 36px;
-                    font-weight: bold;
-                    line-height: 1;
-                }
-                /* Middle Column - Comments */
-                .column-comments {
-                    padding: 0 10px;
-                }
-                .comment-component-box {
-                    margin-bottom: 15px;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    overflow: hidden;
-                }
-                .comment-header {
-                    color: white;
-                    padding: 8px 12px;
-                    font-size: 12px;
-                    font-weight: bold;
-                }
-                .comment-text {
-                    padding: 10px 12px;
-                    font-size: 11px;
-                    line-height: 1.5;
-                    margin: 0;
-                }
-                /* Right Column - Coaching Questions */
-                .column-coaching {
-                    padding: 0 10px;
-                }
-                .coaching-component-box {
-                    margin-bottom: 15px;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    overflow: hidden;
-                }
-                .component-header {
-                    color: white;
-                    padding: 8px 12px;
+                /* Score Column */
+                .block-score {
                     display: flex;
-                    justify-content: space-between;
+                    flex-direction: column;
                     align-items: center;
-                    font-size: 12px;
-                    font-weight: bold;
+                    justify-content: center;
+                    padding: 20px 10px;
+                    border-radius: 8px 0 0 8px;
+                    text-align: center;
                 }
-                .component-score {
-                    font-size: 11px;
+                .block-score p:first-child {
+                    font-size: 14px;
+                    font-weight: 700;
+                    margin: 0 0 10px 0;
+                    letter-spacing: 1px;
                 }
-                .coaching-questions-list {
+                .score-val {
+                    font-size: 48px;
+                    font-weight: 700;
+                    line-height: 1;
                     margin: 0;
-                    padding: 10px 12px 5px 30px;
-                    font-size: 11px;
-                    line-height: 1.5;
                 }
-                .coaching-questions-list li {
+                /* Report Comment Column */
+                .block-body {
+                    padding: 20px;
+                    font-size: 12px;
+                    line-height: 1.6;
+                    color: #444;
+                    display: flex;
+                    align-items: center;
+                }
+                /* Coaching Questions Column */
+                .block-questions {
+                    padding: 20px;
+                    font-size: 12px;
+                    border-left: 1px solid #e0e0e0;
+                }
+                .coach-qs {
+                    margin: 0;
+                    padding-left: 20px;
+                    list-style-type: disc;
+                }
+                .coach-qs li {
                     margin-bottom: 8px;
+                    line-height: 1.5;
+                    color: #555;
                 }
-                .suggested-activities {
-                    padding: 0 12px 10px;
+                .activities {
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid #e0e0e0;
                     font-size: 11px;
-                    line-height: 1.4;
+                    color: #666;
                 }
-                .suggested-activities strong {
-                    color: #333;
+                .activities span:first-child {
+                    font-weight: 600;
+                    color: #444;
                 }
                 /* Bottom Section */
                 .bottom-section {
-                    margin-top: 30px;
+                    margin-top: 35px;
+                    padding-top: 25px;
+                    border-top: 3px solid #e0e0e0;
                 }
                 .bottom-section h4 {
                     text-align: center;
-                    margin-bottom: 15px;
-                    font-size: 14px;
-                    color: #666;
+                    margin-bottom: 20px;
+                    font-size: 15px;
+                    color: #34495e;
+                    font-weight: 600;
+                    letter-spacing: 0.5px;
                 }
                 .bottom-row {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 20px;
+                    gap: 25px;
                 }
                 .comment-box {
-                    border: 2px solid #ddd;
-                    border-radius: 4px;
-                    padding: 15px;
-                    background: #f9f9f9;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 8px;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 }
                 .box-title {
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                    font-size: 12px;
-                    color: #333;
+                    font-weight: 700;
+                    margin-bottom: 12px;
+                    font-size: 13px;
+                    color: #2c3e50;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
                 .comment-box p {
-                    margin: 0;
-                    font-size: 11px;
-                    line-height: 1.5;
+                    margin: 0 0 8px 0;
+                    font-size: 12px;
+                    line-height: 1.6;
+                    color: #444;
+                }
+                .goal-review-date {
+                    font-style: italic;
+                    color: #666;
+                    margin-top: 10px;
                 }
                 @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    .report-modal-overlay,
+                    .report-modal-overlay * {
+                        visibility: visible;
+                    }
                     .report-modal-overlay {
-                        position: static;
-                        background: none;
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        background: white !important;
+                        display: block !important;
                     }
                     .report-modal {
                         width: 100%;
                         max-width: none;
                         margin: 0;
                         box-shadow: none;
+                        border-radius: 0;
                     }
                     .report-modal-header,
                     .report-modal-controls {
-                        display: none;
+                        display: none !important;
                     }
                     .report-modal-body {
                         padding: 0;
@@ -797,15 +825,28 @@
                     .report-wrapper {
                         margin: 0;
                         box-shadow: none;
+                        border-radius: 0;
                         page-break-after: always;
+                    }
+                    .report-wrapper:last-child {
+                        page-break-after: auto;
                     }
                     .vespa-report {
                         width: 100%;
-                        max-width: 210mm;
-                        min-height: 297mm;
-                        margin: 0 auto;
+                        max-width: 100%;
+                        margin: 0;
                         padding: 15mm;
                         page-break-inside: avoid;
+                        box-sizing: border-box;
+                    }
+                    .vespa-block {
+                        page-break-inside: avoid;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .block-score {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                 }
             </style>
@@ -976,7 +1017,10 @@
             });
             
             $('#printModalBtn').on('click', function() {
-                window.print();
+                // Use setTimeout to avoid TrustedScript issues
+                setTimeout(() => {
+                    window.print();
+                }, 100);
             });
         }
 
