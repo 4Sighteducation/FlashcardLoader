@@ -1,4 +1,18 @@
-@media print { body { -webkit-print-color-adjust: exact; } }
+@media print { 
+    body * {
+        visibility: hidden;
+    }
+    #vespaBulkPrintContainer, #vespaBulkPrintContainer * {
+        visibility: visible;
+    }
+    #vespaBulkPrintContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}
+
 .vespa-report { 
     width: 210mm; 
     min-height: 297mm; /* Use min-height to allow content to grow */
