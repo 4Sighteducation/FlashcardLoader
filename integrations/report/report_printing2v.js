@@ -70,7 +70,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2u.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2v.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -265,6 +265,7 @@
 
         const fullName = `${getField(student, FIELD_MAP.first) || ''} ${getField(student, FIELD_MAP.last) || ''}`.trim();
         const date = getField(student, FIELD_MAP.dateCompleted) || '';
+        const group = getField(student, FIELD_MAP.group) || '';
         const cycleKey = getCycleKey(getField(student, FIELD_MAP.cycle) || 'C1');
         const reflection = getField(student, FIELD_MAP.reflections[cycleKey] || FIELD_MAP.reflections.C1) || '';
         const goal = getField(student, FIELD_MAP.goals[cycleKey] || FIELD_MAP.goals.C1) || '';
@@ -278,6 +279,7 @@
         
         const headerInfo = createAndAppend(reportHeader, 'div', null, 'header-info');
         createAndAppend(headerInfo, 'div', `STUDENT: ${fullName}`, 'header-student');
+        createAndAppend(headerInfo, 'div', `GROUP: ${group}`, 'header-group');
         createAndAppend(headerInfo, 'div', `DATE: ${date}`, 'header-date');
         createAndAppend(headerInfo, 'div', `CYCLE: ${cycleKey.replace('C','')}`, 'header-cycle');
 
@@ -286,7 +288,11 @@
         const logoRight = document.createElement('img');
         logoRight.className = 'logo-right';
         logoRight.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
-        logoRight.alt = 'Vespa Logo';
+        logoRight.alt = 'Logo';
+        // Fallback if logo not found
+        logoRight.onerror = () => {
+            logoRight.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
+        };
         reportHeader.appendChild(logoRight);
         
         // -----------------------------------------------------------
@@ -297,8 +303,10 @@
 
         // Title row
         const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
-        createAndAppend(gridTitle, 'div', ''); // Empty cell for left border spacing
-        createAndAppend(gridTitle, 'div', 'Score | Report Comment | Coaching Questions');
+        createAndAppend(gridTitle, 'div', ''); // Spacer for colored bar
+        createAndAppend(gridTitle, 'div', 'Score', 'title-score');
+        createAndAppend(gridTitle, 'div', 'Report Comment', 'title-report');
+        createAndAppend(gridTitle, 'div', 'Coaching Questions', 'title-qs');
 
         // Grid wrapper
         const vespaGrid = createAndAppend(reportPage, 'div', null, 'vespa-grid');
@@ -321,6 +329,8 @@
 
             // --- Column 1: Score ---
             const blockScore = createAndAppend(block, 'div', null, 'block-score');
+            blockScore.style.backgroundColor = COMPONENT_COLORS[key];
+            blockScore.style.color = '#fff';
             createAndAppend(blockScore, 'p', COMPONENT_LABELS[key]);
             const scoreVal = createAndAppend(blockScore, 'p', null, 'score-val');
             scoreVal.textContent = score;
@@ -485,11 +495,12 @@
 
     // New: Renders a preview of the fetched students
     function renderStudentPreview(students) {
-        const listContainer = $('#studentListContainer').empty();
+        let listContainer = $('#studentListContainer');
         if (!listContainer.length) {
             listContainer = $('<div id="studentListContainer" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;"></div>').insertAfter('#bulkPrintFilters');
         }
-
+        listContainer.empty();
+        
         if (!students.length) {
             listContainer.html('<p style="color: #e74c3c; font-weight: 600;">⚠️ No students found matching the selected criteria.</p>');
             return;
