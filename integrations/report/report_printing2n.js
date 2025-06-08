@@ -210,6 +210,15 @@
     function buildStudentHTML(student, templates) {
         const getField = (obj, path) => path.split('.').reduce((o, k) => (o || {})[k], obj);
 
+        // Helper to create an element with text and append it
+        const createAndAppend = (parent, tag, text, className) => {
+            const el = document.createElement(tag);
+            if (text) el.textContent = text;
+            if (className) el.className = className;
+            parent.appendChild(el);
+            return el;
+        };
+
         const fullName = `${getField(student, FIELD_MAP.first) || ''} ${getField(student, FIELD_MAP.last) || ''}`.trim();
         const date = getField(student, FIELD_MAP.dateCompleted) || '';
         const cycleKey = getCycleKey(getField(student, FIELD_MAP.cycle) || 'C1');
@@ -221,61 +230,55 @@
         reportPage.className = 'vespa-report page';
 
         // -- Header --
-        const reportHeader = document.createElement('div');
-        reportHeader.className = 'report-header';
+        const reportHeader = createAndAppend(reportPage, 'div', null, 'report-header');
         
         const logoLeft = document.createElement('img');
         logoLeft.className = 'logo';
         logoLeft.alt = 'Logo';
-        reportHeader.appendChild(logoLeft); // Src set later by setLogos
+        reportHeader.appendChild(logoLeft); // Src set later
 
-        const headerTitle = document.createElement('div');
-        headerTitle.className = 'header-title';
-        headerTitle.textContent = 'VESPA COACHING REPORT';
-        reportHeader.appendChild(headerTitle);
+        createAndAppend(reportHeader, 'div', 'VESPA COACHING REPORT', 'header-title');
 
-        const headerRight = document.createElement('div');
-        headerRight.className = 'header-right';
+        const headerRight = createAndAppend(reportHeader, 'div', null, 'header-right');
         const logoRight = document.createElement('img');
         logoRight.className = 'logo-right';
         logoRight.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
         logoRight.alt = 'Vespa Logo';
-        const metaDiv = document.createElement('div');
-        metaDiv.className = 'meta';
-        metaDiv.innerHTML = `<div><strong>STUDENT:</strong> ${fullName}</div>
-                             <div><strong>DATE:</strong> ${date}</div>
-                             <div><strong>CYCLE:</strong> ${cycleKey.replace('C','')}</div>`;
         headerRight.appendChild(logoRight);
-        headerRight.appendChild(metaDiv);
-        reportHeader.appendChild(headerRight);
-        reportPage.appendChild(reportHeader);
-
+        
+        const metaDiv = createAndAppend(headerRight, 'div', null, 'meta');
+        const studentDiv = createAndAppend(metaDiv, 'div');
+        createAndAppend(studentDiv, 'strong', 'STUDENT:');
+        studentDiv.append(` ${fullName}`);
+        const dateDiv = createAndAppend(metaDiv, 'div');
+        createAndAppend(dateDiv, 'strong', 'DATE:');
+        dateDiv.append(` ${date}`);
+        const cycleDiv = createAndAppend(metaDiv, 'div');
+        createAndAppend(cycleDiv, 'strong', 'CYCLE:');
+        cycleDiv.append(` ${cycleKey.replace('C','')}`);
+        
         // -- Intro Section --
-        const introSection = document.createElement('div');
-        introSection.className = 'intro-section';
-        introSection.innerHTML = `<div class="intro-questions">
-                <h4>INTRODUCTORY QUESTIONS</h4>
-                <p>first, some general questions about your report:</p>
-                <ul>
-                    <li>To what extent is the report an accurate description of your current characteristics?</li>
-                    <li>Does your highest score represent a personal strength? Your lowest an area for development?</li>
-                    <li>If you had to challenge a score, or adjust it, which would it be, and why?</li>
-                    <li>Think back over the last few weeks. What are you currently finding hard about study at this level?</li>
-                    <li>Before we look at the rest of the report, remember it's quite normal to feel you don't know what you're trying to achieve or why you're studying. But by answering the questions below honestly, reflecting on this report, and making small, manageable changes, you could soon be feeling much more positive.</li>
-                </ul>
-            </div>
-            <div class="chart-placeholder"></div>`;
-        reportPage.appendChild(introSection);
-
+        const introSection = createAndAppend(reportPage, 'div', null, 'intro-section');
+        const questionsDiv = createAndAppend(introSection, 'div', null, 'intro-questions');
+        createAndAppend(questionsDiv, 'h4', 'INTRODUCTORY QUESTIONS');
+        createAndAppend(questionsDiv, 'p', 'first, some general questions about your report:');
+        const introList = createAndAppend(questionsDiv, 'ul');
+        [
+            'To what extent is the report an accurate description of your current characteristics?',
+            'Does your highest score represent a personal strength? Your lowest an area for development?',
+            'If you had to challenge a score, or adjust it, which would it be, and why?',
+            'Think back over the last few weeks. What are you currently finding hard about study at this level?',
+            'Before we look at the rest of the report, remember it\'s quite normal to feel you don\'t know what you\'re trying to achieve or why you\'re studying. But by answering the questions below honestly, reflecting on this report, and making small, manageable changes, you could soon be feeling much more positive.'
+        ].forEach(q => createAndAppend(introList, 'li', q));
+        createAndAppend(introSection, 'div', null, 'chart-placeholder');
+        
         // -- Grid Title --
-        const gridTitle = document.createElement('div');
-        gridTitle.className = 'vespa-grid-title';
-        gridTitle.innerHTML = '<div><p>VESPA REPORT</p></div><div><p>COACHING QUESTIONS</p></div>';
-        reportPage.appendChild(gridTitle);
+        const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
+        createAndAppend(createAndAppend(gridTitle, 'div'), 'p', 'VESPA REPORT');
+        createAndAppend(createAndAppend(gridTitle, 'div'), 'p', 'COACHING QUESTIONS');
 
         // -- Vespa Grid --
-        const vespaGrid = document.createElement('div');
-        vespaGrid.className = 'vespa-grid';
+        const vespaGrid = createAndAppend(reportPage, 'div', null, 'vespa-grid');
         const components = ['vision', 'effort', 'systems', 'practice', 'attitude'];
         
         components.forEach(key => {
@@ -283,48 +286,44 @@
             const bracket = scoreBracket(score);
             const templateRec = (templates[key] || {})[bracket] || {};
             const longComment = templateRec['field_845'] || '';
-            const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0,3);
+            const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0, 3);
             const activities = templateRec['field_847'] || '';
 
-            const block = document.createElement('div');
-            block.className = 'vespa-block';
+            const block = createAndAppend(vespaGrid, 'div', null, 'vespa-block');
             block.style.borderLeftColor = COMPONENT_COLORS[key];
             
-            block.innerHTML = `
-                <div class="block-score" style="background:${COMPONENT_COLORS[key]}">
-                    <p>${COMPONENT_LABELS[key]}</p>
-                    <p>Score</p>
-                    <p class="score-val">${score}</p>
-                </div>
-                <div class="block-body">
-                    <p class="long-comment">${longComment}</p>
-                </div>
-                <div class="block-questions">
-                    <ul>${questionsRaw.map(q=>`<li>${q}</li>`).join('')}</ul>
-                    <p class="activities">Suggested Activities: <span>${activities}</span></p>
-                </div>`;
-            vespaGrid.appendChild(block);
+            const scoreBlock = createAndAppend(block, 'div', null, 'block-score');
+            scoreBlock.style.background = COMPONENT_COLORS[key];
+            createAndAppend(scoreBlock, 'p', COMPONENT_LABELS[key]);
+            createAndAppend(scoreBlock, 'p', 'Score');
+            createAndAppend(scoreBlock, 'p', score, 'score-val');
+            
+            const bodyBlock = createAndAppend(block, 'div', null, 'block-body');
+            createAndAppend(bodyBlock, 'p', longComment, 'long-comment');
+            
+            const questionsBlock = createAndAppend(block, 'div', null, 'block-questions');
+            const qList = createAndAppend(questionsBlock, 'ul');
+            questionsRaw.forEach(q => createAndAppend(qList, 'li', q));
+            
+            const actP = createAndAppend(questionsBlock, 'p', 'Suggested Activities: ', 'activities');
+            createAndAppend(actP, 'span', activities);
         });
-        reportPage.appendChild(vespaGrid);
-
+        
         // -- Bottom Section --
-        const bottomSection = document.createElement('div');
-        bottomSection.className = 'bottom-section';
-        bottomSection.innerHTML = `
-            <h4>(COMMENTS / STUDY GOAL)</h4>
-            <div class="comment-box">
-                <p><strong>STUDENT RESPONSE</strong></p>
-                <p>${reflection}</p>
-            </div>
-            <div class="comment-box">
-                <p><strong>COACHING RECORD</strong> (Currently visible to student)</p>
-                <p><em>Coach input will appear here...</em></p>
-            </div>
-            <div class="comment-box">
-                <p><strong>STUDY GOAL/ACTION PLAN</strong></p>
-                <p>${goal}</p>
-            </div>`;
-        reportPage.appendChild(bottomSection);
+        const bottomSection = createAndAppend(reportPage, 'div', null, 'bottom-section');
+        createAndAppend(bottomSection, 'h4', '(COMMENTS / STUDY GOAL)');
+        
+        const responseBox = createAndAppend(bottomSection, 'div', null, 'comment-box');
+        createAndAppend(responseBox, 'p').innerHTML = '<strong>STUDENT RESPONSE</strong>';
+        createAndAppend(responseBox, 'p', reflection);
+        
+        const recordBox = createAndAppend(bottomSection, 'div', null, 'comment-box');
+        createAndAppend(recordBox, 'p').innerHTML = '<strong>COACHING RECORD</strong> (Currently visible to student)';
+        createAndAppend(recordBox, 'p', 'Coach input will appear here...').style.fontStyle = 'italic';
+        
+        const goalBox = createAndAppend(bottomSection, 'div', null, 'comment-box');
+        createAndAppend(goalBox, 'p').innerHTML = '<strong>STUDY GOAL/ACTION PLAN</strong>';
+        createAndAppend(goalBox, 'p', goal);
 
         return reportPage;
     }
@@ -372,11 +371,11 @@
         $('#bulkPrintbtn').before(filterHtml);
     }
 
-    async function fetchFilterOptions() {
+    async function fetchFilterOptions(staffIds) {
         try {
-            log('Fetching filter options...');
+            log('Fetching filter options for the current user...');
             
-            // Fetch Tutors from object_7
+            // Fetch Tutors from object_7 - this can remain fetching all, as tutors aren't staff-specific in the same way
             const tutorResp = await knackRequest('objects/object_7/records', { rows: 1000 });
             const tutors = (tutorResp.records || [])
                 .map(t => ({ id: t.id, name: t.field_95 })) // field_95 should be the Tutor's name
@@ -388,10 +387,10 @@
                 tutorSelect.append(`<option value="${t.id}">${t.name}</option>`);
             });
 
-            // To get unique values for Year Group and Group, we must fetch all students.
-            // This can be slow, but is required by the data structure.
-            const studentResp = await knackRequest('objects/object_10/records', { rows: 1000 });
-            const students = studentResp.records || [];
+            // Fetch only the students relevant to the logged-in staff admin
+            const students = await fetchStudents(staffIds, {}, 1000); // Fetch up to 1000 students for this admin
+            log(`Found ${students.length} students for this user to populate filters.`);
+
 
             const yearGroups = [...new Set(students.map(s => s.field_144).filter(Boolean))].sort();
             const yearGroupSelect = $('#filterYearGroup');
@@ -497,7 +496,9 @@
             for (let i = 0; i < students.length; i++) {
                 const stu = students[i];
                 const reportElement = buildStudentHTML(stu, templates);
-                container.appendChild(reportElement);
+                if (reportElement) { // Ensure the element was created
+                    container.appendChild(reportElement);
+                }
                 const progressText = `Building reports... ${i + 1}/${students.length}`;
                 overlay.text(progressText);
                 if ((i + 1) % 10 === 0) {
@@ -538,16 +539,23 @@
     }
 
     // Expose init for loader (called by WorkingBridge)
-    window.initializeBulkPrintApp = function () {
+    window.initializeBulkPrintApp = async function () {
         cfg = window.BULK_PRINT_CONFIG || {};
         log('Config at initialization:', cfg);
         
         log('BulkPrint app initialised. Waiting for button click.');
         
-        // Render filters only once
+        // Render filters only once, then populate them.
         if (!$('#bulkPrintFilters').length) {
             renderFilterUI();
-            fetchFilterOptions();
+            try {
+                const user = Knack.getUserAttributes();
+                if (!user || !user.email) throw new Error('Cannot determine logged-in user for filter population');
+                const staffIds = await getStaffAdminRecordIds(user.email);
+                await fetchFilterOptions(staffIds);
+            } catch (e) {
+                err('Failed to initialize filter options:', e);
+            }
         }
         
         // Debug: Check if we're on the right view
