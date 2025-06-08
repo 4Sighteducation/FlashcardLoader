@@ -1,6 +1,6 @@
 /*
  * Bulk VESPA Report Printing
- *
+ * Version: 2g
  * Loaded by WorkingBridge.js as "bulkPrint" app (scene_1227, view_3062)
  * Required global: BULK_PRINT_CONFIG (injected by loader)
  *
@@ -66,6 +66,23 @@
         practice: 'PRACTICE',
         attitude: 'ATTITUDE'
     };
+
+    function addPrintStyles() {
+        if (document.getElementById('vespaBulkPrintStyles')) return;
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2g.css';
+        const link = document.createElement('link');
+        link.id = 'vespaBulkPrintStyles';
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = cssUrl;
+        document.head.appendChild(link);
+        log('Print styles added.');
+    }
+
+    function removePrintStyles() {
+        $('#vespaBulkPrintStyles').remove();
+        log('Print styles removed.');
+    }
 
     // Util: build Knack REST request
     async function knackRequest(path, params = {}) {
@@ -214,13 +231,36 @@
             <div class="report-header">
                 <img class="logo" src="" alt="Logo" />
                 <div class="header-title">VESPA COACHING REPORT</div>
-                <div class="meta">
-                    <div><strong>STUDENT:</strong> ${fullName}</div>
-                    <div><strong>GROUP:</strong> ${group}</div>
-                    <div><strong>DATE:</strong> ${date}</div>
-                    <div><strong>CYCLE:</strong> ${cycle.replace('C','')}</div>
+                <div class="header-right">
+                    <img class="logo-right" src="https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png" alt="Vespa Logo" />
+                    <div class="meta">
+                        <div><strong>STUDENT:</strong> ${fullName}</div>
+                        <div><strong>DATE:</strong> ${date}</div>
+                        <div><strong>CYCLE:</strong> ${cycle.replace('C','')}</div>
+                    </div>
                 </div>
             </div>`;
+        
+        // Introductory Questions & Chart placeholder
+        html += `<div class="intro-section">
+            <div class="intro-questions">
+                <h4>INTRODUCTORY QUESTIONS</h4>
+                <p>first, some general questions about your report:</p>
+                <ul>
+                    <li>To what extent is the report an accurate description of your current characteristics?</li>
+                    <li>Does your highest score represent a personal strength? Your lowest an area for development?</li>
+                    <li>If you had to challenge a score, or adjust it, which would it be, and why?</li>
+                    <li>Think back over the last few weeks. What are you currently finding hard about study at this level?</li>
+                    <li>Before we look at the rest of the report, remember it's quite normal to feel you don't know what you're trying to achieve or why you're studying. But by answering the questions below honestly, reflecting on this report, and making small, manageable changes, you could soon be feeling much more positive.</li>
+                </ul>
+            </div>
+            <div class="chart-placeholder">
+                <!-- Chart will be rendered here by Chart.js if we add it -->
+            </div>
+        </div>`;
+
+
+        html += '<div class="vespa-grid-title"><div><p>VESPA REPORT</p></div><div><p>COACHING QUESTIONS</p></div></div>';
 
         // V-E-S-P-A blocks
         const components = ['vision', 'effort', 'systems', 'practice', 'attitude'];
@@ -233,22 +273,40 @@
             const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0,3);
             const activities = templateRec['field_847'] || '';
 
-            html += `<div class="vespa-block" style="border-color:${COMPONENT_COLORS[key]}">
-                <div class="block-header" style="background:${COMPONENT_COLORS[key]}">${COMPONENT_LABELS[key]}<br/><span class="score">${score}</span></div>
+            html += `<div class="vespa-block" style="border-left-color:${COMPONENT_COLORS[key]}">
+                <div class="block-score" style="background:${COMPONENT_COLORS[key]}">
+                    <p>${COMPONENT_LABELS[key]}</p>
+                    <p>Score</p>
+                    <p class="score-val">${score}</p>
+                </div>
                 <div class="block-body">
                     <p class="long-comment">${longComment}</p>
-                    <ul class="coach-qs">${questionsRaw.map(q=>`<li>${q}</li>`).join('')}</ul>
-                    <p class="activities"><strong>Activities:</strong> ${activities}</p>
+                </div>
+                <div class="block-questions">
+                    <ul>${questionsRaw.map(q=>`<li>${q}</li>`).join('')}</ul>
+                    <p class="activities">Suggested Activities: <span>${activities}</span></p>
                 </div>
             </div>`;
         });
         html += '</div>'; // grid
 
-        // Reflection & Goal boxes
+        // Student Comment & Study Goal
         html += `<div class="bottom-section">
-            <div class="reflection"><strong>STUDENT COMMENT / STUDY GOAL:</strong><br/>${reflection}</div>
-            <div class="action-plan"><strong>ACTION PLAN:</strong><br/>${goal}<br/><br/>Action Plan Review Date: ____________</div>
+            <h4>(COMMENTS / STUDY GOAL)</h4>
+            <div class="comment-box">
+                <p><strong>STUDENT RESPONSE</strong></p>
+                <p>${reflection}</p>
+            </div>
+            <div class="comment-box">
+                <p><strong>COACHING RECORD</strong> (Currently visible to student)</p>
+                <p><em>Coach input will appear here...</em></p>
+            </div>
+            <div class="comment-box">
+                <p><strong>STUDY GOAL/ACTION PLAN</strong></p>
+                <p>${goal}</p>
+            </div>
         </div>`;
+
 
         html += '</div>'; // report page
         return html;
@@ -288,35 +346,6 @@
         $('#bulkPrintbtn').before(filterHtml);
     }
 
-    // Inject CSS once
-    function injectStyles() {
-        if (document.getElementById('vespaBulkPrintStyles')) return;
-        const css = `
-            @media print { body { -webkit-print-color-adjust: exact; } }
-            .vespa-report { width: 210mm; height: 297mm; padding: 12mm; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
-            .report-header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #444; margin-bottom:8px; }
-            .report-header .logo { height:38px; }
-            .report-header .header-title { font-size:18px; font-weight:bold; flex:1; text-align:center; }
-            .report-header .meta { font-size:10px; text-align:right; }
-            .vespa-grid { display:grid; grid-template-columns: repeat(2,1fr); grid-gap:6px; margin-top:6px; }
-            .vespa-block { border:2px solid; padding:4px; font-size:9px; display:flex; flex-direction:column; }
-            .block-header { color:#fff; font-weight:bold; text-align:center; padding:2px 0; font-size:10px; }
-            .block-header .score { font-size:20px; display:block; }
-            .block-body { flex:1; overflow:hidden; }
-            .long-comment { margin:2px 0; }
-            .coach-qs { padding-left:14px; margin:2px 0; }
-            .coach-qs li { margin-bottom:2px; }
-            .activities { margin-top:2px; font-style:italic; }
-            .bottom-section { margin-top:4px; display:flex; gap:6px; font-size:9px; }
-            .reflection, .action-plan { border:1px solid #888; padding:4px; flex:1; min-height:40mm; }
-            .page { page-break-after: always; }
-        `;
-        const style = document.createElement('style');
-        style.id = 'vespaBulkPrintStyles';
-        style.innerHTML = css;
-        document.head.appendChild(style);
-    }
-
     // Replace logo URLs after DOM build
     async function setLogos(container, establishmentFieldUrl) {
         const imgs = container.querySelectorAll('img.logo');
@@ -331,12 +360,15 @@
         const btn = $('#bulkPrintbtn');
         const originalText = btn.text();
         let overlay;
+        const containerId = 'vespaBulkPrintContainer';
 
         try {
             // Show loading overlay and update button
             overlay = $('<div id="bulkPrintOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;display:flex;justify-content:center;align-items:center;color:white;font-size:20px;"></div>').appendTo('body');
             btn.text('Generating reports...').prop('disabled', true);
             overlay.text('Preparing reports...');
+            
+            addPrintStyles();
 
             // Read config when we actually need it
             cfg = window.BULK_PRINT_CONFIG || {};
@@ -346,7 +378,6 @@
                 throw new Error('Missing Knack credentials. Please contact support.');
             }
             
-            injectStyles();
             const user = Knack.getUserAttributes();
             if (!user || !user.email) throw new Error('Cannot determine logged-in user');
             
@@ -394,7 +425,6 @@
             overlay.text('Loading report templates...');
             const templates = await loadCoachingTemplates();
 
-            const containerId = 'vespaBulkPrintContainer';
             let container = document.getElementById(containerId);
             if (container) container.remove();
             container = document.createElement('div');
@@ -422,8 +452,11 @@
                 window.print();
                 if (overlay) overlay.remove();
                 btn.text(originalText).prop('disabled', false);
-                // Optionally remove container
-                // $(`#${containerId}`).remove();
+                
+                // Clean up DOM to prevent affecting other pages
+                removePrintStyles();
+                $('#' + containerId).remove();
+                log('Print container removed.');
             }, 500);
 
         } catch (e) {
@@ -434,18 +467,15 @@
             
             if (overlay) overlay.remove();
             btn.text(originalText).prop('disabled', false);
+
+            // Clean up on error
+            removePrintStyles();
+            const container = document.getElementById(containerId);
+            if (container) container.remove();
         }
     }
 
-    // Bind click handler when view_3062 renders
-    $(document).on('knack-view-render.view_3062', function (event, view) {
-        $('#' + view.key + ' #bulkPrintbtn').off('click.bulk').on('click.bulk', function (e) {
-            e.preventDefault();
-            run();
-        });
-    });
-
-    // Expose init for loader (called immediately by WorkingBridge)
+    // Expose init for loader (called by WorkingBridge)
     window.initializeBulkPrintApp = function () {
         cfg = window.BULK_PRINT_CONFIG || {};
         log('Config at initialization:', cfg);
@@ -456,8 +486,6 @@
         if (!$('#bulkPrintFilters').length) {
             renderFilterUI();
         }
-
-        injectStyles();
         
         // Debug: Check if we're on the right view
         console.log('[BulkPrint] Current scene:', Knack.scene?.key);
@@ -475,6 +503,5 @@
     };
     
     // Also log when script loads
-    console.log('[BulkPrint] Script loaded successfully');
+    console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
-
