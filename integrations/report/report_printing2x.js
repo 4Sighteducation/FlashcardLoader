@@ -329,8 +329,9 @@
             const bracket = scoreBracket(score);
             const templateRec = templateGroup[bracket] || {};
 
+            const qsSrc = templateRec && templateRec['field_853'] ? templateRec['field_853'] : '';
+            const questionsRaw = qsSrc.split(/<br\s*\/?>|\n/).filter(Boolean).slice(0, 3);
             const longComment = (templateRec['field_845'] || '').replace(/<[^>]*>/g,' ').trim();
-            const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0, 3);
             const activities = templateRec['field_847'] || '';
 
             // Row container
