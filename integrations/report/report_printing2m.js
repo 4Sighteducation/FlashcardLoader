@@ -117,16 +117,6 @@
         return (data.records || []).map(r => r.id);
     }
 
-    // Step 1b: Get Tutor record ID from email (if provided)
-    async function getTutorIdByEmail(email) {
-        if (!email) return null;
-        const data = await knackRequest('objects/object_7/records', {
-            filters: { match: 'and', rules: [{ field: 'field_96', operator: 'is', value: email }] },
-            rows: 1
-        });
-        return (data.records && data.records.length > 0) ? data.records[0].id : null;
-    }
-
     // Step 2: Fetch students (with limit and filters)
     async function fetchStudents(staffIds, filters, maxStudents = 100) {
         if (!staffIds.length) return [];
@@ -142,11 +132,11 @@
         }
         if (filters.yearGroup) {
             // field_144 is Year Group, which is a Short Text field.
-            uiFilterRules.push({ field: 'field_144', operator: 'contains', value: filters.yearGroup });
+            uiFilterRules.push({ field: 'field_144', operator: 'is', value: filters.yearGroup });
         }
         if (filters.group) {
             // field_223 is Group, which is a Short Text field.
-            uiFilterRules.push({ field: FIELD_MAP.group, operator: 'contains', value: filters.group });
+            uiFilterRules.push({ field: FIELD_MAP.group, operator: 'is', value: filters.group });
         }
         if (filters.tutorId) {
             // field_145 is the connection to the Tutor object
@@ -218,33 +208,52 @@
 
     // Build report HTML per student
     function buildStudentHTML(student, templates) {
-        const fullName = `${student[FIELD_MAP.first] || ''} ${student[FIELD_MAP.last] || ''}`.trim();
-        const group = student[FIELD_MAP.group] || '';
-        const date = student[FIELD_MAP.dateCompleted] || '';
-        const cycle = getCycleKey(student[FIELD_MAP.cycle] || 'C1');
+        const getField = (obj, path) => path.split('.').reduce((o, k) => (o || {})[k], obj);
 
-        // Reflection / goal fields
-        const reflection = student[FIELD_MAP.reflections[cycle] || FIELD_MAP.reflections.C1] || '';
-        const goal = student[FIELD_MAP.goals[cycle] || FIELD_MAP.goals.C1] || '';
+        const fullName = `${getField(student, FIELD_MAP.first) || ''} ${getField(student, FIELD_MAP.last) || ''}`.trim();
+        const date = getField(student, FIELD_MAP.dateCompleted) || '';
+        const cycleKey = getCycleKey(getField(student, FIELD_MAP.cycle) || 'C1');
+        const reflection = getField(student, FIELD_MAP.reflections[cycleKey] || FIELD_MAP.reflections.C1) || '';
+        const goal = getField(student, FIELD_MAP.goals[cycleKey] || FIELD_MAP.goals.C1) || '';
 
-        // Header with logo placeholder (img tag later replaced)
-        let html = `<div class="vespa-report page">
-            <div class="report-header">
-                <img class="logo" src="" alt="Logo" />
-                <div class="header-title">VESPA COACHING REPORT</div>
-                <div class="header-right">
-                    <img class="logo-right" src="https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png" alt="Vespa Logo" />
-                    <div class="meta">
-                        <div><strong>STUDENT:</strong> ${fullName}</div>
-                        <div><strong>DATE:</strong> ${date}</div>
-                        <div><strong>CYCLE:</strong> ${cycle.replace('C','')}</div>
-                    </div>
-                </div>
-            </div>`;
+        // Main container
+        const reportPage = document.createElement('div');
+        reportPage.className = 'vespa-report page';
+
+        // -- Header --
+        const reportHeader = document.createElement('div');
+        reportHeader.className = 'report-header';
         
-        // Introductory Questions & Chart placeholder
-        html += `<div class="intro-section">
-            <div class="intro-questions">
+        const logoLeft = document.createElement('img');
+        logoLeft.className = 'logo';
+        logoLeft.alt = 'Logo';
+        reportHeader.appendChild(logoLeft); // Src set later by setLogos
+
+        const headerTitle = document.createElement('div');
+        headerTitle.className = 'header-title';
+        headerTitle.textContent = 'VESPA COACHING REPORT';
+        reportHeader.appendChild(headerTitle);
+
+        const headerRight = document.createElement('div');
+        headerRight.className = 'header-right';
+        const logoRight = document.createElement('img');
+        logoRight.className = 'logo-right';
+        logoRight.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
+        logoRight.alt = 'Vespa Logo';
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'meta';
+        metaDiv.innerHTML = `<div><strong>STUDENT:</strong> ${fullName}</div>
+                             <div><strong>DATE:</strong> ${date}</div>
+                             <div><strong>CYCLE:</strong> ${cycleKey.replace('C','')}</div>`;
+        headerRight.appendChild(logoRight);
+        headerRight.appendChild(metaDiv);
+        reportHeader.appendChild(headerRight);
+        reportPage.appendChild(reportHeader);
+
+        // -- Intro Section --
+        const introSection = document.createElement('div');
+        introSection.className = 'intro-section';
+        introSection.innerHTML = `<div class="intro-questions">
                 <h4>INTRODUCTORY QUESTIONS</h4>
                 <p>first, some general questions about your report:</p>
                 <ul>
@@ -255,26 +264,33 @@
                     <li>Before we look at the rest of the report, remember it's quite normal to feel you don't know what you're trying to achieve or why you're studying. But by answering the questions below honestly, reflecting on this report, and making small, manageable changes, you could soon be feeling much more positive.</li>
                 </ul>
             </div>
-            <div class="chart-placeholder">
-                <!-- Chart will be rendered here by Chart.js if we add it -->
-            </div>
-        </div>`;
+            <div class="chart-placeholder"></div>`;
+        reportPage.appendChild(introSection);
 
+        // -- Grid Title --
+        const gridTitle = document.createElement('div');
+        gridTitle.className = 'vespa-grid-title';
+        gridTitle.innerHTML = '<div><p>VESPA REPORT</p></div><div><p>COACHING QUESTIONS</p></div>';
+        reportPage.appendChild(gridTitle);
 
-        html += '<div class="vespa-grid-title"><div><p>VESPA REPORT</p></div><div><p>COACHING QUESTIONS</p></div></div>';
-
-        // V-E-S-P-A blocks
+        // -- Vespa Grid --
+        const vespaGrid = document.createElement('div');
+        vespaGrid.className = 'vespa-grid';
         const components = ['vision', 'effort', 'systems', 'practice', 'attitude'];
-        html += '<div class="vespa-grid">';
+        
         components.forEach(key => {
-            const score = student[FIELD_MAP.scores[key]] || '-';
+            const score = getField(student, FIELD_MAP.scores[key]) || '-';
             const bracket = scoreBracket(score);
             const templateRec = (templates[key] || {})[bracket] || {};
             const longComment = templateRec['field_845'] || '';
             const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0,3);
             const activities = templateRec['field_847'] || '';
 
-            html += `<div class="vespa-block" style="border-left-color:${COMPONENT_COLORS[key]}">
+            const block = document.createElement('div');
+            block.className = 'vespa-block';
+            block.style.borderLeftColor = COMPONENT_COLORS[key];
+            
+            block.innerHTML = `
                 <div class="block-score" style="background:${COMPONENT_COLORS[key]}">
                     <p>${COMPONENT_LABELS[key]}</p>
                     <p>Score</p>
@@ -286,13 +302,15 @@
                 <div class="block-questions">
                     <ul>${questionsRaw.map(q=>`<li>${q}</li>`).join('')}</ul>
                     <p class="activities">Suggested Activities: <span>${activities}</span></p>
-                </div>
-            </div>`;
+                </div>`;
+            vespaGrid.appendChild(block);
         });
-        html += '</div>'; // grid
+        reportPage.appendChild(vespaGrid);
 
-        // Student Comment & Study Goal
-        html += `<div class="bottom-section">
+        // -- Bottom Section --
+        const bottomSection = document.createElement('div');
+        bottomSection.className = 'bottom-section';
+        bottomSection.innerHTML = `
             <h4>(COMMENTS / STUDY GOAL)</h4>
             <div class="comment-box">
                 <p><strong>STUDENT RESPONSE</strong></p>
@@ -305,12 +323,10 @@
             <div class="comment-box">
                 <p><strong>STUDY GOAL/ACTION PLAN</strong></p>
                 <p>${goal}</p>
-            </div>
-        </div>`;
+            </div>`;
+        reportPage.appendChild(bottomSection);
 
-
-        html += '</div>'; // report page
-        return html;
+        return reportPage;
     }
 
     // Add Filter UI
@@ -330,21 +346,73 @@
                     </div>
                     <div>
                         <label for="filterYearGroup">Year Group:</label>
-                        <input type="text" id="filterYearGroup" placeholder="e.g., Year 12" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <select id="filterYearGroup" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All Year Groups</option>
+                            <option value="" disabled>Loading...</option>
+                        </select>
                     </div>
                     <div>
                         <label for="filterGroup">Group:</label>
-                        <input type="text" id="filterGroup" placeholder="e.g., 12A/Sc1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <select id="filterGroup" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All Groups</option>
+                            <option value="" disabled>Loading...</option>
+                        </select>
                     </div>
                     <div>
-                        <label for="filterTutorEmail">Tutor Email:</label>
-                        <input type="email" id="filterTutorEmail" placeholder="e.g., tutor@example.com" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <label for="filterTutor">Tutor:</label>
+                        <select id="filterTutor" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="">All Tutors</option>
+                            <option value="" disabled>Loading...</option>
+                        </select>
                     </div>
                 </div>
             </div>
         `;
         // Insert filters before the print button
         $('#bulkPrintbtn').before(filterHtml);
+    }
+
+    async function fetchFilterOptions() {
+        try {
+            log('Fetching filter options...');
+            
+            // Fetch Tutors from object_7
+            const tutorResp = await knackRequest('objects/object_7/records', { rows: 1000 });
+            const tutors = (tutorResp.records || [])
+                .map(t => ({ id: t.id, name: t.field_95 })) // field_95 should be the Tutor's name
+                .sort((a, b) => a.name.localeCompare(b.name));
+            
+            const tutorSelect = $('#filterTutor');
+            tutorSelect.empty().append('<option value="">All Tutors</option>');
+            tutors.forEach(t => {
+                tutorSelect.append(`<option value="${t.id}">${t.name}</option>`);
+            });
+
+            // To get unique values for Year Group and Group, we must fetch all students.
+            // This can be slow, but is required by the data structure.
+            const studentResp = await knackRequest('objects/object_10/records', { rows: 1000 });
+            const students = studentResp.records || [];
+
+            const yearGroups = [...new Set(students.map(s => s.field_144).filter(Boolean))].sort();
+            const yearGroupSelect = $('#filterYearGroup');
+            yearGroupSelect.empty().append('<option value="">All Year Groups</option>');
+            yearGroups.forEach(yg => {
+                yearGroupSelect.append(`<option value="${yg}">${yg}</option>`);
+            });
+
+            const groups = [...new Set(students.map(s => s.field_223).filter(Boolean))].sort();
+            const groupSelect = $('#filterGroup');
+            groupSelect.empty().append('<option value="">All Groups</option>');
+            groups.forEach(g => {
+                groupSelect.append(`<option value="${g}">${g}</option>`);
+            });
+
+            log('Filter options loaded.');
+
+        } catch (e) {
+            err('Could not load filter options', e);
+            $('#filterYearGroup, #filterGroup, #filterTutor').empty().append('<option value="">Error loading options</option>').prop('disabled', true);
+        }
     }
 
     // Replace logo URLs after DOM build
@@ -386,16 +454,6 @@
             const staffIds = await getStaffAdminRecordIds(user.email);
             if (!staffIds.length) throw new Error('No Staff-Admin record found for user');
 
-            const tutorEmail = $('#filterTutorEmail').val();
-            let tutorId = null;
-            if (tutorEmail) {
-                overlay.text('Fetching tutor record...');
-                tutorId = await getTutorIdByEmail(tutorEmail);
-                if (!tutorId) {
-                    throw new Error(`No tutor found with email: ${tutorEmail}`);
-                }
-            }
-
             overlay.text('Fetching students...');
             // Lowered limit for faster testing. Can be increased later.
             const MAX_STUDENTS = 50;
@@ -403,7 +461,7 @@
                 cycle: $('#filterCycle').val(),
                 yearGroup: $('#filterYearGroup').val(),
                 group: $('#filterGroup').val(),
-                tutorId: tutorId
+                tutorId: $('#filterTutor').val()
             };
             const students = await fetchStudents(staffIds, filters, MAX_STUDENTS);
             log(`Fetched ${students.length} students (limit: ${MAX_STUDENTS}).`);
@@ -438,7 +496,8 @@
 
             for (let i = 0; i < students.length; i++) {
                 const stu = students[i];
-                container.insertAdjacentHTML('beforeend', buildStudentHTML(stu, templates));
+                const reportElement = buildStudentHTML(stu, templates);
+                container.appendChild(reportElement);
                 const progressText = `Building reports... ${i + 1}/${students.length}`;
                 overlay.text(progressText);
                 if ((i + 1) % 10 === 0) {
@@ -488,6 +547,7 @@
         // Render filters only once
         if (!$('#bulkPrintFilters').length) {
             renderFilterUI();
+            fetchFilterOptions();
         }
         
         // Debug: Check if we're on the right view
@@ -508,3 +568,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
+
