@@ -924,3 +924,212 @@ hr {
     }
     /* --- END: Print Resets for Screen-Styled VESPA Labels --- */
 }
+
+@media print { 
+    body * {
+        visibility: hidden;
+    }
+    #reportPreviewContainer, #reportPreviewContainer * {
+        visibility: visible;
+    }
+    #reportPreviewContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .report-wrapper {
+        transform: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+    }
+    #bulkPrintFilters, #studentListContainer, #printFinalBtn {
+        display: none;
+    }
+}
+
+.report-wrapper {
+    transform: scale(0.75);
+    transform-origin: top left;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin-bottom: -60mm; /* Adjust based on scale to reduce vertical gap */
+    margin-right: -40mm; /* Adjust based on scale to reduce horizontal gap */
+}
+
+.vespa-report { 
+    width: 210mm; 
+    min-height: 297mm; /* Use min-height to allow content to grow */
+    padding: 8mm; 
+    box-sizing: border-box; 
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+    font-size: 9pt;
+    color: #333;
+    page-break-after: always; /* Ensure each report is on a new page */
+}
+.report-header { 
+    display: flex; 
+    align-items: flex-start; 
+    justify-content: space-between; 
+    border-bottom: 2px solid #333; 
+    padding-bottom: 5mm;
+    margin-bottom: 5mm;
+}
+.report-header .logo { 
+    height: 42px; 
+    margin-right: 10mm;
+}
+.report-header .header-title { 
+    font-size: 20pt; 
+    font-weight: bold; 
+    color: #444;
+    flex: 1; 
+    text-align: center; 
+    align-self: center;
+}
+.report-header .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+.report-header .logo-right {
+    height: 42px;
+    margin-bottom: 4mm;
+}
+.report-header .meta { 
+    font-size: 10pt; 
+    text-align: right; 
+    line-height: 1.4;
+}
+
+.intro-section {
+    display: flex;
+    gap: 8mm;
+    margin-bottom: 5mm;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 5mm;
+}
+.intro-questions {
+    flex: 2;
+    font-size: 9pt;
+}
+.intro-questions h4 {
+    margin: 0 0 2mm 0;
+    font-size: 11pt;
+}
+.intro-questions ul {
+    padding-left: 5mm;
+    margin: 0;
+}
+.chart-placeholder {
+    flex: 1;
+    min-height: 50mm;
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+}
+
+.vespa-grid-title {
+    display: grid;
+    grid-template-columns: 24mm 1fr;
+    grid-gap: 8mm;
+    margin-bottom: 2mm;
+    font-weight: bold;
+    color: #555;
+    font-size: 11pt;
+    padding-left: 10mm; /* Align with block content */
+}
+.vespa-grid-title div:last-child {
+    text-align: center;
+}
+
+.vespa-grid { 
+    display: grid; 
+    grid-template-columns: 1fr; /* Single column grid for rows */
+    grid-gap: 3mm; 
+}
+.vespa-block { 
+    border-left: 4px solid;
+    padding: 3mm;
+    background: #fdfdfd;
+    display: grid;
+    grid-template-columns: 24mm 1fr 1fr;
+    grid-gap: 5mm;
+    align-items: stretch;
+    min-height: 40mm;
+}
+.block-score {
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 2mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+}
+.block-score p {
+    margin: 0;
+    padding: 0;
+}
+.block-score .score-val {
+    font-size: 28pt;
+    line-height: 1;
+    margin-top: 1mm;
+}
+.block-body {
+    padding: 0;
+    line-height: 1.4;
+    font-size: 8.5pt;
+}
+.block-questions {
+    padding: 0;
+    line-height: 1.4;
+    font-size: 8.5pt;
+    border-left: 1px solid #eee;
+    padding-left: 5mm;
+}
+.block-questions ul {
+    padding-left: 4mm;
+    margin: 0;
+}
+.block-questions .activities {
+    margin-top: 2mm;
+    font-style: italic;
+}
+.block-questions .activities span {
+    font-weight: bold;
+}
+
+.bottom-section { 
+    margin-top: 6mm; 
+    font-size: 9pt;
+    border-top: 1px solid #ccc;
+    padding-top: 4mm;
+}
+.bottom-section h4 {
+    font-size: 11pt;
+    margin: 0 0 3mm 0;
+}
+.comment-box {
+    border: 1px solid #ddd;
+    padding: 3mm;
+    margin-bottom: 3mm;
+    background: #fdfdfd;
+    min-height: 20mm;
+}
+.comment-box p {
+    margin: 0 0 1mm 0;
+}
+
+.long-comment { margin:2px 0; }
+.coach-qs { padding-left:14px; margin:2px 0; }
+.coach-qs li { margin-bottom:2px; }
+.activities { margin-top:2px; font-style:italic; }
+.reflection, .action-plan { border:1px solid #888; padding:4px; flex:1; min-height:40mm; }
+.page { page-break-after: always; } 
