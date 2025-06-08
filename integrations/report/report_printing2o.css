@@ -2,15 +2,33 @@
     body * {
         visibility: hidden;
     }
-    #vespaBulkPrintContainer, #vespaBulkPrintContainer * {
+    #reportPreviewContainer, #reportPreviewContainer * {
         visibility: visible;
     }
-    #vespaBulkPrintContainer {
+    #reportPreviewContainer {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
     }
+    .report-wrapper {
+        transform: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+    }
+    #bulkPrintFilters, #studentListContainer, #printFinalBtn {
+        display: none;
+    }
+}
+
+.report-wrapper {
+    transform: scale(0.75);
+    transform-origin: top left;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin-bottom: -60mm; /* Adjust based on scale to reduce vertical gap */
+    margin-right: -40mm; /* Adjust based on scale to reduce horizontal gap */
 }
 
 .vespa-report { 
