@@ -70,7 +70,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2t.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2u.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -289,73 +289,54 @@
         logoRight.alt = 'Vespa Logo';
         reportHeader.appendChild(logoRight);
         
-        // -- Three Column Layout --
-        const threeColumnLayout = createAndAppend(reportPage, 'div', null, 'three-column-layout');
-        
-        // Left Column - VESPA Scores
-        const leftColumn = createAndAppend(threeColumnLayout, 'div', null, 'column-scores');
-        createAndAppend(leftColumn, 'h3', 'VESPA REPORT', 'column-title');
-        
+        // -----------------------------------------------------------
+        //  NEW ROW-BASED LAYOUT (one row per component)
+        // -----------------------------------------------------------
+
         const components = ['vision', 'effort', 'systems', 'practice', 'attitude'];
-        
+
+        // Title row
+        const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
+        createAndAppend(gridTitle, 'div', ''); // Empty cell for left border spacing
+        createAndAppend(gridTitle, 'div', 'Score | Report Comment | Coaching Questions');
+
+        // Grid wrapper
+        const vespaGrid = createAndAppend(reportPage, 'div', null, 'vespa-grid');
+
         components.forEach(key => {
             const score = getField(student, FIELD_MAP.scores[key]) || '-';
-            
-            const scoreCard = createAndAppend(leftColumn, 'div', null, 'score-card');
-            scoreCard.style.backgroundColor = COMPONENT_COLORS[key];
-            
-            createAndAppend(scoreCard, 'div', COMPONENT_LABELS[key], 'score-label');
-            createAndAppend(scoreCard, 'div', 'Score', 'score-subtitle');
-            createAndAppend(scoreCard, 'div', score, 'score-value');
-        });
-        
-        // Middle Column - Coaching Comments
-        const middleColumn = createAndAppend(threeColumnLayout, 'div', null, 'column-comments');
-        
-        // Add coaching comments for each component
-        components.forEach(key => {
-            const score = getField(student, FIELD_MAP.scores[key]) || '-';
+
+            // Support template aliasing (e.g. "system" vs "systems")
+            const templateGroup = templates[key] || templates[key.replace(/s$/, '')] || {};
             const bracket = scoreBracket(score);
-            const templateRec = (templates[key] || {})[bracket] || {};
+            const templateRec = templateGroup[bracket] || {};
+
             const longComment = templateRec['field_845'] || '';
-            
-            if (longComment) {
-                const commentBox = createAndAppend(middleColumn, 'div', null, 'comment-component-box');
-                
-                const commentHeader = createAndAppend(commentBox, 'div', null, 'comment-header');
-                commentHeader.style.backgroundColor = COMPONENT_COLORS[key];
-                createAndAppend(commentHeader, 'span', COMPONENT_LABELS[key], 'component-name');
-                
-                createAndAppend(commentBox, 'p', longComment, 'comment-text');
-            }
-        });
-        
-        // Right Column - Coaching Questions  
-        const rightColumn = createAndAppend(threeColumnLayout, 'div', null, 'column-coaching');
-        createAndAppend(rightColumn, 'h3', 'COACHING QUESTIONS', 'column-title');
-        
-        components.forEach(key => {
-            const score = getField(student, FIELD_MAP.scores[key]) || '-';
-            const bracket = scoreBracket(score);
-            const templateRec = (templates[key] || {})[bracket] || {};
             const questionsRaw = (templateRec['field_853'] || '').split(/<br\s*\/?>|\n/).filter(Boolean).slice(0, 3);
             const activities = templateRec['field_847'] || '';
-            
-            const componentBox = createAndAppend(rightColumn, 'div', null, 'coaching-component-box');
-            
-            const componentHeader = createAndAppend(componentBox, 'div', null, 'component-header');
-            componentHeader.style.backgroundColor = COMPONENT_COLORS[key];
-            createAndAppend(componentHeader, 'span', COMPONENT_LABELS[key], 'component-name');
-            createAndAppend(componentHeader, 'span', `Score: ${score}`, 'component-score');
-            
-            if (questionsRaw.length > 0) {
-                const qList = createAndAppend(componentBox, 'ul', null, 'coaching-questions-list');
-                questionsRaw.forEach(q => createAndAppend(qList, 'li', q));
+
+            // Row container
+            const block = createAndAppend(vespaGrid, 'div', null, 'vespa-block');
+            block.style.borderLeftColor = COMPONENT_COLORS[key];
+
+            // --- Column 1: Score ---
+            const blockScore = createAndAppend(block, 'div', null, 'block-score');
+            createAndAppend(blockScore, 'p', COMPONENT_LABELS[key]);
+            const scoreVal = createAndAppend(blockScore, 'p', null, 'score-val');
+            scoreVal.textContent = score;
+
+            // --- Column 2: Report Comment ---
+            createAndAppend(block, 'div', longComment, 'block-body');
+
+            // --- Column 3: Coaching Questions ---
+            const qWrapper = createAndAppend(block, 'div', null, 'block-questions');
+            if (questionsRaw.length) {
+                const ul = createAndAppend(qWrapper, 'ul', null, 'coach-qs');
+                questionsRaw.forEach(q => createAndAppend(ul, 'li', q));
             }
-            
             if (activities) {
-                const actDiv = createAndAppend(componentBox, 'div', null, 'suggested-activities');
-                createAndAppend(actDiv, 'strong', 'Suggested Activities: ');
+                const actDiv = createAndAppend(qWrapper, 'div', null, 'activities');
+                createAndAppend(actDiv, 'span', 'Suggested Activities: ');
                 createAndAppend(actDiv, 'span', activities);
             }
         });
@@ -1096,4 +1077,3 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
-
