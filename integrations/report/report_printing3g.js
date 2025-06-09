@@ -290,19 +290,38 @@
         // -- Header --
         const reportHeader = createAndAppend(reportPage, 'div', null, 'report-header');
         
-        const headerInfo = createAndAppend(reportHeader, 'div', null, 'header-info');
-        createAndAppend(headerInfo, 'div', `STUDENT: ${fullName}`, 'header-student');
-        // createAndAppend(headerInfo, 'div', `GROUP: ${group}`, 'header-group'); // Hidden to save space
-        createAndAppend(headerInfo, 'div', `DATE: ${date}`, 'header-date');
-        createAndAppend(headerInfo, 'div', `CYCLE: ${cycleKey.replace('C','')}`, 'header-cycle');
+        // Left: VESPA Logo
+        const logoLeft = document.createElement('img');
+        logoLeft.className = 'logo-left';
+        logoLeft.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
+        logoLeft.alt = 'VESPA Logo';
+        logoLeft.onerror = () => {
+            logoLeft.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
+        };
+        reportHeader.appendChild(logoLeft);
+        
+        // Center: Title and Info
+        const headerCenter = createAndAppend(reportHeader, 'div', null, 'header-center');
+        createAndAppend(headerCenter, 'div', 'VESPA COACHING REPORT', 'header-title');
+        
+        const headerInfo = createAndAppend(headerCenter, 'div', null, 'header-info');
+        const studentDiv = createAndAppend(headerInfo, 'div');
+        createAndAppend(studentDiv, 'strong', 'STUDENT:');
+        createAndAppend(studentDiv, 'span', fullName);
+        
+        const dateDiv = createAndAppend(headerInfo, 'div');
+        createAndAppend(dateDiv, 'strong', 'DATE:');
+        createAndAppend(dateDiv, 'span', date);
+        
+        const cycleDiv = createAndAppend(headerInfo, 'div');
+        createAndAppend(cycleDiv, 'strong', 'CYCLE:');
+        createAndAppend(cycleDiv, 'span', cycleKey.replace('C',''));
 
-        createAndAppend(reportHeader, 'div', 'VESPA COACHING REPORT', 'header-title');
-
+        // Right: School Logo
         const logoRight = document.createElement('img');
         logoRight.className = 'logo-right';
         logoRight.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
-        logoRight.alt = 'Logo';
-        // Fallback if logo not found
+        logoRight.alt = 'School Logo';
         logoRight.onerror = () => {
             logoRight.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
         };
@@ -635,48 +654,75 @@
                     width: 100%;
                     max-width: 210mm;
                     margin: 0 auto;
-                    padding: 4mm; /* Ultra-reduced padding */
+                    padding: 10mm 8mm; /* More padding now that we have space */
                     box-sizing: border-box;
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     background: white;
                 }
                 .report-header {
-                    display: flex;
-                    justify-content: space-between;
+                    display: grid;
+                    grid-template-columns: auto 1fr auto;
                     align-items: center;
-                    margin-bottom: 3px; /* Ultra-aggressive reduction */
-                    padding-bottom: 3px; /* Ultra-aggressive reduction */
-                    border-bottom: 1px solid #e0e0e0; /* Thinner border */
+                    margin-bottom: 10px; /* More space for modern look */
+                    padding-bottom: 10px; /* More padding */
+                    border-bottom: 2px solid #e0e0e0; /* Thicker border for definition */
+                    gap: 20px;
+                }
+                .logo-left {
+                    height: 35px; /* Small VESPA logo */
+                    opacity: 0.8;
+                }
+                .header-center {
+                    text-align: center;
                 }
                 .header-info {
-                    font-size: 10pt; /* Slightly smaller */
+                    font-size: 9pt; /* Smaller for modern look */
+                    color: #666;
+                    line-height: 1.4;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+                .header-info > div {
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                }
+                .header-info strong {
+                    color: #2c3e50;
+                    font-weight: 600;
+                    min-width: 70px;
+                    text-align: right;
                 }
                 .header-title {
-                    font-size: 20pt; /* Slightly smaller */
-                    font-weight: 700;
+                    font-size: 24pt; /* Larger for impact */
+                    font-weight: 800;
                     color: #2c3e50;
+                    letter-spacing: 1px;
+                    margin: 8px 0;
                 }
                 .logo-right {
-                    height: 45px; /* Slightly smaller */
+                    height: 50px; /* School logo */
                 }
                 /* Main Grid */
                 .vespa-grid {
                     display: flex;
                     flex-direction: column;
                     gap: 0;
-                    margin-bottom: 5px; /* Final reduction */
+                    margin-bottom: 15px; /* More space before bottom section */
                 }
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 75px 1.5fr 1fr; /* Adjusted to give more space to questions column */
-                    gap: 8px; /* Further reduced gap */
+                    grid-template-columns: 80px 1.5fr 1fr; /* Slightly wider score column */
+                    gap: 12px; /* More gap between columns */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
                     border-left-width: 5px;
-                    border-radius: 6px;
-                    margin-bottom: 4px; /* Further reduced */
+                    border-radius: 8px; /* More rounded */
+                    margin-bottom: 8px; /* More space between blocks */
                     background: #fafafa;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow for depth */
                 }
                 /* Score Column */
                 .block-score {
@@ -717,13 +763,14 @@
                 }
                 .coach-qs {
                     margin: 0;
-                    padding-left: 10px; /* Further reduced */
-                    list-style-type: disc;
+                    padding-left: 0; /* Remove indent */
+                    list-style-type: none; /* Remove bullets */
                 }
                 .coach-qs li {
-                    margin-bottom: 2px; /* Ultra-reduced */
-                    line-height: 1.2; /* Tighter to match report column */
+                    margin-bottom: 3px; /* Slightly more space between items */
+                    line-height: 1.25; /* Slightly more readable */
                     color: #555;
+                    padding-left: 0; /* Ensure no indent */
                 }
                 .activities {
                     margin-top: 6px; /* Reduced */
@@ -746,25 +793,27 @@
                 }
                 .bottom-row {
                     display: grid;
-                    grid-template-columns: 1fr 1fr; /* Side-by-side layout to save vertical space */
-                    gap: 6px; /* Minimal gap */
+                    grid-template-columns: 1fr; /* Back to stacked layout */
+                    gap: 10px; /* More gap between stacked items */
                 }
                 .comment-box {
                     border: 1px solid #e0e0e0;
-                    border-radius: 4px; /* Smaller radius */
-                    padding: 6px; /* Ultra-reduced */
+                    border-radius: 6px; /* More rounded for modern look */
+                    padding: 12px; /* More padding since we have space */
                     background: #f8f9fa;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
                 }
                 .box-title {
                     font-weight: 700;
-                    margin-bottom: 3px; /* Ultra-reduced */
-                    font-size: 8pt; /* Further reduced */
+                    margin-bottom: 8px; /* More space */
+                    font-size: 10pt; /* Larger for readability */
                     color: #2c3e50;
                     text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
                 .comment-box p {
-                    font-size: 7.5pt; /* Further reduced */
-                    line-height: 1.2; /* Tighter */
+                    font-size: 9pt; /* More readable */
+                    line-height: 1.4; /* Better line height */
                     color: #444;
                     margin: 0;
                 }
@@ -804,6 +853,7 @@
                     }
                     .vespa-report {
                         page-break-inside: avoid;
+                        padding: 10mm 8mm !important; /* Maintain padding in print */
                     }
                 }
             </style>
@@ -1201,3 +1251,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
+
