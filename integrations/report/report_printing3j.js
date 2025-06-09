@@ -293,11 +293,8 @@
         // VESPA Logo
         const logoLeft = document.createElement('img');
         logoLeft.className = 'logo-left';
-        logoLeft.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
+        logoLeft.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
         logoLeft.alt = 'VESPA Logo';
-        logoLeft.onerror = () => {
-            logoLeft.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
-        };
         pageHeader.appendChild(logoLeft);
         
         // Student Info
@@ -317,11 +314,8 @@
         // School Logo
         const logoRight = document.createElement('img');
         logoRight.className = 'logo-right';
-        logoRight.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
+        logoRight.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
         logoRight.alt = 'School Logo';
-        logoRight.onerror = () => {
-            logoRight.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
-        };
         pageHeader.appendChild(logoRight);
         
         // -- Report Title --
@@ -718,7 +712,7 @@
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 75px 2.2fr 0.6fr; /* Border moved much further left */
+                    grid-template-columns: 75px 1.2fr 1.8fr; /* Border moved RIGHT - smaller comments, larger questions */
                     gap: 10px; /* Reduced gap */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
@@ -752,17 +746,17 @@
                 }
                 /* Report Comment Column */
                 .block-body {
-                    padding: 4px 8px; /* Slightly more horizontal padding */
-                    font-size: 8pt; /* Further reduced */
-                    line-height: 1.15; /* Even tighter line height */
+                    padding: 4px 6px; /* Minimal padding for smaller column */
+                    font-size: 7.5pt; /* Smaller for narrower column */
+                    line-height: 1.2; /* Tight line height */
                     color: #444;
                     display: flex;
                     align-items: center;
                 }
                 /* Coaching Questions Column */
                 .block-questions {
-                    padding: 4px 6px; /* Keep minimal padding */
-                    font-size: 7.5pt; /* Smaller to fit in reduced space */
+                    padding: 4px 8px; /* More padding for larger column */
+                    font-size: 8pt; /* Normal size for wider column */
                     border-left: 1px solid #d0d0d0; /* Darker, more uniform border */
                 }
                 .coach-qs {
@@ -1014,8 +1008,8 @@
                           !logoUrl.includes('google.com/url');
         
         if (!isValidUrl) {
-            // Use VESPA logo as fallback instead of non-existent placeholder
-            logoUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
+            // Use VESPA logo as fallback
+            logoUrl = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
         }
         
         // Apply to all school logos with error handling
@@ -1028,13 +1022,13 @@
                 // Check if image actually loaded (sometimes returns 1x1 pixel on error)
                 if (img.naturalWidth < 10 || img.naturalHeight < 10) {
                     console.warn('Logo appears to be invalid (too small):', logoUrl);
-                    img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
+                    img.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
                 }
             };
             
             img.onerror = () => {
                 console.warn('Failed to load school logo:', logoUrl);
-                img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
+                img.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
                 // Prevent infinite error loop
                 img.onerror = null;
                 img.onload = null;
