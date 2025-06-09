@@ -287,7 +287,10 @@
         const reportPage = document.createElement('div');
         reportPage.className = 'vespa-report page';
 
-        // VESPA Logo - positioned absolutely at top left
+        // -- Page Header with logos and student info --
+        const pageHeader = createAndAppend(reportPage, 'div', null, 'page-header');
+        
+        // VESPA Logo
         const logoLeft = document.createElement('img');
         logoLeft.className = 'logo-left';
         logoLeft.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
@@ -295,16 +298,10 @@
         logoLeft.onerror = () => {
             logoLeft.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
         };
-        reportPage.appendChild(logoLeft);
-
-        // -- Header --
-        const reportHeader = createAndAppend(reportPage, 'div', null, 'report-header');
+        pageHeader.appendChild(logoLeft);
         
-        // Left side: Title and Info
-        const headerLeft = createAndAppend(reportHeader, 'div', null, 'header-left');
-        createAndAppend(headerLeft, 'div', 'VESPA COACHING REPORT', 'header-title');
-        
-        const headerInfo = createAndAppend(headerLeft, 'div', null, 'header-info');
+        // Student Info
+        const headerInfo = createAndAppend(pageHeader, 'div', null, 'header-info');
         const studentDiv = createAndAppend(headerInfo, 'div');
         createAndAppend(studentDiv, 'strong', 'STUDENT:');
         createAndAppend(studentDiv, 'span', ` ${fullName}`);
@@ -317,7 +314,7 @@
         createAndAppend(cycleDiv, 'strong', 'CYCLE:');
         createAndAppend(cycleDiv, 'span', ` ${cycleKey.replace('C','')}`);
 
-        // Right: School Logo
+        // School Logo
         const logoRight = document.createElement('img');
         logoRight.className = 'logo-right';
         logoRight.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
@@ -325,7 +322,11 @@
         logoRight.onerror = () => {
             logoRight.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
         };
-        reportHeader.appendChild(logoRight);
+        pageHeader.appendChild(logoRight);
+        
+        // -- Report Title --
+        const reportHeader = createAndAppend(reportPage, 'div', null, 'report-header');
+        createAndAppend(reportHeader, 'h1', 'VESPA COACHING REPORT', 'header-title');
         
         // -----------------------------------------------------------
         //  NEW ROW-BASED LAYOUT (one row per component)
@@ -660,34 +661,28 @@
                     background: white;
                     position: relative; /* For absolute positioning of logo */
                 }
-                .report-header {
+                .page-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 8px; /* Reduced */
-                    padding-bottom: 8px; /* Reduced */
+                    margin-bottom: 10px;
+                    padding: 8px 0;
                     border-bottom: 2px solid #e0e0e0;
-                    margin-top: 25px; /* Space for absolute positioned logo */
                 }
                 .logo-left {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    height: 25px; /* Smaller VESPA logo */
-                    opacity: 0.7;
-                }
-                .header-left {
-                    flex: 1;
+                    height: 30px; /* Small VESPA logo */
+                    opacity: 0.8;
                 }
                 .header-info {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 15px;
+                    display: flex;
+                    gap: 20px;
+                    align-items: center;
                     background: #f0f4f8;
-                    padding: 8px 12px;
+                    padding: 6px 15px;
                     border-radius: 6px;
                     font-size: 9pt;
-                    margin-bottom: 6px;
+                    flex: 1;
+                    margin: 0 15px;
                 }
                 .header-info > div {
                     display: flex;
@@ -699,16 +694,19 @@
                     color: #2c3e50;
                     font-weight: 600;
                 }
+                .logo-right {
+                    height: 40px; /* School logo */
+                }
+                .report-header {
+                    text-align: center;
+                    margin-bottom: 10px;
+                }
                 .header-title {
-                    font-size: 22pt; /* Slightly smaller */
+                    font-size: 24pt;
                     font-weight: 800;
                     color: #2c3e50;
                     letter-spacing: 1px;
-                    text-align: center;
                     margin: 0;
-                }
-                .logo-right {
-                    height: 45px; /* Slightly smaller school logo */
                 }
                 /* Main Grid */
                 .vespa-grid {
@@ -720,7 +718,7 @@
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 75px 1.8fr 0.8fr; /* Border moved left */
+                    grid-template-columns: 75px 2.2fr 0.6fr; /* Border moved much further left */
                     gap: 10px; /* Reduced gap */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
@@ -754,17 +752,17 @@
                 }
                 /* Report Comment Column */
                 .block-body {
-                    padding: 4px 6px; /* Ultra-reduced padding */
+                    padding: 4px 8px; /* Slightly more horizontal padding */
                     font-size: 8pt; /* Further reduced */
-                    line-height: 1.2; /* Tighter line height */
+                    line-height: 1.15; /* Even tighter line height */
                     color: #444;
                     display: flex;
                     align-items: center;
                 }
                 /* Coaching Questions Column */
                 .block-questions {
-                    padding: 4px 6px; /* Ultra-reduced padding to match report column */
-                    font-size: 8pt; /* Reduced to match */
+                    padding: 4px 6px; /* Keep minimal padding */
+                    font-size: 7.5pt; /* Smaller to fit in reduced space */
                     border-left: 1px solid #d0d0d0; /* Darker, more uniform border */
                 }
                 .coach-qs {
@@ -1016,7 +1014,8 @@
                           !logoUrl.includes('google.com/url');
         
         if (!isValidUrl) {
-            logoUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+            // Use VESPA logo as fallback instead of non-existent placeholder
+            logoUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
         }
         
         // Apply to all school logos with error handling
@@ -1029,13 +1028,13 @@
                 // Check if image actually loaded (sometimes returns 1x1 pixel on error)
                 if (img.naturalWidth < 10 || img.naturalHeight < 10) {
                     console.warn('Logo appears to be invalid (too small):', logoUrl);
-                    img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+                    img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
                 }
             };
             
             img.onerror = () => {
                 console.warn('Failed to load school logo:', logoUrl);
-                img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+                img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
                 // Prevent infinite error loop
                 img.onerror = null;
                 img.onload = null;
