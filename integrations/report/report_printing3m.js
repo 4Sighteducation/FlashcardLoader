@@ -77,7 +77,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2w.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2x.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -290,12 +290,19 @@
         // -- Page Header with logos and student info --
         const pageHeader = createAndAppend(reportPage, 'div', null, 'page-header');
         
-        // VESPA Logo - using data URL to avoid CORS
+        // VESPA Logo
         const logoLeft = document.createElement('img');
         logoLeft.className = 'logo-left';
-        // Small VESPA "V" logo as data URL
-        logoLeft.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiM0QTZGQTQIIG9wYWNpdHk9IjAuMSIvPgo8cGF0aCBkPSJNMTIgMTJMMjAgMjhMMjggMTIiIHN0cm9rZT0iIzRBNkZBNCIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
+        logoLeft.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/vespalogo.png';
         logoLeft.alt = 'VESPA Logo';
+        logoLeft.onerror = () => {
+            // Fallback to text if image fails
+            const textLogo = document.createElement('div');
+            textLogo.className = 'logo-left';
+            textLogo.style.cssText = 'font-weight: bold; color: #4A6FA4; font-size: 16px; line-height: 30px;';
+            textLogo.textContent = 'VESPA';
+            logoLeft.replaceWith(textLogo);
+        };
         pageHeader.appendChild(logoLeft);
         
         // Student Info
@@ -939,7 +946,16 @@
         const schoolLogos = container.querySelectorAll('img.logo-right');
         if (!schoolLogos.length) return;
         
+        log('setLogos called with:', establishmentFieldUrl);
+        
         let logoUrl = establishmentFieldUrl || '';
+        
+        // Handle Knack image field format
+        if (logoUrl && typeof logoUrl === 'object') {
+            log('Logo is an object:', logoUrl);
+            // Knack image fields return an object with a 'url' property
+            logoUrl = logoUrl.url || logoUrl.thumb_url || logoUrl.full_url || '';
+        }
         
         // Handle various URL anomalies and redirects
         if (logoUrl) {
@@ -1168,8 +1184,11 @@
                 }
             }
 
-            // Get logo from the first student record
-            const estLogoUrl = students[0]?.field_3206 || students[0]?.field_61 || '';
+            // Get logo from the first student record - prioritize field_61
+            const estLogoUrl = students[0]?.field_61_raw || students[0]?.field_61 || students[0]?.field_3206 || '';
+            log('School logo field_61:', students[0]?.field_61);
+            log('School logo field_61_raw:', students[0]?.field_61_raw);
+            log('School logo field_3206:', students[0]?.field_3206);
             await setLogos(modalContainer[0], estLogoUrl);
 
             // Update report count
