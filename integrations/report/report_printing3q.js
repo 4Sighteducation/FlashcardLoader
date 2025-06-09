@@ -1213,47 +1213,57 @@
                     log('Fetching school/account record from Object_2:', schoolId);
                     // Fetch the school/account record to get logo
                     const schoolData = await knackRequest(`objects/object_2/records/${schoolId}`);
-                    if (schoolData?.record) {
-                        log('School record fields:', Object.keys(schoolData.record).filter(k => k.includes('field')).sort());
+                    
+                    // Check if the response structure is different
+                    log('School data response structure:', Object.keys(schoolData));
+                    
+                    // The response might just be the record directly, not wrapped in a 'record' property
+                    const record = schoolData?.record || schoolData;
+                    
+                    if (record && record.id) {
+                        // Log the entire record to see what we're getting
+                        log('Full school record:', record);
+                        
+                        log('School record fields:', Object.keys(record).filter(k => k.includes('field')).sort());
                         
                         // Log specific fields we're looking for
-                        log('field_61:', schoolData.record.field_61);
-                        log('field_61_raw:', schoolData.record.field_61_raw);
-                        log('field_3206:', schoolData.record.field_3206);
-                        log('field_3206_raw:', schoolData.record.field_3206_raw);
+                        log('field_61:', record.field_61);
+                        log('field_61_raw:', record.field_61_raw);
+                        log('field_3206:', record.field_3206);
+                        log('field_3206_raw:', record.field_3206_raw);
                         
                         // Also check for any image fields
-                        const imageFields = Object.keys(schoolData.record).filter(k => {
-                            const val = schoolData.record[k];
+                        const imageFields = Object.keys(record).filter(k => {
+                            const val = record[k];
                             return val && (typeof val === 'string' && (val.includes('.png') || val.includes('.jpg') || val.includes('http')));
                         });
                         if (imageFields.length > 0) {
                             log('Found potential image fields:', imageFields);
                             imageFields.forEach(field => {
-                                log(`${field}:`, schoolData.record[field]);
+                                log(`${field}:`, record[field]);
                             });
                         }
                         
                         // Check for logo in various fields
                         // First try the URL field (field_3206)
-                        estLogoUrl = schoolData.record.field_3206_raw || schoolData.record.field_3206 || '';
+                        estLogoUrl = record.field_3206_raw || record.field_3206 || '';
                         
                         // If no URL, try the image field (field_61)
-                        if (!estLogoUrl && schoolData.record.field_61_raw) {
+                        if (!estLogoUrl && record.field_61_raw) {
                             // Knack image fields can be objects with url properties
-                            if (typeof schoolData.record.field_61_raw === 'object') {
-                                estLogoUrl = schoolData.record.field_61_raw.url || 
-                                           schoolData.record.field_61_raw.thumb_url || 
-                                           schoolData.record.field_61_raw.full_url || '';
+                            if (typeof record.field_61_raw === 'object') {
+                                estLogoUrl = record.field_61_raw.url || 
+                                           record.field_61_raw.thumb_url || 
+                                           record.field_61_raw.full_url || '';
                             } else {
-                                estLogoUrl = schoolData.record.field_61_raw;
+                                estLogoUrl = record.field_61_raw;
                             }
                         }
                         
                         // Try formatted field_61 if still no URL
-                        if (!estLogoUrl && schoolData.record.field_61) {
+                        if (!estLogoUrl && record.field_61) {
                             // This might be an <img> tag
-                            const imgMatch = schoolData.record.field_61.match(/src=["']([^"']+)["']/);
+                            const imgMatch = record.field_61.match(/src=["']([^"']+)["']/);
                             if (imgMatch) {
                                 estLogoUrl = imgMatch[1];
                             }
