@@ -77,7 +77,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2x.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2w.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -287,10 +287,7 @@
         const reportPage = document.createElement('div');
         reportPage.className = 'vespa-report page';
 
-        // -- Header --
-        const reportHeader = createAndAppend(reportPage, 'div', null, 'report-header');
-        
-        // Left: VESPA Logo
+        // VESPA Logo - positioned absolutely at top left
         const logoLeft = document.createElement('img');
         logoLeft.className = 'logo-left';
         logoLeft.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@2a84920/vespa-logo-2.png';
@@ -298,24 +295,27 @@
         logoLeft.onerror = () => {
             logoLeft.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
         };
-        reportHeader.appendChild(logoLeft);
+        reportPage.appendChild(logoLeft);
+
+        // -- Header --
+        const reportHeader = createAndAppend(reportPage, 'div', null, 'report-header');
         
-        // Center: Title and Info
-        const headerCenter = createAndAppend(reportHeader, 'div', null, 'header-center');
-        createAndAppend(headerCenter, 'div', 'VESPA COACHING REPORT', 'header-title');
+        // Left side: Title and Info
+        const headerLeft = createAndAppend(reportHeader, 'div', null, 'header-left');
+        createAndAppend(headerLeft, 'div', 'VESPA COACHING REPORT', 'header-title');
         
-        const headerInfo = createAndAppend(headerCenter, 'div', null, 'header-info');
+        const headerInfo = createAndAppend(headerLeft, 'div', null, 'header-info');
         const studentDiv = createAndAppend(headerInfo, 'div');
         createAndAppend(studentDiv, 'strong', 'STUDENT:');
-        createAndAppend(studentDiv, 'span', fullName);
+        createAndAppend(studentDiv, 'span', ` ${fullName}`);
         
         const dateDiv = createAndAppend(headerInfo, 'div');
         createAndAppend(dateDiv, 'strong', 'DATE:');
-        createAndAppend(dateDiv, 'span', date);
+        createAndAppend(dateDiv, 'span', ` ${date}`);
         
         const cycleDiv = createAndAppend(headerInfo, 'div');
         createAndAppend(cycleDiv, 'strong', 'CYCLE:');
-        createAndAppend(cycleDiv, 'span', cycleKey.replace('C',''));
+        createAndAppend(cycleDiv, 'span', ` ${cycleKey.replace('C','')}`);
 
         // Right: School Logo
         const logoRight = document.createElement('img');
@@ -654,73 +654,79 @@
                     width: 100%;
                     max-width: 210mm;
                     margin: 0 auto;
-                    padding: 10mm 8mm; /* More padding now that we have space */
+                    padding: 5mm; /* Reduced padding to fit on one page */
                     box-sizing: border-box;
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     background: white;
+                    position: relative; /* For absolute positioning of logo */
                 }
                 .report-header {
-                    display: grid;
-                    grid-template-columns: auto 1fr auto;
+                    display: flex;
+                    justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 10px; /* More space for modern look */
-                    padding-bottom: 10px; /* More padding */
-                    border-bottom: 2px solid #e0e0e0; /* Thicker border for definition */
-                    gap: 20px;
+                    margin-bottom: 8px; /* Reduced */
+                    padding-bottom: 8px; /* Reduced */
+                    border-bottom: 2px solid #e0e0e0;
+                    margin-top: 25px; /* Space for absolute positioned logo */
                 }
                 .logo-left {
-                    height: 35px; /* Small VESPA logo */
-                    opacity: 0.8;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    height: 25px; /* Smaller VESPA logo */
+                    opacity: 0.7;
                 }
-                .header-center {
-                    text-align: center;
+                .header-left {
+                    flex: 1;
                 }
                 .header-info {
-                    font-size: 9pt; /* Smaller for modern look */
-                    color: #666;
-                    line-height: 1.4;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2px;
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 15px;
+                    background: #f0f4f8;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 9pt;
+                    margin-bottom: 6px;
                 }
                 .header-info > div {
                     display: flex;
                     align-items: center;
                     gap: 5px;
+                    white-space: nowrap;
                 }
                 .header-info strong {
                     color: #2c3e50;
                     font-weight: 600;
-                    min-width: 70px;
-                    text-align: right;
                 }
                 .header-title {
-                    font-size: 24pt; /* Larger for impact */
+                    font-size: 22pt; /* Slightly smaller */
                     font-weight: 800;
                     color: #2c3e50;
                     letter-spacing: 1px;
-                    margin: 8px 0;
+                    text-align: center;
+                    margin: 0;
                 }
                 .logo-right {
-                    height: 50px; /* School logo */
+                    height: 45px; /* Slightly smaller school logo */
                 }
                 /* Main Grid */
                 .vespa-grid {
                     display: flex;
                     flex-direction: column;
                     gap: 0;
-                    margin-bottom: 15px; /* More space before bottom section */
+                    margin-bottom: 8px; /* Reduced space before bottom section */
                 }
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 80px 1.5fr 1fr; /* Slightly wider score column */
-                    gap: 12px; /* More gap between columns */
+                    grid-template-columns: 75px 1.8fr 0.8fr; /* Border moved left */
+                    gap: 10px; /* Reduced gap */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
                     border-left-width: 5px;
-                    border-radius: 8px; /* More rounded */
-                    margin-bottom: 8px; /* More space between blocks */
+                    border-radius: 6px; /* Slightly less rounded */
+                    margin-bottom: 6px; /* Reduced space */
                     background: #fafafa;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow for depth */
                 }
@@ -771,6 +777,8 @@
                     line-height: 1.25; /* Slightly more readable */
                     color: #555;
                     padding-left: 0; /* Ensure no indent */
+                    font-style: italic;
+                    font-weight: 600; /* Semi-bold */
                 }
                 .activities {
                     margin-top: 6px; /* Reduced */
@@ -794,26 +802,26 @@
                 .bottom-row {
                     display: grid;
                     grid-template-columns: 1fr; /* Back to stacked layout */
-                    gap: 10px; /* More gap between stacked items */
+                    gap: 8px; /* Reduced gap */
                 }
                 .comment-box {
                     border: 1px solid #e0e0e0;
                     border-radius: 6px; /* More rounded for modern look */
-                    padding: 12px; /* More padding since we have space */
+                    padding: 8px 10px; /* Reduced padding */
                     background: #f8f9fa;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
                 }
                 .box-title {
                     font-weight: 700;
-                    margin-bottom: 8px; /* More space */
-                    font-size: 10pt; /* Larger for readability */
+                    margin-bottom: 5px; /* Reduced space */
+                    font-size: 9pt; /* Smaller */
                     color: #2c3e50;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                 }
                 .comment-box p {
-                    font-size: 9pt; /* More readable */
-                    line-height: 1.4; /* Better line height */
+                    font-size: 8pt; /* Smaller */
+                    line-height: 1.3; /* Tighter */
                     color: #444;
                     margin: 0;
                 }
@@ -853,7 +861,7 @@
                     }
                     .vespa-report {
                         page-break-inside: avoid;
-                        padding: 10mm 8mm !important; /* Maintain padding in print */
+                        padding: 5mm !important; /* Maintain reduced padding in print */
                     }
                 }
             </style>
@@ -935,11 +943,31 @@
 
     // Replace logo URLs after DOM build
     async function setLogos(container, establishmentFieldUrl) {
-        const imgs = container.querySelectorAll('img.logo');
-        if (!imgs.length) return;
+        const schoolLogos = container.querySelectorAll('img.logo-right');
+        if (!schoolLogos.length) return;
+        
         let logoUrl = establishmentFieldUrl || '';
-        if (!logoUrl) logoUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/vespa-logo.png';
-        imgs.forEach(img => { img.src = logoUrl; });
+        
+        // Clean up the URL if it's a Bing redirect
+        if (logoUrl.includes('bing.com')) {
+            // Extract the actual image URL from the riu parameter
+            const match = logoUrl.match(/riu=([^&]+)/);
+            if (match && match[1]) {
+                logoUrl = decodeURIComponent(match[1]);
+            }
+        }
+        
+        // If still no valid URL, use placeholder
+        if (!logoUrl || logoUrl.includes('bing.com')) {
+            logoUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+        }
+        
+        schoolLogos.forEach(img => { 
+            img.src = logoUrl;
+            img.onerror = () => {
+                img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+            };
+        });
     }
 
     // New main execution function triggered by "Search Students"
@@ -1251,4 +1279,3 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
-
