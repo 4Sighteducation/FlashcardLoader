@@ -602,6 +602,29 @@
                     border-radius: 8px;
                     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
                     overflow: hidden;
+                    position: relative;
+                }
+                .report-delete-btn {
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: #e74c3c;
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 30px;
+                    height: 30px;
+                    font-size: 18px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s;
+                    z-index: 10;
+                }
+                .report-delete-btn:hover {
+                    background: #c0392b;
+                    transform: scale(1.1);
                 }
                 @page {
                     size: A4 portrait;
@@ -612,7 +635,7 @@
                     width: 100%;
                     max-width: 210mm;
                     margin: 0 auto;
-                    padding: 5mm; /* Reduced padding inside the report body */
+                    padding: 4mm; /* Ultra-reduced padding */
                     box-sizing: border-box;
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     background: white;
@@ -621,9 +644,9 @@
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 5px; /* Aggressive reduction */
-                    padding-bottom: 5px; /* Aggressive reduction */
-                    border-bottom: 2px solid #e0e0e0;
+                    margin-bottom: 3px; /* Ultra-aggressive reduction */
+                    padding-bottom: 3px; /* Ultra-aggressive reduction */
+                    border-bottom: 1px solid #e0e0e0; /* Thinner border */
                 }
                 .header-info {
                     font-size: 10pt; /* Slightly smaller */
@@ -646,13 +669,13 @@
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 75px 2fr 0.8fr; /* Further adjusted columns */
-                    gap: 10px; /* Further reduced gap */
+                    grid-template-columns: 75px 1.5fr 1fr; /* Adjusted to give more space to questions column */
+                    gap: 8px; /* Further reduced gap */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
                     border-left-width: 5px;
                     border-radius: 6px;
-                    margin-bottom: 6px; /* Reduced */
+                    margin-bottom: 4px; /* Further reduced */
                     background: #fafafa;
                 }
                 /* Score Column */
@@ -679,27 +702,27 @@
                 }
                 /* Report Comment Column */
                 .block-body {
-                    padding: 5px 8px; /* Further reduced padding (vertical horizontal) */
-                    font-size: 8.5pt; /* Reduced */
-                    line-height: 1.3; /* Reduced */
+                    padding: 4px 6px; /* Ultra-reduced padding */
+                    font-size: 8pt; /* Further reduced */
+                    line-height: 1.2; /* Tighter line height */
                     color: #444;
                     display: flex;
                     align-items: center;
                 }
                 /* Coaching Questions Column */
                 .block-questions {
-                    padding: 5px 8px; /* Further reduced padding */
-                    font-size: 8.5pt; /* Reduced */
-                    border-left: 1px solid #e8e8e8;
+                    padding: 4px 6px; /* Ultra-reduced padding to match report column */
+                    font-size: 8pt; /* Reduced to match */
+                    border-left: 1px solid #d0d0d0; /* Darker, more uniform border */
                 }
                 .coach-qs {
                     margin: 0;
-                    padding-left: 12px; /* Reduced */
+                    padding-left: 10px; /* Further reduced */
                     list-style-type: disc;
                 }
                 .coach-qs li {
-                    margin-bottom: 4px; /* Reduced */
-                    line-height: 1.3; /* Reduced */
+                    margin-bottom: 2px; /* Ultra-reduced */
+                    line-height: 1.2; /* Tighter to match report column */
                     color: #555;
                 }
                 .activities {
@@ -714,34 +737,34 @@
                 }
                 /* Bottom Section */
                 .bottom-section {
-                    margin-top: 5px; /* Aggressive reduction */
-                    padding-top: 5px; /* Aggressive reduction */
-                    border-top: 2px solid #e0e0e0;
+                    margin-top: 3px; /* Ultra-aggressive reduction */
+                    padding-top: 3px; /* Ultra-aggressive reduction */
+                    border-top: 1px solid #e0e0e0; /* Thinner border */
                 }
                 .bottom-section h4 {
                     display: none; /* Hide the title */
                 }
                 .bottom-row {
                     display: grid;
-                    grid-template-columns: 1fr; /* Stacked layout */
-                    gap: 8px; /* Reduced gap for stacked items */
+                    grid-template-columns: 1fr 1fr; /* Side-by-side layout to save vertical space */
+                    gap: 6px; /* Minimal gap */
                 }
                 .comment-box {
                     border: 1px solid #e0e0e0;
-                    border-radius: 6px;
-                    padding: 8px; /* Reduced */
+                    border-radius: 4px; /* Smaller radius */
+                    padding: 6px; /* Ultra-reduced */
                     background: #f8f9fa;
                 }
                 .box-title {
                     font-weight: 700;
-                    margin-bottom: 6px; /* Reduced */
-                    font-size: 9pt; /* Reduced */
+                    margin-bottom: 3px; /* Ultra-reduced */
+                    font-size: 8pt; /* Further reduced */
                     color: #2c3e50;
                     text-transform: uppercase;
                 }
                 .comment-box p {
-                    font-size: 8.5pt; /* Reduced */
-                    line-height: 1.3; /* Reduced */
+                    font-size: 7.5pt; /* Further reduced */
+                    line-height: 1.2; /* Tighter */
                     color: #444;
                     margin: 0;
                 }
@@ -764,7 +787,8 @@
                         border-radius: 0;
                     }
                     .report-modal-header,
-                    .report-modal-controls {
+                    .report-modal-controls,
+                    .report-delete-btn {
                         display: none !important;
                     }
                     .report-modal-body {
@@ -970,6 +994,22 @@
                     const reportWrapper = document.createElement('div');
                     reportWrapper.className = 'report-wrapper';
                     reportWrapper.appendChild(reportElement);
+                    
+                    // Add delete button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'report-delete-btn';
+                    deleteBtn.innerHTML = '×';
+                    deleteBtn.title = 'Remove this report from print';
+                    deleteBtn.onclick = function() {
+                        if (confirm('Remove this report from the print preview?')) {
+                            $(reportWrapper).fadeOut(300, function() {
+                                $(this).remove();
+                                updateReportCount();
+                            });
+                        }
+                    };
+                    reportWrapper.appendChild(deleteBtn);
+                    
                     modalContainer.append(reportWrapper);
                 }
                  // Yield to the browser to prevent freezing
@@ -1020,6 +1060,17 @@
             $('#activeFiltersList').html(activeFilters.map(f => `<span class="filter-tag">${f}</span>`).join(''));
         } else {
             $('#filterSummary').removeClass('active');
+        }
+    }
+
+    // Update report count after deletion
+    function updateReportCount() {
+        const remainingReports = $('#modalReportContainer .report-wrapper').length;
+        $('#reportCount').text(`${remainingReports} reports ready to print`);
+        
+        // Disable print button if no reports remain
+        if (remainingReports === 0) {
+            $('#printModalBtn').prop('disabled', true).css('opacity', '0.5');
         }
     }
 
