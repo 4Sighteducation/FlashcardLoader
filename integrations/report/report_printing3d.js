@@ -605,9 +605,9 @@
                 }
                 @page {
                     size: A4 portrait;
-                    margin: 6mm; /* Tighter page margins */
+                    margin: 4mm; /* Hyper-aggressive page margins */
                 }
-                /* Row-based Layout Styles - HYPER COMPACT VERSION */
+                /* Row-based Layout Styles - FINAL COMPACT VERSION */
                 .vespa-report {
                     width: 100%;
                     max-width: 210mm;
@@ -621,8 +621,8 @@
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 10px; /* Reduced */
-                    padding-bottom: 10px; /* Reduced */
+                    margin-bottom: 5px; /* Aggressive reduction */
+                    padding-bottom: 5px; /* Aggressive reduction */
                     border-bottom: 2px solid #e0e0e0;
                 }
                 .header-info {
@@ -732,8 +732,8 @@
                 }
                 /* Bottom Section */
                 .bottom-section {
-                    margin-top: 10px; /* Reduced */
-                    padding-top: 10px; /* Reduced */
+                    margin-top: 5px; /* Aggressive reduction */
+                    padding-top: 5px; /* Aggressive reduction */
                     border-top: 2px solid #e0e0e0;
                 }
                 .bottom-section h4 {
@@ -742,8 +742,8 @@
                 }
                 .bottom-row {
                     display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 12px; /* Reduced */
+                    grid-template-columns: 1fr; /* Stacked layout */
+                    gap: 8px; /* Reduced gap for stacked items */
                 }
                 .comment-box {
                     border: 1px solid #e0e0e0;
