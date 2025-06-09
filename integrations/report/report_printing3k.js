@@ -77,7 +77,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2x.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2w.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -290,10 +290,11 @@
         // -- Page Header with logos and student info --
         const pageHeader = createAndAppend(reportPage, 'div', null, 'page-header');
         
-        // VESPA Logo
+        // VESPA Logo - using data URL to avoid CORS
         const logoLeft = document.createElement('img');
         logoLeft.className = 'logo-left';
-        logoLeft.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
+        // Small VESPA "V" logo as data URL
+        logoLeft.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiM0QTZGQTQIIG9wYWNpdHk9IjAuMSIvPgo8cGF0aCBkPSJNMTIgMTJMMjAgMjhMMjggMTIiIHN0cm9rZT0iIzRBNkZBNCIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
         logoLeft.alt = 'VESPA Logo';
         pageHeader.appendChild(logoLeft);
         
@@ -311,10 +312,10 @@
         createAndAppend(cycleDiv, 'strong', 'CYCLE:');
         createAndAppend(cycleDiv, 'span', ` ${cycleKey.replace('C','')}`);
 
-        // School Logo
+        // School Logo - will be replaced by setLogos function
         const logoRight = document.createElement('img');
         logoRight.className = 'logo-right';
-        logoRight.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
+        logoRight.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiNlMGUwZTAiLz4KPHRleHQgeD0iMjAiIHk9IjI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkxPR088L3RleHQ+Cjwvc3ZnPg==';
         logoRight.alt = 'School Logo';
         pageHeader.appendChild(logoRight);
         
@@ -712,7 +713,7 @@
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 75px 1.2fr 1.8fr; /* Border moved RIGHT - smaller comments, larger questions */
+                    grid-template-columns: 75px 1.4fr 1.2fr; /* Balanced - report comments smaller, questions still have space */
                     gap: 10px; /* Reduced gap */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
@@ -1008,8 +1009,8 @@
                           !logoUrl.includes('google.com/url');
         
         if (!isValidUrl) {
-            // Use VESPA logo as fallback
-            logoUrl = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
+            // Use placeholder as fallback (data URL to avoid CORS)
+            logoUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiNlMGUwZTAiLz4KPHRleHQgeD0iMjAiIHk9IjI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkxPR088L3RleHQ+Cjwvc3ZnPg==';
         }
         
         // Apply to all school logos with error handling
@@ -1022,13 +1023,13 @@
                 // Check if image actually loaded (sometimes returns 1x1 pixel on error)
                 if (img.naturalWidth < 10 || img.naturalHeight < 10) {
                     console.warn('Logo appears to be invalid (too small):', logoUrl);
-                    img.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
+                    img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiNlMGUwZTAiLz4KPHRleHQgeD0iMjAiIHk9IjI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkxPR088L3RleHQ+Cjwvc3ZnPg==';
                 }
             };
             
             img.onerror = () => {
                 console.warn('Failed to load school logo:', logoUrl);
-                img.src = 'https://www.vespa.academy/assets/images/full-trimmed-transparent-customcolor-1-832x947.png';
+                img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiNlMGUwZTAiLz4KPHRleHQgeD0iMjAiIHk9IjI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkxPR088L3RleHQ+Cjwvc3ZnPg==';
                 // Prevent infinite error loop
                 img.onerror = null;
                 img.onload = null;
@@ -1350,3 +1351,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
+
