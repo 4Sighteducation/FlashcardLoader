@@ -292,7 +292,7 @@
         
         const headerInfo = createAndAppend(reportHeader, 'div', null, 'header-info');
         createAndAppend(headerInfo, 'div', `STUDENT: ${fullName}`, 'header-student');
-        createAndAppend(headerInfo, 'div', `GROUP: ${group}`, 'header-group');
+        // createAndAppend(headerInfo, 'div', `GROUP: ${group}`, 'header-group'); // Hidden to save space
         createAndAppend(headerInfo, 'div', `DATE: ${date}`, 'header-date');
         createAndAppend(headerInfo, 'div', `CYCLE: ${cycleKey.replace('C','')}`, 'header-cycle');
 
@@ -314,11 +314,11 @@
 
         const components = ['vision', 'effort', 'systems', 'practice', 'attitude'];
 
-        // Title row
-        const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
-        createAndAppend(gridTitle, 'div', 'Score', 'title-score');
-        createAndAppend(gridTitle, 'div', 'Report Comment', 'title-report');
-        createAndAppend(gridTitle, 'div', 'Coaching Questions', 'title-qs');
+        // Title row - REMOVED to save space
+        // const gridTitle = createAndAppend(reportPage, 'div', null, 'vespa-grid-title');
+        // createAndAppend(gridTitle, 'div', 'Score', 'title-score');
+        // createAndAppend(gridTitle, 'div', 'Report Comment', 'title-report');
+        // createAndAppend(gridTitle, 'div', 'Coaching Questions', 'title-qs');
 
         // Grid wrapper
         const vespaGrid = createAndAppend(reportPage, 'div', null, 'vespa-grid');
@@ -636,36 +636,18 @@
                 .logo-right {
                     height: 45px; /* Slightly smaller */
                 }
-                /* Grid Title Row */
-                .vespa-grid-title {
-                    display: grid;
-                    grid-template-columns: 75px 1.7fr 1fr; /* Adjusted columns */
-                    gap: 12px; /* Reduced gap */
-                    margin-bottom: 5px; /* Reduced */
-                    padding: 5px 0; /* Reduced */
-                    border-bottom: 1px solid #e0e0e0;
-                }
-                .vespa-grid-title > div {
-                    font-weight: 700;
-                    font-size: 9pt; /* Reduced */
-                    color: #34495e;
-                    text-transform: uppercase;
-                }
-                .title-score {
-                    text-align: center;
-                }
                 /* Main Grid */
                 .vespa-grid {
                     display: flex;
                     flex-direction: column;
                     gap: 0;
-                    margin-bottom: 10px; /* Reduced */
+                    margin-bottom: 5px; /* Final reduction */
                 }
                 /* Component Row Block */
                 .vespa-block {
                     display: grid;
-                    grid-template-columns: 75px 1.7fr 1fr; /* Adjusted columns */
-                    gap: 12px; /* Reduced gap */
+                    grid-template-columns: 75px 2fr 0.8fr; /* Further adjusted columns */
+                    gap: 10px; /* Further reduced gap */
                     min-height: auto;
                     border: 1px solid #e0e0e0;
                     border-left-width: 5px;
@@ -697,7 +679,7 @@
                 }
                 /* Report Comment Column */
                 .block-body {
-                    padding: 8px; /* Reduced */
+                    padding: 5px 8px; /* Further reduced padding (vertical horizontal) */
                     font-size: 8.5pt; /* Reduced */
                     line-height: 1.3; /* Reduced */
                     color: #444;
@@ -706,7 +688,7 @@
                 }
                 /* Coaching Questions Column */
                 .block-questions {
-                    padding: 8px; /* Reduced */
+                    padding: 5px 8px; /* Further reduced padding */
                     font-size: 8.5pt; /* Reduced */
                     border-left: 1px solid #e8e8e8;
                 }
@@ -737,8 +719,7 @@
                     border-top: 2px solid #e0e0e0;
                 }
                 .bottom-section h4 {
-                    font-size: 11pt; /* Reduced */
-                    margin-bottom: 8px; /* Reduced */
+                    display: none; /* Hide the title */
                 }
                 .bottom-row {
                     display: grid;
