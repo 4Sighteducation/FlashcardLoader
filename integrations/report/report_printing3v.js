@@ -1536,10 +1536,10 @@
                         if (!estLogoUrl && record.field_61_raw) {
                             if (typeof record.field_61_raw === 'object') {
                                 // Knack image field - use the S3 URL
-                                estLogoUrl = record.field_61_raw.url || 
-                                           record.field_61_raw.thumb_url || 
-                                           record.field_61_raw.full_url || '';
-                                log('Using uploaded image from field_61:', estLogoUrl);
+                                const s3Url = record.field_61_raw.url || record.field_61_raw.thumb_url || record.field_61_raw.full_url || '';
+                                estLogoUrl = estLogoUrl || s3Url;
+                                schoolUploadUrl = s3Url; // capture for fallback later
+                                log('Found uploaded image in field_61:', s3Url);
                             }
                         }
                         
@@ -1564,21 +1564,23 @@
                 log('No school ID found in student record');
             }
             
-            // Fallback to student record fields if no establishment logo
+            // Determine a potential uploaded logo URL from field_61 (we do this regardless so we can use as a fallback)
+            let uploadLogoUrl = schoolUploadUrl || '';
+
+            // Fallback to student record fields if we still have no primary URL
             if (!estLogoUrl) {
-                estLogoUrl = students[0]?.field_61_raw || students[0]?.field_61 || 
-                            students[0]?.field_3206_raw || students[0]?.field_3206 || '';
+                estLogoUrl = firstStu?.field_3206_raw?.url || firstStu?.field_3206 || '';
             }
-            
-            // Determine a fallback URL from uploaded image if available
-            let uploadLogoUrl = '';
-            const firstStu = students[0];
-            if (firstStu?.field_61_raw && typeof firstStu.field_61_raw === 'object') {
-                uploadLogoUrl = firstStu.field_61_raw.url || firstStu.field_61_raw.thumb_url || firstStu.field_61_raw.full_url || '';
-            } else if (firstStu?.field_61) {
-                const imgMatch = firstStu.field_61.match(/src=["']([^"']+)["']/);
-                if (imgMatch) uploadLogoUrl = imgMatch[1];
-            }
+
+            // Final cleanup: upgrade http -> https if possible
+            const upgradeToHttps = (url) => {
+                if (url && url.startsWith('http://')) {
+                    return url.replace('http://', 'https://');
+                }
+                return url;
+            };
+            estLogoUrl = upgradeToHttps(estLogoUrl);
+            uploadLogoUrl = upgradeToHttps(uploadLogoUrl);
 
             await setLogos(modalContainer[0], estLogoUrl, uploadLogoUrl);
 
@@ -1797,5 +1799,3 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
-
-
