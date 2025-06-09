@@ -1210,13 +1210,13 @@
     }
 
     // Replace logo URLs after DOM build
-    async function setLogos(container, establishmentFieldUrl) {
+    async function setLogos(container, primaryUrl, fallbackUrl = '') {
         const schoolLogos = container.querySelectorAll('img.logo-right');
         if (!schoolLogos.length) return;
         
-        log('setLogos called with:', establishmentFieldUrl);
+        log('setLogos called with primary:', primaryUrl, 'fallback:', fallbackUrl);
         
-        let logoUrl = establishmentFieldUrl || '';
+        let logoUrl = primaryUrl || '';
         
         // Handle Knack image field format
         if (logoUrl && typeof logoUrl === 'object') {
@@ -1313,6 +1313,12 @@
             
             img.onerror = () => {
                 console.warn('Failed to load school logo:', logoUrl);
+                // Try the fallback URL if we haven't already
+                if (fallbackUrl && img.dataset.fallbackTried !== 'yes') {
+                    img.dataset.fallbackTried = 'yes';
+                    img.src = fallbackUrl;
+                    return;
+                }
                 img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiNlMGUwZTAiLz4KPHRleHQgeD0iMjAiIHk9IjI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkxPR088L3RleHQ+Cjwvc3ZnPg==';
                 // Prevent infinite error loop
                 img.onerror = null;
@@ -1564,7 +1570,17 @@
                             students[0]?.field_3206_raw || students[0]?.field_3206 || '';
             }
             
-            await setLogos(modalContainer[0], estLogoUrl);
+            // Determine a fallback URL from uploaded image if available
+            let uploadLogoUrl = '';
+            const firstStu = students[0];
+            if (firstStu?.field_61_raw && typeof firstStu.field_61_raw === 'object') {
+                uploadLogoUrl = firstStu.field_61_raw.url || firstStu.field_61_raw.thumb_url || firstStu.field_61_raw.full_url || '';
+            } else if (firstStu?.field_61) {
+                const imgMatch = firstStu.field_61.match(/src=["']([^"']+)["']/);
+                if (imgMatch) uploadLogoUrl = imgMatch[1];
+            }
+
+            await setLogos(modalContainer[0], estLogoUrl, uploadLogoUrl);
 
             // Update report count
             $('#reportCount').text(`${students.length} reports ready to print`);
@@ -1781,4 +1797,5 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
+
 
