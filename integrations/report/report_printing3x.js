@@ -1395,6 +1395,10 @@
         const originalText = btn.text();
         let overlay;
 
+        // Ensure helper variables exist to avoid ReferenceErrors later in the function
+        const firstStu = students && students.length ? students[0] : null; // cache first student record
+        let schoolUploadUrl = ''; // will be populated when an uploaded logo is detected
+
         if (!students || !students.length) {
             alert('No students to generate reports for.');
             return;
