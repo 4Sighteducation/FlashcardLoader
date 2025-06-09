@@ -77,7 +77,7 @@
     function addPrintStyles() {
         if (document.getElementById('vespaBulkPrintStyles')) return;
         // Updated to version 2p for better A4 portrait styling and modal support
-        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2w.css';
+        const cssUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/report_printing2x.css';
         const link = document.createElement('link');
         link.id = 'vespaBulkPrintStyles';
         link.rel = 'stylesheet';
@@ -948,25 +948,103 @@
         
         let logoUrl = establishmentFieldUrl || '';
         
-        // Clean up the URL if it's a Bing redirect
-        if (logoUrl.includes('bing.com')) {
-            // Extract the actual image URL from the riu parameter
-            const match = logoUrl.match(/riu=([^&]+)/);
-            if (match && match[1]) {
-                logoUrl = decodeURIComponent(match[1]);
+        // Handle various URL anomalies and redirects
+        if (logoUrl) {
+            // 1. Bing Image Search redirects
+            if (logoUrl.includes('bing.com')) {
+                const match = logoUrl.match(/riu=([^&]+)/);
+                if (match && match[1]) {
+                    logoUrl = decodeURIComponent(match[1]);
+                }
+            }
+            
+            // 2. Google Image Search redirects
+            else if (logoUrl.includes('google.com/url')) {
+                const match = logoUrl.match(/[?&]url=([^&]+)/);
+                if (match && match[1]) {
+                    logoUrl = decodeURIComponent(match[1]);
+                }
+            }
+            
+            // 3. Google User Content (from Google Drive/Photos)
+            else if (logoUrl.includes('googleusercontent.com')) {
+                // These URLs often expire, but we'll try to use them
+                // Add size parameters if missing
+                if (!logoUrl.includes('=w') && !logoUrl.includes('=s')) {
+                    logoUrl += '=s200'; // Request 200px size
+                }
+            }
+            
+            // 4. Data URLs (base64 encoded images)
+            else if (logoUrl.startsWith('data:image')) {
+                // These are fine as-is, but check they're not truncated
+                if (logoUrl.length < 100) {
+                    logoUrl = ''; // Too short to be valid
+                }
+            }
+            
+            // 5. Relative URLs (convert to absolute)
+            else if (!logoUrl.startsWith('http') && !logoUrl.startsWith('//')) {
+                // If it's a relative URL, we can't use it directly
+                logoUrl = '';
+            }
+            
+            // 6. Protocol-relative URLs
+            else if (logoUrl.startsWith('//')) {
+                logoUrl = 'https:' + logoUrl;
+            }
+            
+            // 7. Remove any HTML tags that might have been included
+            logoUrl = logoUrl.replace(/<[^>]*>/g, '');
+            
+            // 8. Trim whitespace and quotes
+            logoUrl = logoUrl.trim().replace(/^["']|["']$/g, '');
+            
+            // 9. Check for common tracking parameters and remove them
+            if (logoUrl.includes('?')) {
+                // Remove common tracking parameters but keep image-related ones
+                logoUrl = logoUrl.replace(/[?&](utm_[^&]+|fbclid|gclid|msclkid)=[^&]*/g, '');
+                // Clean up any resulting double ? or &
+                logoUrl = logoUrl.replace(/[?&]+/g, '?').replace(/\?$/, '');
             }
         }
         
-        // If still no valid URL, use placeholder
-        if (!logoUrl || logoUrl.includes('bing.com')) {
+        // Final validation
+        const isValidUrl = logoUrl && 
+                          (logoUrl.startsWith('http') || logoUrl.startsWith('data:image')) &&
+                          !logoUrl.includes('bing.com') && 
+                          !logoUrl.includes('google.com/url');
+        
+        if (!isValidUrl) {
             logoUrl = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
         }
         
+        // Apply to all school logos with error handling
         schoolLogos.forEach(img => { 
-            img.src = logoUrl;
-            img.onerror = () => {
-                img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+            // Set crossorigin for better CORS handling
+            img.crossOrigin = 'anonymous';
+            
+            // Add loading and error handlers
+            img.onload = () => {
+                // Check if image actually loaded (sometimes returns 1x1 pixel on error)
+                if (img.naturalWidth < 10 || img.naturalHeight < 10) {
+                    console.warn('Logo appears to be invalid (too small):', logoUrl);
+                    img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+                }
             };
+            
+            img.onerror = () => {
+                console.warn('Failed to load school logo:', logoUrl);
+                img.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/assets@main/school-placeholder.png';
+                // Prevent infinite error loop
+                img.onerror = null;
+                img.onload = null;
+                // Remove crossorigin for placeholder
+                img.removeAttribute('crossorigin');
+            };
+            
+            // Set the source
+            img.src = logoUrl;
         });
     }
 
