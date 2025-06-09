@@ -117,42 +117,66 @@
         return data;
     }
 
-    // Get user role from Knack
-    function getUserRole() {
+    // Get user role from Knack - fetch from Object_3 field_73
+    async function getUserRole() {
         const user = Knack.getUserAttributes();
         log('Full user object:', user);
         
-        // Try different ways to get roles
+        // Initialize role flags
+        let isStaffAdmin = false;
+        let isTutor = false;
+        let isHeadOfYear = false;
+        let isSubjectTeacher = false;
+        let roleNames = [];
         let roles = '';
         
-        // Method 1: profile_keys (most common)
-        if (user?.profile_keys) {
-            roles = Array.isArray(user.profile_keys) ? user.profile_keys.join(',') : user.profile_keys;
-        }
-        // Method 2: roles array
-        else if (user?.roles) {
-            roles = Array.isArray(user.roles) ? user.roles.join(',') : user.roles;
-        }
-        // Method 3: profile_objects
-        else if (user?.profile_objects) {
-            // Extract role names from profile objects
-            const roleNames = [];
-            if (Array.isArray(user.profile_objects)) {
-                user.profile_objects.forEach(obj => {
-                    if (obj.name) roleNames.push(obj.name);
-                });
+        try {
+            // Fetch the user's Object_3 record to get their role from field_73
+            if (user?.id) {
+                const userRecord = await knackRequest(`objects/object_3/records/${user.id}`);
+                const roleField = userRecord?.field_73 || userRecord?.field_73_raw || '';
+                
+                log('User role from field_73:', roleField);
+                
+                // Handle if it's an array or string
+                if (Array.isArray(roleField)) {
+                    roles = roleField.join(',');
+                } else if (typeof roleField === 'string') {
+                    roles = roleField;
+                }
+                
+                // Check for specific roles (case-insensitive)
+                const rolesLower = roles.toLowerCase();
+                isStaffAdmin = rolesLower.includes('staff admin');
+                isTutor = rolesLower.includes('tutor');
+                isHeadOfYear = rolesLower.includes('head of year');
+                isSubjectTeacher = rolesLower.includes('subject teacher');
+                
+                // Build role names array
+                if (isStaffAdmin) roleNames.push('Staff Admin');
+                if (isTutor) roleNames.push('Tutor');
+                if (isHeadOfYear) roleNames.push('Head of Year');
+                if (isSubjectTeacher) roleNames.push('Subject Teacher');
             }
-            roles = roleNames.join(',');
+        } catch (e) {
+            log('Error fetching user role from Object_3:', e);
+            
+            // Fallback: check if roles contains object IDs
+            if (user?.roles) {
+                const roleString = Array.isArray(user.roles) ? user.roles.join(',') : user.roles.toString();
+                if (roleString.includes('object_5')) {
+                    isStaffAdmin = true;
+                    roleNames.push('Staff Admin');
+                }
+                if (roleString.includes('object_7')) {
+                    isTutor = true;
+                    roleNames.push('Tutor');
+                }
+                roles = roleNames.join(',');
+            }
         }
         
         log('User roles:', roles);
-        
-        // Check for specific roles (case-insensitive)
-        const rolesLower = roles.toLowerCase();
-        const isStaffAdmin = rolesLower.includes('staff admin');
-        const isTutor = rolesLower.includes('tutor');
-        const isHeadOfYear = rolesLower.includes('head of year');
-        const isSubjectTeacher = rolesLower.includes('subject teacher');
         
         // If user has Staff Admin role, always treat them as Staff Admin
         const primaryRole = isStaffAdmin ? 'Staff Admin' : 
@@ -186,7 +210,7 @@
 
     // Step 2: Fetch students (with limit and filters)
     async function fetchStudents(staffIds, filters, maxStudents = 100) {
-        const userRole = getUserRole();
+        const userRole = await getUserRole();
         
         // For non-admin users, we need to fetch students differently
         if (!userRole.isStaffAdmin && (userRole.isTutor || userRole.isHeadOfYear || userRole.isSubjectTeacher)) {
@@ -293,7 +317,7 @@
     // Fetch students for non-admin users (Tutors, Head of Year, Subject Teachers)
     async function fetchStudentsForNonAdmin(filters, maxStudents = 100) {
         const user = Knack.getUserAttributes();
-        const userRole = getUserRole();
+        const userRole = await getUserRole();
         
         log('Fetching students for non-admin user:', userRole.primaryRole);
         
@@ -1072,7 +1096,7 @@
 
     async function fetchFilterOptions(staffIds) {
         try {
-            const userRole = getUserRole();
+            const userRole = await getUserRole();
             const user = Knack.getUserAttributes();
             log('Fetching filter options for user role:', userRole.primaryRole);
             
@@ -1670,7 +1694,7 @@
         log('Config at initialization:', cfg);
         
         // Check user access
-        const userRole = getUserRole();
+        const userRole = await getUserRole();
         const user = Knack.getUserAttributes();
         
         // TEMPORARY: If no roles detected, assume Staff Admin for testing
@@ -1757,3 +1781,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
+
