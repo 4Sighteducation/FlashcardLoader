@@ -117,6 +117,35 @@
         return data;
     }
 
+    // Get user role from Knack
+    function getUserRole() {
+        const user = Knack.getUserAttributes();
+        const roles = user?.profile_keys || '';
+        log('User roles:', roles);
+        
+        // Check for specific roles
+        const isStaffAdmin = roles.includes('Staff Admin');
+        const isTutor = roles.includes('Tutor');
+        const isHeadOfYear = roles.includes('Head of Year');
+        const isSubjectTeacher = roles.includes('Subject Teacher');
+        
+        // If user has Staff Admin role, always treat them as Staff Admin
+        const primaryRole = isStaffAdmin ? 'Staff Admin' : 
+                           isTutor ? 'Tutor' :
+                           isHeadOfYear ? 'Head of Year' :
+                           isSubjectTeacher ? 'Subject Teacher' : null;
+        
+        return {
+            roles,
+            primaryRole,
+            isStaffAdmin,
+            isTutor,
+            isHeadOfYear,
+            isSubjectTeacher,
+            hasAccess: isStaffAdmin || isTutor || isHeadOfYear || isSubjectTeacher
+        };
+    }
+
     // Step 1: Staff-Admin record IDs (object_5 field_86 = email)
     async function getStaffAdminRecordIds(email) {
         const data = await knackRequest('objects/object_5/records', {
@@ -132,6 +161,13 @@
 
     // Step 2: Fetch students (with limit and filters)
     async function fetchStudents(staffIds, filters, maxStudents = 100) {
+        const userRole = getUserRole();
+        
+        // For non-admin users, we need to fetch students differently
+        if (!userRole.isStaffAdmin && (userRole.isTutor || userRole.isHeadOfYear || userRole.isSubjectTeacher)) {
+            return fetchStudentsForNonAdmin(filters, maxStudents);
+        }
+        
         if (!staffIds.length) return [];
 
         /*
@@ -188,6 +224,9 @@
         if (filters.tutorId) {
             uiFilterRules.push({ field: 'field_145', operator: 'is', value: filters.tutorId });
         }
+        if (filters.subjectTeacherId) {
+            uiFilterRules.push({ field: 'field_2191', operator: 'is', value: filters.subjectTeacherId });
+        }
 
         /*
          * --------------------------------------------------
@@ -223,6 +262,98 @@
         }
         
         // Return only up to maxStudents
+        return allStudents.slice(0, maxStudents);
+    }
+
+    // Fetch students for non-admin users (Tutors, Head of Year, Subject Teachers)
+    async function fetchStudentsForNonAdmin(filters, maxStudents = 100) {
+        const user = Knack.getUserAttributes();
+        const userRole = getUserRole();
+        
+        log('Fetching students for non-admin user:', userRole.primaryRole);
+        
+        // Build filters based on user role
+        const rules = [];
+        
+        // Get the user's record ID based on their role
+        if (userRole.isTutor) {
+            // For tutors, find their tutor record
+            const tutorData = await knackRequest('objects/object_7/records', {
+                filters: { match: 'and', rules: [{ field: 'field_95', operator: 'contains', value: user.name }] },
+                rows: 10
+            });
+            if (tutorData.records && tutorData.records.length > 0) {
+                const tutorId = tutorData.records[0].id;
+                // Filter by tutor connection (field_145)
+                rules.push({ field: 'field_145', operator: 'is', value: tutorId });
+            } else {
+                log('No tutor record found for user');
+                return []; // No access if no tutor record found
+            }
+        } else if (userRole.isSubjectTeacher) {
+            // For subject teachers, we need to find students where they are in field_2191
+            // First, get the user's account record to find their ID
+            const userAccount = await knackRequest('objects/object_3/records', {
+                filters: { match: 'and', rules: [{ field: 'field_66', operator: 'contains', value: user.name }] },
+                rows: 10
+            });
+            
+            if (userAccount.records && userAccount.records.length > 0) {
+                const teacherId = userAccount.records[0].id;
+                // Filter by subject teacher connection (field_2191)
+                rules.push({ field: 'field_2191', operator: 'is', value: teacherId });
+            } else {
+                log('No teacher record found for user');
+                return [];
+            }
+        } else if (userRole.isHeadOfYear) {
+            // For Head of Year, they typically see all students in their year groups
+            // This would need to be configured based on your specific setup
+            // For now, we'll need to determine which year groups they oversee
+            // This might require an additional field or configuration
+            log('Head of Year access - needs configuration for year group assignment');
+            // You may need to add logic here based on how Head of Year assignments work in your system
+        }
+        
+        // Add user-selected filters
+        if (filters.cycle) {
+            rules.push({ field: 'field_146_raw', operator: 'is', value: filters.cycle });
+        }
+        if (filters.yearGroup) {
+            rules.push({ field: 'field_144', operator: 'is', value: filters.yearGroup });
+        }
+        if (filters.group) {
+            rules.push({ field: 'field_223', operator: 'is', value: filters.group });
+        }
+        if (filters.searchTerm) {
+            // Search by student name (field_187 contains full name)
+            rules.push({ field: 'field_187', operator: 'contains', value: filters.searchTerm });
+        }
+        
+        const finalFilters = rules.length > 0 ? { match: 'and', rules } : undefined;
+        
+        const allStudents = [];
+        let page = 1;
+        const rowsPerPage = Math.min(maxStudents, 500);
+        
+        while (allStudents.length < maxStudents) {
+            log(`Fetching page ${page} of students for ${userRole.primaryRole}...`);
+            const resp = await knackRequest('objects/object_10/records', { 
+                filters: finalFilters, 
+                page, 
+                rows: rowsPerPage 
+            });
+            
+            allStudents.push(...resp.records);
+            
+            if (allStudents.length >= maxStudents || resp.current_page >= resp.total_pages) {
+                break;
+            }
+            
+            page++;
+        }
+        
+        log(`Found ${allStudents.length} students for ${userRole.primaryRole}`);
         return allStudents.slice(0, maxStudents);
     }
 
@@ -442,7 +573,7 @@
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                 }
-                .filter-item select {
+                .filter-item select, .filter-item input {
                     width: 100%;
                     padding: 12px 16px;
                     border: 2px solid #e0e6ed;
@@ -450,8 +581,10 @@
                     background: white;
                     font-size: 1rem;
                     color: #2c3e50;
-                    cursor: pointer;
                     transition: all 0.3s ease;
+                }
+                .filter-item select {
+                    cursor: pointer;
                     appearance: none;
                     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2334495e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
                     background-repeat: no-repeat;
@@ -459,11 +592,11 @@
                     background-size: 20px;
                     padding-right: 40px;
                 }
-                .filter-item select:hover {
+                .filter-item select:hover, .filter-item input:hover {
                     border-color: #3498db;
                     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
                 }
-                .filter-item select:focus {
+                .filter-item select:focus, .filter-item input:focus {
                     outline: none;
                     border-color: #2980b9;
                     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
@@ -488,9 +621,28 @@
                     margin-right: 8px;
                     margin-bottom: 8px;
                 }
+                .search-section {
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    background: rgba(255,255,255,0.5);
+                    border-radius: 8px;
+                }
+                .search-section h4 {
+                    margin: 0 0 10px 0;
+                    color: #2c3e50;
+                    font-size: 1.1rem;
+                }
             </style>
             <div id="bulkPrintFilters">
                 <h3>🔍 Filter Student Reports</h3>
+                
+                <div class="search-section">
+                    <h4>🔎 Search for Student</h4>
+                    <div class="filter-item">
+                        <input type="text" id="studentSearch" placeholder="Type student name to search..." />
+                    </div>
+                </div>
+                
                 <div id="filterSummary" class="filter-summary">
                     <strong>Active Filters:</strong> <span id="activeFiltersList"></span>
                 </div>
@@ -522,6 +674,13 @@
                         <label for="filterTutor">👨‍🏫 Tutor</label>
                         <select id="filterTutor">
                             <option value="">All Tutors</option>
+                            <option value="" disabled>Loading...</option>
+                        </select>
+                    </div>
+                    <div class="filter-item" id="subjectTeacherFilter" style="display:none;">
+                        <label for="filterSubjectTeacher">📚 Subject Teacher</label>
+                        <select id="filterSubjectTeacher">
+                            <option value="">All Subject Teachers</option>
                             <option value="" disabled>Loading...</option>
                         </select>
                     </div>
@@ -888,37 +1047,97 @@
 
     async function fetchFilterOptions(staffIds) {
         try {
-            log('Fetching filter options for the current user...');
+            const userRole = getUserRole();
+            const user = Knack.getUserAttributes();
+            log('Fetching filter options for user role:', userRole.primaryRole);
             
-            // Fetch Tutors connected to this staff admin via field_225
-            const tutorFilters = [];
-            if (staffIds.length === 1) {
-                tutorFilters.push({ field: 'field_225', operator: 'is', value: staffIds[0] });
-            } else if (staffIds.length > 1) {
-                tutorFilters.push({ 
-                    match: 'or', 
-                    rules: staffIds.map(id => ({ field: 'field_225', operator: 'is', value: id }))
+            // For Staff Admin - show all connected tutors and subject teachers
+            if (userRole.isStaffAdmin) {
+                // Fetch Tutors connected to this staff admin via field_225
+                const tutorFilters = [];
+                if (staffIds.length === 1) {
+                    tutorFilters.push({ field: 'field_225', operator: 'is', value: staffIds[0] });
+                } else if (staffIds.length > 1) {
+                    tutorFilters.push({ 
+                        match: 'or', 
+                        rules: staffIds.map(id => ({ field: 'field_225', operator: 'is', value: id }))
+                    });
+                }
+                
+                const tutorResp = await knackRequest('objects/object_7/records', { 
+                    filters: tutorFilters.length > 0 ? { match: 'and', rules: tutorFilters } : undefined,
+                    rows: 1000 
                 });
+                const tutors = (tutorResp.records || [])
+                    .map(t => ({ id: t.id, name: t.field_95 }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                
+                const tutorSelect = $('#filterTutor');
+                tutorSelect.empty().append('<option value="">All Tutors</option>');
+                tutors.forEach(t => {
+                    tutorSelect.append(`<option value="${t.id}">${t.name}</option>`);
+                });
+                
+                // Show and populate Subject Teacher filter for Staff Admin
+                $('#subjectTeacherFilter').show();
+                
+                // Fetch Subject Teachers (field_2191 connections)
+                const subjectTeacherResp = await knackRequest('objects/object_10/records', {
+                    filters: { match: 'and', rules: staffIds.map(id => ({ field: 'field_439', operator: 'is', value: id })) },
+                    rows: 1000
+                });
+                
+                // Extract unique subject teachers from field_2191
+                const subjectTeacherSet = new Set();
+                (subjectTeacherResp.records || []).forEach(student => {
+                    const teachers = student.field_2191_raw || [];
+                    teachers.forEach(teacher => {
+                        if (teacher && teacher.identifier) {
+                            subjectTeacherSet.add(JSON.stringify({ id: teacher.id, name: teacher.identifier }));
+                        }
+                    });
+                });
+                
+                const subjectTeachers = Array.from(subjectTeacherSet)
+                    .map(t => JSON.parse(t))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                
+                const subjectTeacherSelect = $('#filterSubjectTeacher');
+                subjectTeacherSelect.empty().append('<option value="">All Subject Teachers</option>');
+                subjectTeachers.forEach(t => {
+                    subjectTeacherSelect.append(`<option value="${t.id}">${t.name}</option>`);
+                });
+                
+                log(`Loaded ${tutors.length} tutors and ${subjectTeachers.length} subject teachers`);
+            } else {
+                // For non-admin users, only show their own name in relevant filter
+                if (userRole.isTutor) {
+                    // Find their tutor record
+                    const tutorData = await knackRequest('objects/object_7/records', {
+                        filters: { match: 'and', rules: [{ field: 'field_95', operator: 'contains', value: user.name }] },
+                        rows: 10
+                    });
+                    
+                    const tutorSelect = $('#filterTutor');
+                    tutorSelect.empty();
+                    if (tutorData.records && tutorData.records.length > 0) {
+                        const tutorRecord = tutorData.records[0];
+                        tutorSelect.append(`<option value="${tutorRecord.id}" selected>${tutorRecord.field_95}</option>`);
+                        tutorSelect.prop('disabled', true); // Disable since they can only see their own
+                    }
+                } else {
+                    // Hide tutor filter for non-tutors
+                    $('#filterTutor').parent().hide();
+                }
+                
+                // Hide subject teacher filter for non-admin users
+                $('#subjectTeacherFilter').hide();
             }
-            
-            const tutorResp = await knackRequest('objects/object_7/records', { 
-                filters: tutorFilters.length > 0 ? { match: 'and', rules: tutorFilters } : undefined,
-                rows: 1000 
-            });
-            const tutors = (tutorResp.records || [])
-                .map(t => ({ id: t.id, name: t.field_95 })) // field_95 should be the Tutor's name
-                .sort((a, b) => a.name.localeCompare(b.name));
-            
-            const tutorSelect = $('#filterTutor');
-            tutorSelect.empty().append('<option value="">All Tutors</option>');
-            tutors.forEach(t => {
-                tutorSelect.append(`<option value="${t.id}">${t.name}</option>`);
-            });
-            log(`Loaded ${tutors.length} tutors connected to this staff admin`);
 
             // Fetch students to derive year group & group options
-            const students = await fetchStudents(staffIds, {}, 1000); // up to 1000 for option lists
+            const students = await fetchStudents(staffIds, {}, 1000);
 
+            // For non-admin users, only show year groups and groups they have access to
             const yearGroups = [...new Set(students.map(s => s.field_144).filter(Boolean))].sort();
             const yearGroupSelect = $('#filterYearGroup');
             yearGroupSelect.empty().append('<option value="">All Year Groups</option>');
@@ -937,7 +1156,7 @@
 
         } catch (e) {
             err('Could not load filter options', e);
-            $('#filterYearGroup, #filterGroup, #filterTutor').empty().append('<option value="">Error loading options</option>').prop('disabled', true);
+            $('#filterYearGroup, #filterGroup, #filterTutor, #filterSubjectTeacher').empty().append('<option value="">Error loading options</option>').prop('disabled', true);
         }
     }
 
@@ -1079,7 +1298,9 @@
                 cycle: $('#filterCycle').val(),
                 yearGroup: $('#filterYearGroup').val(),
                 group: $('#filterGroup').val(),
-                tutorId: $('#filterTutor').val()
+                tutorId: $('#filterTutor').val(),
+                subjectTeacherId: $('#filterSubjectTeacher').val(),
+                searchTerm: $('#studentSearch').val().trim()
             };
 
             // Fetch all matching students without a hard limit for the search result
@@ -1245,29 +1466,39 @@
                         }
                         
                         // Check for logo in various fields
-                        // First try the URL field (field_3206)
-                        estLogoUrl = record.field_3206_raw || record.field_3206 || '';
+                        // FIRST: Try the URL field (field_3206)
+                        if (record.field_3206_raw) {
+                            // Handle the URL field which returns {url: '...', label: null}
+                            if (typeof record.field_3206_raw === 'object' && record.field_3206_raw.url) {
+                                estLogoUrl = record.field_3206_raw.url;
+                            } else if (typeof record.field_3206_raw === 'string') {
+                                estLogoUrl = record.field_3206_raw;
+                            }
+                            log('Using URL from field_3206:', estLogoUrl);
+                        }
                         
-                        // If no URL, try the image field (field_61)
+                        // SECOND: If no URL, try the image field (field_61)
                         if (!estLogoUrl && record.field_61_raw) {
-                            // Knack image fields can be objects with url properties
                             if (typeof record.field_61_raw === 'object') {
+                                // Knack image field - use the S3 URL
                                 estLogoUrl = record.field_61_raw.url || 
                                            record.field_61_raw.thumb_url || 
                                            record.field_61_raw.full_url || '';
-                            } else {
-                                estLogoUrl = record.field_61_raw;
+                                log('Using uploaded image from field_61:', estLogoUrl);
                             }
                         }
                         
-                        // Try formatted field_61 if still no URL
+                        // Also try formatted field_61 if still no URL
                         if (!estLogoUrl && record.field_61) {
                             // This might be an <img> tag
                             const imgMatch = record.field_61.match(/src=["']([^"']+)["']/);
                             if (imgMatch) {
                                 estLogoUrl = imgMatch[1];
+                                log('Extracted URL from field_61 img tag:', estLogoUrl);
                             }
                         }
+                        
+                        // THIRD: If still no logo, it will fallback to VESPA logo in setLogos function
                         
                         log('School logo URL:', estLogoUrl);
                     }
@@ -1307,7 +1538,9 @@
             cycle: $('#filterCycle').val(),
             yearGroup: $('#filterYearGroup').val(),  
             group: $('#filterGroup').val(),
-            tutorId: $('#filterTutor').val()
+            tutorId: $('#filterTutor').val(),
+            subjectTeacherId: $('#filterSubjectTeacher').val(),
+            searchTerm: $('#studentSearch').val().trim()
         };
         
         const activeFilters = [];
@@ -1318,6 +1551,11 @@
             const tutorName = $('#filterTutor option:selected').text();
             if (tutorName && tutorName !== 'All Tutors') activeFilters.push(`Tutor: ${tutorName}`);
         }
+        if (filters.subjectTeacherId) {
+            const teacherName = $('#filterSubjectTeacher option:selected').text();
+            if (teacherName && teacherName !== 'All Subject Teachers') activeFilters.push(`Subject Teacher: ${teacherName}`);
+        }
+        if (filters.searchTerm) activeFilters.push(`Search: "${filters.searchTerm}"`);
         
         if (activeFilters.length > 0) {
             $('#filterSummary').addClass('active');
@@ -1406,17 +1644,36 @@
         cfg = window.BULK_PRINT_CONFIG || {};
         log('Config at initialization:', cfg);
         
-        log('BulkPrint app initialised. Waiting for button click.');
+        // Check user access
+        const userRole = getUserRole();
+        if (!userRole.hasAccess) {
+            log('User does not have access to bulk print feature');
+            $('#bulkPrintbtn').hide();
+            return;
+        }
+        
+        log('BulkPrint app initialised. User role:', userRole.roles);
+        log('Waiting for button click.');
         
         // Render filters only once, then populate them.
         if (!$('#bulkPrintFilters').length) {
             renderFilterUI();
             
             // Bind filter change events
-            $('#filterCycle, #filterYearGroup, #filterGroup, #filterTutor').on('change', function() {
+            $('#filterCycle, #filterYearGroup, #filterGroup, #filterTutor, #filterSubjectTeacher').on('change', function() {
                 updateActiveFilters();
                 // Clear any existing preview when filters change
                 $('#studentListContainer').empty();
+            });
+            
+            // Bind search input with debounce
+            let searchTimeout;
+            $('#studentSearch').on('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    updateActiveFilters();
+                    $('#studentListContainer').empty();
+                }, 500); // Wait 500ms after user stops typing
             });
             
             try {
