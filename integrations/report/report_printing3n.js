@@ -1184,11 +1184,55 @@
                 }
             }
 
-            // Get logo from the first student record - prioritize field_61
-            const estLogoUrl = students[0]?.field_61_raw || students[0]?.field_61 || students[0]?.field_3206 || '';
-            log('School logo field_61:', students[0]?.field_61);
-            log('School logo field_61_raw:', students[0]?.field_61_raw);
-            log('School logo field_3206:', students[0]?.field_3206);
+            // Get logo from the first student record
+            if (students.length > 0) {
+                // Log all fields to find where the logo might be
+                log('First student record fields:', Object.keys(students[0]).filter(k => k.includes('field')).sort());
+                
+                // Check various possible logo fields
+                const logoFields = ['field_61', 'field_61_raw', 'field_3206', 'field_3206_raw', 'field_133', 'field_133_raw'];
+                logoFields.forEach(field => {
+                    if (students[0][field]) {
+                        log(`Found data in ${field}:`, students[0][field]);
+                    }
+                });
+            }
+            
+            // Try to get school/account ID from student record
+            let estLogoUrl = '';
+            // field_133 should be the connection to the school/account (Object_2)
+            let schoolId = students[0]?.field_133_raw;
+            
+            // Handle if it's an array (Knack connection fields often return arrays)
+            if (Array.isArray(schoolId) && schoolId.length > 0) {
+                schoolId = schoolId[0].id || schoolId[0];
+            }
+            
+            if (schoolId) {
+                try {
+                    log('Fetching school/account record from Object_2:', schoolId);
+                    // Fetch the school/account record to get logo
+                    const schoolData = await knackRequest(`objects/object_2/records/${schoolId}`);
+                    if (schoolData?.record) {
+                        log('School record fields:', Object.keys(schoolData.record).filter(k => k.includes('field')).sort());
+                        // Check for logo in various fields
+                        estLogoUrl = schoolData.record.field_61_raw || schoolData.record.field_61 || 
+                                    schoolData.record.field_3206_raw || schoolData.record.field_3206 || '';
+                        log('School logo URL:', estLogoUrl);
+                    }
+                } catch (e) {
+                    log('Error fetching school record:', e);
+                }
+            } else {
+                log('No school ID found in student record');
+            }
+            
+            // Fallback to student record fields if no establishment logo
+            if (!estLogoUrl) {
+                estLogoUrl = students[0]?.field_61_raw || students[0]?.field_61 || 
+                            students[0]?.field_3206_raw || students[0]?.field_3206 || '';
+            }
+            
             await setLogos(modalContainer[0], estLogoUrl);
 
             // Update report count
@@ -1370,4 +1414,3 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
-
