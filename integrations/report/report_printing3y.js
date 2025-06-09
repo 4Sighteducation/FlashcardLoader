@@ -1524,38 +1524,38 @@
                             });
                         }
                         
-                        // Check for logo in various fields
-                        // FIRST: Try the URL field (field_3206)
-                        if (record.field_3206_raw) {
-                            // Handle the URL field which returns {url: '...', label: null}
+                        // Check for logo in various fields – prefer the school-uploaded image as it is CORS-safe
+
+                        // FIRST: look for an uploaded logo (image field_61)
+                        if (record.field_61_raw && typeof record.field_61_raw === 'object') {
+                            const s3Url = record.field_61_raw.url || record.field_61_raw.thumb_url || record.field_61_raw.full_url || '';
+                            if (s3Url) {
+                                schoolUploadUrl = s3Url; // store for fallback regardless
+                                estLogoUrl = s3Url;        // prefer this
+                                log('Using uploaded logo from field_61:', s3Url);
+                            }
+                        }
+
+                        // SECOND: if we still haven't found a logo, try the URL field (field_3206)
+                        if (!estLogoUrl && record.field_3206_raw) {
+                            // field_3206_raw can be an object {url, label} or a raw string
                             if (typeof record.field_3206_raw === 'object' && record.field_3206_raw.url) {
                                 estLogoUrl = record.field_3206_raw.url;
                             } else if (typeof record.field_3206_raw === 'string') {
                                 estLogoUrl = record.field_3206_raw;
                             }
-                            log('Using URL from field_3206:', estLogoUrl);
+                            log('Using external URL from field_3206:', estLogoUrl);
                         }
-                        
-                        // SECOND: If no URL, try the image field (field_61)
-                        if (!estLogoUrl && record.field_61_raw) {
-                            if (typeof record.field_61_raw === 'object') {
-                                // Knack image field - use the S3 URL
-                                const s3Url = record.field_61_raw.url || record.field_61_raw.thumb_url || record.field_61_raw.full_url || '';
-                                estLogoUrl = estLogoUrl || s3Url;
-                                schoolUploadUrl = s3Url; // capture for fallback later
-                                log('Found uploaded image in field_61:', s3Url);
-                            }
-                        }
-                        
+                         
                         // Also try formatted field_61 if still no URL
                         if (!estLogoUrl && record.field_61) {
-                            // This might be an <img> tag
-                            const imgMatch = record.field_61.match(/src=["']([^"']+)["']/);
-                            if (imgMatch) {
-                                estLogoUrl = imgMatch[1];
-                                log('Extracted URL from field_61 img tag:', estLogoUrl);
-                            }
-                        }
+                             // This might be an <img> tag
+                             const imgMatch = record.field_61.match(/src=["']([^"']+)["']/);
+                             if (imgMatch) {
+                                 estLogoUrl = imgMatch[1];
+                                 log('Extracted URL from field_61 img tag:', estLogoUrl);
+                             }
+                         }
                         
                         // THIRD: If still no logo, it will fallback to VESPA logo in setLogos function
                         
