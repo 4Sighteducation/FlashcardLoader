@@ -1215,6 +1215,25 @@
                     const schoolData = await knackRequest(`objects/object_2/records/${schoolId}`);
                     if (schoolData?.record) {
                         log('School record fields:', Object.keys(schoolData.record).filter(k => k.includes('field')).sort());
+                        
+                        // Log specific fields we're looking for
+                        log('field_61:', schoolData.record.field_61);
+                        log('field_61_raw:', schoolData.record.field_61_raw);
+                        log('field_3206:', schoolData.record.field_3206);
+                        log('field_3206_raw:', schoolData.record.field_3206_raw);
+                        
+                        // Also check for any image fields
+                        const imageFields = Object.keys(schoolData.record).filter(k => {
+                            const val = schoolData.record[k];
+                            return val && (typeof val === 'string' && (val.includes('.png') || val.includes('.jpg') || val.includes('http')));
+                        });
+                        if (imageFields.length > 0) {
+                            log('Found potential image fields:', imageFields);
+                            imageFields.forEach(field => {
+                                log(`${field}:`, schoolData.record[field]);
+                            });
+                        }
+                        
                         // Check for logo in various fields
                         estLogoUrl = schoolData.record.field_61_raw || schoolData.record.field_61 || 
                                     schoolData.record.field_3206_raw || schoolData.record.field_3206 || '';
@@ -1414,3 +1433,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
+
