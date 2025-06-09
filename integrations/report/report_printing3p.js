@@ -1235,8 +1235,30 @@
                         }
                         
                         // Check for logo in various fields
-                        estLogoUrl = schoolData.record.field_61_raw || schoolData.record.field_61 || 
-                                    schoolData.record.field_3206_raw || schoolData.record.field_3206 || '';
+                        // First try the URL field (field_3206)
+                        estLogoUrl = schoolData.record.field_3206_raw || schoolData.record.field_3206 || '';
+                        
+                        // If no URL, try the image field (field_61)
+                        if (!estLogoUrl && schoolData.record.field_61_raw) {
+                            // Knack image fields can be objects with url properties
+                            if (typeof schoolData.record.field_61_raw === 'object') {
+                                estLogoUrl = schoolData.record.field_61_raw.url || 
+                                           schoolData.record.field_61_raw.thumb_url || 
+                                           schoolData.record.field_61_raw.full_url || '';
+                            } else {
+                                estLogoUrl = schoolData.record.field_61_raw;
+                            }
+                        }
+                        
+                        // Try formatted field_61 if still no URL
+                        if (!estLogoUrl && schoolData.record.field_61) {
+                            // This might be an <img> tag
+                            const imgMatch = schoolData.record.field_61.match(/src=["']([^"']+)["']/);
+                            if (imgMatch) {
+                                estLogoUrl = imgMatch[1];
+                            }
+                        }
+                        
                         log('School logo URL:', estLogoUrl);
                     }
                 } catch (e) {
@@ -1433,4 +1455,3 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
-
