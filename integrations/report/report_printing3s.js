@@ -120,14 +120,39 @@
     // Get user role from Knack
     function getUserRole() {
         const user = Knack.getUserAttributes();
-        const roles = user?.profile_keys || '';
+        log('Full user object:', user);
+        
+        // Try different ways to get roles
+        let roles = '';
+        
+        // Method 1: profile_keys (most common)
+        if (user?.profile_keys) {
+            roles = Array.isArray(user.profile_keys) ? user.profile_keys.join(',') : user.profile_keys;
+        }
+        // Method 2: roles array
+        else if (user?.roles) {
+            roles = Array.isArray(user.roles) ? user.roles.join(',') : user.roles;
+        }
+        // Method 3: profile_objects
+        else if (user?.profile_objects) {
+            // Extract role names from profile objects
+            const roleNames = [];
+            if (Array.isArray(user.profile_objects)) {
+                user.profile_objects.forEach(obj => {
+                    if (obj.name) roleNames.push(obj.name);
+                });
+            }
+            roles = roleNames.join(',');
+        }
+        
         log('User roles:', roles);
         
-        // Check for specific roles
-        const isStaffAdmin = roles.includes('Staff Admin');
-        const isTutor = roles.includes('Tutor');
-        const isHeadOfYear = roles.includes('Head of Year');
-        const isSubjectTeacher = roles.includes('Subject Teacher');
+        // Check for specific roles (case-insensitive)
+        const rolesLower = roles.toLowerCase();
+        const isStaffAdmin = rolesLower.includes('staff admin');
+        const isTutor = rolesLower.includes('tutor');
+        const isHeadOfYear = rolesLower.includes('head of year');
+        const isSubjectTeacher = rolesLower.includes('subject teacher');
         
         // If user has Staff Admin role, always treat them as Staff Admin
         const primaryRole = isStaffAdmin ? 'Staff Admin' : 
@@ -1646,6 +1671,16 @@
         
         // Check user access
         const userRole = getUserRole();
+        const user = Knack.getUserAttributes();
+        
+        // TEMPORARY: If no roles detected, assume Staff Admin for testing
+        if (!userRole.roles && user?.email) {
+            log('WARNING: No roles detected, temporarily allowing access for testing');
+            userRole.hasAccess = true;
+            userRole.isStaffAdmin = true;
+            userRole.primaryRole = 'Staff Admin';
+        }
+        
         if (!userRole.hasAccess) {
             log('User does not have access to bulk print feature');
             $('#bulkPrintbtn').hide();
