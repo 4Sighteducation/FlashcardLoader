@@ -1299,9 +1299,7 @@
         
         // Apply to all school logos with error handling
         schoolLogos.forEach(img => { 
-            // Set crossorigin for better CORS handling
-            img.crossOrigin = 'anonymous';
-            
+            // Do NOT set crossOrigin here; some S3 assets aren't CORS-enabled and the attribute blocks loading.
             // Add loading and error handlers
             img.onload = () => {
                 // Check if image actually loaded (sometimes returns 1x1 pixel on error)
