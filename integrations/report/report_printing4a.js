@@ -16,8 +16,12 @@
     if (window.VESPA_BULK_PRINT_INITIALISED) return;
     window.VESPA_BULK_PRINT_INITIALISED = true;
 
-    // Helper – safe console
-    const log = (...m) => console.log('[BulkPrint]', ...m);
+    // --- DEBUG FLAG ---
+    // Default to false for production; can be overridden via BULK_PRINT_CONFIG.debugMode=true
+    let DEBUG = false;
+
+    // Helper – safe console (only logs when DEBUG is true)
+    const log = (...m) => { if (DEBUG) console.log('[BulkPrint]', ...m); };
     const err = (...m) => console.error('[BulkPrint]', ...m);
 
     // --- CONFIG ---
@@ -1711,6 +1715,7 @@
     // Expose init for loader (called by WorkingBridge)
     window.initializeBulkPrintApp = async function () {
         cfg = window.BULK_PRINT_CONFIG || {};
+        DEBUG = !!cfg.debugMode; // enable logs only if debugMode flag is true
         log('Config at initialization:', cfg);
         
         // Check user access
@@ -1801,4 +1806,3 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
-
