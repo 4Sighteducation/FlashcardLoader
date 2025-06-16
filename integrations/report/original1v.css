@@ -206,11 +206,12 @@ body.ai-coach-active .ai-coach-panel {
     bottom: 24px;    
     left: 50%;       
     transform: translateX(-50%); 
-    z-index: 1040;   
+    z-index: 9999;   /* Increased to ensure it's above other elements */
     text-align: center; 
     padding: 0;
     border-top: none; 
     background-color: transparent;
+    pointer-events: auto; /* Ensure container can receive clicks */
 }
 
 #aiCoachLauncherButtonContainer p,
@@ -242,6 +243,8 @@ button#activateAICoachBtn {
     letter-spacing: 0.5px;
     position: relative;
     overflow: hidden;
+    z-index: 10000; /* Ensure button is above other elements */
+    pointer-events: auto; /* Ensure button can receive clicks */
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
@@ -311,6 +314,8 @@ button#activateAICoachBtn:active {
     transition: all 0.3s ease !important;
     vertical-align: middle;
     position: relative;
+    z-index: 10000; /* Ensure info button is above other elements */
+    pointer-events: auto; /* Ensure button can receive clicks */
 }
 
 #aiCoachInfoBtn:hover {
@@ -320,6 +325,12 @@ button#activateAICoachBtn:active {
 
 #aiCoachInfoBtn:active {
     transform: scale(1.05) rotate(5deg);
+}
+
+/* Ensure button child elements don't interfere with clicks */
+#aiCoachLauncherButtonContainer button span,
+#studentCoachLauncherButtonContainer button span {
+    pointer-events: none; /* Child elements should not capture clicks */
 }
 
 /* Section toggles - Modern Cards */
