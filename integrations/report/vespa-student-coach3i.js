@@ -124,7 +124,11 @@ if (window.studentCoachLauncherInitialized) {
         logStudentCoach("Clearing Student Coach UI.");
         const launcherButtonContainer = document.getElementById('aiCoachLauncherButtonContainer'); // Fixed ID to match what's created
         if (launcherButtonContainer) {
-            launcherButtonContainer.innerHTML = ''; 
+            launcherButtonContainer.remove(); // Remove the entire container from DOM
+        }
+        const panel = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
+        if (panel) {
+            panel.remove(); // Remove the panel from DOM
         }
         toggleAICoachPanel(false); 
         coachUIInitialized = false; 
@@ -173,7 +177,18 @@ if (window.studentCoachLauncherInitialized) {
         }
 
         const observerCallback = function(mutationsList, observer) {
-            // logStudentCoach("MutationObserver detected DOM change (raw event)."S); // Can be noisy
+            // logStudentCoach("MutationObserver detected DOM change (raw event)."); // Can be noisy
+            
+            // Check if we're still on the correct scene
+            if (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key && Knack.scene.key !== STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
+                // We've navigated away from the student coach scene
+                if (coachUIInitialized) {
+                    logStudentCoach("Observer: Navigated away from student coach scene. Clearing UI.");
+                    clearCoachUI();
+                    observerLastProcessedStudentKnackId = null;
+                }
+                return; // Exit early
+            }
             
             if (isStudentCoachPageView()) { // Check if we are on the correct page
                 if (!coachUIInitialized && !uiCurrentlyInitializing) { // Only initialize UI if not already done and not in process
@@ -229,8 +244,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1u.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1u.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1v.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1v.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -558,19 +573,31 @@ if (window.studentCoachLauncherInitialized) {
             `;
         }
         
-        // Add event listener for the new info button
-        const infoButton = document.getElementById('aiCoachInfoBtn');
-        if (infoButton) {
-            infoButton.addEventListener('click', () => {
-                logStudentCoach("Info button clicked");
-                showInfoModal(); // This function will be created next
-            });
-        } else {
-            // This might happen if innerHTML was set but button isn't found immediately (less likely with direct innerHTML)
-            // Or if the button container already existed with different content.
-            // For robustness, try querying again after a tiny delay if critical, or ensure idempotent re-creation.
-            logStudentCoach("Info button not found immediately after innerHTML set. This might be an issue if container was not empty.");
-        }
+        // Add event listeners for both buttons
+        setTimeout(() => {
+            const toggleButton = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId);
+            if (toggleButton) {
+                toggleButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const isActive = document.body.classList.contains('ai-coach-active');
+                    toggleAICoachPanel(!isActive);
+                    logStudentCoach("Direct toggle button click handler - panel active: " + !isActive);
+                });
+                logStudentCoach("Direct click handler attached to toggle button");
+            }
+            
+            const infoButton = document.getElementById('aiCoachInfoBtn');
+            if (infoButton) {
+                infoButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    logStudentCoach("Info button clicked");
+                    showInfoModal();
+                });
+                logStudentCoach("Direct click handler attached to info button");
+            }
+        }, 100); // Small delay to ensure DOM is ready
     }
 
     function createInfoModalHTML() {
@@ -1280,16 +1307,21 @@ if (window.studentCoachLauncherInitialized) {
             const toggleButtonId = STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId;
             const panelId = STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId;
             
-            if (event.target && event.target.id === toggleButtonId) {
+            // Check if the clicked element is the button or any of its children
+            const toggleButton = document.getElementById(toggleButtonId);
+            if (toggleButton && (event.target === toggleButton || toggleButton.contains(event.target))) {
+                event.preventDefault();
+                event.stopPropagation();
                 const isActive = document.body.classList.contains('ai-coach-active');
                 toggleAICoachPanel(!isActive);
+                logStudentCoach("Toggle button clicked - panel active: " + !isActive);
             }
             
             const panel = document.getElementById(panelId);
             if (panel && event.target && event.target.classList.contains('ai-coach-close-btn') && panel.contains(event.target)) {
                 toggleAICoachPanel(false);
             }
-        });
+        }, true); // Use capture phase to ensure we get the event first
         eventListenersAttached = true;
         logStudentCoach("Student Coach event listeners set up.");
     }
