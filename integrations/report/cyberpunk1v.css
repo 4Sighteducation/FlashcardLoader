@@ -242,11 +242,12 @@ body.ai-coach-active [id*="CoachPanel"] {
     bottom: 30px;    
     left: 50%;       
     transform: translateX(-50%); 
-    z-index: 1040;   
+    z-index: 9999;   /* Increased to ensure it's above other elements */
     text-align: center; 
     padding: 0;      
     border-top: none; 
     background-color: transparent; 
+    pointer-events: auto; /* Ensure container can receive clicks */
 }
 
 #aiCoachLauncherButtonContainer p,
@@ -291,6 +292,8 @@ button#activateAICoachBtn {
     overflow: hidden;
     font-family: 'Orbitron', 'Roboto', sans-serif;
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    z-index: 10000; /* Ensure button is above other elements */
+    pointer-events: auto; /* Ensure button can receive clicks */
 }
 
 #aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
@@ -411,6 +414,8 @@ button#activateAICoachBtn:active {
     position: relative;
     overflow: hidden;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    z-index: 10000; /* Ensure info button is above other elements */
+    pointer-events: auto; /* Ensure button can receive clicks */
 }
 
 #aiCoachInfoBtn::before {
@@ -453,6 +458,11 @@ button#activateAICoachBtn:active {
 
 #aiCoachInfoBtn:active {
     transform: scale(1.10) rotate(5deg);
+}
+
+/* Ensure button child elements don't interfere with clicks */
+#aiCoachLauncherButtonContainer button span {
+    pointer-events: none; /* Child elements should not capture clicks */
 }
 
 /* Section toggles - NEON STYLE */
@@ -2635,3 +2645,4 @@ body.ai-coach-active #aiCoachChatContainer {
 [id*="CoachPanel"] .loader {
     background: none !important;
 }
+
