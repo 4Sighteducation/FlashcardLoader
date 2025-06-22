@@ -75,47 +75,57 @@
   color: #ffffff;
   border: 1px solid #00e5db;
   border-radius: 8px;
-  padding: 25px;
+  padding: 20px;
   box-shadow: 0 8px 25px rgba(0,0,0,0.6);
   z-index: 10002; 
-  max-width: 600px;
+  max-width: 500px; /* Reduced from 600px */
   width: 90%;
-  font-size: 0.95em;
+  max-height: 80vh; /* Add max height */
+  overflow-y: auto; /* Allow scrolling if content is too tall */
+  font-size: 0.9em; /* Slightly smaller font */
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
 }
+
+/* Teacher/Staff specific tooltip - even more compact */
+.report-profile-tooltip-styling {
+  max-width: 450px; /* Even smaller for teacher view */
+  font-size: 0.85em; /* Smaller font for dense content */
+  padding: 18px; /* Slightly less padding */
+}
+
 .profile-info-tooltip.visible {
   opacity: 1;
   visibility: visible;
 }
 .profile-info-tooltip h4 {
   color: #00e5db;
-  font-size: 1.3em;
+  font-size: 1.2em; /* Reduced from 1.3em */
   margin-top: 0;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   border-bottom: 1px solid rgba(0, 229, 219, 0.4);
-  padding-bottom: 12px;
+  padding-bottom: 10px;
 }
 .profile-info-tooltip p, .profile-info-tooltip ul {
-  margin-bottom: 15px;
-  line-height: 1.7;
+  margin-bottom: 12px; /* Reduced from 15px */
+  line-height: 1.6; /* Slightly tighter line height */
 }
 .profile-info-tooltip strong {
   color: #00e5db;
 }
 .profile-info-tooltip ul {
   list-style-position: outside;
-  padding-left: 20px;
+  padding-left: 18px; /* Reduced from 20px */
 }
 .profile-info-tooltip ul li {
-  margin-bottom: 8px;
+  margin-bottom: 6px; /* Reduced from 8px */
 }
 .profile-info-tooltip-close {
   position: absolute;
-  top: 15px;
-  right: 20px;
-  font-size: 28px;
+  top: 12px;
+  right: 15px;
+  font-size: 24px; /* Reduced from 28px */
   color: #00e5db;
   cursor: pointer;
   font-weight: bold;
@@ -523,6 +533,53 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
   #vespa-homepage .app-hubs-container { flex-direction: column; gap: 16px; } /* Homepage specific */
   #vespa-homepage .app-card { max-width: 100%; width: 100%; } /* Homepage specific */
   .vespa-section-title { font-size: 20px; }
+  .profile-info-tooltip {
+    width: 95%; /* More width on mobile */
+    max-width: none; /* Remove max-width constraint */
+    padding: 15px; /* Less padding on mobile */
+    max-height: 90vh; /* More height available */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Keep centered */
+  }
+  
+  .profile-info-tooltip h4 {
+    font-size: 1.1em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+  
+  .profile-info-tooltip p, .profile-info-tooltip ul {
+    font-size: 0.9em; /* Slightly smaller text on mobile */
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  
+  .profile-info-tooltip ul {
+    padding-left: 15px;
+  }
+  
+  .profile-info-tooltip ul li {
+    margin-bottom: 5px;
+  }
+  
+  .profile-info-tooltip-close {
+    font-size: 22px;
+    top: 10px;
+    right: 12px;
+  }
+  
+  /* MEG tooltip on mobile */
+  .meg-tooltip {
+    font-size: 0.85em;
+  }
+  
+  /* Ensure MEG info button is easily tappable on mobile */
+  .meg-info-button {
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+  }
 }
 @media (max-width: 480px) {
   #vespa-homepage, #vespa-profile, .vespa-profile-display { padding: 10px; }
@@ -532,6 +589,18 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
   #vespa-homepage .app-card { max-width: 100%; } /* Homepage specific */
   .grade-item { padding: 2px; }
   .grade-value { font-size: 1em; }
+  .profile-info-tooltip {
+    padding: 12px;
+    font-size: 0.85em;
+  }
+  
+  .profile-info-tooltip h4 {
+    font-size: 1em;
+  }
+  
+  .profile-info-tooltip p, .profile-info-tooltip ul {
+    font-size: 0.85em;
+  }
 }
 
 /* MEG Info Button (small i) */
@@ -558,6 +627,180 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
 
 /* MEG Tooltip specific styling */
 .meg-tooltip {
-  max-width: 500px; /* Slightly smaller than main tooltip */
+  max-width: 450px; /* Reduced from 500px */
+  font-size: 0.85em; /* Reduced from 0.9em */
+}
+
+/* --- VESPA Questionnaire Section Styles --- */
+.vespa-questionnaire-section {
+  background-color: #334285;
+  margin-bottom: 24px;
+}
+
+.vespa-questionnaire-section .vespa-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.vespa-questionnaire-authors {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.author-photo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #00e5db;
+  transition: transform 0.2s;
+}
+
+.author-photo:hover {
+  transform: scale(1.1);
+}
+
+.vespa-questionnaire-content {
+  color: #ffffff;
+  font-size: 0.95em;
+  line-height: 1.6;
+}
+
+.vespa-questionnaire-content p {
+  margin-bottom: 15px;
+}
+
+.vespa-quote {
+  font-style: italic;
+  color: #b3d9ff;
+  position: relative;
+  padding-left: 20px;
+}
+
+.vespa-quote::before {
+  content: '"';
+  position: absolute;
+  left: 0;
+  top: -10px;
+  font-size: 2.5em;
+  color: #00e5db;
+  opacity: 0.3;
+}
+
+.vespa-highlight-box {
+  background-color: #1c2b5f;
+  border: 2px solid #00e5db;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1);
+  transition: box-shadow 0.3s;
+}
+
+.vespa-highlight-box:hover {
+  box-shadow: 0 6px 16px rgba(0, 229, 219, 0.2);
+}
+
+.vespa-highlight-box p {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1em;
+  line-height: 1.6;
+}
+
+.vespa-highlight-box strong {
+  color: #00e5db;
+}
+
+/* Responsive adjustments for VESPA Questionnaire */
+@media (max-width: 768px) {
+  .vespa-questionnaire-section .vespa-section-title {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .author-photo {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .vespa-quote::before {
+    font-size: 2em;
+  }
+  
+  .vespa-highlight-box {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .author-photo {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .vespa-questionnaire-content {
+    font-size: 0.9em;
+  }
+  
+  .vespa-highlight-box {
+    padding: 12px;
+  }
+}
+
+/* --- App Data Tooltips (for Homepage hover tooltips) --- */
+.app-data-tooltip {
+  position: absolute;
+  background-color: #1c2b5f;
+  color: #ffffff;
+  border: 1px solid #00e5db;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+  z-index: 10001;
   font-size: 0.9em;
+  line-height: 1.5;
+  max-width: 350px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+}
+
+.app-data-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.app-data-tooltip h4 {
+  color: #00e5db;
+  font-size: 1.1em;
+  margin: 0 0 10px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 229, 219, 0.3);
+}
+
+.app-data-tooltip ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.app-data-tooltip ul li {
+  padding: 4px 0;
+  margin: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-data-tooltip ul li:last-child {
+  border-bottom: none;
+}
+
+.app-data-tooltip hr {
+  border: none;
+  border-top: 1px solid rgba(0, 229, 219, 0.3);
+  margin: 10px 0;
 }
