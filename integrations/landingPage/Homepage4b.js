@@ -1347,9 +1347,9 @@
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1f.css'; // Verified CSS path
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1g.css'; // Verified CSS path
       document.head.appendChild(linkElement);
-      debugLog("Linked central stylesheet: academicProfile1f.css");
+      debugLog("Linked central stylesheet: academicProfile1g.css");
     }
     
     // Add Font Awesome for professional icons - using same approach as staff homepage
@@ -1400,6 +1400,7 @@
     container.innerHTML += `
       <div id="vespa-homepage">
         ${displayPreferences.showAcademicProfile ? renderProfileSection(profileData, actualScores, displayPreferences.showVespaScores) : ''}
+        ${!displayPreferences.showAcademicProfile && displayPreferences.showVespaScores ? renderStandaloneVespaSection(actualScores) : ''}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
           ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
@@ -1442,6 +1443,16 @@
           </div>
         </div>
       </div>
+    `;
+  }
+  
+  // Render VESPA sections when academic profile is hidden
+  function renderStandaloneVespaSection(vespaScoresData) {
+    return `
+      <section class="vespa-section vespa-standalone-section">
+        ${renderVespaQuestionnaireSection()}
+        ${vespaScoresData ? renderVespaCirclesHTML(vespaScoresData) : ''}
+      </section>
     `;
   }
   
