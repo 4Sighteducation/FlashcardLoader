@@ -47,6 +47,12 @@
     overall: '#f3f553'
   };
 
+  // Display preference fields
+  const DISPLAY_PREFERENCE_FIELDS = {
+    showVespaScores: 'field_3476',    // Boolean field for VESPA Scores display
+    showAcademicProfile: 'field_3477'  // Boolean field for Academic Profile display
+  };
+
   // Field mappings for the user profile object
   const FIELD_MAPPING = {
     userId: 'field_3064',         // User ID
@@ -1248,7 +1254,11 @@
       rules: [{ field: VESPA_SCORES_EMAIL_FIELD, operator: 'is', value: userEmail }]
     }));
 
-    const fieldsToRequest = Object.values(VESPA_SCORES_FIELDS).join(',');
+    // Include display preference fields in the request
+    const fieldsToRequest = [
+      ...Object.values(VESPA_SCORES_FIELDS),
+      ...Object.values(DISPLAY_PREFERENCE_FIELDS)
+    ].join(',');
 
     try {
       const response = await retryApiCall(() => {
@@ -1271,15 +1281,38 @@
         for (const key in VESPA_SCORES_FIELDS) {
           scores[key] = sanitizeField(record[VESPA_SCORES_FIELDS[key]] || 'N/A');
         }
+        
+        // Extract display preferences
+        const displayPreferences = {
+          showVespaScores: record[DISPLAY_PREFERENCE_FIELDS.showVespaScores] !== false, // Show if yes or null
+          showAcademicProfile: record[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false // Show if yes or null
+        };
+        
         debugLog('Processed VESPA scores:', scores);
-        return scores;
+        debugLog('Display preferences:', displayPreferences);
+        
+        return { scores, displayPreferences };
       } else {
         debugLog(`No VESPA scores record found for ${userEmail}`);
-        return null;
+        // Default to showing both if no record found
+        return { 
+          scores: null, 
+          displayPreferences: { 
+            showVespaScores: true, 
+            showAcademicProfile: true 
+          } 
+        };
       }
     } catch (error) {
       debugLog('[Homepage] Error fetching VESPA scores', { error: error.message, stack: error.stack });
-      return null;
+      // Default to showing both on error
+      return { 
+        scores: null, 
+        displayPreferences: { 
+          showVespaScores: true, 
+          showAcademicProfile: true 
+        } 
+      };
     }
   }
 
@@ -1302,9 +1335,9 @@
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1c.css'; // Verified CSS path
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1d.css'; // Verified CSS path
       document.head.appendChild(linkElement);
-      debugLog("Linked central stylesheet: academicProfile1a.css");
+      debugLog("Linked central stylesheet: academicProfile1b.css");
     }
     
     // --- Reinstated subject parsing and profileData creation --- 
@@ -1337,10 +1370,18 @@
     debugLog('Processed profileData for rendering:', profileData);
     // --- End of reinstated logic ---
 
-    // Add content to the container (styleElement is no longer added here)
+    // Extract display preferences
+    const displayPreferences = vespaScoresData?.displayPreferences || { 
+      showVespaScores: true, 
+      showAcademicProfile: true 
+    };
+    const actualScores = vespaScoresData?.scores || null;
+
+    // Add content to the container
     container.innerHTML += `
       <div id="vespa-homepage">
-        ${renderProfileSection(profileData, vespaScoresData)} {/* Ensure profileData is passed */}
+        ${displayPreferences.showAcademicProfile ? renderProfileSection(profileData, actualScores, displayPreferences.showVespaScores) : ''}
+        ${renderVespaQuestionnaireSection()}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
           ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
@@ -1365,8 +1406,32 @@
     setupProfileInfoTooltip();
   }
   
+  // New function to render VESPA Questionnaire section
+  function renderVespaQuestionnaireSection() {
+    return `
+      <section class="vespa-section vespa-questionnaire-section">
+        <h2 class="vespa-section-title">
+          About the VESPA Questionnaire
+          <span class="vespa-questionnaire-authors">
+            <img src="martingriffin.jpg" alt="Martin Griffin" class="author-photo">
+            <img src="stevoakes1.png" alt="Steve Oakes" class="author-photo">
+          </span>
+        </h2>
+        <div class="vespa-questionnaire-content">
+          <p class="vespa-quote">"I created the VESPA Questionnaire to help me understand myself better and support my personal growth. When I use it honestly, it gives me the perfect starting point for productive conversations with my teachers and coaches. But it's important for me to remember a few things."</p>
+          
+          <p>"First, the questionnaire only shows how I feel about myself right now—it's a snapshot in time, not a permanent verdict or fixed state. Second, I'm more likely to answer honestly when I know the questionnaire is being used to support me, not judge me."</p>
+          
+          <div class="vespa-highlight-box">
+            <p><strong>"Most importantly, the VESPA questionnaire isn't just about measuring where I am—it's about motivating my growth and sparking positive change in my learning journey."</strong></p>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+  
   // Render the profile section
-  function renderProfileSection(profileData, vespaScoresData) {
+  function renderProfileSection(profileData, vespaScoresData, showVespaScores) {
     const name = sanitizeField(profileData.name);
     
     // Fix for school field - handle if it's an object - improved to handle connection fields better
@@ -1615,7 +1680,7 @@
             </div>
           </div>
         </div>
-        ${vespaScoresData ? renderVespaCirclesHTML(vespaScoresData) : ''}
+        ${showVespaScores ? renderVespaCirclesHTML(vespaScoresData) : ''}
       </section>
     `;
   }
