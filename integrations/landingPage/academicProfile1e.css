@@ -632,17 +632,27 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
 }
 
 /* --- VESPA Questionnaire Section Styles --- */
-.vespa-questionnaire-section {
+.vespa-questionnaire-inner {
   background-color: #334285;
-  margin-bottom: 24px;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(7, 155, 170, 0.3);
 }
 
-.vespa-questionnaire-section .vespa-section-title {
+.vespa-questionnaire-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 15px;
+  color: #00e5db !important;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #079baa;
 }
 
 .vespa-questionnaire-authors {
@@ -718,9 +728,14 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
 
 /* Responsive adjustments for VESPA Questionnaire */
 @media (max-width: 768px) {
-  .vespa-questionnaire-section .vespa-section-title {
+  .vespa-questionnaire-inner {
+    padding: 15px;
+  }
+  
+  .vespa-questionnaire-title {
     flex-direction: column;
     align-items: flex-start;
+    font-size: 16px;
   }
   
   .author-photo {
@@ -738,6 +753,10 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
 }
 
 @media (max-width: 480px) {
+  .vespa-questionnaire-inner {
+    padding: 12px;
+  }
+  
   .author-photo {
     width: 30px;
     height: 30px;
