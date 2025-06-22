@@ -1424,11 +1424,8 @@
         </h3>
         <div class="vespa-questionnaire-content">
           <p class="vespa-quote">"Hi there! We're the creators of the VESPA Questionnaire, and we're delighted you've completed it and seen your personalized scores. Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</p>
-          
-          <p>"Most importantly, the VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, team discussions, goal-setting, and your ongoing development."</p>
-          
           <div class="vespa-highlight-box">
-            <p><strong>"Most importantly, the VESPA questionnaire isn't just about measuring where I am—it's about motivating my growth and sparking positive change in my learning journey."</strong></p>
+            <p><strong>"Most importantly, the VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, team discussions, goal-setting, and your ongoing development."</strong></p>
           </div>
         </div>
       </div>
