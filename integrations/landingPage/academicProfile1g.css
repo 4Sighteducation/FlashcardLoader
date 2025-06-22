@@ -657,6 +657,15 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
   border: 1px solid rgba(7, 155, 170, 0.3);
 }
 
+/* Standalone VESPA section when profile is hidden */
+.vespa-standalone-section {
+  margin-bottom: 24px;
+}
+
+.vespa-standalone-section .vespa-questionnaire-inner {
+  margin-top: 0;
+}
+
 .vespa-questionnaire-title {
   display: flex;
   justify-content: space-between;
