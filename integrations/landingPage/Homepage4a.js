@@ -92,6 +92,7 @@
         url: "https://vespaacademy.knack.com/vespa-academy#add-q/",
         icon: "fa-solid fa-clipboard-list",
         iconType: "fontawesome",
+        fallbackIcon: "📋",
         description: "Discover your learning superpowers with our questionnaire on Vision, Effort, Systems, Practice and Attitude!"
       },
       {
@@ -99,6 +100,7 @@
         url: "https://vespaacademy.knack.com/vespa-academy#vespa-results/",
         icon: "fa-solid fa-chart-column",
         iconType: "fontawesome",
+        fallbackIcon: "📊",
         description: "See how awesome you can be! Your personal roadmap to success with tailored feedback just for you."
       },
       {
@@ -106,6 +108,7 @@
         url: "https://vespaacademy.knack.com/vespa-academy#my-vespa/",
         icon: "fa-solid fa-list-check",
         iconType: "fontawesome",
+        fallbackIcon: "✅",
         description: "Unlock fun activities and cool ideas perfectly matched to your unique learning style and VESPA scores!"
       }
     ],
@@ -115,6 +118,7 @@
         url: "https://vespaacademy.knack.com/vespa-academy#studyplanner/",
         icon: "fa-solid fa-calendar-days",
         iconType: "fontawesome",
+        fallbackIcon: "📅",
         description: "Take control of your time with this super-smart calendar that makes study planning a breeze!"
       },
       {
@@ -122,6 +126,7 @@
         url: "https://vespaacademy.knack.com/vespa-academy#flashcards/",
         icon: "fa-solid fa-layer-group",
         iconType: "fontawesome",
+        fallbackIcon: "🗂️",
         description: "Turn boring facts into brain-friendly flashcards that make remembering stuff actually fun!"
       },
       {
@@ -129,6 +134,7 @@
         url: "https://vespaacademy.knack.com/vespa-academy#task-board/",
         icon: "fa-solid fa-table-columns",
         iconType: "fontawesome",
+        fallbackIcon: "📌",
         description: "Zap your to-do list into an organized masterpiece with this colorful drag-and-drop task manager!"
       }
     ]
@@ -1341,10 +1347,17 @@
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1e.css'; // Verified CSS path
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1f.css'; // Verified CSS path
       document.head.appendChild(linkElement);
-      debugLog("Linked central stylesheet: academicProfile1e.css");
+      debugLog("Linked central stylesheet: academicProfile1f.css");
     }
+    
+    // Add Font Awesome for professional icons - using same approach as staff homepage
+    const fontAwesomeLink = document.createElement('link');
+    fontAwesomeLink.rel = 'stylesheet';
+    fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+    document.head.appendChild(fontAwesomeLink);
+    debugLog("Added Font Awesome 6.4.0 CDN link");
     
     // --- Reinstated subject parsing and profileData creation --- 
     const subjectData = [];
@@ -1920,10 +1933,12 @@
           <a href="${app.url}" class="app-card-link"> 
             <div class="app-card-header">
               ${notificationBadgeHTML}
-              ${app.iconType === 'fontawesome' ? 
-                `<i class="${app.icon} app-icon-fa"></i>` : 
-                `<img src="${app.icon}" alt="${app.name}" class="app-icon">`
-              }
+              <div class="app-icon-container">
+                ${app.iconType === 'fontawesome' ? 
+                  `<i class="${app.icon} app-icon-fa"></i>` : 
+                  `<img src="${app.icon}" alt="${app.name}" class="app-icon">`
+                }
+              </div>
               <div class="app-name">${sanitizeField(app.name)}</div>
             </div>
           </a>
