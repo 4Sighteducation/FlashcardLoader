@@ -383,6 +383,22 @@ input.attendance-input { width: 40px; } /* Slightly narrower for % */
 #vespa-homepage .app-card:hover .app-icon {
   transform: scale(1.1) rotate(5deg);
 }
+#vespa-homepage .app-icon-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+#vespa-homepage .app-icon-fa {
+  font-size: 2.5rem;
+  color: #00e5db;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+#vespa-homepage .app-card:hover .app-icon-fa {
+  transform: scale(1.15);
+  color: #ffffff;
+}
+
 #vespa-homepage .app-name {
   color: white;
   font-size: 16px;
