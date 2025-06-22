@@ -90,19 +90,22 @@
       {
         name: "VESPA Questionnaire",
         url: "https://vespaacademy.knack.com/vespa-academy#add-q/",
-        icon: "https://www.vespa.academy/Icons/vespaq.png",
+        icon: "fa-solid fa-clipboard-list",
+        iconType: "fontawesome",
         description: "Discover your learning superpowers with our questionnaire on Vision, Effort, Systems, Practice and Attitude!"
       },
       {
         name: "VESPA Coaching Report",
         url: "https://vespaacademy.knack.com/vespa-academy#vespa-results/",
-        icon: "https://www.vespa.academy/Icons/coachingreport.png",
+        icon: "fa-solid fa-chart-column",
+        iconType: "fontawesome",
         description: "See how awesome you can be! Your personal roadmap to success with tailored feedback just for you."
       },
       {
         name: "VESPA Activities",
         url: "https://vespaacademy.knack.com/vespa-academy#my-vespa/",
-        icon: "https://www.vespa.academy/Icons/myvespa.png",
+        icon: "fa-solid fa-list-check",
+        iconType: "fontawesome",
         description: "Unlock fun activities and cool ideas perfectly matched to your unique learning style and VESPA scores!"
       }
     ],
@@ -110,19 +113,22 @@
       {
         name: "Study Planner",
         url: "https://vespaacademy.knack.com/vespa-academy#studyplanner/",
-        icon: "https://www.vespa.academy/Icons/studyplanner.png",
+        icon: "fa-solid fa-calendar-days",
+        iconType: "fontawesome",
         description: "Take control of your time with this super-smart calendar that makes study planning a breeze!"
       },
       {
         name: "Flashcards",
         url: "https://vespaacademy.knack.com/vespa-academy#flashcards/",
-        icon: "https://www.vespa.academy/Icons/flashcards.png",
+        icon: "fa-solid fa-layer-group",
+        iconType: "fontawesome",
         description: "Turn boring facts into brain-friendly flashcards that make remembering stuff actually fun!"
       },
       {
         name: "Taskboard",
         url: "https://vespaacademy.knack.com/vespa-academy#task-board/",
-        icon: "https://www.vespa.academy/Icons/taskboard.png",
+        icon: "fa-solid fa-table-columns",
+        iconType: "fontawesome",
         description: "Zap your to-do list into an organized masterpiece with this colorful drag-and-drop task manager!"
       }
     ]
@@ -1335,9 +1341,9 @@
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1d.css'; // Verified CSS path
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1e.css'; // Verified CSS path
       document.head.appendChild(linkElement);
-      debugLog("Linked central stylesheet: academicProfile1b.css");
+      debugLog("Linked central stylesheet: academicProfile1e.css");
     }
     
     // --- Reinstated subject parsing and profileData creation --- 
@@ -1381,7 +1387,6 @@
     container.innerHTML += `
       <div id="vespa-homepage">
         ${displayPreferences.showAcademicProfile ? renderProfileSection(profileData, actualScores, displayPreferences.showVespaScores) : ''}
-        ${renderVespaQuestionnaireSection()}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
           ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
@@ -1409,24 +1414,24 @@
   // New function to render VESPA Questionnaire section
   function renderVespaQuestionnaireSection() {
     return `
-      <section class="vespa-section vespa-questionnaire-section">
-        <h2 class="vespa-section-title">
+      <div class="vespa-questionnaire-inner">
+        <h3 class="vespa-questionnaire-title">
           About the VESPA Questionnaire
           <span class="vespa-questionnaire-authors">
-            <img src="martingriffin.jpg" alt="Martin Griffin" class="author-photo">
-            <img src="stevoakes1.png" alt="Steve Oakes" class="author-photo">
+            <img src="https://vespa.academy/assets/martingriffin.jpg" alt="Martin Griffin" class="author-photo">
+            <img src="https://vespa.academy/assets/stevoakes1.png" alt="Steve Oakes" class="author-photo">
           </span>
-        </h2>
+        </h3>
         <div class="vespa-questionnaire-content">
-          <p class="vespa-quote">"I created the VESPA Questionnaire to help me understand myself better and support my personal growth. When I use it honestly, it gives me the perfect starting point for productive conversations with my teachers and coaches. But it's important for me to remember a few things."</p>
+          <p class="vespa-quote">"Hi there! We're the creators of the VESPA Questionnaire, and we're delighted you've completed it and seen your personalized scores. Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</p>
           
-          <p>"First, the questionnaire only shows how I feel about myself right now—it's a snapshot in time, not a permanent verdict or fixed state. Second, I'm more likely to answer honestly when I know the questionnaire is being used to support me, not judge me."</p>
+          <p>"Most importantly, the VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, team discussions, goal-setting, and your ongoing development."</p>
           
           <div class="vespa-highlight-box">
             <p><strong>"Most importantly, the VESPA questionnaire isn't just about measuring where I am—it's about motivating my growth and sparking positive change in my learning journey."</strong></p>
           </div>
         </div>
-      </section>
+      </div>
     `;
   }
   
@@ -1680,6 +1685,7 @@
             </div>
           </div>
         </div>
+        ${renderVespaQuestionnaireSection()}
         ${showVespaScores ? renderVespaCirclesHTML(vespaScoresData) : ''}
       </section>
     `;
@@ -1917,7 +1923,10 @@
           <a href="${app.url}" class="app-card-link"> 
             <div class="app-card-header">
               ${notificationBadgeHTML}
-              <img src="${app.icon}" alt="${app.name}" class="app-icon">
+              ${app.iconType === 'fontawesome' ? 
+                `<i class="${app.icon} app-icon-fa"></i>` : 
+                `<img src="${app.icon}" alt="${app.name}" class="app-icon">`
+              }
               <div class="app-name">${sanitizeField(app.name)}</div>
             </div>
           </a>
