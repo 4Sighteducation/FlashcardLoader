@@ -2583,6 +2583,13 @@ function renderProfileSection(profileData, hasAdminRole) {
           </div>
           
           ${dashboardButton}
+          
+          <div class="profile-item">
+            <button id="student-emulator-btn" class="dashboard-button" style="width: 100%; justify-content: center;">
+              <i class="fas fa-user-graduate" style="font-size: 20px; margin-right: 10px;"></i>
+              <span>Student View Emulator</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -4573,6 +4580,17 @@ fontAwesomeLink.rel = 'stylesheet';
 fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
 document.head.appendChild(fontAwesomeLink);
 
+// Load Student Emulator Script
+const studentEmulatorScript = document.createElement('script');
+studentEmulatorScript.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/studentEmulator.js';
+studentEmulatorScript.onload = () => {
+  console.log('[Staff Homepage] Student Emulator script loaded successfully');
+};
+studentEmulatorScript.onerror = (error) => {
+  console.error('[Staff Homepage] Failed to load Student Emulator script:', error);
+};
+document.head.appendChild(studentEmulatorScript);
+
 // Clear the container
 container.innerHTML = '';
 
@@ -4703,9 +4721,9 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Add event listeners after modal is added
-    setupLogoControls(profileData.schoolId);
-  }
+      // Add event listeners after modal is added
+  setupLogoControls(profileData.schoolId);
+}
 // Setup cycle refresh button
 if (profileData && profileData.userId) {
   setupCycleRefresh(profileData.userId, profileData.schoolId);
@@ -4892,6 +4910,25 @@ feedbackBtn.addEventListener('click', function() {
 }
 }
 
+// Setup Student Emulator button for ALL staff users
+setTimeout(() => {
+  const emulatorBtn = document.getElementById('student-emulator-btn');
+  if (emulatorBtn && window.StudentEmulator) {
+    emulatorBtn.addEventListener('click', () => {
+      window.StudentEmulator.show();
+    });
+  } else if (emulatorBtn && !window.StudentEmulator) {
+    console.warn('[Staff Homepage] Student Emulator script not loaded yet');
+    // Try again after a delay
+    setTimeout(() => {
+      if (window.StudentEmulator) {
+        emulatorBtn.addEventListener('click', () => {
+          window.StudentEmulator.show();
+        });
+      }
+    }, 1000);
+  }
+}, 100);
 
   debugLog("Staff homepage rendered successfully");
 } catch (error) {
