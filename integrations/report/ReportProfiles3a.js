@@ -1969,7 +1969,7 @@ if (window.reportProfilesInitialized) {
       linkElement.id = styleId;
       linkElement.rel = 'stylesheet';
       linkElement.type = 'text/css';
-      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1c.css'; // Update CSS path
+      linkElement.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/academicProfile1g.css'; // Update CSS path
       document.head.appendChild(linkElement);
       debugLog("Linked central stylesheet: academicProfile1a.css from ReportProfiles");
     }
