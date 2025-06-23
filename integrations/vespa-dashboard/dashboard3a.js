@@ -1,14 +1,7 @@
-// dashboard2x.js
+/ dashboard2x.js
 // @ts-nocheck
 
-// lobal loader management
-if (window.VESPA_DASHBOARD_LOADED) {
-    console.log('VESPA Dashboard script already loaded');
-    // Already loaded, do not initialize again
-} else {
-    window.VESPA_DASHBOARD_LOADED = true;
-}
-
+// Global loader management
 const GlobalLoader = {
     overlay: null,
     progressBar: null,
@@ -62,62 +55,24 @@ const GlobalLoader = {
 // Initialize loader immediately
 GlobalLoader.init();
 
-// Enhanced Data cache management with localStorage fallback
+// Data cache management
 const DataCache = {
     vespaResults: null,
     nationalBenchmark: null,
     filterOptions: null,
     psychometricResponses: null,
     lastFetchTime: null,
-    cacheTimeout: 10 * 60 * 1000, // 10 minutes (increased from 5)
-    isLoading: false, // Add loading flag
-    
-    // Store in localStorage for persistence
-    saveToLocalStorage(key, value) {
-        try {
-            const cacheData = {
-                data: value,
-                timestamp: Date.now()
-            };
-            localStorage.setItem(`vespa_cache_${key}`, JSON.stringify(cacheData));
-        } catch (e) {
-            console.warn('Failed to save to localStorage:', e);
-        }
-    },
-    
-    getFromLocalStorage(key) {
-        try {
-            const cached = localStorage.getItem(`vespa_cache_${key}`);
-            if (cached) {
-                const cacheData = JSON.parse(cached);
-                // Check if cache is still valid (30 minutes for localStorage)
-                if (Date.now() - cacheData.timestamp < 30 * 60 * 1000) {
-                    return cacheData.data;
-                }
-            }
-        } catch (e) {
-            console.warn('Failed to read from localStorage:', e);
-        }
-        return null;
-    },
+    cacheTimeout: 5 * 60 * 1000, // 5 minutes
     
     set(key, value) {
         this[key] = value;
         this.lastFetchTime = Date.now();
-        // Also save to localStorage
-        this.saveToLocalStorage(key, value);
     },
     
     get(key) {
-        // Check memory cache first
+        // Check if cache is still valid
         if (this.lastFetchTime && (Date.now() - this.lastFetchTime) < this.cacheTimeout) {
             return this[key];
-        }
-        // Fall back to localStorage
-        const localData = this.getFromLocalStorage(key);
-        if (localData) {
-            this[key] = localData;
-            return localData;
         }
         return null;
     },
@@ -128,67 +83,11 @@ const DataCache = {
         this.filterOptions = null;
         this.psychometricResponses = null;
         this.lastFetchTime = null;
-        this.isLoading = false;
-        // Clear localStorage
-        try {
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('vespa_cache_')) {
-                    localStorage.removeItem(key);
-                }
-            });
-        } catch (e) {
-            console.warn('Failed to clear localStorage:', e);
-        }
-    },
-    
-    isValid() {
-        return this.lastFetchTime && (Date.now() - this.lastFetchTime) < this.cacheTimeout;
-    }
-};
-
-// Add initialization guard
-let dashboardInitialized = false;
-let initializationInProgress = false;
-
-// Recent establishments tracking for Super Users
-const RecentEstablishments = {
-    maxRecent: 5,
-    
-    add(establishmentId, establishmentName) {
-        try {
-            let recent = this.get();
-            // Remove if already exists
-            recent = recent.filter(e => e.id !== establishmentId);
-            // Add to front
-            recent.unshift({ id: establishmentId, name: establishmentName, timestamp: Date.now() });
-            // Keep only max
-            recent = recent.slice(0, this.maxRecent);
-            localStorage.setItem('vespa_recent_establishments', JSON.stringify(recent));
-        } catch (e) {
-            console.warn('Failed to save recent establishments:', e);
-        }
-    },
-    
-    get() {
-        try {
-            const recent = localStorage.getItem('vespa_recent_establishments');
-            return recent ? JSON.parse(recent) : [];
-        } catch (e) {
-            return [];
-        }
     }
 };
 
 // Ensure this matches the initializerFunctionName in WorkingBridge.js
 function initializeDashboardApp() {
-    // Prevent duplicate initialization
-    if (dashboardInitialized || initializationInProgress) {
-        console.log("Dashboard already initialized or initialization in progress");
-        return;
-    }
-    
-    initializationInProgress = true;
-    
     // Update progress
     GlobalLoader.updateProgress(10, 'Checking configuration...');
     
@@ -264,26 +163,6 @@ function initializeDashboardApp() {
     // These will typically use your Heroku app as a proxy to securely call the Knack API.
     // Example:
     async function fetchDataFromKnack(objectKey, filters = [], options = {}) {
-        // Fast-path: if the request is for VESPA results and we already have them cached from
-        // the /dashboard-initial-data batch call, return the cached set (optionally filtered)
-        // instead of making a round-trip to the backend.
-
-        if (objectKey === (objectKeys?.vespaResults || 'object_10')) {
-            const cached = DataCache.get('vespaResults');
-            if (cached && Array.isArray(cached)) {
-                // If no server-side filters requested just return the whole set
-                if (!filters || filters.length === 0) {
-                    log('fetchDataFromKnack: served VESPA results from cache', { count: cached.length });
-                    return cached;
-                }
-
-                // Apply simple filter logic locally so we still respect the caller's intent.
-                const filtered = applyFiltersToRecords(cached, filters);
-                log('fetchDataFromKnack: served filtered VESPA results from cache', { requestedFilters: filters, count: filtered.length });
-                return filtered;
-            }
-        }
-
         let url = `${config.herokuAppUrl}/api/knack-data?objectKey=${objectKey}&filters=${encodeURIComponent(JSON.stringify(filters))}`;
         
         // Append options to URL if they exist
@@ -298,11 +177,6 @@ function initializeDashboardApp() {
         }
         if (options.fields) {
             url += `&fields=${encodeURIComponent(JSON.stringify(options.fields))}`;
-        }
-
-        // Pass through custom page cap override if provided (e.g., max_pages=0 for unlimited)
-        if (options.max_pages !== undefined) {
-            url += `&max_pages=${options.max_pages}`;
         }
 
         log("Fetching from backend URL:", url); 
@@ -330,27 +204,6 @@ function initializeDashboardApp() {
             log("Using cached initial data");
             return cachedData;
         }
-        
-        // Check if already loading
-        if (DataCache.isLoading) {
-            log("Data fetch already in progress, waiting...");
-            // Wait for the current load to complete
-            let attempts = 0;
-            while (DataCache.isLoading && attempts < 50) { // Max 5 seconds wait
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
-            }
-            // Check cache again after waiting
-            const newCachedData = DataCache.get('initialData');
-            if (newCachedData && newCachedData.cycle === cycle && 
-                newCachedData.staffAdminId === staffAdminId && 
-                newCachedData.establishmentId === establishmentId) {
-                log("Using cached data after waiting");
-                return newCachedData;
-            }
-        }
-        
-        DataCache.isLoading = true;
         
         const url = `${config.herokuAppUrl}/api/dashboard-initial-data`;
         const requestData = {
@@ -390,10 +243,8 @@ function initializeDashboardApp() {
             DataCache.set('filterOptions', data.filterOptions);
             DataCache.set('psychometricResponses', data.psychometricResponses);
             
-            DataCache.isLoading = false;
             return data;
         } catch (error) {
-            DataCache.isLoading = false;
             errorLog("Failed to fetch dashboard initial data", error);
             throw error;
         }
@@ -431,9 +282,9 @@ function initializeDashboardApp() {
     // New function to get all unique establishments
     async function getAllEstablishments() {
         try {
-            log("Fetching establishments from object_2 endpoint");
+            log("Fetching establishments from dedicated endpoint");
             
-            // Use the establishments endpoint that fetches from object_2
+            // Use the new establishments endpoint
             const url = `${config.herokuAppUrl}/api/establishments`;
             log("Fetching from establishments endpoint:", url);
             
@@ -445,11 +296,60 @@ function initializeDashboardApp() {
             const data = await response.json();
             log(`Fetched ${data.total} establishments from ${data.source_object}`);
             
+            if (data.partial) {
+                log("Note: Partial establishment list due to size limits");
+            }
+            
             return data.establishments || [];
             
         } catch (error) {
             errorLog("Failed to fetch establishments", error);
-            return [];
+            
+            // Fallback to the old method with better error handling
+            try {
+                log("Falling back to extracting establishments from VESPA results");
+                const establishmentMap = new Map();
+                
+                // Just fetch first page to avoid timeout
+                const vespaRecords = await fetchDataFromKnack(
+                    objectKeys.vespaResults, 
+                    [], 
+                    { rows_per_page: 100 }
+                );
+                
+                if (vespaRecords && vespaRecords.length > 0) {
+                    vespaRecords.forEach(record => {
+                        if (record.field_133_raw && record.field_133) {
+                            if (Array.isArray(record.field_133_raw)) {
+                                record.field_133_raw.forEach((id, index) => {
+                                    if (id && !establishmentMap.has(id)) {
+                                        const displayName = Array.isArray(record.field_133) ? 
+                                            record.field_133[index] : record.field_133;
+                                        establishmentMap.set(id, displayName || id);
+                                    }
+                                });
+                            } else if (typeof record.field_133_raw === 'string' && record.field_133_raw.trim()) {
+                                const id = record.field_133_raw.trim();
+                                const name = record.field_133 || id;
+                                if (!establishmentMap.has(id)) {
+                                    establishmentMap.set(id, name);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                const establishments = Array.from(establishmentMap.entries())
+                    .map(([id, name]) => ({ id, name }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                
+                log(`Found ${establishments.length} establishments (limited sample)`);
+                return establishments;
+                
+            } catch (fallbackError) {
+                errorLog("Fallback method also failed", fallbackError);
+                return [];
+            }
         }
     }
 
@@ -600,55 +500,6 @@ function initializeDashboardApp() {
                 color: #ffffff;
             }
             
-            /* Datalist styling */
-            #establishment-search-input::-webkit-calendar-picker-indicator {
-                display: none;
-            }
-            
-            #establishment-suggestions {
-                background: rgba(0, 0, 0, 0.9);
-                border: 1px solid rgba(255, 215, 0, 0.3);
-                border-radius: 4px;
-            }
-            
-            /* Quick Access Section */
-            .quick-access-section {
-                margin-bottom: 20px;
-                padding: 15px;
-                background: rgba(255, 255, 255, 0.05);
-                border-radius: 8px;
-            }
-            
-            .quick-access-section h4 {
-                margin: 0 0 10px 0;
-                color: #ffd700;
-                font-size: 14px;
-                font-weight: 600;
-            }
-            
-            .quick-access-buttons {
-                display: flex;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-            
-            .quick-access-btn {
-                padding: 8px 16px;
-                background: rgba(255, 215, 0, 0.1);
-                border: 1px solid rgba(255, 215, 0, 0.3);
-                color: #ffffff;
-                border-radius: 6px;
-                font-size: 13px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            }
-            
-            .quick-access-btn:hover {
-                background: rgba(255, 215, 0, 0.2);
-                border-color: #ffd700;
-                transform: translateY(-1px);
-            }
-            
             .filters-container {
                 display: flex;
                 flex-wrap: wrap;
@@ -732,31 +583,12 @@ function initializeDashboardApp() {
         // Build the HTML with conditional Super User controls
         let superUserControlsHTML = '';
         if (showSuperUserControls) {
-            // Get recent establishments for quick access
-            const recent = RecentEstablishments.get();
-            let quickAccessHTML = '';
-            if (recent.length > 0) {
-                quickAccessHTML = `
-                    <div class="quick-access-section">
-                        <h4>Quick Access - Recent Establishments</h4>
-                        <div class="quick-access-buttons">
-                            ${recent.map(est => `
-                                <button class="quick-access-btn" data-est-id="${est.id}" data-est-name="${est.name}">
-                                    ${est.name}
-                                </button>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-            
             superUserControlsHTML = `
                 <div class="super-user-controls">
                     <div class="super-user-header">
                         <span class="super-user-badge">⚡ Super User Mode</span>
                         <span class="super-user-title">Establishment Emulator</span>
                     </div>
-                    ${quickAccessHTML}
                     <div class="super-user-form">
                         <label for="establishment-select">Select Establishment:</label>
                         <select id="establishment-select">
@@ -801,7 +633,7 @@ function initializeDashboardApp() {
                                     <div class="eri-title">Exam Readiness Index</div>
                                     <div class="eri-values">
                                         <span class="eri-school-value">School: <strong id="eri-value-display">-</strong></span>
-                                        <span class="eri-national-value">Global: <strong id="eri-national-display">-</strong></span>
+                                        <span class="eri-national-value">National: <strong id="eri-national-display">-</strong></span>
                                     </div>
                                     <div class="eri-interpretation" id="eri-interpretation-text">Loading...</div>
                                 </div>
@@ -879,24 +711,48 @@ function initializeDashboardApp() {
                         <div class="spinner"></div>
                     </div>
                     <div class="dashboard-content-wrapper">
-                        <div id="vespa-combined-container" class="vespa-combined-grid">
-                            <!-- Score cards and charts will be dynamically inserted here in alternating pattern -->
+                        <div id="averages-summary-container" class="vespa-scores-grid">
+                            <!-- Scorecards will be dynamically inserted here -->
+                        </div>
+                        <div id="distribution-charts-container">
+                            <!-- Containers for Vision, Effort, Systems, Practice, Attitude, Overall -->
+                            <div class="chart-wrapper">
+                                <canvas id="vision-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="effort-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="systems-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="practice-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="attitude-distribution-chart"></canvas>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="overall-distribution-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </section>
                 <section id="qla-section" style="${showSuperUserControls ? 'display: none;' : ''}">
                     <h2>Question Level Analysis</h2>
+                    <div id="qla-controls">
+                        <select id="qla-question-dropdown"></select>
+                        <input type="text" id="qla-chat-input" placeholder="Ask about the question data...">
+                        <button id="qla-chat-submit">Ask AI</button>
+                    </div>
+                    <div id="qla-ai-response"></div>
                     <div id="qla-top-bottom-questions">
-                        <!-- Top and bottom questions will be rendered here -->
+                        <h3>Top 5 Questions</h3>
+                        <ul id="qla-top-5"></ul>
+                        <h3>Bottom 5 Questions</h3>
+                        <ul id="qla-bottom-5"></ul>
                     </div>
-                    <div class="qla-insights-header">
-                        <h3>VESPA Questionnaire Insights</h3>
-                        <button class="qla-insights-info-btn" onclick="window.showQLAInsightsInfoModal()">
-                            <span style="font-weight: bold; font-size: 14px;">i</span>
-                        </button>
-                    </div>
-                    <div id="qla-insights-grid" class="qla-insights-grid">
-                        <!-- Pre-calculated insights will be rendered here -->
+                    <div id="qla-stats">
+                        <!-- Other interesting statistical info -->
                     </div>
                 </section>
                 <section id="student-insights-section" style="${showSuperUserControls ? 'display: none;' : ''}">
@@ -907,10 +763,8 @@ function initializeDashboardApp() {
             </div>
         `;
         
-        // Add print report button after dashboard is rendered
-        addPrintReportButton();
-        
         // Add event listeners for UI elements
+        document.getElementById('qla-chat-submit')?.addEventListener('click', handleQLAChatSubmit);
         
         // Add filter toggle functionality
         const filterToggleBtn = document.getElementById('filter-toggle-btn');
@@ -955,42 +809,6 @@ function initializeDashboardApp() {
                 });
             }
             
-            // Add quick access button listeners
-            document.querySelectorAll('.quick-access-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const estId = e.target.dataset.estId;
-                    const estName = e.target.dataset.estName;
-                    
-                    // Set the dropdown value
-                    if (establishmentSelect) {
-                        establishmentSelect.value = estId;
-                    }
-                    
-                    // Load the dashboard for this establishment
-                    selectedEstablishmentId = estId;
-                    selectedEstablishmentName = estName;
-                    
-                    log(`Quick loading dashboard for establishment: ${estName} (${estId})`);
-                    
-                    // Update the current viewing display
-                    const currentViewingDiv = document.getElementById('current-establishment-viewing');
-                    const currentNameSpan = document.getElementById('current-establishment-name');
-                    if (currentViewingDiv) currentViewingDiv.style.display = 'flex';
-                    if (currentNameSpan) currentNameSpan.textContent = estName;
-                    
-                    // Show all sections
-                    document.getElementById('overview-section').style.display = 'block';
-                    document.getElementById('qla-section').style.display = 'block';
-                    document.getElementById('student-insights-section').style.display = 'block';
-                    
-                    // Clear any existing cache to ensure fresh data
-                    DataCache.clear();
-                    
-                    // Load data with establishment filter
-                    await loadDashboardWithEstablishment(estId, estName);
-                });
-            });
-            
             // Load establishments
             loadEstablishmentsDropdown();
         }
@@ -1011,9 +829,6 @@ function initializeDashboardApp() {
         
         log(`Loading dashboard for establishment: ${selectedEstablishmentName} (${selectedEstablishmentId})`);
         
-        // Add to recent establishments
-        RecentEstablishments.add(selectedEstablishmentId, selectedEstablishmentName);
-        
         // Update the current viewing display
         const currentViewingDiv = document.getElementById('current-establishment-viewing');
         const currentNameSpan = document.getElementById('current-establishment-name');
@@ -1024,9 +839,6 @@ function initializeDashboardApp() {
         document.getElementById('overview-section').style.display = 'block';
         document.getElementById('qla-section').style.display = 'block';
         document.getElementById('student-insights-section').style.display = 'block';
-        
-        // Clear any existing cache to ensure fresh data
-        DataCache.clear();
         
         // Load data with establishment filter
         await loadDashboardWithEstablishment(selectedEstablishmentId, selectedEstablishmentName);
@@ -1041,11 +853,6 @@ function initializeDashboardApp() {
         establishmentSelect.disabled = true; // Disable during loading
         
         try {
-            // Trigger pre-caching in the background
-            fetch(`${config.herokuAppUrl}/api/establishments?precache=true`).catch(err => {
-                log("Failed to trigger pre-caching:", err);
-            });
-            
             const establishments = await getAllEstablishments();
             
             if (establishments.length === 0) {
@@ -1094,24 +901,6 @@ function initializeDashboardApp() {
         });
     }
     
-    // New function to filter establishment dropdown
-    function filterEstablishmentDropdown(searchTerm) {
-        const establishmentSelect = document.getElementById('establishment-select');
-        if (!establishmentSelect) return;
-        
-        const options = establishmentSelect.querySelectorAll('option');
-        options.forEach(option => {
-            if (option.value === '') return; // Keep the placeholder
-            
-            const text = option.textContent.toLowerCase();
-            if (text.includes(searchTerm)) {
-                option.style.display = '';
-            } else {
-                option.style.display = 'none';
-            }
-        });
-    }
-    
     // New function to load dashboard with establishment filter
     async function loadDashboardWithEstablishment(establishmentId, establishmentName) {
         log(`Loading dashboard data for VESPA Customer: ${establishmentName} (${establishmentId})`);
@@ -1120,58 +909,28 @@ function initializeDashboardApp() {
         GlobalLoader.init();
         GlobalLoader.updateProgress(10, `Loading data for ${establishmentName}...`);
         
-        // Update current context
-        currentEstablishmentId = establishmentId;
-        
         try {
             // Load initial data
             const cycleSelectElement = document.getElementById('cycle-select');
             const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
             
-            // Fetch the dashboard data with better error handling
+            // Fetch all initial data using batch endpoint
             GlobalLoader.updateProgress(30, 'Fetching dashboard data...');
+            const batchData = await fetchDashboardInitialData(null, establishmentId, initialCycle);
             
-            try {
-                // Pass null for staffAdminId since we're in Super User mode
-                const batchData = await fetchDashboardInitialData(null, establishmentId, initialCycle);
-                
-                // Check if we're in limited mode
-                if (batchData.isLimitedMode) {
-                    log(`Limited mode active: ${batchData.loadedRecords} of ${batchData.totalRecords} records loaded`);
-                    GlobalLoader.updateProgress(40, `Loading limited dataset (${batchData.loadedRecords} records)...`);
-                }
-                
-                // Populate filter dropdowns from cached data
-                GlobalLoader.updateProgress(50, 'Setting up filters...');
-                populateFilterDropdownsFromCache(batchData.filterOptions);
-                
-                // Load all sections with cached data
-                GlobalLoader.updateProgress(70, 'Rendering visualizations...');
-                
-                // Load sections sequentially to avoid overwhelming the browser
-                await loadOverviewData(null, initialCycle, [], establishmentId);
-                GlobalLoader.updateProgress(80, 'Loading question analysis...');
-                
-                await loadQLAData(null, establishmentId);
-                GlobalLoader.updateProgress(85, 'Loading student insights...');
-                
-                await loadStudentCommentInsights(null, establishmentId);
-                GlobalLoader.updateProgress(90, 'Finalizing...');
-                
-                // Add print report button after dashboard loads
-                addPrintReportButton();
-                
-            } catch (fetchError) {
-                // If the initial fetch fails, show a more helpful error message
-                errorLog("Failed to fetch dashboard data", fetchError);
-                
-                // Check if it's a timeout error
-                if (fetchError.message.includes('timeout') || fetchError.message.includes('503')) {
-                    throw new Error(`The dataset for ${establishmentName} is too large to load quickly. Please try selecting a smaller establishment or contact support for assistance.`);
-                } else {
-                    throw fetchError;
-                }
-            }
+            // Populate filter dropdowns from cached data
+            GlobalLoader.updateProgress(50, 'Setting up filters...');
+            populateFilterDropdownsFromCache(batchData.filterOptions);
+            
+            // Load all sections with cached data
+            GlobalLoader.updateProgress(70, 'Rendering visualizations...');
+            await Promise.all([
+                loadOverviewData(null, initialCycle, [], establishmentId),
+                loadQLAData(null, establishmentId),
+                loadStudentCommentInsights(null, establishmentId)
+            ]);
+            
+            GlobalLoader.updateProgress(90, 'Finalizing...');
             
             // Update event listeners to use establishment filter
             if (cycleSelectElement) {
@@ -1197,22 +956,9 @@ function initializeDashboardApp() {
         } catch (error) {
             errorLog("Failed to load establishment dashboard", error);
             GlobalLoader.hide();
-            
-            // Show user-friendly error messages
-            const errorMessage = error.message || 'An unexpected error occurred';
-            const errorHtml = `
-                <div style="padding: 2rem; text-align: center;">
-                    <h3 style="color: var(--accent-danger);">Unable to Load Dashboard</h3>
-                    <p style="margin: 1rem 0;">${errorMessage}</p>
-                    <button onclick="location.reload()" style="padding: 0.5rem 1rem; background: var(--accent-primary); color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Refresh Page
-                    </button>
-                </div>
-            `;
-            
-            document.getElementById('overview-section').innerHTML = errorHtml;
-            document.getElementById('qla-section').innerHTML = '';
-            document.getElementById('student-insights-section').innerHTML = '';
+            document.getElementById('overview-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
+            document.getElementById('qla-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
+            document.getElementById('student-insights-section').innerHTML = `<p>Error loading dashboard for ${establishmentName}: ${error.message}</p>`;
         }
         
         // Update filter buttons
@@ -1821,7 +1567,7 @@ function initializeDashboardApp() {
                         ctx.fillText(schoolValue.toFixed(1), centerX, centerY - 10);
                     }
                     
-                    // Draw global benchmark marker if available
+                    // Draw national average marker if available
                     if (nationalValue) {
                         // Calculate angle for national value position
                         // The gauge goes from 1 to 5, displayed as a 180-degree arc
@@ -1855,7 +1601,7 @@ function initializeDashboardApp() {
                         ctx.font = 'bold 10px Inter';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
-                        ctx.fillText('Global', markerX, markerY - 15);
+                        ctx.fillText('Nat', markerX, markerY - 15);
                     }
                     
                     ctx.restore();
@@ -1999,7 +1745,7 @@ function initializeDashboardApp() {
                                 </div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Global Benchmark</div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">National Average</div>
                                 <div style="font-size: 2rem; font-weight: 700; color: var(--text-secondary);">
                                     ${nationalValue ? nationalValue.toFixed(1) : 'N/A'}
                                 </div>
@@ -2153,27 +1899,17 @@ function initializeDashboardApp() {
     async function loadOverviewData(staffAdminId, cycle = 1, additionalFilters = [], establishmentId = null) {
         log(`Loading overview data with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId} for Cycle: ${cycle}`);
         const loadingIndicator = document.getElementById('loading-indicator');
-        const combinedContainer = document.getElementById('vespa-combined-container');
+        const averagesContainer = document.getElementById('averages-summary-container');
+        const distributionContainer = document.getElementById('distribution-charts-container');
 
         if (loadingIndicator) loadingIndicator.style.display = 'block';
-        if (combinedContainer) combinedContainer.style.display = 'none'; // Hide while loading
+        if (averagesContainer) averagesContainer.style.display = 'none'; // Hide while loading
+        if (distributionContainer) distributionContainer.style.display = 'none'; // Hide while loading
 
         try {
-            // Check if we need to fetch new data or can use cached
-            let batchData;
-            const cachedData = DataCache.get('initialData');
-            
-            // Only fetch new data if cache is invalid or cycle changed
-            if (!cachedData || cachedData.cycle !== cycle || 
-                cachedData.staffAdminId !== staffAdminId || 
-                cachedData.establishmentId !== establishmentId) {
-                GlobalLoader.updateProgress(40, 'Loading dashboard data...');
-                batchData = await fetchDashboardInitialData(staffAdminId, establishmentId, cycle);
-            } else {
-                log("Using cached data for overview");
-                batchData = cachedData;
-                GlobalLoader.updateProgress(50, 'Processing cached data...');
-            }
+            // Use batch endpoint to fetch all data at once
+            GlobalLoader.updateProgress(40, 'Loading dashboard data...');
+            const batchData = await fetchDashboardInitialData(staffAdminId, establishmentId, cycle);
             
             let schoolVespaResults = batchData.vespaResults || [];
             let nationalBenchmarkRecord = batchData.nationalBenchmark;
@@ -2221,17 +1957,9 @@ function initializeDashboardApp() {
             // Update response statistics using cached data
             updateResponseStatsFromCache(schoolVespaResults, cycle);
             
-            // Fetch ERI values (batch may not include them for large schools)
-            let schoolERI = batchData.schoolERI;
-            let nationalERI = batchData.nationalERI;
-
-            if (!schoolERI || schoolERI.value === undefined || schoolERI.value === null) {
-                schoolERI = await calculateSchoolERI(staffAdminId, cycle, additionalFilters, establishmentId);
-            }
-
-            if (nationalERI === undefined || nationalERI === null) {
-                nationalERI = await getNationalERI(cycle);
-            }
+            // ERI data is already calculated in batch response
+            const schoolERI = batchData.schoolERI;
+            const nationalERI = batchData.nationalERI || 3.5; // Default if not available
             
             GlobalLoader.updateProgress(80, 'Rendering visualizations...');
             
@@ -2245,7 +1973,8 @@ function initializeDashboardApp() {
             if(overviewSection) overviewSection.innerHTML = "<p>Error loading overview data. Please check console.</p>";
         } finally {
             if (loadingIndicator) loadingIndicator.style.display = 'none';
-            if (combinedContainer) combinedContainer.style.display = 'grid'; // Show again with grid display
+            if (averagesContainer) averagesContainer.style.display = 'block'; // Show again
+            if (distributionContainer) distributionContainer.style.display = 'block'; // Show again
         }
     }
 
@@ -2508,37 +2237,22 @@ function initializeDashboardApp() {
     }
 
     function renderAveragesChart(schoolData, nationalData, cycle) {
-        // Note: This function now only creates the score cards
-        // The distribution charts will be created after this function is called
-        const container = document.getElementById('vespa-combined-container');
+        const container = document.getElementById('averages-summary-container');
         if (!container) {
-            errorLog("VESPA combined container not found");
+            errorLog("Averages summary container not found");
             return;
         }
+        container.innerHTML = ''; // Clear previous content
 
-        log(`Creating score cards for Cycle ${cycle}. School:`, schoolData, "Global:", nationalData);
-
-        // Store VESPA scores globally for report generation
-        currentVespaScores = {};
-        Object.keys(schoolData).forEach(key => {
-            if (typeof schoolData[key] === 'number') {
-                currentVespaScores[key] = schoolData[key];
-            }
-        });
-        Object.keys(nationalData).forEach(key => {
-            if (typeof nationalData[key] === 'number') {
-                currentVespaScores[`${key}National`] = nationalData[key];
-            }
-        });
-        log('Stored VESPA scores globally:', currentVespaScores);
+        log(`Rendering averages scorecards for Cycle ${cycle}. School:`, schoolData, "National:", nationalData);
 
         const elementsToDisplay = [
-            { key: 'vision', name: 'VISION', position: 1 },
-            { key: 'effort', name: 'EFFORT', position: 2 },
-            { key: 'systems', name: 'SYSTEMS', position: 3 },
-            { key: 'practice', name: 'PRACTICE', position: 7 },
-            { key: 'attitude', name: 'ATTITUDE', position: 8 },
-            { key: 'overall', name: 'OVERALL', position: 9 }
+            { key: 'vision', name: 'VISION' },
+            { key: 'effort', name: 'EFFORT' },
+            { key: 'systems', name: 'SYSTEMS' },
+            { key: 'practice', name: 'PRACTICE' },
+            { key: 'attitude', name: 'ATTITUDE' },
+            { key: 'overall', name: 'OVERALL' } // Assuming 'overall' is available in schoolData and nationalData
         ];
 
         const defaultThemeColors = {
@@ -2558,8 +2272,7 @@ function initializeDashboardApp() {
 
             const card = document.createElement('div');
             card.className = 'vespa-score-card';
-            card.id = `score-card-${element.key}`;
-            card.dataset.position = element.position; // Store position for ordering
+            // Remove inline backgroundColor style to let CSS handle the colors via nth-child
 
             let percentageDiffText = '';
             let arrow = '';
@@ -2572,12 +2285,14 @@ function initializeDashboardApp() {
                 percentageDiffText = `${diff.toFixed(1)}%`;
             } else if (schoolScore !== null && typeof schoolScore !== 'undefined') {
                 if (nationalScore === 0) {
-                    percentageDiffText = 'Global Avg 0';
+                    percentageDiffText = 'Nat Avg 0';
                 } else {
-                    percentageDiffText = 'Global N/A';
+                    percentageDiffText = 'Nat N/A';
                 }
             }
 
+            // Determine if overall score should have different decimal places (e.g., 1 vs 2 for others)
+            // The image shows scores like 6, 6.3, 5.4, 6.1, 5.9 - mostly one decimal place.
             const scoreToDisplay = (typeof schoolScore === 'number') ? schoolScore.toFixed(1) : 'N/A';
             const nationalScoreToDisplay = (typeof nationalScore === 'number') ? nationalScore.toFixed(1) : 'N/A';
 
@@ -2590,13 +2305,15 @@ function initializeDashboardApp() {
                 <h3>${element.name}</h3>
                 <div class="score-value">${scoreToDisplay}</div>
                 <div class="national-comparison">
-                    Global: ${nationalScoreToDisplay} <span class="arrow ${arrowClass}">${arrow}</span> ${percentageDiffText}
+                    National: ${nationalScoreToDisplay} <span class="arrow ${arrowClass}">${arrow}</span> ${percentageDiffText}
                 </div>
             `;
-            
-            // Store the card temporarily, we'll add them in the correct order later
-            window.tempScoreCards = window.tempScoreCards || {};
-            window.tempScoreCards[element.key] = card;
+            container.appendChild(card);
+        });
+        
+        // Add event listeners for advanced stats buttons
+        container.querySelectorAll('.advanced-stats-btn').forEach(btn => {
+            btn.addEventListener('click', handleAdvancedStatsClick);
         });
     }
 
@@ -2844,7 +2561,7 @@ function initializeDashboardApp() {
         content.innerHTML = `
             <div class="stats-comparison">
                 ${schoolStats ? generateStatsSection('Your School', schoolStats, nationalStats, 'school') : ''}
-                ${nationalStats ? generateStatsSection('Global Benchmark', nationalStats, null, 'national') : ''}
+                ${nationalStats ? generateStatsSection('National Benchmark', nationalStats, null, 'national') : ''}
                 ${schoolStats && nationalStats ? generateInsights(schoolStats, nationalStats, elementKey) : ''}
             </div>
         `;
@@ -2935,13 +2652,13 @@ function initializeDashboardApp() {
             const diff = ((schoolStats.mean - nationalStats.mean) / nationalStats.mean * 100).toFixed(1);
             insights.push({
                 type: 'success',
-                text: `Your school's average is ${diff}% above the global benchmark`
+                text: `Your school's average is ${diff}% above the national average`
             });
         } else if (schoolStats.mean < nationalStats.mean) {
             const diff = ((nationalStats.mean - schoolStats.mean) / nationalStats.mean * 100).toFixed(1);
             insights.push({
                 type: 'warning',
-                text: `Your school's average is ${diff}% below the global benchmark`
+                text: `Your school's average is ${diff}% below the national average`
             });
         }
 
@@ -2949,12 +2666,12 @@ function initializeDashboardApp() {
         if (schoolStats.std_dev > nationalStats.std_dev * 1.2) {
             insights.push({
                 type: 'info',
-                text: 'Higher variability than global benchmark - consider targeted interventions'
+                text: 'Higher variability than national - consider targeted interventions'
             });
         } else if (schoolStats.std_dev < nationalStats.std_dev * 0.8) {
             insights.push({
                 type: 'success',
-                text: 'More consistent scores than global benchmark'
+                text: 'More consistent scores than national average'
             });
         }
 
@@ -2962,12 +2679,12 @@ function initializeDashboardApp() {
         if (schoolStats.mean > nationalStats.percentile_75) {
             insights.push({
                 type: 'success',
-                text: 'Performance in top quartile globally'
+                text: 'Performance in top quartile nationally'
             });
         } else if (schoolStats.mean < nationalStats.percentile_25) {
             insights.push({
                 type: 'warning',
-                text: 'Performance in bottom quartile globally'
+                text: 'Performance in bottom quartile nationally'
             });
         }
 
@@ -3102,572 +2819,25 @@ function initializeDashboardApp() {
         }
     };
 
-    // QLA Info Modal Functions
-    window.showQLAInfoModal = function() {
-        let modal = document.querySelector('.qla-info-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.className = 'qla-info-modal';
-            modal.innerHTML = `
-                <div class="qla-info-content">
-                    <div class="qla-info-header">
-                        <h3>Understanding QLA Statistics</h3>
-                        <button class="qla-info-close" onclick="window.hideQLAInfoModal()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 6L6 18M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="qla-info-body">
-                        <div class="qla-term">
-                            <h4>Average Score</h4>
-                            <p>The mean score for this question on a scale of 1-5, where:</p>
-                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                                <li>1 = Strongly Disagree</li>
-                                <li>2 = Disagree</li>
-                                <li>3 = Neutral</li>
-                                <li>4 = Agree</li>
-                                <li>5 = Strongly Agree</li>
-                            </ul>
-                            <div class="example">Example: A score of 4.11 means students generally agree with this statement.</div>
-                        </div>
-                        
-                        <div class="qla-term">
-                            <h4>Responses</h4>
-                            <p>The total number of students who answered this specific question. Not all students may answer every question, so this number can vary between questions.</p>
-                            <div class="example">Example: "9 responses" means only 9 students provided an answer to this particular question.</div>
-                        </div>
-                        
-                        <div class="qla-term">
-                            <h4>Standard Deviation (Std Dev)</h4>
-                            <p>Measures how much student responses vary from the average. A lower value means students generally agree with each other, while a higher value indicates more diverse opinions.</p>
-                            <div class="example">Example: A Std Dev of 0.87 suggests most students gave similar answers, while 1.5+ would indicate more disagreement.</div>
-                        </div>
-                        
-                        <div class="qla-term">
-                            <h4>Mode</h4>
-                            <p>The most frequently selected answer. This shows you what the majority of students chose for this question.</p>
-                            <div class="example">Example: If the mode is "5", it means more students selected "Strongly Agree" than any other option.</div>
-                        </div>
-                        
-                        <div class="qla-term">
-                            <h4>Mini Bar Chart</h4>
-                            <p>Shows the distribution of responses across all 5 answer choices. Taller bars indicate more students selected that option.</p>
-                            <div class="example">This helps you quickly see if responses are clustered around certain values or spread out.</div>
-                        </div>
-                        
-                        <div class="qla-term">
-                            <h4>Color Coding</h4>
-                            <p>Questions are color-coded based on their average score:</p>
-                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                                <li><span style="color: #10b981;">● Green (4.0+)</span> - Excellent performance</li>
-                                <li><span style="color: #3b82f6;">● Blue (3.0-3.9)</span> - Good performance</li>
-                                <li><span style="color: #f59e0b;">● Orange (2.0-2.9)</span> - Average, needs attention</li>
-                                <li><span style="color: #ef4444;">● Red (Below 2.0)</span> - Poor, urgent attention needed</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            
-            // Add click outside to close
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    window.hideQLAInfoModal();
-                }
-            });
-        }
-        
-        // Show modal with animation
-        requestAnimationFrame(() => {
-            modal.classList.add('active');
-        });
-    };
-
-    window.hideQLAInfoModal = function() {
-        const modal = document.querySelector('.qla-info-modal');
-        if (modal) {
-            modal.classList.remove('active');
-            // Remove after animation
-            setTimeout(() => {
-                modal.remove();
-            }, 300);
-        }
-    };
-
-    // Insight Info Modal Functions
-    window.showInsightInfoModal = function(insightId) {
-        // Get the insight data
-        const insight = window.insightsData?.find(i => i.id === insightId);
-        if (!insight) return;
-        
-        // Define detailed explanations for each insight
-        const insightExplanations = {
-            'growth_mindset': {
-                title: 'Growth Mindset',
-                description: 'Measures students\' belief that intelligence and abilities can be developed through effort and learning.',
-                why: 'Students with a growth mindset are more likely to persist through challenges, embrace feedback, and achieve better academic outcomes.',
-                questions: [
-                    'Q5: "No matter who you are, you can change your intelligence a lot"',
-                    'Q26: "Your intelligence is something about you that you can change very much"'
-                ],
-                interpretation: {
-                    excellent: 'Most students believe they can improve their abilities - excellent foundation for learning',
-                    good: 'Good growth mindset culture, but room for improvement',
-                    average: 'Mixed beliefs about ability to improve - consider growth mindset interventions',
-                    poor: 'Fixed mindset prevalent - urgent need for growth mindset education'
-                }
-            },
-            'academic_momentum': {
-                title: 'Academic Momentum',
-                description: 'Captures students\' intrinsic drive, engagement with learning, and commitment to excellence.',
-                why: 'Students with high academic momentum are self-motivated and more likely to sustain performance through challenges.',
-                questions: [
-                    'Q14: "I strive to achieve the goals I set for myself"',
-                    'Q16: "I enjoy learning new things"',
-                    'Q17: "I\'m not happy unless my work is the best it can be"',
-                    'Q9: "I am a hard working student"'
-                ],
-                interpretation: {
-                    excellent: 'Students show strong drive and engagement - maintain this momentum',
-                    good: 'Good levels of motivation, but could be strengthened',
-                    average: 'Moderate engagement - explore ways to boost intrinsic motivation',
-                    poor: 'Low academic drive - investigate underlying causes and provide support'
-                }
-            },
-            'study_effectiveness': {
-                title: 'Study Effectiveness',
-                description: 'Measures adoption of evidence-based study techniques that improve learning and retention.',
-                why: 'Effective study techniques significantly improve exam performance and long-term retention of material.',
-                questions: [
-                    'Q7: "I test myself on important topics until I remember them"',
-                    'Q12: "I spread out my revision, rather than cramming at the last minute"',
-                    'Q15: "I summarise important information in diagrams, tables or lists"'
-                ],
-                interpretation: {
-                    excellent: 'Students use proven study techniques - likely to achieve strong results',
-                    good: 'Good study habits, but some techniques could be improved',
-                    average: 'Mixed study practices - provide training on effective techniques',
-                    poor: 'Poor study habits prevalent - urgent need for study skills training'
-                }
-            },
-            'exam_confidence': {
-                title: 'Exam Confidence',
-                description: 'Students\' belief in their ability to achieve their potential in final exams.',
-                why: 'Confidence correlates with performance - students who believe they can succeed are more likely to do so.',
-                questions: [
-                    'Outcome Q: "I am confident I will achieve my potential in my final exams"'
-                ],
-                interpretation: {
-                    excellent: 'High confidence levels - students believe in their ability to succeed',
-                    good: 'Good confidence, but some students need reassurance',
-                    average: 'Mixed confidence - identify and support less confident students',
-                    poor: 'Low confidence widespread - investigate causes and provide support'
-                }
-            },
-            'organization_skills': {
-                title: 'Organization Skills',
-                description: 'Measures students\' ability to plan, organize, and manage their academic responsibilities.',
-                why: 'Well-organized students are less stressed, more productive, and better able to balance multiple demands.',
-                questions: [
-                    'Q2: "I plan and organise my time to get my work done"',
-                    'Q22: "My books/files are organised"',
-                    'Q11: "I always meet deadlines"'
-                ],
-                interpretation: {
-                    excellent: 'Students are highly organized - a key success factor',
-                    good: 'Good organizational skills, minor improvements possible',
-                    average: 'Mixed organization - provide tools and training',
-                    poor: 'Poor organization widespread - implement organizational support systems'
-                }
-            },
-            'resilience_factor': {
-                title: 'Resilience',
-                description: 'Students\' ability to bounce back from setbacks and maintain a positive outlook.',
-                why: 'Resilient students persist through challenges and learn from failures rather than being defeated by them.',
-                questions: [
-                    'Q13: "I don\'t let a poor test/assessment result get me down for too long"',
-                    'Q8: "I have a positive view of myself"',
-                    'Q27: "I like hearing feedback about how I can improve"'
-                ],
-                interpretation: {
-                    excellent: 'High resilience - students bounce back well from setbacks',
-                    good: 'Good resilience, but some students need support',
-                    average: 'Mixed resilience - build culture of learning from mistakes',
-                    poor: 'Low resilience - implement resilience-building programs'
-                }
-            },
-            'stress_management': {
-                title: 'Stress Management',
-                description: 'Students\' ability to handle academic pressure and control exam nerves.',
-                why: 'Effective stress management improves performance, wellbeing, and prevents burnout.',
-                questions: [
-                    'Q20: "I feel I can cope with the pressure at school/college/University"',
-                    'Q28: "I can control my nerves in tests/practical assessments"'
-                ],
-                interpretation: {
-                    excellent: 'Students manage stress well - maintain supportive environment',
-                    good: 'Good stress management, but monitor for changes',
-                    average: 'Some students struggling - provide stress management resources',
-                    poor: 'High stress levels - urgent intervention needed'
-                }
-            },
-            'active_learning': {
-                title: 'Active Learning',
-                description: 'Engagement with active learning techniques that deepen understanding and retention.',
-                why: 'Active learning techniques are proven to be more effective than passive studying.',
-                questions: [
-                    'Q7: "I test myself on important topics until I remember them"',
-                    'Q23: "When preparing for a test/exam I teach someone else the material"',
-                    'Q19: "When revising I mix different kinds of topics/subjects in one study session"'
-                ],
-                interpretation: {
-                    excellent: 'Strong use of active learning - excellent practice',
-                    good: 'Good active learning, could expand techniques',
-                    average: 'Some active learning - promote more techniques',
-                    poor: 'Passive learning dominant - teach active strategies'
-                }
-            },
-            'support_readiness': {
-                title: 'Support Readiness',
-                description: 'Students\' perception of having adequate support to achieve their goals.',
-                why: 'Students who feel supported are more likely to seek help when needed and achieve better outcomes.',
-                questions: [
-                    'Outcome Q: "I have the support I need to achieve this year"'
-                ],
-                interpretation: {
-                    excellent: 'Students feel well-supported - maintain this environment',
-                    good: 'Good support perception, but some gaps exist',
-                    average: 'Mixed feelings about support - investigate specific needs',
-                    poor: 'Students feel unsupported - review support systems urgently'
-                }
-            },
-            'time_management': {
-                title: 'Time Management',
-                description: 'Students\' ability to effectively plan and use their time for academic work.',
-                why: 'Good time management reduces stress, improves work quality, and enables better work-life balance.',
-                questions: [
-                    'Q2: "I plan and organise my time to get my work done"',
-                    'Q4: "I complete all my homework on time"',
-                    'Q11: "I always meet deadlines"'
-                ],
-                interpretation: {
-                    excellent: 'Excellent time management skills across cohort',
-                    good: 'Good time management, minor improvements possible',
-                    average: 'Mixed time management - provide planning tools',
-                    poor: 'Poor time management - implement time management training'
-                }
-            },
-            'academic_confidence': {
-                title: 'Academic Confidence',
-                description: 'Students\' belief in their academic abilities and positive self-perception.',
-                why: 'Academic confidence is a strong predictor of achievement and willingness to take on challenges.',
-                questions: [
-                    'Q10: "I am confident in my academic ability"',
-                    'Q8: "I have a positive view of myself"'
-                ],
-                interpretation: {
-                    excellent: 'High academic confidence - students believe in themselves',
-                    good: 'Good confidence levels, some students need boosting',
-                    average: 'Mixed confidence - identify and support less confident students',
-                    poor: 'Low academic confidence - build success experiences'
-                }
-            },
-            'revision_readiness': {
-                title: 'Revision Readiness',
-                description: 'Students\' perception of being equipped to handle revision and study challenges.',
-                why: 'Feeling prepared for revision reduces anxiety and improves study effectiveness.',
-                questions: [
-                    'Outcome Q: "I feel equipped to face the study and revision challenges this year"'
-                ],
-                interpretation: {
-                    excellent: 'Students feel well-prepared for revision challenges',
-                    good: 'Good preparation, but some students need support',
-                    average: 'Mixed readiness - provide revision skills training',
-                    poor: 'Students feel unprepared - urgent revision support needed'
-                }
-            }
-        };
-        
-        const explanation = insightExplanations[insightId] || {};
-        const percentage = insight.data?.percent || 0;
-        let interpretationKey = 'poor';
-        if (percentage >= 80) interpretationKey = 'excellent';
-        else if (percentage >= 60) interpretationKey = 'good';
-        else if (percentage >= 40) interpretationKey = 'average';
-        
-        let modal = document.querySelector('.insight-info-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.className = 'insight-info-modal';
-            document.body.appendChild(modal);
-        }
-        
-        modal.innerHTML = `
-            <div class="insight-info-content">
-                <div class="insight-info-header">
-                    <h3>${explanation.title || insight.title}</h3>
-                    <button class="insight-info-close" onclick="window.hideInsightInfoModal()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="insight-info-body">
-                    <div class="current-score">
-                        <span class="score-label">Current Score:</span>
-                        <span class="score-value ${interpretationKey}">${percentage.toFixed(1)}%</span>
-                        <span class="score-sample">(n = ${insight.data?.n || 0})</span>
-                    </div>
-                    
-                    <div class="insight-section">
-                        <h4>What This Measures</h4>
-                        <p>${explanation.description || 'This insight helps understand student readiness and areas for improvement.'}</p>
-                    </div>
-                    
-                    <div class="insight-section">
-                        <h4>Why It Matters</h4>
-                        <p>${explanation.why || 'This metric provides valuable insights into student success factors.'}</p>
-                    </div>
-                    
-                    <div class="insight-section">
-                        <h4>Questions Included</h4>
-                        <ul class="questions-list">
-                            ${(explanation.questions || []).map(q => `<li>${q}</li>`).join('')}
-                        </ul>
-                    </div>
-                    
-                    <div class="insight-section">
-                        <h4>Your Score Interpretation</h4>
-                        <p class="interpretation ${interpretationKey}">
-                            ${explanation.interpretation?.[interpretationKey] || 'Continue monitoring this metric and provide appropriate support.'}
-                        </p>
-                    </div>
-                    
-                    <div class="insight-section">
-                        <h4>Score Ranges</h4>
-                        <div class="score-ranges">
-                            <div class="range excellent">80-100%: Excellent</div>
-                            <div class="range good">60-79%: Good</div>
-                            <div class="range average">40-59%: Needs Attention</div>
-                            <div class="range poor">0-39%: Urgent Action Required</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Add click outside to close
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                window.hideInsightInfoModal();
-            }
-        });
-        
-        // Show modal with animation
-        requestAnimationFrame(() => {
-            modal.classList.add('active');
-        });
-    };
-    
-    window.hideInsightInfoModal = function() {
-        const modal = document.querySelector('.insight-info-modal');
-        if (modal) {
-            modal.classList.remove('active');
-            // Remove after animation
-            setTimeout(() => {
-                modal.remove();
-            }, 300);
-        }
-    };
-    
-    // QLA Insights Info Modal Functions
-    window.showQLAInsightsInfoModal = function() {
-        let modal = document.querySelector('.qla-insights-info-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.className = 'qla-insights-info-modal';
-            modal.innerHTML = `
-                <div class="qla-insights-info-content">
-                    <div class="qla-insights-info-header">
-                        <h3>Understanding VESPA Questionnaire Insights</h3>
-                        <button class="qla-insights-info-close" onclick="window.hideQLAInsightsInfoModal()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 6L6 18M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="qla-insights-info-body">
-                        <div class="qla-insights-section">
-                            <h4>How Insights Are Calculated</h4>
-                            <p>Each insight shows the <strong>percentage of students who selected 4 (Agree) or 5 (Strongly Agree)</strong> on the 1-5 scale. This focuses on positive agreement rather than average scores.</p>
-                        </div>
-                        
-                        <div class="qla-insights-section">
-                            <h4>For Multi-Question Insights</h4>
-                            <p>When an insight combines multiple questions (like Growth Mindset with Q5 & Q26), the percentage is calculated across <strong>ALL responses to ALL questions</strong> in the group.</p>
-                            
-                            <div class="calculation-example">
-                                <strong>Example: Growth Mindset (Q5 & Q26)</strong><br/>
-                                Q5: 40 students answered 4 or 5 out of 80 responses<br/>
-                                Q26: 35 students answered 4 or 5 out of 75 responses<br/>
-                                Total: 75 "agree" responses out of 155 total responses<br/>
-                                Result: (75/155) × 100 = <strong>48.4%</strong>
-                            </div>
-                        </div>
-                        
-                        <div class="qla-insights-section">
-                            <h4>The Response Scale</h4>
-                            <ul class="scale-list">
-                                <li>1 = Strongly Disagree</li>
-                                <li>2 = Disagree</li>
-                                <li>3 = Neutral</li>
-                                <li class="positive">4 = Agree ✓ (counted as positive)</li>
-                                <li class="positive">5 = Strongly Agree ✓ (counted as positive)</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="qla-insights-section">
-                            <h4>What the Percentages Mean</h4>
-                            <div class="score-ranges">
-                                <div class="range excellent">80-100%: Excellent</div>
-                                <div class="range good">60-79%: Good</div>
-                                <div class="range average">40-59%: Needs Attention</div>
-                                <div class="range poor">0-39%: Urgent Action Required</div>
-                            </div>
-                            <ul style="margin-top: 1rem;">
-                                <li><strong>Excellent:</strong> Most students agree with these positive statements</li>
-                                <li><strong>Good:</strong> Majority agree but room for improvement</li>
-                                <li><strong>Needs Attention:</strong> Mixed responses, intervention recommended</li>
-                                <li><strong>Urgent Action Required:</strong> Most students disagree or are neutral</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="qla-insights-section">
-                            <h4>The "n" Value</h4>
-                            <ul>
-                                <li><strong>For single questions:</strong> Total number of students who answered that question</li>
-                                <li><strong>For multiple questions:</strong> Average number of responses per question in the group</li>
-                            </ul>
-                            <p style="margin-top: 0.5rem; font-style: italic; color: var(--text-muted);">
-                                This helps you understand the sample size and reliability of each insight.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            
-            // Add click outside to close
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    window.hideQLAInsightsInfoModal();
-                }
-            });
-        }
-        
-        // Show modal with animation
-        requestAnimationFrame(() => {
-            modal.classList.add('active');
-        });
-    };
-    
-    window.hideQLAInsightsInfoModal = function() {
-        const modal = document.querySelector('.qla-insights-info-modal');
-        if (modal) {
-            modal.classList.remove('active');
-            // Remove after animation
-            setTimeout(() => {
-                modal.remove();
-            }, 300);
-        }
-    };
-
     let vespaDistributionChartInstances = {}; // To store multiple chart instances
-    
-    function renderCombinedVespaDisplay(cycle, nationalDistributions) {
-        const container = document.getElementById('vespa-combined-container');
-        if (!container) {
-            errorLog("VESPA combined container not found");
-            return;
-        }
-        
-        // Clear previous content
-        container.innerHTML = '';
-        
-        // Get all the temporary elements
-        const scoreCards = window.tempScoreCards || {};
-        const chartWrappers = window.tempChartWrappers || {};
-        
-        // Define the order and mapping
-        const elementOrder = [
-            { type: 'card', key: 'vision', position: 1 },
-            { type: 'card', key: 'effort', position: 2 },
-            { type: 'card', key: 'systems', position: 3 },
-            { type: 'chart', key: 'vision', position: 4 },
-            { type: 'chart', key: 'effort', position: 5 },
-            { type: 'chart', key: 'systems', position: 6 },
-            { type: 'card', key: 'practice', position: 7 },
-            { type: 'card', key: 'attitude', position: 8 },
-            { type: 'card', key: 'overall', position: 9 },
-            { type: 'chart', key: 'practice', position: 10 },
-            { type: 'chart', key: 'attitude', position: 11 },
-            { type: 'chart', key: 'overall', position: 12 }
-        ];
-        
-        // Add elements in order
-        elementOrder.forEach(item => {
-            if (item.type === 'card' && scoreCards[item.key]) {
-                container.appendChild(scoreCards[item.key]);
-            } else if (item.type === 'chart' && chartWrappers[item.key]) {
-                container.appendChild(chartWrappers[item.key].wrapper);
-            }
-        });
-        
-        // Now create all the charts after DOM elements are in place
-        Object.keys(chartWrappers).forEach(key => {
-            const chartData = chartWrappers[key];
-            const canvasId = `${key}-distribution-chart`;
-            
-            createSingleHistogram(
-                canvasId,
-                chartData.title,
-                chartData.scoreDistribution,
-                chartData.nationalAverage,
-                chartData.color,
-                cycle,
-                chartData.key,
-                nationalDistributions
-            );
-        });
-        
-        // Add event listeners for advanced stats buttons
-        container.querySelectorAll('.advanced-stats-btn').forEach(btn => {
-            btn.addEventListener('click', handleAdvancedStatsClick);
-        });
-        
-        // Clean up temporary storage
-        window.tempScoreCards = null;
-        window.tempChartWrappers = null;
-        
-        log("Combined VESPA display rendered successfully");
-    }
 
     function renderDistributionCharts(schoolResults, nationalAveragesData, themeColorsConfig, cycle, nationalDistributions) {
-        log(`Creating distribution charts for Cycle ${cycle}.`);
+        const container = document.getElementById('distribution-charts-container');
+        if (!container) {
+            errorLog("Distribution charts container not found");
+            return;
+        }
+        log(`Rendering distribution charts for Cycle ${cycle}.`);
 
         // VESPA elements and their corresponding field prefixes in Object_10 for historical data
         const vespaElements = [
-            { name: 'Vision', key: 'vision', color: themeColorsConfig?.vision || '#ff8f00', fieldCycle1: 'field_155', fieldCycle2: 'field_161', fieldCycle3: 'field_167', position: 4 },
-            { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#86b4f0', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168', position: 5 },
-            { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#72cb44', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169', position: 6 },
-            { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#7f31a4', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170', position: 10 },
-            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171', position: 11 },
-            { name: 'Overall', key: 'overall', color: themeColorsConfig?.overall || '#ffd93d', fieldCycle1: 'field_160', fieldCycle2: 'field_166', fieldCycle3: 'field_172', position: 12 }
+            { name: 'Vision', key: 'vision', color: themeColorsConfig?.vision || '#ff8f00', fieldCycle1: 'field_155', fieldCycle2: 'field_161', fieldCycle3: 'field_167' },
+            { name: 'Effort', key: 'effort', color: themeColorsConfig?.effort || '#86b4f0', fieldCycle1: 'field_156', fieldCycle2: 'field_162', fieldCycle3: 'field_168' },
+            { name: 'Systems', key: 'systems', color: themeColorsConfig?.systems || '#72cb44', fieldCycle1: 'field_157', fieldCycle2: 'field_163', fieldCycle3: 'field_169' },
+            { name: 'Practice', key: 'practice', color: themeColorsConfig?.practice || '#7f31a4', fieldCycle1: 'field_158', fieldCycle2: 'field_164', fieldCycle3: 'field_170' },
+            { name: 'Attitude', key: 'attitude', color: themeColorsConfig?.attitude || '#f032e6', fieldCycle1: 'field_159', fieldCycle2: 'field_165', fieldCycle3: 'field_171' },
+            { name: 'Overall', key: 'overall', color: themeColorsConfig?.overall || '#ffd93d', fieldCycle1: 'field_160', fieldCycle2: 'field_166', fieldCycle3: 'field_172' }
         ];
-
-        window.tempChartWrappers = window.tempChartWrappers || {};
 
         vespaElements.forEach(element => {
             const scoreDistribution = Array(11).fill(0); // For scores 0-10
@@ -3688,31 +2858,10 @@ function initializeDashboardApp() {
             const canvasId = `${element.key}-distribution-chart`;
             let chartTitle = `${element.name} Score Distribution - Cycle ${cycle}`;
 
-            log(`For ${element.name} Distribution - National Avg: ${nationalAverageForElement}`);
+            log(`For ${element.name} Distribution - National Avg: ${nationalAverageForElement}`); // Log national average for this element
 
-            // Create chart wrapper element
-            const chartWrapper = document.createElement('div');
-            chartWrapper.className = 'chart-wrapper';
-            chartWrapper.id = `chart-wrapper-${element.key}`;
-            chartWrapper.dataset.position = element.position;
-            
-            const canvas = document.createElement('canvas');
-            canvas.id = canvasId;
-            chartWrapper.appendChild(canvas);
-            
-            // Store the wrapper temporarily
-            window.tempChartWrappers[element.key] = {
-                wrapper: chartWrapper,
-                scoreDistribution,
-                nationalAverage: nationalAverageForElement,
-                color: element.color,
-                title: chartTitle,
-                key: element.key
-            };
+            createSingleHistogram(canvasId, chartTitle, scoreDistribution, nationalAverageForElement, element.color, cycle, element.key, nationalDistributions);
         });
-        
-        // Now combine everything in the right order
-        renderCombinedVespaDisplay(cycle, nationalDistributions);
     }
 
     function createSingleHistogram(canvasId, title, schoolScoreDistribution, nationalAverageScore, color, cycle, elementKey, nationalDistributions) {
@@ -3788,7 +2937,7 @@ function initializeDashboardApp() {
         // Add national distribution pattern as a line if data is available
         if (nationalPatternData) {
             datasets.push({
-                label: 'Global Pattern',
+                label: 'National Pattern',
                 data: nationalPatternData,
                 type: 'line',
                 borderColor: 'rgba(255, 217, 61, 0.5)', // More subtle golden yellow
@@ -3836,8 +2985,8 @@ function initializeDashboardApp() {
                                 const defaultLabels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
                                 // Customize the national pattern label
                                 defaultLabels.forEach(label => {
-                                                                    if (label.text === 'Global Pattern') {
-                                    label.text = 'Global Pattern (scaled for comparison)';
+                                    if (label.text === 'National Pattern') {
+                                        label.text = 'National Pattern (scaled for comparison)';
                                     }
                                 });
                                 return defaultLabels;
@@ -3859,11 +3008,11 @@ function initializeDashboardApp() {
                                 const value = context.raw;
                                 if (datasetLabel === 'School Score Distribution') {
                                     return `Your School: ${value} students`;
-                                } else if (datasetLabel === 'Global Pattern') {
+                                } else if (datasetLabel === 'National Pattern') {
                                     // For national pattern, show it as a relative indicator
                                     const scoreIndex = parseInt(context.label);
                                     const nationalValue = nationalDistributionData ? nationalDistributionData[scoreIndex] : 0;
-                                    return `Global Pattern (${nationalValue.toLocaleString()} students globally)`;
+                                    return `National Pattern (${nationalValue.toLocaleString()} students nationally)`;
                                 }
                                 return `${datasetLabel}: ${value}`;
                             }
@@ -3926,7 +3075,7 @@ function initializeDashboardApp() {
                 borderDash: [8, 4], // Dashed line
                 label: {
                     enabled: true,
-                    content: `Global Avg: ${nationalAverageScore.toFixed(1)}`,
+                    content: `Nat Avg: ${nationalAverageScore.toFixed(1)}`,
                     position: 'start',
                     backgroundColor: 'rgba(255, 217, 61, 0.9)',
                     font: { 
@@ -3939,7 +3088,7 @@ function initializeDashboardApp() {
             };
         } else if (nationalAverageScore !== null && typeof nationalAverageScore !== 'undefined') {
             // Fallback: add to title if annotation plugin is not available
-            chartConfig.options.plugins.title.text += ` (Global Avg: ${nationalAverageScore.toFixed(2)})`;
+            chartConfig.options.plugins.title.text += ` (Nat Avg: ${nationalAverageScore.toFixed(2)})`;
         }
 
         log(`Creating histogram for ${canvasId} with title: '${chartConfig.options.plugins.title.text}'`); // Log final title
@@ -3969,85 +3118,44 @@ function initializeDashboardApp() {
                 log("Question mappings loaded:", questionMappings);
             } catch (mapError) {
                 errorLog("Failed to load question mappings", mapError);
+                // Proceeding without mappings might make QLA less user-friendly
+                // but some parts might still work if IDs are used.
             }
 
-            // Fetch pre-calculated insights
-            const filterPayload = {};
-            if (establishmentId) filterPayload.establishmentId = establishmentId;
-            if (staffAdminId) filterPayload.staffAdminId = staffAdminId;
 
-            try {
-                // Get top/bottom questions
-                const res = await fetch(`${config.herokuAppUrl}/api/qla-analysis`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        analysisType: 'topBottom',
-                        questionIds: [],
-                        filters: filterPayload
-                    })
+            // Fetch all records from Object_29 (Questionnaire Qs)
+            // Filter by Staff Admin ID or Establishment (VESPA Customer)
+            let qlaFilters = [];
+            
+            if (establishmentId) {
+                // Super User mode - filter by VESPA Customer (field_1821) which links to establishment
+                // Note: establishmentId is now a VESPA Customer ID from object_2
+                qlaFilters.push({
+                    field: 'field_1821', 
+                    operator: 'is',
+                    value: establishmentId
                 });
-                if (!res.ok) throw new Error(`QLA analysis failed (${res.status})`);
-                const analysisData = await res.json();
-
-                log("QLA top/bottom analysis data:", analysisData);
-
-                // Convert to array format and map question IDs to text
-                const mapQuestionIdToText = (qid) => {
-                    // First check if we have psychometric details
-                    if (questionMappings.psychometric_details) {
-                        const detail = questionMappings.psychometric_details.find(d => 
-                            d.questionId === qid || 
-                            d.questionId === qid.toLowerCase() ||
-                            d.questionId === `q${qid.replace('Q', '')}` ||
-                            d.questionId === `q${qid.replace('q', '')}`
-                        );
-                        if (detail) return detail.questionText;
-                    }
-                    
-                    // Fallback to id_to_text mapping if available
-                    if (questionMappings.id_to_text) {
-                        // Check various field IDs that might correspond to this question
-                        for (const [fieldId, text] of Object.entries(questionMappings.id_to_text)) {
-                            // This is a simplified check - you might need to enhance this
-                            if (fieldId.includes(qid)) return text;
-                        }
-                    }
-                    
-                    return `Question ${qid}`;
-                };
-
-                const top = Object.entries(analysisData.top || {})
-                    .map(([id, data]) => ({ 
-                        id, 
-                        score: typeof data === 'object' ? data.score : data,
-                        n: typeof data === 'object' ? data.n : 0,
-                        text: mapQuestionIdToText(id)
-                    }));
-                const bottom = Object.entries(analysisData.bottom || {})
-                    .map(([id, data]) => ({ 
-                        id, 
-                        score: typeof data === 'object' ? data.score : data,
-                        n: typeof data === 'object' ? data.n : 0,
-                        text: mapQuestionIdToText(id)
-                    }));
-
-                log("Mapped top questions:", top);
-                log("Mapped bottom questions:", bottom);
-
-                // Render the enhanced cards
-                renderEnhancedQuestionCards(top, bottom, []);
-                
-                // Load pre-calculated insights
-                await loadPreCalculatedInsights(filterPayload);
-                
-            } catch (err) {
-                errorLog('Failed QLA analysis', err);
-                const qlaSection = document.getElementById('qla-section');
-                if (qlaSection) {
-                    qlaSection.innerHTML = '<p>Error loading Question Level Analysis data. Please check console.</p>';
-                }
+                allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, qlaFilters);
+                log("Fetched QLA Responses (filtered by VESPA Customer):", allQuestionResponses ? allQuestionResponses.length : 0);
+            } else if (staffAdminId) {
+                // Normal mode - filter by Staff Admin
+                qlaFilters.push({
+                    field: 'field_2069', 
+                    operator: 'is', // For array connections, 'is' often works like 'contains this ID' in Knack.
+                    value: staffAdminId
+                });
+                allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, qlaFilters);
+                log("Fetched QLA Responses (filtered by Staff Admin ID):", allQuestionResponses ? allQuestionResponses.length : 0);
+            } else { 
+                log("No Staff Admin ID or Establishment ID provided to loadQLAData. Cannot filter QLA data. Attempting to fetch all.");
+                allQuestionResponses = await fetchDataFromKnack(objectKeys.questionnaireResponses, []); // Fetch all if no filter
             }
+            // log("QLA data loaded:", allQuestionResponses.length, "responses"); // Already logged above if filtered
+
+            populateQLAQuestionDropdown();
+            displayTopBottomQuestions(allQuestionResponses);
+            displayQLAStats(allQuestionResponses);
+
         } catch (error) {
             errorLog("Failed to load QLA data", error);
             const qlaSection = document.getElementById('qla-section');
@@ -4055,228 +3163,33 @@ function initializeDashboardApp() {
         }
     }
 
-    // New function to load pre-calculated insights
-    async function loadPreCalculatedInsights(filters) {
-        const insightsContainer = document.getElementById('qla-insights-grid');
-        if (!insightsContainer) return;
-        
-        // Show loading state
-        insightsContainer.innerHTML = `
-            <div class="qla-loading">
-                <div class="spinner"></div>
-                <p>Calculating insights...</p>
-            </div>
-        `;
-        
-        // Define meaningful insights based on actual psychometric questions
-        const insightQuestions = [
-            {
-                id: 'growth_mindset',
-                title: 'Growth Mindset',
-                question: 'What percentage believe intelligence can be developed?',
-                type: 'percentAgree',
-                questionIds: ['Q5', 'Q26'], // Growth mindset questions
-                icon: '🌱'
-            },
-            {
-                id: 'academic_momentum',
-                title: 'Academic Momentum',
-                question: 'What percentage show strong drive and engagement?',
-                type: 'percentAgree',
-                questionIds: ['Q14', 'Q16', 'Q17', 'Q9'], // Goals, enjoyment, perfectionism, hard work
-                icon: '🚀'
-            },
-            {
-                id: 'study_effectiveness',
-                title: 'Study Effectiveness',
-                question: 'What percentage use proven study techniques?',
-                type: 'percentAgree',
-                questionIds: ['Q7', 'Q12', 'Q15'], // Self-testing, spaced revision, summarizing
-                icon: '📚'
-            },
-            {
-                id: 'exam_confidence',
-                title: 'Exam Confidence',
-                question: 'What percentage feel confident about exams?',
-                type: 'percentAgree',
-                questionIds: ['OUTCOME_Q_CONFIDENT'], // Outcome question about exam confidence
-                icon: '🎯'
-            },
-            {
-                id: 'organization_skills',
-                title: 'Organization Skills',
-                question: 'What percentage are well-organized?',
-                type: 'percentAgree',
-                questionIds: ['Q2', 'Q22', 'Q11'], // Planning, organized files, deadlines
-                icon: '📋'
-            },
-            {
-                id: 'resilience_factor',
-                title: 'Resilience',
-                question: 'What percentage show academic resilience?',
-                type: 'percentAgree',
-                questionIds: ['Q13', 'Q8', 'Q27'], // Bounce back, positive view, feedback
-                icon: '💪'
-            },
-            {
-                id: 'stress_management',
-                title: 'Stress Management',
-                question: 'What percentage handle pressure well?',
-                type: 'percentAgree',
-                questionIds: ['Q20', 'Q28'], // Cope with pressure, control nerves
-                icon: '😌'
-            },
-            {
-                id: 'active_learning',
-                title: 'Active Learning',
-                question: 'What percentage engage in active learning?',
-                type: 'percentAgree',
-                questionIds: ['Q7', 'Q23', 'Q19'], // Self-testing, teaching others, mixing topics
-                icon: '🎓'
-            },
-            {
-                id: 'support_readiness',
-                title: 'Support Readiness',
-                question: 'What percentage feel supported this year?',
-                type: 'percentAgree',
-                questionIds: ['OUTCOME_Q_SUPPORT'], // Outcome question about support
-                icon: '🤝'
-            },
-            {
-                id: 'time_management',
-                title: 'Time Management',
-                question: 'What percentage manage time effectively?',
-                type: 'percentAgree',
-                questionIds: ['Q2', 'Q4', 'Q11'], // Planning, homework, deadlines
-                icon: '⏰'
-            },
-            {
-                id: 'academic_confidence',
-                title: 'Academic Confidence',
-                question: 'What percentage are confident in their ability?',
-                type: 'percentAgree',
-                questionIds: ['Q10', 'Q8'], // Academic confidence, positive self-view
-                icon: '⭐'
-            },
-            {
-                id: 'revision_readiness',
-                title: 'Revision Ready',
-                question: 'What percentage feel equipped for revision challenges?',
-                type: 'percentAgree',
-                questionIds: ['OUTCOME_Q_EQUIPPED'], // Outcome question about being equipped
-                icon: '📖'
-            }
-        ];
-        
-        // Use batch endpoint for better performance
+
+    async function populateQLAQuestionDropdown() {
+        const dropdown = document.getElementById('qla-question-dropdown');
+        if (!dropdown) return;
+
         try {
-            const batchRequest = {
-                analyses: insightQuestions.map(insight => ({
-                    id: insight.id,
-                    type: insight.type,
-                    questionIds: insight.questionIds
-                })),
-                filters: filters
-            };
-            
-            const res = await fetch(`${config.herokuAppUrl}/api/qla-batch-analysis`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(batchRequest)
-            });
-            
-            if (res.ok) {
-                const batchResults = await res.json();
-                
-                // Map results back to insights
-                const insights = insightQuestions.map(insight => ({
-                    ...insight,
-                    data: batchResults[insight.id] || null
-                }));
-                
-                // Render the insights grid
-                renderInsightsGrid(insights);
-            } else {
-                throw new Error('Batch analysis failed');
+            const response = await fetch(`${config.herokuAppUrl}/api/interrogation-questions`); 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to fetch interrogation questions');
             }
-        } catch (err) {
-            console.error('Failed to fetch insights:', err);
-            
-            // Fallback to individual requests if batch fails
-            const insightPromises = insightQuestions.map(async (insight) => {
-                try {
-                    const res = await fetch(`${config.herokuAppUrl}/api/qla-analysis`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            analysisType: insight.type,
-                            questionIds: insight.questionIds,
-                            filters: filters
-                        })
-                    });
-                    
-                    if (res.ok) {
-                        const data = await res.json();
-                        return { ...insight, data };
-                    }
-                } catch (err) {
-                    console.error(`Failed to fetch ${insight.id}:`, err);
-                }
-                return { ...insight, data: null };
+            const questions = await response.json(); 
+
+            dropdown.innerHTML = '<option value="">Select a question...</option>'; // Clear previous/add default
+            questions.forEach(qObj => { // Assuming backend sends array of {id, question}
+                const option = document.createElement('option');
+                option.value = qObj.question; // Use the question text itself as value, or qObj.id if you prefer
+                option.textContent = qObj.question;
+                dropdown.appendChild(option);
             });
-            
-            const insights = await Promise.all(insightPromises);
-            renderInsightsGrid(insights);
+            log("Populated QLA question dropdown.");
+        } catch (error) {
+            errorLog("Failed to populate QLA question dropdown", error);
+            dropdown.innerHTML = "<option>Error loading questions</option>";
         }
     }
     
-    // New function to render insights grid
-    function renderInsightsGrid(insights) {
-        const container = document.getElementById('qla-insights-grid');
-        if (!container) return;
-        
-        // Store insights globally for report generation
-        currentQLAInsights = insights.map(insight => {
-            const hasData = insight.data && insight.data.percent !== undefined;
-            const percentage = hasData ? insight.data.percent : 0;
-            return {
-                title: insight.title,
-                percentage: percentage,
-                question: insight.question || ''
-            };
-        });
-        log('Stored QLA insights globally:', currentQLAInsights);
-        
-        container.innerHTML = insights.map((insight, index) => {
-            const hasData = insight.data && insight.data.percent !== undefined;
-            const percentage = hasData ? insight.data.percent : 0;
-            const sampleSize = hasData ? insight.data.n : 0;
-            
-            // Determine color based on percentage
-            let colorClass = 'poor';
-            if (percentage >= 80) colorClass = 'excellent';
-            else if (percentage >= 60) colorClass = 'good';
-            else if (percentage >= 40) colorClass = 'average';
-            
-            return `
-                <div class="insight-card ${colorClass}">
-                    <button class="insight-info-btn" onclick="window.showInsightInfoModal('${insight.id}')" title="Learn more about ${insight.title}">i</button>
-                    <div class="insight-icon">${insight.icon}</div>
-                    <div class="insight-content">
-                        <h4>${insight.title}</h4>
-                        <div class="insight-percentage">${percentage.toFixed(1)}%</div>
-                        <p class="insight-question">${insight.question}</p>
-                        <div class="insight-sample">n = ${sampleSize}</div>
-                    </div>
-                    <div class="insight-indicator ${colorClass}"></div>
-                </div>
-            `;
-        }).join('');
-        
-        // Store insights data for modal access
-        window.insightsData = insights;
-    }
-
     function calculateAverageScoresForQuestions(responses) {
         const questionScores = {};
         const questionCounts = {};
@@ -4350,782 +3263,390 @@ function initializeDashboardApp() {
         const top5 = sortedQuestions.slice(0, 5);
         const bottom5 = sortedQuestions.slice(-5).reverse(); // Reverse to show lowest score first if desired
 
-        // Create enhanced card-based display
-        renderEnhancedQuestionCards(top5, bottom5, responses);
-    }
-    
-    function renderEnhancedQuestionCards(topQuestions, bottomQuestions, allResponses) {
-        const container = document.getElementById('qla-top-bottom-questions');
-        if (!container) return;
-        
-        container.innerHTML = `
-            <div class="qla-top-bottom-container">
-                <div class="qla-questions-section top-questions">
-                    <h3>
-                        <div class="title-content">
-                            <span class="icon">🏆</span> Top Statement Responses
-                        </div>
-                        <button class="qla-info-btn" onclick="window.showQLAInfoModal()">i</button>
-                    </h3>
-                    <div class="question-cards" id="top-question-cards">
-                        <div class="qla-loading">
-                            <div class="spinner"></div>
-                            <p>Loading question analysis...</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="qla-questions-section bottom-questions">
-                    <h3>
-                        <div class="title-content">
-                            <span class="icon">⚠️</span> Responses Needing Attention
-                        </div>
-                    </h3>
-                    <div class="question-cards" id="bottom-question-cards">
-                        <div class="qla-loading">
-                            <div class="spinner"></div>
-                            <p>Loading question analysis...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Render cards with slight delay for animation
-        setTimeout(() => {
-            renderQuestionCards('top-question-cards', topQuestions, allResponses, 'top');
-            renderQuestionCards('bottom-question-cards', bottomQuestions, allResponses, 'bottom');
-        }, 100);
-    }
-    
-    function renderQuestionCards(containerId, questions, allResponses, type) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        // Sort questions based on type
-        const sortedQuestions = [...questions];
-        if (type === 'top') {
-            sortedQuestions.sort((a, b) => b.score - a.score); // Highest to lowest
-        } else if (type === 'bottom') {
-            sortedQuestions.sort((a, b) => a.score - b.score); // Lowest to highest
+        const top5ul = document.getElementById('qla-top-5');
+        const bottom5ul = document.getElementById('qla-bottom-5');
+
+        if (top5ul) {
+            top5ul.innerHTML = top5.map(q => `<li>${q.text} (Avg: ${q.score})</li>`).join('');
         }
-        
-        sortedQuestions.forEach((question, index) => {
-            const card = createQuestionCard(question, index + 1, allResponses, type);
-            container.appendChild(card);
-        });
-    }
-    
-    function createQuestionCard(question, rank, allResponses, type) {
-        const card = document.createElement('div');
-        card.className = 'question-card';
-        
-        // Determine color class based on score
-        let colorClass = '';
-        if (question.score >= 4) colorClass = 'excellent';
-        else if (question.score >= 3) colorClass = 'good';
-        else if (question.score >= 2) colorClass = 'average';
-        else colorClass = 'poor';
-        
-        card.classList.add(colorClass);
-        
-        // Calculate statistics for this question
-        const stats = calculateQuestionStatistics(question.id, allResponses);
-        
-        // Generate estimated statistics based on the average score
-        // This provides reasonable approximations when we don't have raw data
-        const estimatedStats = estimateStatisticsFromAverage(question.score, question.n || 0);
-        
-        // Merge estimated stats with any real stats we have
-        const finalStats = {
-            count: question.n || stats.count || estimatedStats.count,
-            stdDev: stats.stdDev || estimatedStats.stdDev,
-            mode: stats.mode || estimatedStats.mode,
-            distribution: stats.distribution.some(v => v > 0) ? stats.distribution : estimatedStats.distribution
-        };
-        
-        card.innerHTML = `
-            <div class="question-rank">${rank}</div>
-            <div class="question-text">${question.text}</div>
-            <div class="score-section">
-                <div class="score-indicator">${question.score.toFixed(2)}</div>
-                <div class="mini-chart-container">
-                    <canvas id="mini-chart-${question.id}"></canvas>
-                </div>
-            </div>
-            <div class="stats-details">
-                <div class="stat-item">
-                    <span class="stat-label">Responses</span>
-                    <span class="stat-value">${finalStats.count}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Std Dev</span>
-                    <span class="stat-value">${finalStats.stdDev.toFixed(2)}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Mode</span>
-                    <span class="stat-value">${finalStats.mode}</span>
-                </div>
-            </div>
-        `;
-        
-        // Add click handler for detailed analysis
-        card.addEventListener('click', () => {
-            showQuestionDetailModal(question, finalStats, allResponses);
-        });
-        
-        // Create mini chart after card is added to DOM
-        setTimeout(() => {
-            createMiniChart(`mini-chart-${question.id}`, finalStats.distribution, colorClass);
-        }, 100);
-        
-        return card;
-    }
-    
-    function estimateStatisticsFromAverage(avgScore, responseCount = 0) {
-        // Generate a reasonable distribution based on the average score
-        // This uses a normal-like distribution centered around the average
-        const distribution = [0, 0, 0, 0, 0];
-        const roundedAvg = Math.round(avgScore);
-        
-        if (responseCount > 0) {
-            // Create a bell curve-like distribution
-            const variance = 0.8; // Typical variance for 5-point scale
-            
-            for (let i = 1; i <= 5; i++) {
-                const distance = Math.abs(i - avgScore);
-                const probability = Math.exp(-(distance * distance) / (2 * variance));
-                distribution[i - 1] = Math.round(probability * responseCount * 0.4);
-            }
-            
-            // Adjust to ensure total matches response count
-            const currentTotal = distribution.reduce((sum, val) => sum + val, 0);
-            if (currentTotal > 0) {
-                const scaleFactor = responseCount / currentTotal;
-                for (let i = 0; i < 5; i++) {
-                    distribution[i] = Math.round(distribution[i] * scaleFactor);
-                }
-            }
+        if (bottom5ul) {
+            bottom5ul.innerHTML = bottom5.map(q => `<li>${q.text} (Avg: ${q.score})</li>`).join('');
         }
-        
-        // Find the mode (peak of distribution)
-        let maxCount = 0;
-        let mode = roundedAvg;
-        distribution.forEach((count, index) => {
-            if (count > maxCount) {
-                maxCount = count;
-                mode = index + 1;
-            }
-        });
-        
-        // Estimate standard deviation based on score
-        let stdDev = 0.87; // Default
-        if (avgScore >= 4.5 || avgScore <= 1.5) {
-            stdDev = 0.65; // Less variation at extremes
-        } else if (avgScore >= 4 || avgScore <= 2) {
-            stdDev = 0.75;
-        } else {
-            stdDev = 0.95; // More variation in middle range
-        }
-        
-        return {
-            count: responseCount,
-            stdDev: stdDev,
-            mode: mode,
-            distribution: distribution
-        };
+        log("Displayed Top/Bottom 5 questions.");
     }
-    
-    function calculateQuestionStatistics(questionId, allResponses) {
-        // If we have actual response data, use it
-        if (allResponses && allResponses.length > 0) {
-            const scores = [];
-            const distribution = [0, 0, 0, 0, 0]; // For scores 1-5
-            
-            allResponses.forEach(response => {
-                const score = parseInt(response[questionId + '_raw']);
-                if (!isNaN(score) && score >= 1 && score <= 5) {
-                    scores.push(score);
-                    distribution[score - 1]++;
-                }
+
+
+    function displayQLAStats(responses) {
+        // Calculate and display other stats:
+        // - Overall response distribution for key questions
+        // - Percentage agreement/disagreement for certain statements
+        const statsContainer = document.getElementById('qla-stats');
+        if (statsContainer) {
+            statsContainer.innerHTML = "<p>Other QLA stats will go here.</p>";
+        }
+    }
+
+    async function handleQLAChatSubmit() {
+        const inputElement = document.getElementById('qla-chat-input');
+        const dropdownElement = document.getElementById('qla-question-dropdown');
+        const responseContainer = document.getElementById('qla-ai-response');
+
+        if (!inputElement || !dropdownElement || !responseContainer) return;
+
+        const userQuery = inputElement.value.trim();
+        const selectedQuestion = dropdownElement.value;
+        let queryForAI = userQuery;
+
+        if (!queryForAI && selectedQuestion) {
+            queryForAI = selectedQuestion; // Use dropdown question if input is empty
+        }
+
+        if (!queryForAI) {
+            responseContainer.textContent = "Please type a question or select one from the dropdown.";
+            return;
+        }
+
+        responseContainer.textContent = "Thinking...";
+        log("Sending QLA query to AI:", queryForAI);
+
+        try {
+            // This is where you'd make a call to your Heroku backend
+            // The backend would then use the OpenAI API with the relevant question data context.
+            const aiResponse = await fetch(`${config.herokuAppUrl}/api/qla-chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Send the query AND relevant context (e.g., data for the specific question or all QLA data)
+                // Your Heroku app will need to be smart about how it uses this data with the OpenAI prompt.
+                body: JSON.stringify({ query: queryForAI, questionData: allQuestionResponses /* or more filtered data */ })
             });
-            
-            if (scores.length > 0) {
-                // Calculate standard deviation
-                const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-                const variance = scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length;
-                const stdDev = Math.sqrt(variance);
-                
-                // Find mode (most frequent score)
-                let maxCount = 0;
-                let mode = 0;
-                distribution.forEach((count, index) => {
-                    if (count > maxCount) {
-                        maxCount = count;
-                        mode = index + 1;
-                    }
-                });
-                
-                return {
-                    count: scores.length,
-                    stdDev: stdDev || 0,
-                    mode: mode,
-                    distribution: distribution,
-                    scores: scores
-                };
+
+            if (!aiResponse.ok) {
+                const errorData = await aiResponse.json();
+                throw new Error(errorData.message || `AI request failed with status ${aiResponse.status}`);
             }
+
+            const result = await aiResponse.json();
+            responseContainer.textContent = result.answer; // Assuming your Heroku app returns { answer: "..." }
+            log("AI Response for QLA:", result.answer);
+
+        } catch (error) {
+            errorLog("Error with QLA AI chat:", error);
+            responseContainer.textContent = `Error: ${error.message}`;
         }
-        
-        // Fallback: Generate approximate statistics based on the average score
-        // This is used when we don't have raw response data
-        return {
-            count: 0, // Will be updated from the backend data if available
-            stdDev: 0.87, // Typical standard deviation for survey data
-            mode: 0, // Will be calculated from distribution
-            distribution: [0, 0, 0, 0, 0], // Will be estimated
-            scores: []
-        };
     }
-    
-    function createMiniChart(canvasId, distribution, colorClass) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        
-        const ctx = canvas.getContext('2d');
-        
-        // Color based on performance
-        const colors = {
-            excellent: '#10b981',
-            good: '#3b82f6',
-            average: '#f59e0b',
-            poor: '#ef4444'
-        };
-        
-        const color = colors[colorClass] || '#64748b';
-        
-        // Create a simple bar chart
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['1', '2', '3', '4', '5'],
-                datasets: [{
-                    data: distribution,
-                    backgroundColor: color + 'CC', // Higher opacity (80%)
-                    borderColor: color,
-                    borderWidth: 1.5,
-                    borderRadius: 3,
-                    barPercentage: 0.8,
-                    categoryPercentage: 0.9
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        enabled: false
-                    },
-                    datalabels: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        display: false,
-                        beginAtZero: true,
-                        grid: {
-                            display: false
-                        }
-                    },
-                    x: {
-                        display: true, // Show x-axis labels for better clarity
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            font: {
-                                size: 9
-                            }
-                        }
-                    }
-                },
-                layout: {
-                    padding: {
-                        top: 5,
-                        bottom: 0,
-                        left: 2,
-                        right: 2
-                    }
-                }
-            }
-        });
-    }
-    
-    function showQuestionDetailModal(question, stats, allResponses) {
-        // TODO: Implement detailed question analysis modal
-        log(`Showing detail modal for question: ${question.text}`);
-        // This will be implemented in Phase 2 with advanced statistics
-    }
-
-
 
 
     // --- Section 3: Student Comment Insights ---
     async function loadStudentCommentInsights(staffAdminId, establishmentId = null) {
         log(`Loading student comment insights with Staff Admin ID: ${staffAdminId}, Establishment ID: ${establishmentId}`);
         try {
-            // Prepare filters for comment analysis
-            const filters = {};
+            let vespaResults = []; // Initialize as empty array
+            const filters = [];
+            
             if (establishmentId) {
-                filters.establishmentId = establishmentId;
+                // Super User mode - filter by establishment
+                filters.push({
+                    field: 'field_133',
+                    operator: 'is',
+                    value: establishmentId
+                });
+                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched VESPA Results for comments (filtered by Establishment):", vespaResults ? vespaResults.length : 0);
             } else if (staffAdminId) {
-                filters.staffAdminId = staffAdminId;
-            }
-            
-            // Define comment fields to analyze
-            const commentFields = [
-                'field_2302', // RRC1
-                'field_2303', // RRC2
-                'field_2304', // RRC3
-                'field_2499', // GOAL1
-                'field_2493', // GOAL2
-                'field_2494'  // GOAL3
-            ];
-            
-            // Fetch word cloud data
-            try {
-                const wordCloudResponse = await fetch(`${config.herokuAppUrl}/api/comment-wordcloud`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        commentFields: commentFields,
-                        filters: filters
-                    })
+                // Normal mode - filter by staff admin
+                filters.push({
+                    field: 'field_439', 
+                    operator: 'is',
+                    value: staffAdminId
                 });
-                
-                if (wordCloudResponse.ok) {
-                    const wordCloudData = await wordCloudResponse.json();
-                    renderWordCloud(wordCloudData);
-                }
-            } catch (error) {
-                errorLog("Failed to fetch word cloud data", error);
+                vespaResults = await fetchDataFromKnack(objectKeys.vespaResults, filters);
+                log("Fetched VESPA Results for comments (filtered by Staff Admin ID):", vespaResults ? vespaResults.length : 0);
+            } else {
+                 log("No Staff Admin ID or Establishment ID provided to loadStudentCommentInsights. Cannot filter comments.");
             }
             
-            // Fetch theme analysis
-            try {
-                const themesResponse = await fetch(`${config.herokuAppUrl}/api/comment-themes`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        commentFields: commentFields,
-                        filters: filters
-                    })
-                });
-                
-                if (themesResponse.ok) {
-                    const themesData = await themesResponse.json();
-                    renderThemes(themesData);
-                }
-            } catch (error) {
-                errorLog("Failed to fetch themes data", error);
+            if (!Array.isArray(vespaResults)) {
+                errorLog("loadStudentCommentInsights: vespaResults is not an array after fetch.", vespaResults);
+                vespaResults = []; // Ensure it's an array to prevent further errors
             }
+
+            const allComments = [];
+            if (vespaResults.length > 0) { // Only proceed if we have results
+                vespaResults.forEach(record => {
+                    if (record.field_2302_raw) allComments.push(record.field_2302_raw); // RRC1
+                    if (record.field_2303_raw) allComments.push(record.field_2303_raw); // RRC2
+                    if (record.field_2304_raw) allComments.push(record.field_2304_raw); // RRC3
+                    if (record.field_2499_raw) allComments.push(record.field_2499_raw); // GOAL1
+                    if (record.field_2493_raw) allComments.push(record.field_2493_raw); // GOAL2
+                    if (record.field_2494_raw) allComments.push(record.field_2494_raw); // GOAL3
+                });
+            }
+
+            log("Total comments extracted:", allComments.length);
+
+            // Render Word Cloud
+            renderWordCloud(allComments);
+
+            // Identify and Display Common Themes (this is more complex, might need NLP on Heroku)
+            identifyCommonThemes(allComments);
 
         } catch (error) {
             errorLog("Failed to load student comment insights", error);
         }
     }
 
-    function renderWordCloud(data) {
+    function renderWordCloud(comments) {
         const container = document.getElementById('word-cloud-container');
         if (!container) return;
-        
-        // Handle empty data or error messages
-        if (!data || !data.wordCloudData || data.wordCloudData.length === 0) {
-            const message = data?.message || 'No comment data available for word cloud.';
-            container.innerHTML = `<p class="no-data-message">${message}</p>`;
-            return;
-        }
-        
-        // Create canvas for word cloud
-        container.innerHTML = '<canvas id="word-cloud-canvas" width="800" height="400"></canvas>';
-        
-        // Check if WordCloud2 is available
-        if (typeof WordCloud !== 'undefined') {
-            const canvas = document.getElementById('word-cloud-canvas');
-            
-            // Ensure canvas has proper dimensions
-            const containerWidth = container.offsetWidth || 800;
-            const containerHeight = 400;
-            canvas.width = containerWidth;
-            canvas.height = containerHeight;
-            
-            const words = data.wordCloudData.map(item => [item.text, item.size]);
-            
-            try {
-                // Configure word cloud
-                WordCloud(canvas, {
-                    list: words,
-                    gridSize: Math.round(16 * containerWidth / 1024),
-                    weightFactor: function(size) {
-                        return Math.pow(size, 1.5) * containerWidth / 1024;
-                    },
-                    fontFamily: 'Inter, sans-serif',
-                    color: function(word, weight) {
-                        // Use theme colors
-                        const colors = ['#ff8f00', '#86b4f0', '#72cb44', '#7f31a4', '#f032e6', '#ffd93d'];
-                        return colors[Math.floor(Math.random() * colors.length)];
-                    },
-                    rotateRatio: 0.5,
-                    rotationSteps: 2,
-                    backgroundColor: 'transparent',
-                    minSize: 12,
-                    drawOutOfBound: false,
-                    shrinkToFit: true
-                });
-            } catch (error) {
-                errorLog("WordCloud2 rendering error", error);
-                // Fallback to word list on error
-                renderWordListFallback(container, data);
-            }
-        } else {
-            // Fallback to simple word list
-            renderWordListFallback(container, data);
-        }
-        
-        // Add summary stats
-        if (data.totalComments) {
-            const statsHtml = `
-                <div class="word-cloud-stats">
-                    <span>Total Comments: ${data.totalComments}</span>
-                    <span>Unique Words: ${data.uniqueWords}</span>
-                    ${data.topWord ? `<span>Most Common: "${data.topWord[0]}" (${data.topWord[1]} times)</span>` : ''}
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', statsHtml);
-        }
-    }
-    
-    function renderWordListFallback(container, data) {
-        // Fallback for browsers that don't support WordCloud2.js
-        const list = document.createElement('ul');
-        list.className = 'word-list-fallback';
-        data.slice(0, 30).forEach(item => { // Show top 30
-            const li = document.createElement('li');
-            li.innerHTML = `<span class="word">${item.text}</span> <span class="count">(${item.count})</span>`;
-            list.appendChild(li);
-        });
-        container.appendChild(list);
+        log("Rendering word cloud.");
+        // Use a library like WordCloud.js (https://wordcloud2.js.org/) or similar.
+        // You'll need to process the text: concatenate, remove stop words, count frequencies.
+        // Example (conceptual):
+        // const textBlob = comments.join(" ");
+        // const wordFrequencies = calculateWordFrequencies(textBlob);
+        // WordCloud(container, { list: wordFrequencies });
+        container.innerHTML = "<p>Word cloud will go here.</p>";
+
     }
 
-    function renderThemes(data) {
-        // ... implementation for rendering themes
+    function identifyCommonThemes(comments) {
+        const container = document.getElementById('common-themes-container');
+        if (!container) return;
+        log("Identifying common themes.");
+        // This is a more advanced NLP task.
+        // Simplistic: Count occurrences of keywords.
+        // Advanced: Use your Heroku backend + OpenAI to summarize themes.
+        // Example:
+        // Send comments to Heroku -> Heroku uses OpenAI to extract themes -> display themes.
+        container.innerHTML = "<p>Common themes will be listed here.</p>";
     }
 
-    function updatePrintButtonState() {
-        const printButton = document.getElementById('print-report-btn');
-        if (!printButton) {
-            return;
-        }
-
-        // Enable the button if the main dashboard data (vespaResults) is loaded and not empty
-        const vespaResults = DataCache.get('vespaResults');
-        if (vespaResults && vespaResults.length > 0) {
-            printButton.disabled = false;
-            printButton.title = 'Click to generate a PDF report of the current view.';
-        } else {
-            printButton.disabled = true;
-            printButton.title = 'Dashboard data must be loaded to generate a report.';
-        }
-    }
-
-    async function generatePrintReport() {
-        const printButton = document.getElementById('print-report-btn');
-        if (!printButton) return;
-
-        try {
-            // Show loading state
-            printButton.disabled = true;
-            printButton.innerHTML = '<span class="icon is-small"><i class="fa fa-spinner fa-spin"></i></span> <span>Generating...</span>';
-
-            log("Starting PDF report generation...");
-
-            // Collect all necessary data
-            const cycle = document.getElementById('cycle-select') ? parseInt(document.getElementById('cycle-select').value, 10) : 1;
-            const schoolName = selectedEstablishmentName || document.querySelector('.kn-info-bar .kn-crumbtrail a span')?.textContent || 'School Report';
-
-            // 1. Overview & Vespa Scores
-            const vespaScores = collectVespaScores();
-            log("Collected VESPA scores for report:", vespaScores);
-
-            // 2. QLA Insights
-            const qlaInsights = collectQLAInsights();
-            log("Collected QLA insights for report:", qlaInsights);
-
-            // 3. Word Cloud - get the data used to generate it
-            const wordCloudData = window.currentWordCloudData || [];
-            log("Collected Word Cloud data for report:", wordCloudData.length > 0 ? `${wordCloudData.length} words` : 'No data');
-
-
-            // Prepare payload for backend PDF generation
-            const reportPayload = {
-                schoolName,
-                cycle,
-                vespaScores,
-                qlaInsights,
-                wordCloudData,
-                // Add any other data needed for the report
-            };
-
-            const response = await fetch(`${config.herokuAppUrl}/api/generate-report`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(reportPayload)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Failed to generate report: ${errorText}`);
-            }
-
-            // Get PDF back as a blob and trigger download
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `${schoolName} - VESPA Report - Cycle ${cycle}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-
-            log("PDF report downloaded successfully.");
-
-        } catch (error) {
-            errorLog("Failed to generate or download PDF report", error);
-            alert(`An error occurred while generating the report: ${error.message}`);
-        } finally {
-            // Restore button state
-            printButton.disabled = false;
-            printButton.innerHTML = '<span class="icon is-small"><i class="fa fa-print"></i></span> <span>Generate Report</span>';
-        }
-    }
-
-    function collectVespaScores() {
-        const scores = {};
-        const scoreElements = ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude', 'Overall'];
-
-        scoreElements.forEach(elem => {
-            const schoolScore = document.getElementById(`${elem.toLowerCase()}-school-avg`)?.textContent || 'N/A';
-            const nationalScore = document.getElementById(`${elem.toLowerCase()}-national-avg`)?.textContent || 'N/A';
-            scores[elem] = { school: schoolScore, national: nationalScore };
-        });
-
-        return scores;
-    }
-
-    function collectQLAInsights() {
-        const insights = {
-            top: [],
-            bottom: []
-        };
-        document.querySelectorAll('#qla-top-questions .qla-question-card').forEach(card => {
-            insights.top.push({
-                question: card.querySelector('.qla-question-text').textContent,
-                score: card.querySelector('.qla-score-value').textContent
-            });
-        });
-        document.querySelectorAll('#qla-bottom-questions .qla-question-card').forEach(card => {
-            insights.bottom.push({
-                question: card.querySelector('.qla-question-text').textContent,
-                score: card.querySelector('.qla-score-value').textContent
-            });
-        });
-        return insights;
-    }
-
-    function addPrintReportButton() {
-        // Find a suitable place to add the button, e.g., a header or controls area
-        let container = document.querySelector('.kn-view.view_3058 .kn-records-nav'); // A common Knack container
-        if (!container) {
-            // Fallback to the main dashboard container if the specific nav isn't found
-            container = document.getElementById('dashboard-container');
-        }
-        if (!container) {
-            errorLog("Could not find a container to add the Print Report button.");
-            return;
-        }
-
-        // Avoid adding duplicate buttons
-        if (document.getElementById('print-report-btn')) {
-            // Still update the state in case this is called after data load
-            updatePrintButtonState();
-            return;
-        }
-
-        const printButton = document.createElement('button');
-        printButton.id = 'print-report-btn';
-        printButton.className = 'kn-button'; // Use Knack's button styling
-        printButton.innerHTML = '<span class="icon is-small"><i class="fa fa-print"></i></span> <span>Generate Report</span>';
-        printButton.style.marginLeft = '10px';
-        printButton.disabled = true; // Initially disabled
-        
-        container.appendChild(printButton);
-        
-        printButton.addEventListener('click', generatePrintReport);
-        
-        // Update the button state based on whether data is loaded
-        updatePrintButtonState();
-    }
-
+    // --- Initialization ---
     async function initializeFullDashboard() {
-        // Update progress
-        GlobalLoader.updateProgress(20, 'Authenticating user...');
+        const targetElement = document.querySelector(elementSelector);
+        if (!targetElement) {
+            errorLog(`Target element "${elementSelector}" not found for dashboard.`);
+            return;
+        }
+
+        // Get logged in user email from config or Knack directly
+        let loggedInUserEmail = config.loggedInUserEmail;
+    
+        // If not in config, try to get from Knack
+        if (!loggedInUserEmail && typeof Knack !== 'undefined' && Knack.getUserAttributes) {
+            try {
+                const userAttributes = Knack.getUserAttributes();
+                loggedInUserEmail = userAttributes.email || userAttributes.values?.email;
+                console.log("Got user email from Knack:", loggedInUserEmail);
+            } catch (e) {
+                console.error("Failed to get user email from Knack:", e);
+            }
+        }
+    
+        // If still no email, try alternative Knack method
+        if (!loggedInUserEmail && typeof Knack !== 'undefined' && Knack.session && Knack.session.user) {
+            try {
+                loggedInUserEmail = Knack.session.user.email;
+                console.log("Got user email from Knack session:", loggedInUserEmail);
+            } catch (e) {
+                console.error("Failed to get user email from Knack session:", e);
+            }
+        }
+
+        if (!loggedInUserEmail) {
+            errorLog("No loggedInUserEmail found in config. Cannot check user status.");
+            renderDashboardUI(targetElement); // Render basic UI
+            document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
+            document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
+            document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: User email not found.</p>";
+            return;
+        }
+
+        // --- New Logic: Prioritize Staff Admin check ---
+        let staffAdminRecordId = null;
+        let isStaffAdmin = false;
 
         try {
-            let staffAdminId = null;
+            staffAdminRecordId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
+            if (staffAdminRecordId) {
+                isStaffAdmin = true;
+                log("User is a Staff Admin! Staff Admin Record ID:", staffAdminRecordId);
+            } else {
+                log("User is NOT a Staff Admin.");
+            }
+        } catch (e) {
+            errorLog("Error checking Staff Admin status:", e);
+        }
 
-            // Step 1: Check for Super User status first
-            superUserRecordId = await checkSuperUserStatus(loggedInUserEmail);
-
-            if (superUserRecordId) {
+        // Only check Super User status if not already a Staff Admin
+        if (!isStaffAdmin) {
+            const checkSuperUser = await checkSuperUserStatus(loggedInUserEmail);
+            if (checkSuperUser) {
+                superUserRecordId = checkSuperUser;
                 isSuperUser = true;
                 log("User is a Super User!");
             } else {
                 log("User is NOT a Super User.");
-                // Step 2: If not a super user, check for Staff Admin status
-                staffAdminId = await getStaffAdminRecordIdByEmail(loggedInUserEmail);
-                if (!staffAdminId) {
-                    errorLog("No Staff Admin record found. Dashboard cannot be loaded.");
-                    document.getElementById(elementSelector.substring(1)).innerHTML = '<p>You do not have the required permissions to view this dashboard.</p>';
-                    GlobalLoader.hide();
-                    initializationInProgress = false;
-                    return; // Stop execution
-                }
-                log(`Found Staff Admin Record ID: ${staffAdminId}`);
-                currentStaffAdminId = staffAdminId;
             }
+        } else {
+             log("User is a Staff Admin, skipping Super User check for primary role determination.");
+        }
 
-            // Step 3: Render the main UI
-            const container = document.querySelector(elementSelector);
-            if (!container) {
-                errorLog("Dashboard container element not found:", elementSelector);
-                GlobalLoader.hide();
-                initializationInProgress = false;
-                return;
-            }
+        renderDashboardUI(targetElement, isSuperUser); // Render main structure with Super User controls if applicable
 
-            renderDashboardUI(container, isSuperUser);
-            
-            GlobalLoader.updateProgress(40, 'Registering plugins...');
-            
-            // Register plugins after UI is rendered
-            // Check for ChartDataLabels plugin
+        // Attempt to register Chart.js plugins globally if they are loaded
+        if (typeof Chart !== 'undefined') {
             if (typeof ChartDataLabels !== 'undefined') {
-                log('ChartDataLabels plugin registered globally.');
                 Chart.register(ChartDataLabels);
+                log("ChartDataLabels plugin registered globally.");
             } else {
-                log('ChartDataLabels plugin not found globally.');
+                log("ChartDataLabels plugin not found globally during init.");
             }
             
-            // Check for Chart.js Annotation plugin
-            const annotationPlugin = (window.Chart && (window.Chart.Annotation || window.ChartAnnotation)) || window.ChartAnnotation;
+            // Attempt to register Annotation plugin (checking common global names)
+            let annotationPlugin = null;
+            if (typeof Annotation !== 'undefined') { // Direct global name
+                annotationPlugin = Annotation;
+            } else if (typeof Chart !== 'undefined' && Chart.Annotation) { // Often attached to Chart object
+                annotationPlugin = Chart.Annotation;
+            } else if (typeof window !== 'undefined' && window.ChartAnnotation) { // Another common global pattern
+                annotationPlugin = window.ChartAnnotation;
+            }
+
             if (annotationPlugin) {
-                log("Annotation plugin found globally, registering...");
-                Chart.register(annotationPlugin);
+                try {
+                    Chart.register(annotationPlugin);
+                    log("Annotation plugin registered globally.");
+                } catch (e) {
+                    errorLog("Error registering Annotation plugin globally: ", e)
+                }
             } else {
-                log("Annotation plugin not found globally (checked Annotation, Chart.Annotation, window.ChartAnnotation) during init. Global benchmark lines on histograms may not appear.");
+                log("Annotation plugin not found globally (checked Annotation, Chart.Annotation, window.ChartAnnotation) during init. National average lines on histograms may not appear.");
             }
             
-            // Gauge chart plugin check (using a common library name)
-            if (window.Gauge || (window.Chart && window.Chart.Gauge)) {
-                log("Gauge chart plugin found during init.");
-                // Register if needed
+            // Register Gauge chart controller if available
+            if (typeof Chart.controllers.gauge !== 'undefined' || (window.ChartGauge && window.ChartGauge.GaugeController)) {
+                try {
+                    // The gauge plugin might auto-register, but let's ensure it's registered
+                    if (window.ChartGauge && window.ChartGauge.GaugeController) {
+                        Chart.register(window.ChartGauge.GaugeController, window.ChartGauge.ArcElement);
+                        log("Gauge chart plugin registered from ChartGauge global.");
+                    } else {
+                        log("Gauge chart controller appears to be auto-registered.");
+                    }
+                } catch (e) {
+                    errorLog("Error registering Gauge plugin: ", e);
+                }
             } else {
                 log("Gauge chart plugin not found during init. Will use doughnut chart fallback for ERI gauge.");
             }
+        } else {
+            log("Chart.js core (Chart) not found globally during init. All charts will fail.");
+        }
 
-
-            // Step 4: Load data if not a Super User, or wait for selection if Super User
-            if (!isSuperUser && staffAdminId) {
-                log("Standard user mode: loading dashboard now.");
-                const initialCycle = 1; // Default to cycle 1 on first load
-
-                GlobalLoader.updateProgress(60, 'Fetching initial data...');
-                await fetchDashboardInitialData(staffAdminId, null, initialCycle);
+        // Load data based on role
+        if (isStaffAdmin) {
+            log("Loading dashboard for Staff Admin:", staffAdminRecordId);
+            GlobalLoader.updateProgress(20, 'Authenticating user...');
+            
+            try {
+                // Initial data load (defaulting to cycle 1 or what's selected)
+                const cycleSelectElement = document.getElementById('cycle-select');
+                const initialCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
                 
-                GlobalLoader.updateProgress(75, 'Populating filters...');
-                populateFilterDropdownsFromCache(DataCache.get('filterOptions'));
-
-                GlobalLoader.updateProgress(85, 'Rendering overview...');
-                await loadOverviewData(staffAdminId, initialCycle);
-
-                GlobalLoader.updateProgress(90, 'Rendering QLA...');
-                await loadQLAData(staffAdminId);
+                // Fetch all initial data using batch endpoint
+                GlobalLoader.updateProgress(30, 'Loading dashboard data...');
+                const batchData = await fetchDashboardInitialData(staffAdminRecordId, null, initialCycle);
                 
-                GlobalLoader.updateProgress(95, 'Rendering student insights...');
-                await loadStudentCommentInsights(staffAdminId);
-
-                // Add event listeners for controls
-                document.getElementById('cycle-select')?.addEventListener('change', async (event) => {
-                    const selectedCycle = parseInt(event.target.value, 10);
+                // Populate filter dropdowns from cached data
+                GlobalLoader.updateProgress(50, 'Setting up filters...');
+                populateFilterDropdownsFromCache(batchData.filterOptions);
+                
+                // Load all sections with cached data
+                GlobalLoader.updateProgress(70, 'Rendering dashboard...');
+                await Promise.all([
+                    loadOverviewData(staffAdminRecordId, initialCycle),
+                    loadQLAData(staffAdminRecordId),
+                    loadStudentCommentInsights(staffAdminRecordId)
+                ]);
+                
+                GlobalLoader.updateProgress(90, 'Finalizing...');
+                
+                // Hide global loader
+                GlobalLoader.updateProgress(100, 'Dashboard ready!');
+                setTimeout(() => GlobalLoader.hide(), 500);
+                
+                // Add event listener for cycle selector
+                if (cycleSelectElement) {
+                    cycleSelectElement.addEventListener('change', async (event) => {
+                        const selectedCycle = parseInt(event.target.value, 10);
+                        log(`Cycle changed to: ${selectedCycle}`);
+                        
+                        // Clear cache to force refresh for new cycle
+                        DataCache.clear();
+                        
+                        const activeFilters = getActiveFilters();
+                        await loadOverviewData(staffAdminRecordId, selectedCycle, activeFilters);
+                    });
+                }
+                
+            } catch (error) {
+                errorLog("Failed to initialize dashboard", error);
+                GlobalLoader.hide();
+                document.getElementById('overview-section').innerHTML = `<p>Error loading dashboard: ${error.message}</p>`;
+                document.getElementById('qla-section').innerHTML = `<p>Error loading dashboard: ${error.message}</p>`;
+                document.getElementById('student-insights-section').innerHTML = `<p>Error loading dashboard: ${error.message}</p>`;
+            }
+            
+            // Add event listeners for filter buttons
+            const applyFiltersBtn = document.getElementById('apply-filters-btn');
+            if (applyFiltersBtn) {
+                applyFiltersBtn.addEventListener('click', () => {
+                    const selectedCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
                     const activeFilters = getActiveFilters();
-                    await loadOverviewData(staffAdminId, selectedCycle, activeFilters);
-                    // Also reload QLA and other sections if they are cycle-dependent
+                    log("Applying filters:", activeFilters);
+                    loadOverviewData(staffAdminRecordId, selectedCycle, activeFilters);
                 });
-
-                document.getElementById('apply-filters-btn')?.addEventListener('click', () => {
-                    const selectedCycle = parseInt(document.getElementById('cycle-select').value, 10);
-                    const activeFilters = getActiveFilters();
-                    loadOverviewData(staffAdminId, selectedCycle, activeFilters);
-                });
-
-                document.getElementById('clear-filters-btn')?.addEventListener('click', () => {
-                    // Clear inputs and reload data
+            }
+            
+            const clearFiltersBtn = document.getElementById('clear-filters-btn');
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', () => {
+                    // Clear all filter inputs
                     document.getElementById('student-search').value = '';
                     document.getElementById('group-filter').value = '';
                     document.getElementById('course-filter').value = '';
                     document.getElementById('year-group-filter').value = '';
                     document.getElementById('faculty-filter').value = '';
-                    updateActiveFiltersDisplay([]); // Clear display
-                    const selectedCycle = parseInt(document.getElementById('cycle-select').value, 10);
-                    loadOverviewData(staffAdminId, selectedCycle, []);
+                    
+                    // Clear the active filters display
+                    updateActiveFiltersDisplay([]);
+                    
+                    // Reload data without filters
+                    const selectedCycle = cycleSelectElement ? parseInt(cycleSelectElement.value, 10) : 1;
+                    log("Clearing all filters");
+                    loadOverviewData(staffAdminRecordId, selectedCycle, []);
                 });
-
-            } else {
-                log("Super User mode active. Waiting for establishment selection.");
-                // For super users, data loading is triggered by handleEstablishmentLoad
             }
-            
-            dashboardInitialized = true;
-            initializationInProgress = false;
-            GlobalLoader.updateProgress(100, 'Dashboard Ready');
-            setTimeout(() => GlobalLoader.hide(), 500); // Hide loader after a short delay
-            log("Dashboard initialization complete.");
 
-        } catch (error) {
-            errorLog("A critical error occurred during dashboard initialization", error);
-            const container = document.querySelector(elementSelector);
-            if (container) {
-                container.innerHTML = `<div class="error-message">
-                    <h3>Oops! Something went wrong.</h3>
-                    <p>The dashboard could not be loaded. Please try refreshing the page. If the problem persists, contact support.</p>
-                    <p>Error details: ${error.message}</p>
-                </div>`;
-            }
+        } else if (isSuperUser) {
+            log("Super User mode active. Waiting for establishment selection.");
+            GlobalLoader.updateProgress(100, 'Please select an establishment to continue...');
             GlobalLoader.hide();
-            initializationInProgress = false;
+            document.getElementById('overview-section').style.display = 'none'; // Hide if super user and waiting for selection
+            document.getElementById('qla-section').style.display = 'none';
+            document.getElementById('student-insights-section').style.display = 'none';
+            return; // Exit here for Super Users if they are not Staff Admins
+        } else {
+            errorLog("Neither Staff Admin nor Super User role found. Cannot load dashboard.");
+            GlobalLoader.hide();
+            document.getElementById('overview-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
+            document.getElementById('qla-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
+            document.getElementById('student-insights-section').innerHTML = "<p>Cannot load dashboard: Your account does not have the required Staff Admin or Super User role.</p>";
         }
     }
     
-    // --- Initialization ---
-    // Start the app after a brief delay to ensure the DOM is ready
-    setTimeout(initializeFullDashboard, 100);
+    initializeFullDashboard(); // Call the main async initialization function
 }
 
 // Defensive check: If jQuery is used by Knack/other scripts, ensure this script runs after.
