@@ -159,15 +159,46 @@ body.ai-coach-active #aiCoachPanel {
 }
 
 /* Launcher button container */
+/* Updated for floating button design - most styles are inline in JS for better control */
 #aiCoachLauncherButtonContainer {
-    text-align: center;
-    padding: 20px;
-    border-top: 2px solid #eee;
+    /* Remove old panel-based styles that conflict with floating button */
+    /* text-align: center; */
+    /* padding: 20px; */
+    /* border-top: 2px solid #eee; */
 }
 
 #aiCoachLauncherButtonContainer p {
-    font-size: 1.1em;
-    margin-bottom: 15px;
+    /* This is no longer used in the floating button design */
+    /* font-size: 1.1em; */
+    /* margin-bottom: 15px; */
+    display: none;
+}
+
+/* Additional styles for the floating AI Coach button */
+.ai-coach-floating-btn {
+    /* Ensure button text doesn't wrap */
+    white-space: nowrap;
+    /* Override any p-button defaults that might conflict */
+    margin: 0 !important;
+}
+
+/* Info button specific styles */
+#aiCoachInfoBtn {
+    /* Ensure the info button stays circular */
+    flex-shrink: 0;
+    line-height: 1 !important;
+}
+
+/* Ensure floating button stays above other elements but below modals */
+#aiCoachLauncherButtonContainer {
+    z-index: 1000 !important;
+}
+
+/* Hide the floating button when printing */
+@media print {
+    #aiCoachLauncherButtonContainer {
+        display: none !important;
+    }
 }
 
 /* Section toggles */
