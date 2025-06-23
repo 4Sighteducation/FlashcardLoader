@@ -102,12 +102,17 @@ if (window.aiCoachLauncherInitialized) {
         logAICoach("Clearing AI Coach UI.");
         const launcherButtonContainer = document.getElementById('aiCoachLauncherButtonContainer');
         if (launcherButtonContainer) {
-            launcherButtonContainer.innerHTML = ''; // Clear the button
+            // Remove the entire floating button from DOM instead of just clearing content
+            launcherButtonContainer.remove();
+            logAICoach("Removed floating button container from DOM.");
         }
         toggleAICoachPanel(false); // Ensure panel is closed
         // Optionally, remove the panel from DOM if preferred when navigating away
-        // const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
-        // if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+        const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
+        if (panel && panel.parentNode) {
+            panel.parentNode.removeChild(panel);
+            logAICoach("Removed AI Coach panel from DOM.");
+        }
         coachUIInitialized = false; // Reset for next individual report view
         lastFetchedStudentId = null; 
         observerLastProcessedStudentId = null; // ADD THIS: Reset when UI is cleared
@@ -242,7 +247,7 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1k.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1m.css';
         // .css';
         
         // Add dynamic CSS for config-specific IDs
@@ -569,37 +574,40 @@ if (window.aiCoachLauncherInitialized) {
         if (!buttonContainer) {
             buttonContainer = document.createElement('div');
             buttonContainer.id = 'aiCoachLauncherButtonContainer';
-            // Style as floating button
+            // Style as a more discreet floating button
             buttonContainer.style.cssText = `
                 position: fixed;
-                bottom: 30px;
-                right: 30px;
+                bottom: 20px;
+                right: 20px;
                 z-index: 1000;
                 display: flex;
                 align-items: center;
-                gap: 15px;
-                background: rgba(255, 255, 255, 0.95);
-                padding: 15px 20px;
-                border-radius: 60px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                gap: 8px;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 8px 12px;
+                border-radius: 25px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
                 backdrop-filter: blur(10px);
                 transition: all 0.3s ease;
+                opacity: 0.8;
             `;
             document.body.appendChild(buttonContainer);
             logAICoach("Floating launcher button container created and appended to document.body.");
             
-            // Add hover effect
+            // Add hover effect - more visible on hover
             buttonContainer.addEventListener('mouseenter', () => {
+                buttonContainer.style.opacity = '1';
                 buttonContainer.style.transform = 'translateY(-2px)';
-                buttonContainer.style.boxShadow = '0 6px 25px rgba(0, 0, 0, 0.2)';
+                buttonContainer.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
             });
             buttonContainer.addEventListener('mouseleave', () => {
+                buttonContainer.style.opacity = '0.8';
                 buttonContainer.style.transform = 'translateY(0)';
-                buttonContainer.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)';
+                buttonContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
             });
         }
 
-        // Populate button if missing
+        // Populate button if missing - more compact design
         if (!buttonContainer.querySelector(`#${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`)) {
             buttonContainer.innerHTML = `
                 <button id="${AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" 
@@ -608,28 +616,28 @@ if (window.aiCoachLauncherInitialized) {
                             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                             border: none;
                             color: white;
-                            padding: 12px 24px;
-                            border-radius: 30px;
-                            font-size: 16px;
+                            padding: 8px 16px;
+                            border-radius: 20px;
+                            font-size: 14px;
                             font-weight: 600;
                             cursor: pointer;
                             transition: all 0.3s ease;
-                            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+                            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
                         ">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 20px;">🚀</span>
-                        <span>Activate AI Coach</span>
+                    <span style="display: inline-flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 16px;">🤖</span>
+                        <span>AI Coach</span>
                     </span>
                 </button>
                 <button id="aiCoachInfoBtn" 
                         title="About AI Coach" 
                         style="
-                            width: 45px; 
-                            height: 45px; 
+                            width: 30px; 
+                            height: 30px; 
                             border-radius: 50%; 
                             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                             border: none; 
-                            font-size: 22px; 
+                            font-size: 14px; 
                             font-weight: bold; 
                             color: white; 
                             cursor: pointer; 
@@ -637,7 +645,7 @@ if (window.aiCoachLauncherInitialized) {
                             align-items: center; 
                             justify-content: center; 
                             transition: all 0.3s ease;
-                            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+                            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
                         "
                         aria-label="Information about the AI Coach">
                     <span style="font-family: Georgia, serif;">i</span>
@@ -651,22 +659,22 @@ if (window.aiCoachLauncherInitialized) {
             if (mainBtn) {
                 mainBtn.addEventListener('mouseenter', () => {
                     mainBtn.style.transform = 'scale(1.05)';
-                    mainBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.6)';
+                    mainBtn.style.boxShadow = '0 3px 10px rgba(102, 126, 234, 0.4)';
                 });
                 mainBtn.addEventListener('mouseleave', () => {
                     mainBtn.style.transform = 'scale(1)';
-                    mainBtn.style.boxShadow = '0 2px 10px rgba(102, 126, 234, 0.4)';
+                    mainBtn.style.boxShadow = '0 2px 6px rgba(102, 126, 234, 0.3)';
                 });
             }
             
             if (infoBtn) {
                 infoBtn.addEventListener('mouseenter', () => {
-                    infoBtn.style.transform = 'scale(1.1) rotate(15deg)';
-                    infoBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.6)';
+                    infoBtn.style.transform = 'scale(1.1)';
+                    infoBtn.style.boxShadow = '0 3px 10px rgba(102, 126, 234, 0.4)';
                 });
                 infoBtn.addEventListener('mouseleave', () => {
-                    infoBtn.style.transform = 'scale(1) rotate(0deg)';
-                    infoBtn.style.boxShadow = '0 2px 10px rgba(102, 126, 234, 0.4)';
+                    infoBtn.style.transform = 'scale(1)';
+                    infoBtn.style.boxShadow = '0 2px 6px rgba(102, 126, 234, 0.3)';
                 });
                 
                 // Add click handler for info button
