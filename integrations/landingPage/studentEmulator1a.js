@@ -166,11 +166,12 @@
               <div class="se-loading">
                 <i class="fas fa-spinner fa-spin"></i>
                 <p>Loading student portal...</p>
+                <p class="se-loading-status">Initializing...</p>
               </div>
               <iframe 
                 id="student-portal-iframe" 
                 class="se-iframe"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                 style="display: none;">
               </iframe>
             </div>
@@ -186,48 +187,128 @@
       const iframe = document.getElementById('student-portal-iframe');
       currentSession.iframe = iframe;
       
-      // Create form for auto-login
-      const loginForm = document.createElement('form');
-      loginForm.method = 'POST';
-      loginForm.action = CONFIG.studentPortalUrl;
-      loginForm.target = 'student-portal-iframe';
-      loginForm.style.display = 'none';
+      // Track login state
+      let loginAttempts = 0;
+      let isLoggedIn = false;
       
-      // Add email field
-      const emailField = document.createElement('input');
-      emailField.type = 'hidden';
-      emailField.name = 'email';
-      emailField.value = student.email;
-      loginForm.appendChild(emailField);
-      
-      // Add password field
-      const passwordField = document.createElement('input');
-      passwordField.type = 'hidden';
-      passwordField.name = 'password';
-      passwordField.value = student.password;
-      loginForm.appendChild(passwordField);
-      
-      // Add to body and submit
-      document.body.appendChild(loginForm);
-      
-      // Set up iframe load handler
+      // Set up iframe load handler for login process
       iframe.onload = () => {
-        // Hide loading, show iframe
-        document.querySelector('.se-loading').style.display = 'none';
-        iframe.style.display = 'block';
+        const iframeUrl = iframe.contentWindow.location.href;
+        console.log('[Student Emulator] iframe loaded:', iframeUrl);
         
-        // Apply read-only protections
-        this.applyReadOnlyProtections();
-        
-        // Start monitoring
-        this.startMonitoring();
+        // Check if we're on the login page (Knack apps often start at root)
+        if (!iframeUrl.includes('#') || iframeUrl.includes('login') || iframeUrl.includes('sign-in') || !isLoggedIn) {
+          // Additional check for Knack login page elements
+          try {
+            const hasLoginForm = iframe.contentWindow.document.querySelector('.kn-login-form, form[action*="login"], input[type="password"]');
+            if (hasLoginForm && loginAttempts < 3) {
+              loginAttempts++;
+              document.querySelector('.se-loading-status').textContent = 'Logging in...';
+              
+              // Attempt to fill in and submit login form
+              setTimeout(() => {
+                this.performLogin(student);
+              }, 1000);
+            }
+          } catch (e) {
+            // Cross-origin error expected on first load
+            if (loginAttempts < 3) {
+              loginAttempts++;
+              setTimeout(() => {
+                this.performLogin(student);
+              }, 1000);
+            }
+          }
+        } 
+        // Check if we've successfully logged in (reached the landing page)
+        else if (iframeUrl.includes('#landing-page')) {
+          isLoggedIn = true;
+          console.log('[Student Emulator] Successfully logged in!');
+          
+          // Hide loading, show iframe
+          document.querySelector('.se-loading').style.display = 'none';
+          iframe.style.display = 'block';
+          
+          // Apply read-only protections
+          this.applyReadOnlyProtections();
+          
+          // Start monitoring
+          this.startMonitoring();
+        }
+        // Also check for other logged-in indicators
+        else if (iframeUrl.includes('#') && !iframeUrl.includes('login')) {
+          // We're on a Knack page that's not login, assume logged in
+          isLoggedIn = true;
+          console.log('[Student Emulator] Logged in, navigating to student homepage...');
+          
+          // Navigate to student homepage
+          iframe.contentWindow.location.href = CONFIG.studentPortalUrl;
+        }
       };
       
-      // Load the student portal
-      iframe.src = CONFIG.studentPortalUrl;
-      
-      // Clean up form
-      setTimeout(() => loginForm.remove(), 1000);
+      // Start by loading the Knack app (which will show login page)
+      iframe.src = 'https://vespaacademy.knack.com/vespa-academy';
+    },
+    
+    // Perform login within the iframe
+    performLogin: function(student) {
+      try {
+        const iframeDoc = currentSession.iframe.contentDocument || currentSession.iframe.contentWindow.document;
+        
+        // Look for Knack-specific login form elements
+        // Knack uses specific classes for their forms
+        const emailInput = iframeDoc.querySelector('input[name="email"], input#email, .kn-login-form input[type="email"], .kn-input-email input');
+        const passwordInput = iframeDoc.querySelector('input[name="password"], input#password, .kn-login-form input[type="password"], .kn-input-password input');
+        const submitButton = iframeDoc.querySelector('.kn-login-form button[type="submit"], .kn-login-form input[type="submit"], .kn-button.is-primary, button.kn-button');
+        
+        if (emailInput && passwordInput) {
+          console.log('[Student Emulator] Found login form, filling credentials...');
+          
+          // Clear any existing values first
+          emailInput.value = '';
+          passwordInput.value = '';
+          
+          // Fill in credentials with Knack-specific event triggering
+          emailInput.focus();
+          emailInput.value = student.email;
+          emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+          emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+          emailInput.dispatchEvent(new Event('blur', { bubbles: true }));
+          
+          passwordInput.focus();
+          passwordInput.value = student.password;
+          passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+          passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
+          passwordInput.dispatchEvent(new Event('blur', { bubbles: true }));
+          
+          // Submit form after a short delay to ensure events are processed
+          setTimeout(() => {
+            if (submitButton) {
+              console.log('[Student Emulator] Clicking submit button...');
+              submitButton.removeAttribute('disabled'); // Ensure button is enabled
+              submitButton.click();
+            } else {
+              // Try to find and submit the form directly
+              const form = emailInput.closest('form');
+              if (form) {
+                console.log('[Student Emulator] Submitting form directly...');
+                // Trigger Knack's form submission
+                const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                form.dispatchEvent(submitEvent);
+              }
+            }
+          }, 500);
+        } else {
+          console.log('[Student Emulator] Login form not found yet, waiting...');
+          // Check if we're already logged in (sometimes Knack auto-logs in)
+          if (iframeDoc.querySelector('.kn-current-user-name, .kn-menu, .kn-home')) {
+            console.log('[Student Emulator] Already logged in, navigating to student homepage...');
+            currentSession.iframe.contentWindow.location.href = CONFIG.studentPortalUrl;
+          }
+        }
+      } catch (error) {
+        console.error('[Student Emulator] Error during login:', error);
+      }
     },
     
     // Apply read-only protections to iframe content
@@ -581,10 +662,16 @@
           color: #666;
         }
         
-        .se-loading i {
-          font-size: 48px;
-          margin-bottom: 10px;
-        }
+                 .se-loading i {
+           font-size: 48px;
+           margin-bottom: 10px;
+         }
+         
+         .se-loading-status {
+           font-size: 14px;
+           color: #999;
+           margin-top: 5px;
+         }
         
         .se-iframe {
           width: 100%;
@@ -629,4 +716,3 @@
   // Initialize on load
   console.log('[Student Emulator] Module loaded and ready');
 })();
-
