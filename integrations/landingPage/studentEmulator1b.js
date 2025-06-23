@@ -131,7 +131,8 @@
         startTime: Date.now(),
         timeoutId: null,
         intervalId: null,
-        iframe: null
+        iframe: null,
+        checkLoginInterval: null
       };
       
       // Start session timeout
@@ -190,63 +191,96 @@
       // Track login state
       let loginAttempts = 0;
       let isLoggedIn = false;
+      let checkLoginInterval = null;
       
-      // Set up iframe load handler for login process
-      iframe.onload = () => {
-        const iframeUrl = iframe.contentWindow.location.href;
-        console.log('[Student Emulator] iframe loaded:', iframeUrl);
-        
-        // Check if we're on the login page (Knack apps often start at root)
-        if (!iframeUrl.includes('#') || iframeUrl.includes('login') || iframeUrl.includes('sign-in') || !isLoggedIn) {
-          // Additional check for Knack login page elements
-          try {
-            const hasLoginForm = iframe.contentWindow.document.querySelector('.kn-login-form, form[action*="login"], input[type="password"]');
-            if (hasLoginForm && loginAttempts < 3) {
-              loginAttempts++;
-              document.querySelector('.se-loading-status').textContent = 'Logging in...';
-              
-              // Attempt to fill in and submit login form
-              setTimeout(() => {
-                this.performLogin(student);
-              }, 1000);
-            }
-          } catch (e) {
-            // Cross-origin error expected on first load
-            if (loginAttempts < 3) {
-              loginAttempts++;
-              setTimeout(() => {
-                this.performLogin(student);
-              }, 1000);
-            }
+      // Store reference to this for use in nested functions
+      const self = this;
+      
+      // Function to check if we're on a login page or logged in
+      const checkLoginStatus = () => {
+        try {
+          const iframeDoc = iframe.contentWindow.document;
+          const iframeUrl = iframe.contentWindow.location.href;
+          console.log('[Student Emulator] Checking status, URL:', iframeUrl);
+          
+          // Check for Knack app indicators
+          const hasKnackApp = iframeDoc.querySelector('#knack-dist_1, .kn-content, #app');
+          if (!hasKnackApp) {
+            console.log('[Student Emulator] Knack app not loaded yet...');
+            return;
           }
-        } 
-        // Check if we've successfully logged in (reached the landing page)
-        else if (iframeUrl.includes('#landing-page')) {
-          isLoggedIn = true;
-          console.log('[Student Emulator] Successfully logged in!');
           
-          // Hide loading, show iframe
-          document.querySelector('.se-loading').style.display = 'none';
-          iframe.style.display = 'block';
+          // Check if we're already on the landing page
+          if (iframeUrl.includes('#landing-page') || iframeUrl.includes('landing-page')) {
+            clearInterval(checkLoginInterval);
+            isLoggedIn = true;
+            console.log('[Student Emulator] Already on landing page!');
+            
+            // Hide loading, show iframe
+            document.querySelector('.se-loading').style.display = 'none';
+            iframe.style.display = 'block';
+            
+            // Apply protections and start monitoring
+            self.applyReadOnlyProtections();
+            self.startMonitoring();
+            return;
+          }
           
-          // Apply read-only protections
-          this.applyReadOnlyProtections();
+          // Check for login form
+          const loginForm = iframeDoc.querySelector('.kn-login-form, .login-form, form[data-kn-scene]');
+          const passwordField = iframeDoc.querySelector('input[type="password"]');
           
-          // Start monitoring
-          this.startMonitoring();
-        }
-        // Also check for other logged-in indicators
-        else if (iframeUrl.includes('#') && !iframeUrl.includes('login')) {
-          // We're on a Knack page that's not login, assume logged in
-          isLoggedIn = true;
-          console.log('[Student Emulator] Logged in, navigating to student homepage...');
+          if ((loginForm || passwordField) && !isLoggedIn && loginAttempts < 3) {
+            loginAttempts++;
+            console.log('[Student Emulator] Login form detected, attempt', loginAttempts);
+            document.querySelector('.se-loading-status').textContent = 'Logging in (attempt ' + loginAttempts + ')...';
+            
+            // Clear interval while attempting login
+            clearInterval(checkLoginInterval);
+            
+            // Attempt login
+            setTimeout(() => {
+              self.performLogin(student);
+              
+              // Resume checking after login attempt
+              setTimeout(() => {
+                checkLoginInterval = setInterval(checkLoginStatus, 1000);
+              }, 2000);
+            }, 500);
+          }
+          // Check if we're logged in but not on landing page
+          else if (iframeUrl.includes('#') && !iframeUrl.includes('login') && !iframeUrl.includes('landing-page')) {
+            console.log('[Student Emulator] Logged in but not on landing page, navigating...');
+            clearInterval(checkLoginInterval);
+            isLoggedIn = true;
+            iframe.contentWindow.location.href = CONFIG.studentPortalUrl;
+          }
           
-          // Navigate to student homepage
-          iframe.contentWindow.location.href = CONFIG.studentPortalUrl;
+        } catch (error) {
+          console.log('[Student Emulator] Error checking status:', error.message);
         }
       };
       
+      // Set up load handler
+      iframe.onload = () => {
+        console.log('[Student Emulator] iframe onload event fired');
+        // Start checking for login status
+        if (checkLoginInterval) clearInterval(checkLoginInterval);
+        checkLoginInterval = setInterval(checkLoginStatus, 1000);
+        currentSession.checkLoginInterval = checkLoginInterval;
+      };
+      
+      // Also set up a direct interval check as backup
+      setTimeout(() => {
+        if (!checkLoginInterval) {
+          console.log('[Student Emulator] Starting backup login check...');
+          checkLoginInterval = setInterval(checkLoginStatus, 1000);
+          currentSession.checkLoginInterval = checkLoginInterval;
+        }
+      }, 2000);
+      
       // Start by loading the Knack app (which will show login page)
+      console.log('[Student Emulator] Loading Knack app...');
       iframe.src = 'https://vespaacademy.knack.com/vespa-academy';
     },
     
@@ -254,12 +288,17 @@
     performLogin: function(student) {
       try {
         const iframeDoc = currentSession.iframe.contentDocument || currentSession.iframe.contentWindow.document;
+        console.log('[Student Emulator] Attempting to perform login...');
         
         // Look for Knack-specific login form elements
         // Knack uses specific classes for their forms
-        const emailInput = iframeDoc.querySelector('input[name="email"], input#email, .kn-login-form input[type="email"], .kn-input-email input');
-        const passwordInput = iframeDoc.querySelector('input[name="password"], input#password, .kn-login-form input[type="password"], .kn-input-password input');
-        const submitButton = iframeDoc.querySelector('.kn-login-form button[type="submit"], .kn-login-form input[type="submit"], .kn-button.is-primary, button.kn-button');
+        const emailInput = iframeDoc.querySelector('input[name="email"], input#email, .kn-login-form input[type="email"], .kn-input-email input, input[data-input-id*="email"]');
+        const passwordInput = iframeDoc.querySelector('input[name="password"], input#password, .kn-login-form input[type="password"], .kn-input-password input, input[data-input-id*="password"]');
+        const submitButton = iframeDoc.querySelector('.kn-login-form button[type="submit"], .kn-login-form input[type="submit"], .kn-button.is-primary, button.kn-button, button.kn-submit');
+        
+        console.log('[Student Emulator] Email input found:', !!emailInput);
+        console.log('[Student Emulator] Password input found:', !!passwordInput);
+        console.log('[Student Emulator] Submit button found:', !!submitButton);
         
         if (emailInput && passwordInput) {
           console.log('[Student Emulator] Found login form, filling credentials...');
@@ -300,8 +339,21 @@
           }, 500);
         } else {
           console.log('[Student Emulator] Login form not found yet, waiting...');
+          // Log what we can see in the iframe for debugging
+          const allInputs = iframeDoc.querySelectorAll('input');
+          console.log('[Student Emulator] Total inputs found:', allInputs.length);
+          allInputs.forEach((input, index) => {
+            console.log(`[Student Emulator] Input ${index}:`, {
+              type: input.type,
+              name: input.name,
+              id: input.id,
+              className: input.className,
+              placeholder: input.placeholder
+            });
+          });
+          
           // Check if we're already logged in (sometimes Knack auto-logs in)
-          if (iframeDoc.querySelector('.kn-current-user-name, .kn-menu, .kn-home')) {
+          if (iframeDoc.querySelector('.kn-current-user-name, .kn-menu, .kn-home, #kn-app-menu')) {
             console.log('[Student Emulator] Already logged in, navigating to student homepage...');
             currentSession.iframe.contentWindow.location.href = CONFIG.studentPortalUrl;
           }
@@ -425,6 +477,7 @@
       // Clear timeouts and intervals
       if (currentSession.timeoutId) clearTimeout(currentSession.timeoutId);
       if (currentSession.intervalId) clearInterval(currentSession.intervalId);
+      if (currentSession.checkLoginInterval) clearInterval(currentSession.checkLoginInterval);
       
       // Remove modal
       const modal = document.getElementById('student-emulator-view');
@@ -713,6 +766,10 @@
     }
   };
   
+  // Initialize on load
+  console.log('[Student Emulator] Module loaded and ready');
+})();
+
   // Initialize on load
   console.log('[Student Emulator] Module loaded and ready');
 })();
