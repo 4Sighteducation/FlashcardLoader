@@ -769,7 +769,3 @@
   // Initialize on load
   console.log('[Student Emulator] Module loaded and ready');
 })();
-
-  // Initialize on load
-  console.log('[Student Emulator] Module loaded and ready');
-})();
