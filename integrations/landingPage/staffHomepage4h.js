@@ -2547,7 +2547,7 @@ function renderProfileSection(profileData, hasAdminRole) {
     dashboardButton = `
       <div class="profile-item">
         <a href="https://vespaacademy.knack.com/vespa-academy#dashboard3/" class="dashboard-button">
-          <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
+          <i class="fas fa-chart-line" style="font-size: 20px; margin-right: 10px;"></i>
           <span>VESPA Dashboard</span>
         </a>
       </div>
@@ -4582,7 +4582,7 @@ document.head.appendChild(fontAwesomeLink);
 
 // Load Student Emulator Script
 const studentEmulatorScript = document.createElement('script');
-studentEmulatorScript.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/studentEmulator1a.js';
+studentEmulatorScript.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/studentEmulator1b.js';
 studentEmulatorScript.onload = () => {
   console.log('[Staff Homepage] Student Emulator script loaded successfully');
 };
@@ -5418,3 +5418,4 @@ if (feedbackRequest.screenshot) {
 }
 
 })(); // Close IIFE properly
+
