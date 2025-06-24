@@ -268,17 +268,63 @@
           clearInterval(currentSession.updateInterval);
         }
         
+        let consecutiveErrors = 0;
+        
         currentSession.updateInterval = setInterval(async () => {
           if (!currentSession.sessionId) return;
           
           try {
             const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/view/${currentSession.sessionId}`);
+            
             if (response.ok) {
               const data = await response.json();
               this.updateView(data);
+              consecutiveErrors = 0; // Reset error counter on success
+              
+              // If session was recovered, show a notification
+              if (data.status === 'recovered') {
+                console.log('[Student Emulator] Session was recovered after crash');
+              }
+            } else if (response.status === 410) {
+              // Session expired/crashed - STOP POLLING IMMEDIATELY
+              console.error('[Student Emulator] Session has expired or crashed');
+              clearInterval(currentSession.updateInterval);
+              currentSession.updateInterval = null; // Clear the reference
+              
+              try {
+                const data = await response.json();
+                this.endSession(`Session ended: ${data.error || 'Session crashed'}`);
+              } catch (jsonError) {
+                this.endSession('Session ended unexpectedly.');
+              }
+              return; // Exit immediately to prevent any further processing
+            } else if (response.status === 503) {
+              // Session recovered, retry
+              const data = await response.json();
+              console.log('[Student Emulator] Session recovered, retrying...');
+              // Continue polling, the next request should work
+            } else {
+              // Other errors
+              consecutiveErrors++;
+              console.error(`[Student Emulator] Update error (${consecutiveErrors} consecutive):`, response.status);
+              
+              // Stop polling after 5 consecutive errors
+              if (consecutiveErrors >= 5) {
+                clearInterval(currentSession.updateInterval);
+                currentSession.updateInterval = null;
+                this.endSession('Too many errors occurred. Session ended.');
+              }
             }
           } catch (error) {
-            console.error('[Student Emulator] Update error:', error);
+            consecutiveErrors++;
+            console.error(`[Student Emulator] Update error (${consecutiveErrors} consecutive):`, error);
+            
+            // Stop polling after 5 consecutive errors
+            if (consecutiveErrors >= 5) {
+              clearInterval(currentSession.updateInterval);
+              currentSession.updateInterval = null;
+              this.endSession('Connection lost. Session ended.');
+            }
           }
         }, CONFIG.updateInterval);
       },
@@ -310,6 +356,34 @@
             if (response.ok) {
               const data = await response.json();
               this.updateView(data);
+              
+              // If session was recovered after click
+              if (data.status === 'recovered') {
+                console.log('[Student Emulator] Session recovered after click-induced crash');
+              }
+            } else if (response.status === 410) {
+              // Session expired/crashed - Stop all polling
+              console.error('[Student Emulator] Click caused session to crash');
+              if (currentSession.updateInterval) {
+                clearInterval(currentSession.updateInterval);
+                currentSession.updateInterval = null;
+              }
+              
+              try {
+                const data = await response.json();
+                this.endSession(`Session ended: ${data.error || 'Click caused session crash'}`);
+              } catch (jsonError) {
+                this.endSession('Session crashed after click.');
+              }
+              return; // Exit immediately
+            } else if (response.status === 503) {
+              // Session recovered, retry the click
+              const data = await response.json();
+              console.log('[Student Emulator] Session recovered, please retry the click');
+              // Could automatically retry here, but let's let the user retry
+              alert('Session was recovered. Please try clicking again.');
+            } else {
+              console.error('[Student Emulator] Click error:', response.status);
             }
           } catch (error) {
             console.error('[Student Emulator] Click error:', error);
@@ -357,6 +431,29 @@
             if (data.scrollInfo) {
               console.log(`[Student Emulator] Scroll position: ${data.scrollInfo.scrollY}/${data.scrollInfo.scrollHeight}`);
             }
+          } else if (response.status === 410) {
+            // Session expired/crashed - Stop all polling
+            console.error('[Student Emulator] Scroll caused session to crash');
+            if (currentSession.updateInterval) {
+              clearInterval(currentSession.updateInterval);
+              currentSession.updateInterval = null;
+            }
+            
+            try {
+              const data = await response.json();
+              this.endSession(`Session ended: ${data.error || 'Scroll caused session crash'}`);
+            } catch (jsonError) {
+              this.endSession('Session crashed after scroll.');
+            }
+            return; // Exit immediately
+          } else if (response.status === 503) {
+            // Session recovered, retry the scroll
+            const data = await response.json();
+            console.log('[Student Emulator] Session recovered, retrying scroll...');
+            // Retry the scroll automatically after a short delay
+            setTimeout(() => this.scroll(direction), 500);
+          } else {
+            console.error('[Student Emulator] Scroll error:', response.status);
           }
         } catch (error) {
           console.error('[Student Emulator] Scroll error:', error);
@@ -366,10 +463,15 @@
       
       // End emulation session
       endSession: async function(message) {
-        // Clear intervals
+        // Clear intervals immediately
         if (currentSession.updateInterval) {
           clearInterval(currentSession.updateInterval);
+          currentSession.updateInterval = null;
         }
+        
+        // Store student info before clearing
+        const studentInfo = currentSession.student;
+        const duration = currentSession.startTime ? Date.now() - currentSession.startTime : 0;
         
         // End backend session
         if (currentSession.sessionId) {
@@ -386,15 +488,9 @@
         const modal = document.getElementById('student-emulator-view');
         if (modal) modal.remove();
         
-        // Show message if provided
-        if (message) {
-          alert(message);
-        }
-        
         // Log session end
-        if (currentSession.student) {
-          const duration = Date.now() - currentSession.startTime;
-          console.log(`[Student Emulator] Ended session for ${currentSession.student.name} after ${Math.round(duration / 1000)} seconds`);
+        if (studentInfo) {
+          console.log(`[Student Emulator] Ended session for ${studentInfo.name} after ${Math.round(duration / 1000)} seconds`);
         }
         
         // Reset session
@@ -405,6 +501,21 @@
           sessionId: null,
           updateInterval: null
         };
+        
+        // Show message with option to start new session
+        if (message) {
+          // If session crashed, offer to restart
+          if (message.toLowerCase().includes('crash') || message.toLowerCase().includes('ended')) {
+            const restart = confirm(message + '\n\nWould you like to start a new emulation session?');
+            if (restart) {
+              setTimeout(() => {
+                this.show();
+              }, 100);
+            }
+          } else {
+            alert(message);
+          }
+        }
       },
       
       // Add CSS styles
