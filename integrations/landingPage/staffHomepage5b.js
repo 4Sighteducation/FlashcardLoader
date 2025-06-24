@@ -5241,39 +5241,42 @@ setTimeout(function() {
     }, 100);
   });
   
-  // Modify initialization function to set active flag
-const originalInit = window.initializeStaffHomepage;
-window.initializeStaffHomepage = function() {
-  // Clean up first
-  if (window.cleanupStaffHomepageCompletely) {
-    window.cleanupStaffHomepageCompletely();
-  }
+  // Enhanced initialization function wrapper
+  const originalInit = window.initializeStaffHomepage;
   
-  // Reset initialization flag
-  isInitializing = true;
-  
-  // Set active flag
-  window.STAFFHOMEPAGE_ACTIVE = true;
-  onStaffHomepage = true;
-  
-  // Initialize tracking variables
-  try {
-    lastUserToken = Knack.getUserToken();
-    lastUserId = Knack.getUserAttributes()?.id;
-  } catch (e) {
-    lastUserToken = null;
-    lastUserId = null;
-  }
-  
-  // Reset initialization flag after a delay
-  setTimeout(function() {
-    isInitializing = false;
-  }, 1000);
-  
-  // Call original initialization
-  return originalInit.apply(this, arguments);
-};
+  // Override the initialization function to include logout detection setup
+  window.initializeStaffHomepage = function() {
+    // Clean up first
+    if (window.cleanupStaffHomepageCompletely) {
+      window.cleanupStaffHomepageCompletely();
+    }
+    
+    // Reset initialization flag
+    isInitializing = true;
+    
+    // Set active flag
+    window.STAFFHOMEPAGE_ACTIVE = true;
+    onStaffHomepage = true;
+    
+    // Initialize tracking variables
+    try {
+      lastUserToken = Knack.getUserToken();
+      lastUserId = Knack.getUserAttributes()?.id;
+    } catch (e) {
+      lastUserToken = null;
+      lastUserId = null;
+    }
+    
+    // Reset initialization flag after a delay
+    setTimeout(function() {
+      isInitializing = false;
+    }, 1000);
+    
+    // Call the main initialization function that follows
+    return mainInitializeStaffHomepage();
+  };
 })();
+
 // Store feedback in Knack field_3207
 async function storeFeedbackInKnack(feedbackRequest) {
   try {
