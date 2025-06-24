@@ -108,53 +108,45 @@
       
       // Start emulation session
       startEmulation: async function(studentKey) {
-        const student = CONFIG.students[studentKey];
-        if (!student) {
-          console.error('Invalid student key:', studentKey);
-          return;
-        }
-        
-        // Close selection modal
-        this.closeSelection();
-        
-        // Create loading modal
-        this.createLoadingModal(student);
-        
         try {
-          // Start backend session
+          showLoading(`Starting ${CONFIG.students[studentKey].name} session...`);
+          
           const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/start`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+            },
             body: JSON.stringify({ studentKey })
           });
           
           if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to start session');
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
           
           const data = await response.json();
           
-          // Set up session
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
+          // Store session info
           currentSession = {
-            active: true,
             sessionId: data.sessionId,
-            student: student,
-            updateInterval: null,
-            retryCount: 0
+            studentKey: studentKey,
+            student: CONFIG.students[studentKey]
           };
           
-          // Proceed with login if needed
-          if (data.requiresLogin) {
-            await this.performLogin();
-          } else {
-            // Already logged in, show the view
-            await this.showEmulationView();
-          }
+          // Show the emulator view immediately with the landing page
+          showEmulatorView(data.screenshot, data.url);
+          showStatus(`✅ ${data.message || 'Session ready'}`);
+          
+          // Start the update loop
+          startUpdateLoop();
           
         } catch (error) {
           console.error('[Student Emulator] Error starting session:', error);
-          this.showError('Failed to start emulation session: ' + error.message);
+          showError(`Failed to start emulation session: ${error.message}`);
+          hideLoading();
         }
       },
       
