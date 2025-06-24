@@ -4566,7 +4566,7 @@ const studentEmulatorModal = `
     </div>
     <div class="emulator-body">
       <iframe id="student-emulator-iframe" 
-              src="https://vespaacademy.knack.com/vespa-academy#student-landing-page/" 
+              src="https://vespaacademy.knack.com/vespa-academy#landing-page/" 
               frameborder="0">
       </iframe>
     </div>
