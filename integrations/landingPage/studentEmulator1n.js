@@ -131,6 +131,7 @@
       startEmulation: async function(studentKey) {
         try {
           console.log(`[Student Emulator] Starting ${studentKey} session...`);
+          console.log(`[Student Emulator] Backend URL: ${CONFIG.backendUrl}`);
           
           // Close selection modal
           this.closeSelection();
@@ -141,6 +142,9 @@
           // Update loading status
           this.updateLoadingStatus('Connecting to backend...');
           
+          console.log(`[Student Emulator] Making POST request to: ${CONFIG.backendUrl}/api/student-emulator/start`);
+          console.log(`[Student Emulator] Request body:`, { studentKey });
+          
           const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/start`, {
             method: 'POST',
             headers: {
@@ -149,12 +153,17 @@
             body: JSON.stringify({ studentKey })
           });
           
+          console.log(`[Student Emulator] Response status: ${response.status}`);
+          console.log(`[Student Emulator] Response ok: ${response.ok}`);
+          
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+            console.error(`[Student Emulator] Response error:`, errorData);
             throw new Error(errorData.error || `Server error: ${response.status}`);
           }
           
           const data = await response.json();
+          console.log(`[Student Emulator] Response data:`, data);
           
           if (data.error) {
             throw new Error(data.error);
@@ -175,6 +184,7 @@
           // Check if we have a screenshot (already logged in or login successful)
           if (data.screenshot && data.url && !data.requiresLogin) {
             // Show the emulator view immediately
+            console.log(`[Student Emulator] Login successful, showing view immediately`);
             this.showEmulatorView(data.screenshot, data.url);
             
             // Start the update loop
@@ -192,6 +202,7 @@
             }, 1000);
           } else {
             // Fallback - try to get the view
+            console.log(`[Student Emulator] Fallback: trying to initialize view`);
             this.updateLoadingStatus('Initializing view...');
             setTimeout(() => {
               this.initializeView();
@@ -200,6 +211,7 @@
           
         } catch (error) {
           console.error('[Student Emulator] Error starting session:', error);
+          console.error('[Student Emulator] Error stack:', error.stack);
           this.showErrorModal(`Failed to start emulation session: ${error.message}`);
         }
       },
@@ -803,6 +815,7 @@
       // Attempt login (for cases where backend couldn't auto-login)
       attemptLogin: async function(sessionId) {
         try {
+          console.log(`[Student Emulator] Attempting login for session: ${sessionId}`);
           this.updateLoadingStatus('Attempting login...');
           
           const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/login/${sessionId}`, {
@@ -812,12 +825,16 @@
             }
           });
           
+          console.log(`[Student Emulator] Login response status: ${response.status}`);
+          
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+            console.error(`[Student Emulator] Login response error:`, errorData);
             throw new Error(errorData.error || `Login failed: ${response.status}`);
           }
           
           const data = await response.json();
+          console.log(`[Student Emulator] Login response data:`, data);
           
           if (data.error) {
             throw new Error(data.error);
@@ -825,10 +842,12 @@
           
           if (data.status === 'logged_in' && data.screenshot && data.url) {
             // Login successful, show the view
+            console.log(`[Student Emulator] Login successful via retry, showing view`);
             this.showEmulatorView(data.screenshot, data.url);
             this.startUpdateLoop();
             console.log(`[Student Emulator] Login successful`);
           } else {
+            console.error(`[Student Emulator] Invalid login response:`, data);
             throw new Error('Login response invalid');
           }
           
@@ -869,6 +888,38 @@
         } catch (error) {
           console.error('[Student Emulator] Initialize view error:', error);
           this.showErrorModal(`Failed to initialize view: ${error.message}`);
+        }
+      },
+      
+      // Debug test function - can be called from browser console
+      debugTest: async function() {
+        console.log(`[Student Emulator] DEBUG TEST - Backend URL: ${CONFIG.backendUrl}`);
+        
+        try {
+          // Test health endpoint first
+          console.log(`[Student Emulator] Testing health endpoint...`);
+          const healthResponse = await fetch(`${CONFIG.backendUrl}/health`);
+          console.log(`[Student Emulator] Health response:`, healthResponse.status, healthResponse.ok);
+          const healthData = await healthResponse.json();
+          console.log(`[Student Emulator] Health data:`, healthData);
+          
+          // Test start endpoint
+          console.log(`[Student Emulator] Testing start endpoint...`);
+          const startResponse = await fetch(`${CONFIG.backendUrl}/api/student-emulator/start`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ studentKey: 'ks5' })
+          });
+          console.log(`[Student Emulator] Start response:`, startResponse.status, startResponse.ok);
+          const startData = await startResponse.json();
+          console.log(`[Student Emulator] Start data:`, startData);
+          
+          return { health: healthData, start: startData };
+        } catch (error) {
+          console.error(`[Student Emulator] Debug test error:`, error);
+          return { error: error.message };
         }
       }
     };
