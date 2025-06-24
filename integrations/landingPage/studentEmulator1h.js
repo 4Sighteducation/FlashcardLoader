@@ -193,43 +193,64 @@
             throw new Error('Failed to start session');
           }
           
-          const { sessionId } = await startResponse.json();
-          currentSession.sessionId = sessionId;
+          const startData = await startResponse.json();
+          currentSession.sessionId = startData.sessionId;
           
-          // Perform login
-          loadingStatus.textContent = 'Logging in as student...';
-          
-          const loginResponse = await fetch(`${CONFIG.backendUrl}/api/student-emulator/login/${sessionId}`, {
-            method: 'POST'
-          });
-          
-          if (!loginResponse.ok) {
-            const errorData = await loginResponse.json().catch(() => ({}));
-            console.error('[Student Emulator] Login error data:', errorData);
+          // Check if login is required
+          if (startData.requiresLogin) {
+            // Perform login
+            loadingStatus.textContent = 'Logging in as student...';
             
-            // Check if we have a debug screenshot
-            if (errorData.debugScreenshot) {
-              // Show the debug screenshot in the loading area
-              document.querySelector('.se-loading').innerHTML = `
-                <p style="color: #ff6b6b; margin-bottom: 10px;">Login failed: ${errorData.error || 'Unknown error'}</p>
-                <img src="${errorData.debugScreenshot}" style="max-width: 100%; max-height: 400px; border: 1px solid #ccc;">
-                <p style="font-size: 12px; color: #666; margin-top: 10px;">Debug screenshot from: ${errorData.currentUrl || 'Unknown URL'}</p>
-                <button onclick="StudentEmulator.endSession()" style="margin-top: 10px;">Close</button>
-              `;
-              return;
+            const loginResponse = await fetch(`${CONFIG.backendUrl}/api/student-emulator/login/${startData.sessionId}`, {
+              method: 'POST'
+            });
+            
+            if (!loginResponse.ok) {
+              const errorData = await loginResponse.json().catch(() => ({}));
+              console.error('[Student Emulator] Login error data:', errorData);
+              
+              // Check if we have a debug screenshot
+              if (errorData.debugScreenshot) {
+                // Show the debug screenshot in the loading area
+                document.querySelector('.se-loading').innerHTML = `
+                  <p style="color: #ff6b6b; margin-bottom: 10px;">Login failed: ${errorData.error || 'Unknown error'}</p>
+                  <img src="${errorData.debugScreenshot}" style="max-width: 100%; max-height: 400px; border: 1px solid #ccc;">
+                  <p style="font-size: 12px; color: #666; margin-top: 10px;">Debug screenshot from: ${errorData.currentUrl || 'Unknown URL'}</p>
+                  <button onclick="StudentEmulator.endSession()" style="margin-top: 10px;">Close</button>
+                `;
+                return;
+              }
+              
+              throw new Error(errorData.error || 'Failed to login');
             }
             
-            throw new Error(errorData.error || 'Failed to login');
+            const loginData = await loginResponse.json();
+            
+            // Hide loading, show screenshot
+            document.querySelector('.se-loading').style.display = 'none';
+            document.querySelector('.se-screenshot-container').style.display = 'block';
+            
+            // Display initial screenshot
+            this.updateView(loginData);
+          } else {
+            // Already logged in, just get the current view
+            loadingStatus.textContent = 'Session ready, loading view...';
+            
+            // Get initial screenshot
+            const viewResponse = await fetch(`${CONFIG.backendUrl}/api/student-emulator/view/${startData.sessionId}`);
+            if (!viewResponse.ok) {
+              throw new Error('Failed to get initial view');
+            }
+            
+            const viewData = await viewResponse.json();
+            
+            // Hide loading, show screenshot
+            document.querySelector('.se-loading').style.display = 'none';
+            document.querySelector('.se-screenshot-container').style.display = 'block';
+            
+            // Display initial screenshot
+            this.updateView(viewData);
           }
-          
-          const loginData = await loginResponse.json();
-          
-          // Hide loading, show screenshot
-          document.querySelector('.se-loading').style.display = 'none';
-          document.querySelector('.se-screenshot-container').style.display = 'block';
-          
-          // Display initial screenshot
-          this.updateView(loginData);
           
           // Start update loop
           this.startUpdateLoop();
