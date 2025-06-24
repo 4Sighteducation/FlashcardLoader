@@ -4582,7 +4582,7 @@ document.head.appendChild(fontAwesomeLink);
 
 // Load Student Emulator Script
 const studentEmulatorScript = document.createElement('script');
-studentEmulatorScript.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/studentEmulator1e.js';
+studentEmulatorScript.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/studentEmulator1f.js';
 studentEmulatorScript.onload = () => {
   console.log('[Staff Homepage] Student Emulator script loaded successfully');
 };
