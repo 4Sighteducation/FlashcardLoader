@@ -133,6 +133,18 @@
           console.log(`[Student Emulator] Starting ${studentKey} session...`);
           console.log(`[Student Emulator] Backend URL: ${CONFIG.backendUrl}`);
           
+          // ALWAYS reset session state before starting
+          console.log(`[Student Emulator] Resetting session state...`);
+          if (currentSession.updateInterval) {
+            clearInterval(currentSession.updateInterval);
+          }
+          currentSession = {
+            active: false,
+            sessionId: null,
+            updateInterval: null,
+            retryCount: 0
+          };
+          
           // Close selection modal
           this.closeSelection();
           
@@ -169,7 +181,7 @@
             throw new Error(data.error);
           }
           
-          // Store session info
+          // Store NEW session info
           currentSession = {
             active: true,
             sessionId: data.sessionId,
@@ -181,29 +193,25 @@
           
           console.log(`[Student Emulator] Session ${data.sessionId} started:`, data);
           
-          // Check if we have a screenshot (already logged in or login successful)
-          if (data.screenshot && data.url && !data.requiresLogin) {
-            // Show the emulator view immediately
-            console.log(`[Student Emulator] Login successful, showing view immediately`);
+          // The backend should ALWAYS return requiresLogin: false with automatic login
+          // If we get a screenshot and URL, show it immediately
+          if (data.screenshot && data.url) {
+            console.log(`[Student Emulator] Got screenshot and URL, showing view immediately`);
             this.showEmulatorView(data.screenshot, data.url);
-            
-            // Start the update loop
             this.startUpdateLoop();
-            
             console.log(`[Student Emulator] Session ready - showing landing page`);
           } else if (data.requiresLogin) {
-            // Login is required or failed, show status and retry
-            console.log(`[Student Emulator] Login required or failed:`, data.error || 'Unknown reason');
-            this.updateLoadingStatus('Login required, attempting automatic login...');
+            // This shouldn't happen with our fixed backend, but handle it anyway
+            console.log(`[Student Emulator] Backend says login required:`, data.error || 'Unknown reason');
+            this.updateLoadingStatus('Backend login failed, attempting retry...');
             
-            // Try to login
             setTimeout(() => {
               this.attemptLogin(data.sessionId);
             }, 1000);
           } else {
             // Fallback - try to get the view
-            console.log(`[Student Emulator] Fallback: trying to initialize view`);
-            this.updateLoadingStatus('Initializing view...');
+            console.log(`[Student Emulator] No screenshot in response, trying to get view`);
+            this.updateLoadingStatus('Getting current view...');
             setTimeout(() => {
               this.initializeView();
             }, 1000);
@@ -921,6 +929,17 @@
           console.error(`[Student Emulator] Debug test error:`, error);
           return { error: error.message };
         }
+      },
+      
+      // Get current session info - for debugging
+      getSessionInfo: function() {
+        return {
+          active: currentSession.active,
+          sessionId: currentSession.sessionId,
+          studentKey: currentSession.studentKey,
+          hasUpdateInterval: !!currentSession.updateInterval,
+          retryCount: currentSession.retryCount
+        };
       }
     };
     
