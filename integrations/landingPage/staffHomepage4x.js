@@ -2583,6 +2583,13 @@ function renderProfileSection(profileData, hasAdminRole) {
           </div>
           
           ${dashboardButton}
+          
+          <div class="profile-item">
+            <button id="student-emulator-btn" class="dashboard-button" style="width: 100%; justify-content: center;">
+              <i class="fas fa-user-graduate" style="font-size: 20px; margin-right: 10px;"></i>
+              <span>Student Experience Mode</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -4454,6 +4461,68 @@ canvas {
   color: white;
 }
 
+/* Student Emulator Modal Styles */
+.emulator-modal-content {
+  width: 95% !important;
+  max-width: 1200px !important;
+  height: 90vh !important;
+  max-height: 90vh !important;
+  margin: 2.5% auto !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.emulator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 2px solid #00e5db;
+  background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
+  border-radius: 10px 10px 0 0;
+}
+
+.emulator-header h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emulator-header i {
+  color: #00e5db;
+}
+
+.emulator-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 10px 10px;
+}
+
+#student-emulator-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0 0 10px 10px;
+}
+
+/* Mobile responsive adjustments for emulator */
+@media (max-width: 768px) {
+  .emulator-modal-content {
+    width: 98% !important;
+    height: 95vh !important;
+    margin: 1% auto !important;
+  }
+  
+  .emulator-header h3 {
+    font-size: 16px;
+  }
+}
+
     `;
     }
 // Render the main homepage UI
@@ -4485,6 +4554,23 @@ const welcomeBanner = `
     If you would like to return to the old login page please let us know.</p>
   </div>
   <button class="banner-close" aria-label="Close banner">×</button>
+</div>`;
+
+// Student Emulator Modal HTML
+const studentEmulatorModal = `
+<div id="student-emulator-modal" class="vespa-modal">
+  <div class="vespa-modal-content emulator-modal-content">
+    <div class="emulator-header">
+      <h3><i class="fas fa-user-graduate"></i> Student Experience Mode</h3>
+      <span class="vespa-modal-close" id="emulator-modal-close">&times;</span>
+    </div>
+    <div class="emulator-body">
+      <iframe id="student-emulator-iframe" 
+              src="https://vespaacademy.knack.com/vespa-academy#student-landing-page/" 
+              frameborder="0">
+      </iframe>
+    </div>
+  </div>
 </div>`;
 
 // Enhanced feedback button and modal HTML
@@ -4641,8 +4727,9 @@ try {
     </div>
   `;
 
-  // Add loading indicator and feedback button to the body
+  // Add loading indicator, student emulator, and feedback button to the body
 document.body.insertAdjacentHTML('beforeend', loadingIndicator);
+document.body.insertAdjacentHTML('beforeend', studentEmulatorModal);
 document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   
   // Add the CSS
@@ -4892,7 +4979,35 @@ feedbackBtn.addEventListener('click', function() {
 }
 }
 
+// Setup Student Emulator button for ALL staff users
+const emulatorBtn = document.getElementById('student-emulator-btn');
+const emulatorModal = document.getElementById('student-emulator-modal');
+const emulatorCloseBtn = document.getElementById('emulator-modal-close');
 
+if (emulatorBtn && emulatorModal) {
+  // Show modal when clicking emulator button
+  emulatorBtn.addEventListener('click', function() {
+    emulatorModal.style.display = 'block';
+    // Track feature usage
+    trackPageView('Student Experience Mode').catch(err => 
+      console.warn('[Staff Homepage] Emulator tracking failed:', err)
+    );
+  });
+  
+  // Close modal when clicking X
+  if (emulatorCloseBtn) {
+    emulatorCloseBtn.addEventListener('click', function() {
+      emulatorModal.style.display = 'none';
+    });
+  }
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', function(e) {
+    if (e.target === emulatorModal) {
+      emulatorModal.style.display = 'none';
+    }
+  });
+}
 
   debugLog("Staff homepage rendered successfully");
 } catch (error) {
@@ -4997,6 +5112,10 @@ window.cleanupStaffHomepage = function() {
   const feedbackModal = document.getElementById('feedback-modal');
   if (feedbackModal) feedbackModal.remove();
   
+  // Remove student emulator modal
+  const emulatorModal = document.getElementById('student-emulator-modal');
+  if (emulatorModal) emulatorModal.remove();
+  
   // Remove logo modal
   const logoModal = document.getElementById('logo-modal');
   if (logoModal) logoModal.remove();
@@ -5047,6 +5166,7 @@ document.addEventListener('knack-scene-render.any', function(event) {
       'api-loading-indicator',
       'feedback-button',
       'feedback-modal',
+      'student-emulator-modal',
       'logo-modal',
       'welcome-banner',
       'staff-homepage' // Main container
@@ -5380,8 +5500,6 @@ if (feedbackRequest.screenshot) {
     return false;
   }
 }
-
-})(); // Close IIFE properly
 
 })(); // Close IIFE properly
 
