@@ -138,6 +138,9 @@
           // Show loading modal
           this.showLoadingModal(CONFIG.students[studentKey]);
           
+          // Update loading status
+          this.updateLoadingStatus('Connecting to backend...');
+          
           const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/start`, {
             method: 'POST',
             headers: {
@@ -167,13 +170,33 @@
             retryCount: 0
           };
           
-          // Show the emulator view immediately with the landing page
-          this.showEmulatorView(data.screenshot, data.url);
+          console.log(`[Student Emulator] Session ${data.sessionId} started:`, data);
           
-          // Start the update loop
-          this.startUpdateLoop();
-          
-          console.log(`[Student Emulator] Session ${data.sessionId} started successfully`);
+          // Check if we have a screenshot (already logged in or login successful)
+          if (data.screenshot && data.url && !data.requiresLogin) {
+            // Show the emulator view immediately
+            this.showEmulatorView(data.screenshot, data.url);
+            
+            // Start the update loop
+            this.startUpdateLoop();
+            
+            console.log(`[Student Emulator] Session ready - showing landing page`);
+          } else if (data.requiresLogin) {
+            // Login is required or failed, show status and retry
+            console.log(`[Student Emulator] Login required or failed:`, data.error || 'Unknown reason');
+            this.updateLoadingStatus('Login required, attempting automatic login...');
+            
+            // Try to login
+            setTimeout(() => {
+              this.attemptLogin(data.sessionId);
+            }, 1000);
+          } else {
+            // Fallback - try to get the view
+            this.updateLoadingStatus('Initializing view...');
+            setTimeout(() => {
+              this.initializeView();
+            }, 1000);
+          }
           
         } catch (error) {
           console.error('[Student Emulator] Error starting session:', error);
@@ -767,6 +790,86 @@
         styleSheet.id = 'student-emulator-styles';
         styleSheet.textContent = styles;
         document.head.appendChild(styleSheet);
+      },
+      
+      // Update loading status message
+      updateLoadingStatus: function(message) {
+        const statusEl = document.querySelector('.se-loading-status');
+        if (statusEl) {
+          statusEl.textContent = message;
+        }
+      },
+      
+      // Attempt login (for cases where backend couldn't auto-login)
+      attemptLogin: async function(sessionId) {
+        try {
+          this.updateLoadingStatus('Attempting login...');
+          
+          const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/login/${sessionId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+            throw new Error(errorData.error || `Login failed: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
+          if (data.status === 'logged_in' && data.screenshot && data.url) {
+            // Login successful, show the view
+            this.showEmulatorView(data.screenshot, data.url);
+            this.startUpdateLoop();
+            console.log(`[Student Emulator] Login successful`);
+          } else {
+            throw new Error('Login response invalid');
+          }
+          
+        } catch (error) {
+          console.error('[Student Emulator] Login error:', error);
+          this.showErrorModal(`Login failed: ${error.message}`);
+        }
+      },
+      
+      // Initialize view (fallback method)
+      initializeView: async function() {
+        try {
+          if (!currentSession.sessionId) {
+            throw new Error('No active session');
+          }
+          
+          this.updateLoadingStatus('Loading student view...');
+          
+          const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/view/${currentSession.sessionId}`);
+          
+          if (!response.ok) {
+            if (response.status === 410) {
+              throw new Error('Session expired');
+            }
+            throw new Error(`Failed to get view: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.screenshot && data.url) {
+            this.showEmulatorView(data.screenshot, data.url);
+            this.startUpdateLoop();
+            console.log(`[Student Emulator] View initialized`);
+          } else {
+            throw new Error('Invalid view response');
+          }
+          
+        } catch (error) {
+          console.error('[Student Emulator] Initialize view error:', error);
+          this.showErrorModal(`Failed to initialize view: ${error.message}`);
+        }
       }
     };
     
