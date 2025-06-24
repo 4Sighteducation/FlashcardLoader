@@ -140,6 +140,12 @@
                   <span class="se-student-info">Viewing as: ${student.name}</span>
                 </div>
                 <div class="se-header-actions">
+                  <button class="se-scroll-btn" onclick="StudentEmulator.scroll('up')" title="Scroll up">
+                    <i class="fas fa-chevron-up"></i>
+                  </button>
+                  <button class="se-scroll-btn" onclick="StudentEmulator.scroll('down')" title="Scroll down">
+                    <i class="fas fa-chevron-down"></i>
+                  </button>
                   <button class="se-refresh-btn" onclick="StudentEmulator.refreshView()" title="Refresh view">
                     <i class="fas fa-sync-alt"></i>
                   </button>
@@ -198,7 +204,22 @@
           });
           
           if (!loginResponse.ok) {
-            throw new Error('Failed to login');
+            const errorData = await loginResponse.json().catch(() => ({}));
+            console.error('[Student Emulator] Login error data:', errorData);
+            
+            // Check if we have a debug screenshot
+            if (errorData.debugScreenshot) {
+              // Show the debug screenshot in the loading area
+              document.querySelector('.se-loading').innerHTML = `
+                <p style="color: #ff6b6b; margin-bottom: 10px;">Login failed: ${errorData.error || 'Unknown error'}</p>
+                <img src="${errorData.debugScreenshot}" style="max-width: 100%; max-height: 400px; border: 1px solid #ccc;">
+                <p style="font-size: 12px; color: #666; margin-top: 10px;">Debug screenshot from: ${errorData.currentUrl || 'Unknown URL'}</p>
+                <button onclick="StudentEmulator.endSession()" style="margin-top: 10px;">Close</button>
+              `;
+              return;
+            }
+            
+            throw new Error(errorData.error || 'Failed to login');
           }
           
           const loginData = await loginResponse.json();
@@ -309,6 +330,36 @@
           }
         } catch (error) {
           console.error('[Student Emulator] Error refreshing view:', error);
+        }
+      },
+      
+      // Scroll the page
+      scroll: async function(direction) {
+        if (!currentSession.sessionId) return;
+        
+        console.log(`[Student Emulator] Scrolling ${direction}`);
+        
+        try {
+          const response = await fetch(`${CONFIG.backendUrl}/api/student-emulator/scroll/${currentSession.sessionId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              direction: direction,
+              amount: 300 // pixels to scroll
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            this.updateView(data);
+            
+            // Update scroll position indicator if present
+            if (data.scrollInfo) {
+              console.log(`[Student Emulator] Scroll position: ${data.scrollInfo.scrollY}/${data.scrollInfo.scrollHeight}`);
+            }
+          }
+        } catch (error) {
+          console.error('[Student Emulator] Scroll error:', error);
         }
       },
 
@@ -527,7 +578,7 @@
             gap: 10px;
           }
           
-          .se-refresh-btn, .se-end-btn {
+          .se-refresh-btn, .se-end-btn, .se-scroll-btn {
             background: #555;
             color: white;
             border: none;
@@ -536,6 +587,15 @@
             cursor: pointer;
             font-size: 14px;
             transition: background 0.2s;
+          }
+          
+          .se-scroll-btn {
+            padding: 8px 12px;
+            background: #4a90e2;
+          }
+          
+          .se-scroll-btn:hover {
+            background: #5ba0f2;
           }
           
           .se-refresh-btn:hover {
