@@ -2546,8 +2546,8 @@ function renderProfileSection(profileData, hasAdminRole) {
   if (hasAdminRole) {
     dashboardButton = `
       <div class="profile-item">
-        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard/" class="dashboard-button">
-          <img src="https://www.vespa.academy/Icons/resultsdashboard.png" alt="VESPA Dashboard" class="dashboard-icon">
+        <a href="https://vespaacademy.knack.com/vespa-academy#dashboard3/" class="dashboard-button">
+          <i class="fas fa-chart-line" style="font-size: 20px; margin-right: 10px;"></i>
           <span>VESPA Dashboard</span>
         </a>
       </div>
@@ -2583,6 +2583,13 @@ function renderProfileSection(profileData, hasAdminRole) {
           </div>
           
           ${dashboardButton}
+          
+          <div class="profile-item">
+            <button id="student-emulator-btn" class="dashboard-button" style="width: 100%; justify-content: center;">
+              <i class="fas fa-user-graduate" style="font-size: 20px; margin-right: 10px;"></i>
+              <span>Student Experience Mode</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -4454,6 +4461,68 @@ canvas {
   color: white;
 }
 
+/* Student Emulator Modal Styles */
+.emulator-modal-content {
+  width: 95% !important;
+  max-width: 1200px !important;
+  height: 90vh !important;
+  max-height: 90vh !important;
+  margin: 2.5% auto !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.emulator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 2px solid #00e5db;
+  background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
+  border-radius: 10px 10px 0 0;
+}
+
+.emulator-header h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emulator-header i {
+  color: #00e5db;
+}
+
+.emulator-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 10px 10px;
+}
+
+#student-emulator-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0 0 10px 10px;
+}
+
+/* Mobile responsive adjustments for emulator */
+@media (max-width: 768px) {
+  .emulator-modal-content {
+    width: 98% !important;
+    height: 95vh !important;
+    margin: 1% auto !important;
+  }
+  
+  .emulator-header h3 {
+    font-size: 16px;
+  }
+}
+
     `;
     }
 // Render the main homepage UI
@@ -4485,6 +4554,23 @@ const welcomeBanner = `
     If you would like to return to the old login page please let us know.</p>
   </div>
   <button class="banner-close" aria-label="Close banner">×</button>
+</div>`;
+
+// Student Emulator Modal HTML
+const studentEmulatorModal = `
+<div id="student-emulator-modal" class="vespa-modal">
+  <div class="vespa-modal-content emulator-modal-content">
+    <div class="emulator-header">
+      <h3><i class="fas fa-user-graduate"></i> Student Experience Mode</h3>
+      <span class="vespa-modal-close" id="emulator-modal-close">&times;</span>
+    </div>
+    <div class="emulator-body">
+      <iframe id="student-emulator-iframe" 
+              src="https://vespaacademy.knack.com/vespa-academy#landing-page/" 
+              frameborder="0">
+      </iframe>
+    </div>
+  </div>
 </div>`;
 
 // Enhanced feedback button and modal HTML
@@ -4641,8 +4727,9 @@ try {
     </div>
   `;
 
-  // Add loading indicator and feedback button to the body
+  // Add loading indicator, student emulator, and feedback button to the body
 document.body.insertAdjacentHTML('beforeend', loadingIndicator);
+document.body.insertAdjacentHTML('beforeend', studentEmulatorModal);
 document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   
   // Add the CSS
@@ -4703,9 +4790,9 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Add event listeners after modal is added
-    setupLogoControls(profileData.schoolId);
-  }
+      // Add event listeners after modal is added
+  setupLogoControls(profileData.schoolId);
+}
 // Setup cycle refresh button
 if (profileData && profileData.userId) {
   setupCycleRefresh(profileData.userId, profileData.schoolId);
@@ -4892,6 +4979,35 @@ feedbackBtn.addEventListener('click', function() {
 }
 }
 
+// Setup Student Emulator button for ALL staff users
+const emulatorBtn = document.getElementById('student-emulator-btn');
+const emulatorModal = document.getElementById('student-emulator-modal');
+const emulatorCloseBtn = document.getElementById('emulator-modal-close');
+
+if (emulatorBtn && emulatorModal) {
+  // Show modal when clicking emulator button
+  emulatorBtn.addEventListener('click', function() {
+    emulatorModal.style.display = 'block';
+    // Track feature usage
+    trackPageView('Student Experience Mode').catch(err => 
+      console.warn('[Staff Homepage] Emulator tracking failed:', err)
+    );
+  });
+  
+  // Close modal when clicking X
+  if (emulatorCloseBtn) {
+    emulatorCloseBtn.addEventListener('click', function() {
+      emulatorModal.style.display = 'none';
+    });
+  }
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', function(e) {
+    if (e.target === emulatorModal) {
+      emulatorModal.style.display = 'none';
+    }
+  });
+}
 
   debugLog("Staff homepage rendered successfully");
 } catch (error) {
@@ -4996,6 +5112,10 @@ window.cleanupStaffHomepage = function() {
   const feedbackModal = document.getElementById('feedback-modal');
   if (feedbackModal) feedbackModal.remove();
   
+  // Remove student emulator modal
+  const emulatorModal = document.getElementById('student-emulator-modal');
+  if (emulatorModal) emulatorModal.remove();
+  
   // Remove logo modal
   const logoModal = document.getElementById('logo-modal');
   if (logoModal) logoModal.remove();
@@ -5046,6 +5166,7 @@ document.addEventListener('knack-scene-render.any', function(event) {
       'api-loading-indicator',
       'feedback-button',
       'feedback-modal',
+      'student-emulator-modal',
       'logo-modal',
       'welcome-banner',
       'staff-homepage' // Main container
@@ -5089,78 +5210,10 @@ document.addEventListener('knack-scene-render.any', function(event) {
   const homepageSceneKey = window.STAFFHOMEPAGE_CONFIG?.sceneKey || 'scene_1215';
   const homepageViewKey = window.STAFFHOMEPAGE_CONFIG?.viewKey || 'view_3024';
   
-  // Enhanced logout detection
-  let lastUserToken = null;
-  let lastUserId = null;
-  
-  // Function to check if user is logged out
-  function checkForLogout() {
-    try {
-      const currentToken = Knack.getUserToken();
-      const currentUser = Knack.getUserAttributes();
-      const currentUserId = currentUser?.id;
-      
-      // If we had a token/user before but now we don't, user logged out
-      if ((lastUserToken && !currentToken) || (lastUserId && !currentUserId)) {
-        console.log('[Staff Homepage] Logout detected - cleaning up immediately');
-        window.cleanupStaffHomepageCompletely();
-        // Reset tracking variables
-        lastUserToken = null;
-        lastUserId = null;
-        return true;
-      }
-      
-      // If user changed (different ID), clean up for user switch
-      if (lastUserId && currentUserId && lastUserId !== currentUserId) {
-        console.log('[Staff Homepage] User change detected - cleaning up');
-        window.cleanupStaffHomepageCompletely();
-      }
-      
-      // Update tracking variables
-      lastUserToken = currentToken;
-      lastUserId = currentUserId;
-      
-      return false;
-    } catch (error) {
-      // If Knack functions throw errors, user is likely logged out
-      if (lastUserToken || lastUserId) {
-        console.log('[Staff Homepage] Knack context lost - user logged out, cleaning up');
-        window.cleanupStaffHomepageCompletely();
-        lastUserToken = null;
-        lastUserId = null;
-        return true;
-      }
-      return false;
-    }
-  }
-  
-  // Check for logout every 2 seconds
-  setInterval(checkForLogout, 2000);
-  
-  // Also check when page visibility changes (user might have logged out in another tab)
-  document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) {
-      setTimeout(checkForLogout, 500); // Small delay to let Knack update
-    }
-  });
-  
-  // Listen for beforeunload to clean up when navigating away
-  window.addEventListener('beforeunload', function() {
-    if (window.STAFFHOMEPAGE_ACTIVE) {
-      console.log('[Staff Homepage] Page unloading - cleaning up');
-      window.cleanupStaffHomepageCompletely();
-    }
-  });
-  
   // Create MutationObserver to detect DOM changes
 const observer = new MutationObserver(function(mutations) {
   // Skip during initialization phase
   if (isInitializing) return;
-  
-  // First check for logout
-  if (checkForLogout()) {
-    return; // If logout detected, stop processing
-  }
   
   // Check if we're currently on the homepage
   const targetElement = document.querySelector(targetElementSelector);
@@ -5206,11 +5259,6 @@ setTimeout(function() {
   
   // Also listen to Knack's navigation events as backup
   document.addEventListener('knack-scene-render.any', function(event) {
-    // Check for logout first
-    if (checkForLogout()) {
-      return;
-    }
-    
     // If new scene is not the homepage scene, clean up
     if (event.detail && event.detail.scene && 
         event.detail.scene.key !== homepageSceneKey) {
@@ -5219,64 +5267,30 @@ setTimeout(function() {
     }
   });
   
-  // Listen for Knack logout events specifically
-  document.addEventListener('knack-user-logout', function() {
-    console.log('[Staff Homepage] Knack logout event detected - cleaning up immediately');
+  // Modify initialization function to set active flag
+const originalInit = window.initializeStaffHomepage;
+window.initializeStaffHomepage = function() {
+  // Clean up first
+  if (window.cleanupStaffHomepageCompletely) {
     window.cleanupStaffHomepageCompletely();
-  });
+  }
   
-  // Listen for hash changes that might indicate logout
-  window.addEventListener('hashchange', function() {
-    // Small delay to let Knack process the change
-    setTimeout(function() {
-      if (checkForLogout()) {
-        return;
-      }
-      
-      // If hash changed to login page, clean up
-      if (window.location.hash.includes('login') || window.location.hash === '') {
-        console.log('[Staff Homepage] Navigation to login detected via hash change');
-        window.cleanupStaffHomepageCompletely();
-      }
-    }, 100);
-  });
+  // Reset initialization flag
+  isInitializing = true;
   
-  // Enhanced initialization function wrapper
-  const originalInit = window.initializeStaffHomepage;
+  // Set active flag
+  window.STAFFHOMEPAGE_ACTIVE = true;
+  onStaffHomepage = true;
   
-  // Override the initialization function to include logout detection setup
-  window.initializeStaffHomepage = function() {
-    // Clean up first
-    if (window.cleanupStaffHomepageCompletely) {
-      window.cleanupStaffHomepageCompletely();
-    }
-    
-    // Reset initialization flag
-    isInitializing = true;
-    
-    // Set active flag
-    window.STAFFHOMEPAGE_ACTIVE = true;
-    onStaffHomepage = true;
-    
-    // Initialize tracking variables
-    try {
-      lastUserToken = Knack.getUserToken();
-      lastUserId = Knack.getUserAttributes()?.id;
-    } catch (e) {
-      lastUserToken = null;
-      lastUserId = null;
-    }
-    
-    // Reset initialization flag after a delay
-    setTimeout(function() {
-      isInitializing = false;
-    }, 1000);
-    
-    // Call the main initialization function that follows
-    return mainInitializeStaffHomepage();
-  };
+  // Reset initialization flag after a delay
+  setTimeout(function() {
+    isInitializing = false;
+  }, 1000);
+  
+  // Call original initialization
+  return originalInit.apply(this, arguments);
+};
 })();
-
 // Store feedback in Knack field_3207
 async function storeFeedbackInKnack(feedbackRequest) {
   try {
