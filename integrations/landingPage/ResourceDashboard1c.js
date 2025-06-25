@@ -2,16 +2,6 @@
 (function() {
     console.log('[Resource Dashboard] Script loaded and executing');
     
-    // Check if jQuery is available
-    if (typeof $ === 'undefined' || typeof jQuery === 'undefined') {
-        console.error('[Resource Dashboard] jQuery is not available! Cannot initialize.');
-        // Still expose the function for later
-        window.initializeResourceDashboard = function() {
-            console.error('[Resource Dashboard] Cannot initialize - jQuery not available');
-        };
-        return;
-    }
-    
     // --- Basic Setup ---
     // Use config from loader if available, otherwise use defaults
     const loaderConfig = window.STAFFHOMEPAGE_CONFIG || {};
