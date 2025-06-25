@@ -1,11 +1,15 @@
 // Resource Dashboard Script for Knack - v1.0
 (function() {
+    console.log('[Resource Dashboard] Script loaded and executing');
+    
     // --- Basic Setup ---
+    // Use config from loader if available, otherwise use defaults
+    const loaderConfig = window.STAFFHOMEPAGE_CONFIG || {};
     const SCRIPT_CONFIG = {
-        knackAppId: '5ee90912c38ae7001510c1a9', // Assuming same App ID
-        knackApiKey: '8f733aa5-dd35-4464-8348-64824d1f5f0d', // Assuming same API Key
-        elementSelector: '#view_3024',
-        debugMode: true,
+        knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
+        knackApiKey: loaderConfig.knackApiKey || '8f733aa5-dd35-4464-8348-64824d1f5f0d',
+        elementSelector: loaderConfig.elementSelector || '#view_3024',
+        debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : true,
     };
 
     const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -306,8 +310,9 @@
     async function initializeResourceDashboard() {
         log('Initializing Resource Dashboard...');
         const $container = $(SCRIPT_CONFIG.elementSelector);
+        
         if ($container.length === 0) {
-            errorLog('Container element not found.');
+            errorLog('Container element not found:', SCRIPT_CONFIG.elementSelector);
             return;
         }
 
@@ -349,8 +354,12 @@
         }
     }
 
-    // Run initializer on document ready
-    $(initializeResourceDashboard);
+    // Expose the initializer function globally for the loader
+    window.initializeResourceDashboard = initializeResourceDashboard;
+    
+    // Only auto-run if not being loaded by the loader
+    if (!window.STAFFHOMEPAGE_CONFIG) {
+        $(initializeResourceDashboard);
+    }
 
 })();
-
