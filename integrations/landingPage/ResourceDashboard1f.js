@@ -107,6 +107,22 @@
         }
     }
     
+    // Helper function to format roles properly
+    function formatRoles(roles) {
+        if (!roles || roles.length === 0) return 'No Role Assigned';
+        
+        // If roles are objects, extract the name/title
+        const formattedRoles = roles.map(role => {
+            if (typeof role === 'object' && role !== null) {
+                // Try different possible property names
+                return role.name || role.title || role.identifier || role.value || 'Unknown Role';
+            }
+            return role;
+        });
+        
+        return formattedRoles.join(', ');
+    }
+    
     async function getStaffProfileData() {
         const user = Knack.getUserAttributes();
         if (!user || !user.id) {
@@ -117,7 +133,7 @@
         log("Fetching staff profile data for:", user.email);
         const staffRecord = await findStaffRecord(user.email);
         if (!staffRecord) {
-            return { name: user.name, roles: Knack.getUserRoles(), school: 'Unknown School', schoolLogo: null };
+            return { name: user.name, roles: formatRoles(Knack.getUserRoles()), school: 'Unknown School', schoolLogo: null };
         }
 
         const schoolId = extractValidRecordId(staffRecord[FIELD_MAPPING.schoolConnection + '_raw']);
@@ -141,13 +157,64 @@
 
         return {
             name: user.name,
-            roles: Knack.getUserRoles(),
+            roles: formatRoles(Knack.getUserRoles()),
             school: schoolName,
             schoolLogo: schoolLogo,
         };
     }
 
     // --- Core Logic ---
+    
+    // Helper to get current month name
+    function getCurrentMonthName() {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        return months[new Date().getMonth()];
+    }
+    
+    // Helper to extract month from identifier
+    function extractMonthFromIdentifier(identifier) {
+        if (!identifier) return null;
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        for (const month of months) {
+            if (identifier.includes(month)) {
+                return month;
+            }
+        }
+        return null;
+    }
+    
+    // Helper to get recent activity history from localStorage
+    function getActivityHistory() {
+        try {
+            const history = localStorage.getItem('vespa_activity_history');
+            return history ? JSON.parse(history) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+    
+    // Helper to save activity to history
+    function saveActivityToHistory(activityId) {
+        try {
+            let history = getActivityHistory();
+            const now = new Date().getTime();
+            
+            // Add new activity
+            history.push({ id: activityId, timestamp: now });
+            
+            // Keep only last 30 days
+            const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+            history = history.filter(item => item.timestamp > thirtyDaysAgo);
+            
+            localStorage.setItem('vespa_activity_history', JSON.stringify(history));
+        } catch (e) {
+            log('Failed to save activity history:', e);
+        }
+    }
+    
     async function getActivityOfTheWeek() {
         log('Fetching activities from CDN...');
         try {
@@ -163,22 +230,62 @@
                 return null;
             }
             
-            // Use the day of the year to select a "random" activity that changes daily.
+            const currentMonth = getCurrentMonthName();
+            const history = getActivityHistory();
+            const recentActivityIds = history.map(h => h.id);
+            
+            // Filter activities by current month
+            let monthActivities = response.records.filter(activity => {
+                const activityMonth = extractMonthFromIdentifier(activity.group_info?.identifier);
+                return activityMonth === currentMonth;
+            });
+            
+            // If no activities for current month, use all activities
+            if (monthActivities.length === 0) {
+                log(`No activities found for ${currentMonth}, using all activities`);
+                monthActivities = response.records;
+            }
+            
+            // Filter out recently shown activities
+            let availableActivities = monthActivities.filter(activity => 
+                !recentActivityIds.includes(activity.id)
+            );
+            
+            // If all activities have been shown recently, reset and use all month activities
+            if (availableActivities.length === 0) {
+                log('All activities shown recently, resetting pool');
+                availableActivities = monthActivities;
+            }
+            
+            // Select an activity based on day of year
             const today = new Date();
             const start = new Date(today.getFullYear(), 0, 0);
             const diff = today - start;
             const oneDay = 1000 * 60 * 60 * 24;
             const dayOfYear = Math.floor(diff / oneDay);
             
-            const activityIndex = dayOfYear % response.records.length;
-            const activity = response.records[activityIndex];
-            log(`Activity of the day (index ${activityIndex}):`, activity);
+            const activityIndex = dayOfYear % availableActivities.length;
+            const activity = availableActivities[activityIndex];
+            
+            // Save to history
+            saveActivityToHistory(activity.id);
+            
+            log(`Selected activity for ${currentMonth}:`, activity.title);
+
+            // Extract PDF link from embed code
+            let pdfLink = null;
+            const pdfMatch = activity.html_content.match(/href="([^"]+\.pdf[^"]*)"/i);
+            if (pdfMatch) {
+                pdfLink = pdfMatch[1];
+                log('Found PDF link:', pdfLink);
+            }
 
             return {
                 name: activity.title,
                 group: activity.group_info?.identifier || 'N/A',
                 category: activity.category,
-                embedCode: activity.html_content
+                embedCode: activity.html_content,
+                pdfLink: pdfLink
             };
         } catch (error) {
             errorLog('Failed to fetch activities from CDN:', error);
@@ -187,6 +294,30 @@
     }
 
     // --- Rendering Functions ---
+    
+    const MY_RESOURCES_APPS = [
+       { name: "Slide Decks", url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/", icon: "fa-solid fa-display" },
+       { name: "Newsletter", url: "https://vespaacademy.knack.com/vespa-academy#vespa-newsletter/", icon: "fa-solid fa-newspaper" },
+       { name: "Curriculum", url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/", icon: "fa-solid fa-book-open" },
+       { name: "Worksheets", url: "https://vespaacademy.knack.com/vespa-academy#worksheets/", icon: "fa-solid fa-file-pdf" },
+    ];
+    
+    function renderNavigationSection() {
+        const navButtons = MY_RESOURCES_APPS.map(app => `
+            <a href="${app.url}" class="nav-button" target="_blank">
+                <i class="${app.icon}"></i>
+                <span>${app.name}</span>
+            </a>
+        `).join('');
+
+        return `
+            <nav class="vespa-navigation">
+                <div class="nav-container">
+                    ${navButtons}
+                </div>
+            </nav>
+        `;
+    }
     
     function renderProfileSection(profileData) {
         // Enhanced profile section matching coaching dashboard
@@ -208,7 +339,7 @@
                             </div>
                             <div class="profile-item">
                                 <span class="profile-label">Roles:</span>
-                                <span class="profile-value">${profileData.roles.join(', ')}</span>
+                                <span class="profile-value">${profileData.roles}</span>
                             </div>
                         </div>
                     </div>
@@ -233,49 +364,37 @@
             `;
         }
 
-        // Debug the embed code
-        console.log('[Resource Dashboard] Activity embed code:', activity.embedCode);
+        // Remove PDF link from embed code if it exists
+        let cleanedEmbedCode = activity.embedCode;
+        if (activity.pdfLink) {
+            // Remove the entire PDF section (hr tags and link)
+            cleanedEmbedCode = cleanedEmbedCode.replace(/<hr[^>]*>[\s\S]*?<\/hr>/gi, '');
+        }
 
-        // A nicer embed frame with better error handling
         return `
             <section class="vespa-section activity-section">
                 <h2 class="vespa-section-title">ACTIVITY OF THE DAY</h2>
                 <div class="activity-container">
                     <div class="activity-header">
-                        <h3>${activity.name || 'Untitled Activity'}</h3>
-                        <div class="activity-meta">
-                            <span><strong>Group:</strong> ${activity.group || 'N/A'}</span>
-                            <span><strong>Category:</strong> ${activity.category || 'N/A'}</span>
+                        <div class="activity-info">
+                            <h3>${activity.name || 'Untitled Activity'}</h3>
+                            <div class="activity-meta">
+                                <span><strong>Group:</strong> ${activity.group || 'N/A'}</span>
+                                <span><strong>Category:</strong> ${activity.category || 'N/A'}</span>
+                            </div>
                         </div>
+                        ${activity.pdfLink ? `
+                            <div class="pdf-download-container">
+                                <a href="${activity.pdfLink}" target="_blank" class="pdf-download-button">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>DOWNLOAD PDF</span>
+                                </a>
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="activity-embed-frame">
-                        ${activity.embedCode || '<p style="text-align:center; color:#999;">No embed content available</p>'}
+                        ${cleanedEmbedCode || '<p style="text-align:center; color:#999;">No embed content available</p>'}
                     </div>
-                </div>
-            </section>
-        `;
-    }
-    
-    const MY_RESOURCES_APPS = [
-       { name: "Slide Decks", url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/", icon: "fa-solid fa-display" },
-       { name: "Newsletter", url: "https://vespaacademy.knack.com/vespa-academy#vespa-newsletter/", icon: "fa-solid fa-newspaper" },
-       { name: "Curriculum", url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/", icon: "fa-solid fa-book-open" },
-       { name: "Worksheets", url: "https://vespaacademy.knack.com/vespa-academy#worksheets/", icon: "fa-solid fa-file-pdf" },
-    ];
-
-    function renderResourcesSection() {
-        const appButtons = MY_RESOURCES_APPS.map(app => `
-            <a href="${app.url}" class="app-button" target="_blank">
-                <div class="app-icon"><i class="${app.icon}"></i></div>
-                <div class="app-name">${app.name}</div>
-            </a>
-        `).join('');
-
-        return `
-            <section class="vespa-section resources-section">
-                <h2 class="vespa-section-title">MY RESOURCES</h2>
-                <div class="app-hub">
-                    ${appButtons}
                 </div>
             </section>
         `;
@@ -307,6 +426,54 @@
                 0% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
                 50% { box-shadow: 0 4px 18px rgba(0, 229, 219, 0.3); }
                 100% { box-shadow: 0 4px 12px rgba(0, 229, 219, 0.1); }
+            }
+
+            /* Navigation Section */
+            .vespa-navigation {
+                background: linear-gradient(135deg, #0d2274 0%, #061a54 100%);
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
+                border: 2px solid #00e5db;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            }
+
+            .nav-container {
+                display: flex;
+                gap: 15px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-button {
+                background: linear-gradient(135deg, #15348e 0%, #102983 100%);
+                color: #ffffff;
+                text-decoration: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                transition: all 0.3s ease;
+                border: 1px solid #00e5db;
+                font-weight: 600;
+                font-size: 14px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            .nav-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0, 229, 219, 0.4);
+                background: linear-gradient(135deg, #1a3ea0 0%, #153494 100%);
+            }
+
+            .nav-button i {
+                font-size: 18px;
+                color: #00e5db;
+            }
+
+            .nav-button:hover i {
+                color: #ffffff;
             }
 
             /* Sections */
@@ -412,6 +579,7 @@
             .profile-details {
                 display: flex;
                 gap: 30px;
+                flex-wrap: wrap;
             }
 
             .profile-item {
@@ -448,6 +616,15 @@
                 padding: 15px;
                 border-radius: 8px;
                 border: 1px solid #00e5db;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+
+            .activity-info {
+                flex: 1;
             }
 
             .activity-header h3 {
@@ -473,6 +650,39 @@
                 color: #00e5db;
             }
 
+            /* PDF Download Button */
+            .pdf-download-container {
+                flex: 0 0 auto;
+            }
+
+            .pdf-download-button {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                background: linear-gradient(135deg, #e59437 0%, #d88327 100%);
+                color: #ffffff;
+                text-decoration: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 12px rgba(229, 148, 55, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            .pdf-download-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(229, 148, 55, 0.5);
+                background: linear-gradient(135deg, #f0a040 0%, #e59437 100%);
+            }
+
+            .pdf-download-button i {
+                font-size: 18px;
+            }
+
             .activity-embed-frame {
                 background: #ffffff;
                 border: 2px solid #00e5db;
@@ -493,90 +703,6 @@
                 display: block;
             }
 
-            /* Resources Section */
-            .resources-section {
-                border-left: 4px solid #7f31a4;
-                box-shadow: 0 4px 12px rgba(127, 49, 164, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
-            }
-
-            .app-hub {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-            }
-
-            .app-button {
-                background: linear-gradient(135deg, #15348e 0%, #102983 100%);
-                color: #ffffff;
-                text-decoration: none;
-                padding: 20px;
-                border-radius: 8px;
-                text-align: center;
-                transition: all 0.3s ease;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 12px;
-                border: 1px solid #00e5db;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                position: relative;
-                overflow: hidden;
-                min-height: 140px;
-            }
-
-            .app-button::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 20px;
-                height: 20px;
-                background: radial-gradient(circle at top right, rgba(0, 229, 219, 0.25), transparent 70%);
-                z-index: 1;
-            }
-
-            .app-button:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-                animation: pulseGlow 2s infinite;
-            }
-
-            .app-icon {
-                width: 50px;
-                height: 50px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: rgba(0, 229, 219, 0.1);
-                border-radius: 50%;
-                padding: 12px;
-                transition: all 0.3s ease;
-            }
-
-            .app-icon i {
-                font-size: 2rem;
-                color: #00e5db;
-                transition: all 0.3s ease;
-            }
-
-            .app-button:hover .app-icon {
-                transform: scale(1.1);
-                background: rgba(0, 229, 219, 0.2);
-            }
-
-            .app-button:hover .app-icon i {
-                transform: scale(1.15);
-                color: #ffffff;
-            }
-
-            .app-name {
-                font-size: 16px;
-                font-weight: 600;
-                letter-spacing: 0.5px;
-                z-index: 2;
-            }
-
             /* Loading state */
             .loading-state {
                 padding: 60px;
@@ -585,7 +711,7 @@
                 font-size: 18px;
             }
 
-                         /* Error state */
+            /* Error state */
             .error-state {
                 padding: 40px;
                 text-align: center;
@@ -622,13 +748,28 @@
                     padding: 15px;
                 }
 
-                .app-hub {
-                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                    gap: 15px;
+                .nav-container {
+                    flex-direction: column;
                 }
 
-                .activity-embed-frame {
-                    padding: 10px;
+                .nav-button {
+                    width: 100%;
+                    justify-content: center;
+                }
+
+                .activity-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+
+                .pdf-download-button {
+                    width: 100%;
+                    justify-content: center;
+                }
+
+                .profile-details {
+                    flex-direction: column;
+                    gap: 10px;
                 }
 
                 .activity-embed-frame iframe {
@@ -637,7 +778,6 @@
             }
         `;
     }
-
 
     // --- Initialization ---
     async function initializeResourceDashboard() {
@@ -688,9 +828,9 @@
 
             const dashboardHtml = `
                 <div id="resource-dashboard-container">
+                    ${renderNavigationSection()}
                     ${renderProfileSection(profileData)}
                     ${renderActivitySection(activity)}
-                    ${renderResourcesSection()}
                 </div>
             `;
 
