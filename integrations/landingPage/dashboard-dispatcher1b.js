@@ -7,7 +7,7 @@
 
     const SCRIPT_URLS = {
         coaching: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staffHomepage5d.js',
-        resource: 'https://cdn.jsdelivr.net/gh/4Sighteducation/vespa-dashboard@main/integrastions/landingPage/ResourceDashboard.js',
+        resource: 'https://cdn.jsdelivr.net/gh/4Sighteducation/vespa-dashboard@main/integrations/landingPage/ResourceDashboard.js',
     };
 
     const FIELD_IDS = {
@@ -107,7 +107,7 @@
     }
 
     // --- Main Execution ---
-    async function main() {
+    async function initializeStaffHomepage() {
         log('Starting dashboard dispatch...');
         const accountType = await getAccountType();
 
@@ -119,9 +119,9 @@
         }
     }
 
-    // Delay execution slightly to ensure Knack environment is fully loaded.
-    $(function() {
-        setTimeout(main, 500);
-    });
+    // Attach the initializer to the window object so the loader can find it.
+    window.initializeStaffHomepage = initializeStaffHomepage;
+
+})(); 
 
 })(); 
