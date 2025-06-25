@@ -7,7 +7,7 @@
 
     const SCRIPT_URLS = {
         coaching: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staffHomepage5c.js',
-        resource: 'https://cdn.jsdelivr.net/gh/4Sighteducation/vespa-dashboard@main/src/ResourceDashboard.js',
+        resource: 'https://cdn.jsdelivr.net/gh/4Sighteducation/vespa-dashboard@main/integrastions/landingPage/ResourceDashboard.js',
     };
 
     const FIELD_IDS = {
