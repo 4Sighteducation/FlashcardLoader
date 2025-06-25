@@ -13,14 +13,11 @@
     };
 
     const FIELD_IDS = {
-        staffLoginEmail: 'field_91',
-        staffToCustomerConnection: 'field_122',
-        customerAccountType: 'field_63',
+        userAccountType: 'field_441', // Account type field on the user record
     };
 
     const OBJECT_KEYS = {
-        staff: 'object_3',
-        customers: 'object_2',
+        users: 'object_3', // Users object
     };
 
     // --- Helper Functions ---
@@ -75,45 +72,25 @@
 
     async function getAccountType() {
         const user = Knack.getUserAttributes();
-        if (!user || !user.email) {
-            errorLog('Could not find logged-in user email.');
+        if (!user || !user.id) {
+            errorLog('Could not find logged-in user.');
             return null;
         }
 
         try {
-            // 1. Find the staff record using the user's email.
-            const staffFilters = encodeURIComponent(JSON.stringify({
-                match: 'and',
-                rules: [{
-                    field: FIELD_IDS.staffLoginEmail,
-                    operator: 'is',
-                    value: user.email
-                }]
-            }));
-            const staffResponse = await makeKnackRequest(`objects/${OBJECT_KEYS.staff}/records?filters=${staffFilters}`);
-            const staffRecord = staffResponse.records[0];
-
-            if (!staffRecord) {
-                errorLog('Staff record not found for email:', user.email);
-                return null;
-            }
-
-            // 2. Get the connected VESPA Customer ID.
-            const customerConnection = staffRecord[`${FIELD_IDS.staffToCustomerConnection}_raw`];
-            const customerId = customerConnection && customerConnection.length > 0 ? customerConnection[0].id : null;
-
-            if (!customerId) {
-                errorLog('VESPA Customer connection not found on staff record.');
-                return null;
-            }
-
-            // 3. Fetch the VESPA Customer record.
-            const customerRecord = await makeKnackRequest(`objects/${OBJECT_KEYS.customers}/records/${customerId}`);
+            // Fetch the user record to get the account type field
+            const userRecord = await makeKnackRequest(`objects/${OBJECT_KEYS.users}/records/${user.id}`);
             
-            // 4. Return the Account Type.
-            const accountType = customerRecord[FIELD_IDS.customerAccountType];
-            log('Successfully determined Account Type:', accountType);
-            return accountType;
+            // Get the account type from field_441
+            const accountTypeValue = userRecord[FIELD_IDS.userAccountType];
+            log('User account type field value:', accountTypeValue);
+            
+            // Check if the field contains "RESOURCES"
+            const isResourcesAccount = accountTypeValue && 
+                                     accountTypeValue.toString().toUpperCase().includes('RESOURCES');
+            
+            log('Is Resources Account:', isResourcesAccount);
+            return isResourcesAccount ? 'RESOURCES' : 'COACHING';
 
         } catch (err) {
             errorLog('An error occurred while fetching the account type.', err);
@@ -138,12 +115,12 @@
         
         const accountType = await getAccountType();
 
-        // Default to the coaching dashboard if the type is not 'RESOURCE PORTAL' or an error occurs.
-        if (accountType && accountType.toUpperCase() === 'RESOURCE PORTAL') {
-            log('Account type is RESOURCE PORTAL, loading resource dashboard');
+        // Load appropriate dashboard based on account type
+        if (accountType === 'RESOURCES') {
+            log('User has RESOURCES account type, loading resource dashboard');
             loadScript(SCRIPT_URLS.resource);
         } else {
-            log('Loading coaching dashboard (default or non-resource account)');
+            log('Loading coaching dashboard (default or non-RESOURCES account)');
             loadScript(SCRIPT_URLS.coaching);
         }
     }
@@ -153,3 +130,4 @@
     main();
 
 })(); 
+
