@@ -117,6 +117,19 @@
                 // Try different possible property names
                 return role.name || role.title || role.identifier || role.value || 'Unknown Role';
             }
+            // If it's a string like "object_5", try to map it to a friendly name
+            if (typeof role === 'string') {
+                // Common role mappings
+                const roleMap = {
+                    'object_5': 'Tutor',
+                    'object_7': 'Staff Admin',
+                    'object_6': 'Administrator',
+                    'object_8': 'Manager',
+                    'object_9': 'Teacher',
+                    'object_10': 'Support Staff'
+                };
+                return roleMap[role] || role.replace(/object_\d+/, 'Staff Member');
+            }
             return role;
         });
         
@@ -164,6 +177,117 @@
     }
 
     // --- Core Logic ---
+    
+    // Helper to modify embed code for kiosk mode
+    function enhanceEmbedForKioskMode(embedCode) {
+        if (!embedCode) return embedCode;
+        
+        // Create a temporary div to parse the HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = embedCode;
+        
+        // Find all iframes
+        const iframes = tempDiv.querySelectorAll('iframe');
+        
+        iframes.forEach(iframe => {
+            let src = iframe.getAttribute('src');
+            if (!src) return;
+            
+            // Google Slides
+            if (src.includes('docs.google.com/presentation')) {
+                // Add parameters for auto-play, loop, and no controls
+                if (src.includes('/embed?')) {
+                    src += '&rm=minimal'; // Remove menu
+                } else {
+                    src = src.replace('/embed', '/embed?start=true&loop=true&delayms=30000&rm=minimal');
+                }
+                iframe.setAttribute('src', src);
+                iframe.setAttribute('allowfullscreen', 'true');
+                iframe.setAttribute('mozallowfullscreen', 'true');
+                iframe.setAttribute('webkitallowfullscreen', 'true');
+            }
+            // Slides.com
+            else if (src.includes('slides.com') && src.includes('/embed')) {
+                // Slides.com embeds - add style parameters
+                if (!src.includes('style=')) {
+                    src += (src.includes('?') ? '&' : '?') + 'style=light&autoSlide=30000';
+                }
+                iframe.setAttribute('src', src);
+                iframe.setAttribute('scrolling', 'no');
+                iframe.setAttribute('allowfullscreen', 'true');
+            }
+            // Local VESPA slides
+            else if (src.includes('vespa.academy/assets')) {
+                // For local slides, add fullscreen parameters if the slide viewer supports them
+                if (!src.includes('?')) {
+                    src += '?fullscreen=1&autoplay=1';
+                } else {
+                    src += '&fullscreen=1&autoplay=1';
+                }
+                iframe.setAttribute('src', src);
+                iframe.setAttribute('allowfullscreen', 'true');
+            }
+            
+            // Set minimum dimensions for better viewing
+            if (!iframe.style.width || iframe.style.width !== '100%') {
+                iframe.style.width = '100%';
+            }
+            if (!iframe.style.height || parseInt(iframe.style.height) < 500) {
+                iframe.style.height = '500px';
+            }
+            
+            // Add fullscreen attributes
+            iframe.setAttribute('allowfullscreen', 'true');
+            iframe.setAttribute('webkitallowfullscreen', 'true');
+            iframe.setAttribute('mozallowfullscreen', 'true');
+            iframe.setAttribute('msallowfullscreen', 'true');
+        });
+        
+        return tempDiv.innerHTML;
+    }
+    
+    // Helper to add fullscreen button to activity
+    function addFullscreenButton(activitySection) {
+        // Add a fullscreen toggle button
+        const fullscreenBtn = `
+            <button class="fullscreen-toggle" onclick="toggleActivityFullscreen(this)" title="Toggle Fullscreen">
+                <i class="fas fa-expand"></i>
+            </button>
+        `;
+        return fullscreenBtn;
+    }
+    
+    // Global function for fullscreen toggle
+    window.toggleActivityFullscreen = function(button) {
+        const activityFrame = button.closest('.activity-section').querySelector('.activity-embed-frame');
+        const iframe = activityFrame.querySelector('iframe');
+        
+        if (!document.fullscreenElement) {
+            // Enter fullscreen
+            if (iframe && iframe.requestFullscreen) {
+                iframe.requestFullscreen();
+            } else if (iframe && iframe.webkitRequestFullscreen) {
+                iframe.webkitRequestFullscreen();
+            } else if (iframe && iframe.mozRequestFullScreen) {
+                iframe.mozRequestFullScreen();
+            } else if (iframe && iframe.msRequestFullscreen) {
+                iframe.msRequestFullscreen();
+            }
+            button.innerHTML = '<i class="fas fa-compress"></i>';
+        } else {
+            // Exit fullscreen
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+            button.innerHTML = '<i class="fas fa-expand"></i>';
+        }
+    };
     
     // Helper to get current month name
     function getCurrentMonthName() {
@@ -279,12 +403,15 @@
                 pdfLink = pdfMatch[1];
                 log('Found PDF link:', pdfLink);
             }
+            
+            // Enhance embed code for kiosk mode
+            const enhancedEmbedCode = enhanceEmbedForKioskMode(activity.html_content);
 
             return {
                 name: activity.title,
                 group: activity.group_info?.identifier || 'N/A',
                 category: activity.category,
-                embedCode: activity.html_content,
+                embedCode: enhancedEmbedCode,
                 pdfLink: pdfLink
             };
         } catch (error) {
@@ -311,11 +438,12 @@
         `).join('');
 
         return `
-            <nav class="vespa-navigation">
+            <section class="vespa-section navigation-section">
+                <h2 class="vespa-section-title">MY RESOURCES</h2>
                 <div class="nav-container">
                     ${navButtons}
                 </div>
-            </nav>
+            </section>
         `;
     }
     
@@ -383,14 +511,15 @@
                                 <span><strong>Category:</strong> ${activity.category || 'N/A'}</span>
                             </div>
                         </div>
-                        ${activity.pdfLink ? `
-                            <div class="pdf-download-container">
+                        <div class="activity-buttons">
+                            ${activity.pdfLink ? `
                                 <a href="${activity.pdfLink}" target="_blank" class="pdf-download-button">
                                     <i class="fas fa-file-pdf"></i>
                                     <span>DOWNLOAD PDF</span>
                                 </a>
-                            </div>
-                        ` : ''}
+                            ` : ''}
+                            ${addFullscreenButton()}
+                        </div>
                     </div>
                     <div class="activity-embed-frame">
                         ${cleanedEmbedCode || '<p style="text-align:center; color:#999;">No embed content available</p>'}
@@ -429,51 +558,61 @@
             }
 
             /* Navigation Section */
-            .vespa-navigation {
+            .navigation-section {
                 background: linear-gradient(135deg, #0d2274 0%, #061a54 100%);
-                border-radius: 8px;
-                padding: 15px;
-                margin-bottom: 20px;
-                border: 2px solid #00e5db;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                border-left: 4px solid #00e5db;
+                box-shadow: 0 4px 12px rgba(0, 229, 219, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
             }
 
             .nav-container {
-                display: flex;
-                gap: 15px;
-                flex-wrap: wrap;
-                justify-content: center;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 20px;
+                margin-top: 15px;
             }
 
             .nav-button {
                 background: linear-gradient(135deg, #15348e 0%, #102983 100%);
-                color: #ffffff;
+                color: #00e5db !important;
                 text-decoration: none;
-                padding: 12px 24px;
-                border-radius: 6px;
+                padding: 20px;
+                border-radius: 8px;
                 display: flex;
                 align-items: center;
-                gap: 10px;
+                justify-content: center;
+                gap: 12px;
                 transition: all 0.3s ease;
-                border: 1px solid #00e5db;
-                font-weight: 600;
-                font-size: 14px;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                border: 2px solid #00e5db;
+                font-weight: 700;
+                font-size: 16px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                min-height: 80px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .nav-button span {
+                color: #00e5db !important;
+                text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
             }
 
             .nav-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(0, 229, 219, 0.4);
+                transform: translateY(-3px);
+                box-shadow: 0 8px 20px rgba(0, 229, 219, 0.4);
                 background: linear-gradient(135deg, #1a3ea0 0%, #153494 100%);
             }
 
             .nav-button i {
-                font-size: 18px;
-                color: #00e5db;
+                font-size: 24px;
+                color: #00e5db !important;
             }
 
             .nav-button:hover i {
-                color: #ffffff;
+                color: #ffffff !important;
+            }
+
+            .nav-button:hover span {
+                color: #ffffff !important;
             }
 
             /* Sections */
@@ -651,8 +790,10 @@
             }
 
             /* PDF Download Button */
-            .pdf-download-container {
-                flex: 0 0 auto;
+            .activity-buttons {
+                display: flex;
+                gap: 10px;
+                align-items: center;
             }
 
             .pdf-download-button {
@@ -682,6 +823,37 @@
             .pdf-download-button i {
                 font-size: 18px;
             }
+            
+            /* Fullscreen Button */
+            .fullscreen-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 44px;
+                height: 44px;
+                background: linear-gradient(135deg, #00e5db 0%, #00c5c0 100%);
+                color: #061a54;
+                border: none;
+                border-radius: 6px;
+                font-size: 18px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 12px rgba(0, 229, 219, 0.3);
+            }
+
+            .fullscreen-toggle:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0, 229, 219, 0.5);
+                background: linear-gradient(135deg, #00f5eb 0%, #00d5d0 100%);
+            }
+
+            .fullscreen-toggle i {
+                transition: transform 0.3s ease;
+            }
+
+            .fullscreen-toggle:hover i {
+                transform: scale(1.2);
+            }
 
             .activity-embed-frame {
                 background: #ffffff;
@@ -694,13 +866,35 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                position: relative;
             }
 
             .activity-embed-frame iframe {
                 width: 100%;
-                height: 450px;
+                height: 500px;
                 border: none;
                 display: block;
+            }
+            
+            /* Fullscreen mode styles */
+            .activity-embed-frame iframe:fullscreen {
+                width: 100vw;
+                height: 100vh;
+            }
+            
+            .activity-embed-frame iframe:-webkit-full-screen {
+                width: 100vw;
+                height: 100vh;
+            }
+            
+            .activity-embed-frame iframe:-moz-full-screen {
+                width: 100vw;
+                height: 100vh;
+            }
+            
+            .activity-embed-frame iframe:-ms-fullscreen {
+                width: 100vw;
+                height: 100vh;
             }
 
             /* Loading state */
@@ -749,7 +943,7 @@
                 }
 
                 .nav-container {
-                    flex-direction: column;
+                    grid-template-columns: 1fr;
                 }
 
                 .nav-button {
@@ -828,8 +1022,8 @@
 
             const dashboardHtml = `
                 <div id="resource-dashboard-container">
-                    ${renderNavigationSection()}
                     ${renderProfileSection(profileData)}
+                    ${renderNavigationSection()}
                     ${renderActivitySection(activity)}
                 </div>
             `;
