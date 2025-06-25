@@ -1,4 +1,6 @@
 (function() {
+    console.log('[Dashboard Dispatcher v1d] Starting execution...');
+    
     // --- Configuration ---
     const KNACK_API_CONFIG = {
         appId: '5ee90912c38ae7001510c1a9',
@@ -33,7 +35,20 @@
     function loadScript(url) {
         log(`Loading script: ${url}`);
         $.getScript(url)
-            .done(() => log(`Successfully loaded script: ${url}`))
+            .done(() => {
+                log(`Successfully loaded script: ${url}`);
+                
+                // After loading, check if we need to call an initializer
+                if (url === SCRIPT_URLS.resource && typeof window.initializeResourceDashboard === 'function') {
+                    log('Calling initializeResourceDashboard');
+                    window.initializeResourceDashboard();
+                } else if (url === SCRIPT_URLS.coaching && typeof window.initializeStaffHomepage === 'function') {
+                    log('Calling initializeStaffHomepage');
+                    window.initializeStaffHomepage();
+                } else {
+                    log('No initializer function found for loaded script');
+                }
+            })
             .fail((jqxhr, settings, exception) => errorLog(`Failed to load script: ${url}`, exception));
     }
 
@@ -109,19 +124,32 @@
     // --- Main Execution ---
     async function main() {
         log('Starting dashboard dispatch...');
+        
+        // Check if required dependencies are available
+        if (typeof $ === 'undefined' || typeof Knack === 'undefined') {
+            errorLog('Required dependencies (jQuery or Knack) not available');
+            return;
+        }
+        
+        // Log the config if available
+        if (window.STAFFHOMEPAGE_CONFIG) {
+            log('STAFFHOMEPAGE_CONFIG available:', window.STAFFHOMEPAGE_CONFIG);
+        }
+        
         const accountType = await getAccountType();
 
         // Default to the coaching dashboard if the type is not 'RESOURCE PORTAL' or an error occurs.
         if (accountType && accountType.toUpperCase() === 'RESOURCE PORTAL') {
+            log('Account type is RESOURCE PORTAL, loading resource dashboard');
             loadScript(SCRIPT_URLS.resource);
         } else {
+            log('Loading coaching dashboard (default or non-resource account)');
             loadScript(SCRIPT_URLS.coaching);
         }
     }
 
-    // Delay execution slightly to ensure Knack environment is fully loaded.
-    $(function() {
-        setTimeout(main, 500);
-    });
+    // Execute immediately - no delay needed
+    log('Dispatcher loaded, executing main function...');
+    main();
 
 })(); 
