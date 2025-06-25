@@ -3384,8 +3384,9 @@ function getStyleCSS() {
   /* Main Container - Staff Theme */
 #staff-homepage {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 95%; /* Use a percentage for better fluidity */
+  max-width: 1800px; /* Increase the max-width for larger screens */
+  margin: 20px auto; /* Center the container with some vertical margin */
   padding: 20px;
   color: #ffffff;
   background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
@@ -5502,3 +5503,4 @@ if (feedbackRequest.screenshot) {
 }
 
 })(); // Close IIFE properly
+
