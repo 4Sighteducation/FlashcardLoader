@@ -6,7 +6,7 @@
     };
 
     const SCRIPT_URLS = {
-        coaching: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staffHomepage5d.js',
+        coaching: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staffHomepage5e.js',
         resource: 'https://cdn.jsdelivr.net/gh/4Sighteducation/vespa-dashboard@main/integrations/landingPage/ResourceDashboard.js',
     };
 
