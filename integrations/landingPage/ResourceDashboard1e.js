@@ -149,52 +149,67 @@
 
     // --- Core Logic ---
     async function getActivityOfTheWeek() {
-        log('Fetching all activities from object_58...');
-        const response = await makeKnackRequest('objects/object_58/records?rows_per_page=1000');
-        if (!response || !response.records || response.records.length === 0) {
-            errorLog('No activities found in object_58.');
+        log('Fetching activities from CDN...');
+        try {
+            // Use the CDN URL provided by the user
+            const response = await $.ajax({
+                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
+                type: 'GET',
+                dataType: 'json'
+            });
+            
+            if (!response || !response.records || response.records.length === 0) {
+                errorLog('No activities found in CDN.');
+                return null;
+            }
+            
+            // Use the day of the year to select a "random" activity that changes daily.
+            const today = new Date();
+            const start = new Date(today.getFullYear(), 0, 0);
+            const diff = today - start;
+            const oneDay = 1000 * 60 * 60 * 24;
+            const dayOfYear = Math.floor(diff / oneDay);
+            
+            const activityIndex = dayOfYear % response.records.length;
+            const activity = response.records[activityIndex];
+            log(`Activity of the day (index ${activityIndex}):`, activity);
+
+            return {
+                name: activity.title,
+                group: activity.group_info?.identifier || 'N/A',
+                category: activity.category,
+                embedCode: activity.html_content
+            };
+        } catch (error) {
+            errorLog('Failed to fetch activities from CDN:', error);
             return null;
         }
-        
-        // Use the day of the year to select a "random" activity that changes daily.
-        const today = new Date();
-        const start = new Date(today.getFullYear(), 0, 0);
-        const diff = today - start;
-        const oneDay = 1000 * 60 * 60 * 24;
-        const dayOfYear = Math.floor(diff / oneDay);
-        
-        const activityIndex = dayOfYear % response.records.length;
-        const activity = response.records[activityIndex];
-        log(`Activity of the week (index ${activityIndex}):`, activity);
-
-        return {
-            name: activity.field_1431,
-            group: activity.field_1435,
-            category: activity.field_1461,
-            embedCode: activity.field_1448
-        };
     }
 
     // --- Rendering Functions ---
     
     function renderProfileSection(profileData) {
-        // Simplified profile section
+        // Enhanced profile section matching coaching dashboard
         return `
             <section class="vespa-section profile-section">
-                <h2 class="vespa-section-title">Staff Profile</h2>
-                <div class="profile-info">
-                    <div class="profile-details">
-                         <div class="logo-container">
-                            ${profileData.schoolLogo ? `<img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">` : ''}
+                <h2 class="vespa-section-title">STAFF PROFILE</h2>
+                <div class="profile-content">
+                    ${profileData.schoolLogo ? `
+                        <div class="school-logo-container">
+                            <img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">
                         </div>
+                    ` : ''}
+                    <div class="profile-info">
                         <div class="profile-name">${profileData.name}</div>
-                        <div class="profile-item">
-                            <span class="profile-label">School:</span>
-                            <span class="profile-value">${profileData.school}</span>
-                        </div>
-                        <div class="profile-item">
-                            <span class="profile-label">Role(s):</span>
-                            <span class="profile-value">${profileData.roles.join(', ')}</span>
+                        <div class="profile-details">
+                            <div class="profile-item">
+                                <span class="profile-label">School:</span>
+                                <span class="profile-value">${profileData.school}</span>
+                            </div>
+                            <div class="profile-item">
+                                <span class="profile-label">Roles:</span>
+                                <span class="profile-value">${profileData.roles.join(', ')}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -206,11 +221,11 @@
         if (!activity || !activity.embedCode) {
             return `
                 <section class="vespa-section activity-section">
-                    <h2 class="vespa-section-title">Activity of the Week</h2>
+                    <h2 class="vespa-section-title">ACTIVITY OF THE DAY</h2>
                     <div class="activity-container">
                         <div class="no-activity">
                             <i class="fas fa-calendar-times" style="font-size: 3em; margin-bottom: 15px; color: #cccccc;"></i>
-                            <p style="color: #cccccc; font-size: 16px;">No activity available for this week.</p>
+                            <p style="color: #cccccc; font-size: 16px;">No activity available today.</p>
                             <p style="color: #999; font-size: 14px;">Please check back later.</p>
                         </div>
                     </div>
@@ -224,7 +239,7 @@
         // A nicer embed frame with better error handling
         return `
             <section class="vespa-section activity-section">
-                <h2 class="vespa-section-title">Activity of the Week</h2>
+                <h2 class="vespa-section-title">ACTIVITY OF THE DAY</h2>
                 <div class="activity-container">
                     <div class="activity-header">
                         <h3>${activity.name || 'Untitled Activity'}</h3>
@@ -258,7 +273,7 @@
 
         return `
             <section class="vespa-section resources-section">
-                <h2 class="vespa-section-title">My Resources</h2>
+                <h2 class="vespa-section-title">MY RESOURCES</h2>
                 <div class="app-hub">
                     ${appButtons}
                 </div>
@@ -273,13 +288,13 @@
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 max-width: 1200px;
                 margin: 0 auto;
-                padding: 20px;
+                padding: 15px;
                 color: #ffffff;
                 background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
-                line-height: 1.4;
-                border: 3px solid #00e5db;
-                border-radius: 12px;
-                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+                line-height: 1.3;
+                border: 2px solid #00e5db;
+                border-radius: 10px;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
             }
 
             /* Animation Keyframes */
@@ -297,10 +312,10 @@
             /* Sections */
             .vespa-section {
                 background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%);
-                border-radius: 10px;
-                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-                padding: 22px;
-                margin-bottom: 26px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                padding: 18px;
+                margin-bottom: 20px;
                 animation: fadeIn 0.5s ease-out forwards;
                 transition: transform 0.2s, box-shadow 0.2s;
                 border: 2px solid #00e5db;
@@ -346,10 +361,10 @@
 
             .vespa-section-title {
                 color: #ffffff !important;
-                font-size: 22px;
+                font-size: 18px;
                 font-weight: 600;
-                margin-bottom: 18px;
-                padding-bottom: 10px;
+                margin-bottom: 15px;
+                padding-bottom: 8px;
                 border-bottom: 2px solid #00e5db;
                 text-transform: uppercase;
                 letter-spacing: 1px;
@@ -362,63 +377,58 @@
                 box-shadow: 0 4px 12px rgba(229, 148, 55, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
             }
 
-            .profile-info {
+            .profile-content {
                 display: flex;
-                flex: 1;
-            }
-
-            .profile-details {
-                flex: 1;
-                min-width: 250px;
-                display: flex;
-                flex-direction: column;
-                padding: 20px;
-                background: linear-gradient(135deg, #15348e 0%, #102983 100%);
-                border-radius: 10px;
-                border: 1px solid #00e5db;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            }
-
-            .logo-container {
-                display: flex;
-                flex-direction: column;
+                gap: 20px;
                 align-items: center;
-                margin-bottom: 15px;
+            }
+
+            .school-logo-container {
+                flex: 0 0 auto;
             }
 
             .school-logo {
-                max-width: 60px;
-                height: auto;
-                margin-bottom: 15px;
-                border-radius: 5px;
-                padding: 5px;
-                background: rgba(255, 255, 255, 0.1);
+                width: 80px;
+                height: 80px;
+                object-fit: contain;
+                border-radius: 8px;
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(0, 229, 219, 0.3);
+            }
+
+            .profile-info {
+                flex: 1;
             }
 
             .profile-name {
-                font-size: 26px;
-                color: #ffffff;
-                margin-bottom: 18px;
+                font-size: 24px;
+                color: #00e5db;
+                margin-bottom: 10px;
                 font-weight: 700;
-                text-align: center;
                 text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
             }
 
-            .profile-item {
-                margin-bottom: 12px;
-                padding: 10px;
-                border-radius: 6px;
-                transition: background-color 0.2s;
+            .profile-details {
+                display: flex;
+                gap: 30px;
             }
 
-            .profile-item:hover {
-                background-color: rgba(255, 255, 255, 0.1);
+            .profile-item {
+                display: flex;
+                align-items: center;
+                gap: 5px;
             }
 
             .profile-label {
                 font-weight: 600;
                 color: #00e5db;
-                margin-right: 8px;
+                font-size: 14px;
+            }
+            
+            .profile-value {
+                color: #ffffff;
+                font-size: 14px;
             }
 
             /* Activity Section */
@@ -464,20 +474,23 @@
             }
 
             .activity-embed-frame {
-                background: #0a1b4a;
+                background: #ffffff;
                 border: 2px solid #00e5db;
-                border-radius: 10px;
+                border-radius: 8px;
                 overflow: hidden;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                padding: 20px;
-                min-height: 500px;
+                padding: 0;
+                min-height: 450px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .activity-embed-frame iframe {
                 width: 100%;
-                height: 600px;
+                height: 450px;
                 border: none;
-                border-radius: 5px;
+                display: block;
             }
 
             /* Resources Section */
@@ -496,19 +509,20 @@
                 background: linear-gradient(135deg, #15348e 0%, #102983 100%);
                 color: #ffffff;
                 text-decoration: none;
-                padding: 25px;
-                border-radius: 10px;
+                padding: 20px;
+                border-radius: 8px;
                 text-align: center;
                 transition: all 0.3s ease;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: 15px;
+                gap: 12px;
                 border: 1px solid #00e5db;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                 position: relative;
                 overflow: hidden;
+                min-height: 140px;
             }
 
             .app-button::before {
@@ -529,19 +543,19 @@
             }
 
             .app-icon {
-                width: 60px;
-                height: 60px;
+                width: 50px;
+                height: 50px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 background: rgba(0, 229, 219, 0.1);
                 border-radius: 50%;
-                padding: 15px;
+                padding: 12px;
                 transition: all 0.3s ease;
             }
 
             .app-icon i {
-                font-size: 2.5rem;
+                font-size: 2rem;
                 color: #00e5db;
                 transition: all 0.3s ease;
             }
