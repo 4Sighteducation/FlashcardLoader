@@ -107,7 +107,7 @@
     }
 
     // --- Main Execution ---
-    async function initializeStaffHomepage() {
+    async function main() {
         log('Starting dashboard dispatch...');
         const accountType = await getAccountType();
 
@@ -119,9 +119,9 @@
         }
     }
 
-    // Attach the initializer to the window object so the loader can find it.
-    window.initializeStaffHomepage = initializeStaffHomepage;
-
-})(); 
+    // Delay execution slightly to ensure Knack environment is fully loaded.
+    $(function() {
+        setTimeout(main, 500);
+    });
 
 })(); 
