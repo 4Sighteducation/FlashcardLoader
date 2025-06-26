@@ -2004,22 +2004,26 @@
         });
         userAccountRecord = response;
         debugLog("Successfully fetched user account from object_3", userAccountRecord);
+        
+        // Log all fields to debug the issue
+        debugLog("Object_3 field values:", {
+          field_189: userAccountRecord.field_189,
+          field_189_raw: userAccountRecord.field_189_raw,
+          field_539: userAccountRecord.field_539,
+          field_539_raw: userAccountRecord.field_539_raw,
+          field_127: userAccountRecord.field_127,
+          field_127_raw: userAccountRecord.field_127_raw,
+          allFields: Object.keys(userAccountRecord).filter(key => key.includes('189') || key.includes('539') || key.includes('127'))
+        });
       } catch (error) {
-        debugLog("Error fetching user account from object_3", error);
-        // If we can't fetch object_3, fall back to checking student record
-        studentRecord = await findStudentRecord(user.email);
-        if (!studentRecord) {
-          debugLog("Cannot find user account or student record for verification check");
-          return true; // Allow access if we can't find the record
-        }
-        userAccountRecord = studentRecord; // Use student record as fallback
-        debugLog("Using student record as fallback for verification check");
+        debugLog("Error fetching user account from object_3, allowing access", error);
+        return true; // Allow access if we can't fetch object_3
       }
       
       // Extract the boolean field values from object_3 (they come as "Yes"/"No" strings in Knack)
-      const isVerified = userAccountRecord.field_189 === "Yes";  
-      const hasAcceptedPrivacy = userAccountRecord.field_127 === "Yes";
-      const hasResetPassword = userAccountRecord.field_539 === "Yes";  // "Yes" means they HAVE reset password (don't need to reset)
+      const isVerified = userAccountRecord.field_189 === "Yes" || userAccountRecord.field_189 === true;  
+      const hasAcceptedPrivacy = userAccountRecord.field_127 === "Yes" || userAccountRecord.field_127 === true;
+      const hasResetPassword = userAccountRecord.field_539 === "Yes" || userAccountRecord.field_539 === true;  // "Yes" means they HAVE reset password (don't need to reset)
       
       debugLog(`User verification status from object_3:`, {
         verified: isVerified,
