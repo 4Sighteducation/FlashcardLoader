@@ -67,10 +67,10 @@
     numLogins: 'field_3079',       // NumLogins
     upn: 'field_3136',            // Unique Pupil Number (UPN)
     
-    // Verification fields (in Object_6)
+    // Verification fields (in Object_6) - CORRECTED
     password: 'field_71',         // Password field
     privacyPolicy: 'field_127',   // Privacy Policy acceptance (Yes/No)
-    verifiedUser: 'field_128',    // Verified User status (Yes/No)
+    verifiedUser: 'field_189',    // Verified User status (Yes/No) - CORRECTED FROM field_128
     passwordReset: 'field_539',   // Password Reset status (Yes/No)
     
     // Subject fields
@@ -1992,23 +1992,59 @@
       }
       
       // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
-      const isVerified = studentRecord.field_128 === "Yes";
+      const isVerified = studentRecord.field_189 === "Yes";  // CORRECTED FIELD
       const hasAcceptedPrivacy = studentRecord.field_127 === "Yes";
-      const hasResetPassword = studentRecord.field_539 === "Yes";
+      const hasResetPassword = studentRecord.field_539 === "No";  // CORRECTED LOGIC - "No" means they HAVE reset
       
       debugLog(`User verification status:`, {
         verified: isVerified,
         privacyAccepted: hasAcceptedPrivacy,
-        passwordReset: hasResetPassword
+        passwordReset: hasResetPassword,
+        rawValues: {
+          field_189: studentRecord.field_189,
+          field_127: studentRecord.field_127,
+          field_539: studentRecord.field_539
+        }
       });
       
-      // Check what needs to be shown
-      if (!isVerified || !hasAcceptedPrivacy || !hasResetPassword) {
-        // Something needs to be completed
-        const needsPrivacy = !hasAcceptedPrivacy;
-        const needsPassword = !hasResetPassword;
-        
-        // Show appropriate modals
+      // Determine what needs to be shown based on the correct logic
+      let needsPrivacy = false;
+      let needsPassword = false;
+      
+      // First time user: All fields are "No" - show both privacy and password
+      if (!isVerified && !hasAcceptedPrivacy && !hasResetPassword) {
+        needsPrivacy = true;
+        needsPassword = true;
+        debugLog("First time user - showing both privacy and password modals");
+      }
+      // User has reset password but needs to accept privacy: field_189="Yes", field_539="No", field_127="No"
+      else if (isVerified && hasResetPassword && !hasAcceptedPrivacy) {
+        needsPrivacy = true;
+        needsPassword = false;
+        debugLog("User needs to accept privacy policy only");
+      }
+      // User accepted privacy but needs password reset: field_189="No", field_539="Yes", field_127="Yes"
+      else if (!isVerified && !hasResetPassword && hasAcceptedPrivacy) {
+        needsPrivacy = false;
+        needsPassword = true;
+        debugLog("User needs to reset password only");
+      }
+      // All complete: field_189="Yes", field_539="No", field_127="Yes"
+      else if (isVerified && hasResetPassword && hasAcceptedPrivacy) {
+        debugLog("User verification complete - allowing access");
+        return true;
+      }
+      else {
+        // Edge case - log the state and default to showing what's missing
+        console.warn("[Homepage] Unexpected verification state", {
+          isVerified, hasAcceptedPrivacy, hasResetPassword
+        });
+        needsPrivacy = !hasAcceptedPrivacy;
+        needsPassword = !hasResetPassword;
+      }
+      
+      // Show appropriate modals if needed
+      if (needsPrivacy || needsPassword) {
         return await showVerificationModals(needsPrivacy, needsPassword, studentRecord.id);
       }
       
@@ -2172,52 +2208,65 @@
     const checkbox = document.getElementById('privacy-accept-checkbox');
     const continueBtn = document.getElementById('privacy-continue-btn');
     
+    // Ensure button starts in correct state
+    if (checkbox && continueBtn) {
+      continueBtn.disabled = true;
+      continueBtn.style.background = '#666';
+      continueBtn.style.cursor = 'not-allowed';
+    }
+    
     // Enable/disable continue button based on checkbox
-    checkbox.addEventListener('change', function() {
-      if (this.checked) {
-        continueBtn.disabled = false;
-        continueBtn.style.background = '#079baa';
-        continueBtn.style.cursor = 'pointer';
-      } else {
-        continueBtn.disabled = true;
-        continueBtn.style.background = '#666';
-        continueBtn.style.cursor = 'not-allowed';
-      }
-    });
+    if (checkbox) {
+      checkbox.addEventListener('change', function() {
+        if (this.checked) {
+          continueBtn.disabled = false;
+          continueBtn.style.background = '#079baa';
+          continueBtn.style.cursor = 'pointer';
+        } else {
+          continueBtn.disabled = true;
+          continueBtn.style.background = '#666';
+          continueBtn.style.cursor = 'not-allowed';
+        }
+      });
+    }
     
     // Handle continue button click
-    continueBtn.addEventListener('click', async function() {
-      if (!checkbox.checked) return;
-      
-      // Show loading state
-      continueBtn.disabled = true;
-      continueBtn.innerHTML = 'Updating...';
-      
-      try {
-        // Update the privacy policy field (Knack uses "Yes"/"No" for boolean fields)
-        await updateStudentVerificationFields(studentRecordId, { field_127: "Yes" });
+    if (continueBtn) {
+      continueBtn.addEventListener('click', async function() {
+        if (!checkbox.checked) return;
         
-        // Hide privacy modal
-        const privacyModal = document.getElementById('privacy-policy-modal');
-        if (privacyModal) privacyModal.style.display = 'none';
+        // Show loading state
+        continueBtn.disabled = true;
+        continueBtn.innerHTML = 'Updating...';
         
-        // Show password modal if needed
-        if (needsPassword) {
-          const passwordModal = document.getElementById('password-reset-modal');
-          if (passwordModal) passwordModal.style.display = 'block';
-          setupPasswordResetHandlers(studentRecordId, resolve);
-        } else {
-          // All done, close modal and proceed
-          document.getElementById('verification-modal-overlay').remove();
-          resolve(true);
+        try {
+          // Update the privacy policy field
+          await updateStudentVerificationFields(studentRecordId, { field_127: "Yes" });
+          
+          debugLog('Privacy policy acceptance updated successfully');
+          
+          // Hide privacy modal
+          const privacyModal = document.getElementById('privacy-policy-modal');
+          if (privacyModal) privacyModal.style.display = 'none';
+          
+          // Show password modal if needed
+          if (needsPassword) {
+            const passwordModal = document.getElementById('password-reset-modal');
+            if (passwordModal) passwordModal.style.display = 'block';
+            setupPasswordResetHandlers(studentRecordId, resolve);
+          } else {
+            // All done, close modal and proceed
+            document.getElementById('verification-modal-overlay').remove();
+            resolve(true);
+          }
+        } catch (error) {
+          debugLog('Error updating privacy policy acceptance:', error);
+          alert('Error updating your preferences. Please try again.');
+          continueBtn.disabled = false;
+          continueBtn.innerHTML = 'Continue';
         }
-      } catch (error) {
-        debugLog('Error updating privacy policy acceptance:', error);
-        alert('Error updating your preferences. Please try again.');
-        continueBtn.disabled = false;
-        continueBtn.innerHTML = 'Continue';
-      }
-    });
+      });
+    }
   }
 
   // Setup Password Reset Modal Handlers
@@ -2256,12 +2305,14 @@
         // Update password via Knack API
         await updateUserPassword(newPassword.value);
         
-        // Update the password field and reset flags
+        // Update the password field and verification flags with CORRECTED logic
         await updateStudentVerificationFields(studentRecordId, { 
           field_71: newPassword.value,  // Update the actual password field
-          field_539: "Yes",              // Mark password as reset
-          field_128: "Yes"               // Mark user as verified
+          field_539: "No",               // CORRECTED: "No" means password HAS been reset
+          field_189: "Yes"               // CORRECTED: Mark user as verified using correct field
         });
+        
+        debugLog('Password and verification status updated successfully');
         
         // Success - close modal and proceed
         document.getElementById('verification-modal-overlay').remove();
