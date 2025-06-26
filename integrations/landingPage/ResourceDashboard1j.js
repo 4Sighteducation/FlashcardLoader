@@ -33,10 +33,10 @@
         schoolEstablishmentName: 'field_44',
         schoolLogo: 'field_45',
         
-        // Verification fields
+        // Verification fields - CORRECTED
         password: 'field_71',         // Password field
         privacyPolicy: 'field_127',   // Privacy Policy acceptance (Yes/No)
-        verifiedUser: 'field_128',    // Verified User status (Yes/No)
+        verifiedUser: 'field_189',    // Verified User status (Yes/No) - CORRECTED FROM field_128
         passwordReset: 'field_539'    // Password Reset status (Yes/No)
     };
 
@@ -1125,23 +1125,59 @@
             }
             
             // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
-            const isVerified = staffRecord.field_128 === "Yes";
+            const isVerified = staffRecord.field_189 === "Yes";  // CORRECTED FIELD
             const hasAcceptedPrivacy = staffRecord.field_127 === "Yes";
-            const hasResetPassword = staffRecord.field_539 === "Yes";
+            const hasResetPassword = staffRecord.field_539 === "Yes";  // "Yes" means they HAVE reset password (don't need to reset)
             
             log(`User verification status:`, {
                 verified: isVerified,
                 privacyAccepted: hasAcceptedPrivacy,
-                passwordReset: hasResetPassword
+                passwordReset: hasResetPassword,
+                rawValues: {
+                    field_189: staffRecord.field_189,
+                    field_127: staffRecord.field_127,
+                    field_539: staffRecord.field_539
+                }
             });
             
-            // Check what needs to be shown
-            if (!isVerified || !hasAcceptedPrivacy || !hasResetPassword) {
-                // Something needs to be completed
-                const needsPrivacy = !hasAcceptedPrivacy;
-                const needsPassword = !hasResetPassword;
-                
-                // Show appropriate modals
+            // Determine what needs to be shown based on the correct logic
+            let needsPrivacy = false;
+            let needsPassword = false;
+            
+            // First time user: field_189="No", field_539="No", field_127="No" - show both privacy and password
+            if (!isVerified && !hasAcceptedPrivacy && !hasResetPassword) {
+                needsPrivacy = true;
+                needsPassword = true;
+                log("First time user - showing both privacy and password modals");
+            }
+            // User has reset password but needs to accept privacy: field_189="Yes", field_539="Yes", field_127="No"
+            else if (isVerified && hasResetPassword && !hasAcceptedPrivacy) {
+                needsPrivacy = true;
+                needsPassword = false;
+                log("User needs to accept privacy policy only");
+            }
+            // User accepted privacy but needs password reset: field_189="No", field_539="No", field_127="Yes"
+            else if (!isVerified && !hasResetPassword && hasAcceptedPrivacy) {
+                needsPrivacy = false;
+                needsPassword = true;
+                log("User needs to reset password only");
+            }
+            // All complete: field_189="Yes", field_539="Yes", field_127="Yes"
+            else if (isVerified && hasResetPassword && hasAcceptedPrivacy) {
+                log("User verification complete - allowing access");
+                return true;
+            }
+            else {
+                // Edge case - log the state and default to showing what's missing
+                console.warn("[Resource Dashboard] Unexpected verification state", {
+                    isVerified, hasAcceptedPrivacy, hasResetPassword
+                });
+                needsPrivacy = !hasAcceptedPrivacy;
+                needsPassword = !hasResetPassword;
+            }
+            
+            // Show appropriate modals if needed
+            if (needsPrivacy || needsPassword) {
                 return await showVerificationModals(needsPrivacy, needsPassword, staffRecord.id);
             }
             
@@ -1181,7 +1217,7 @@
                         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
                     ">
                         ${needsPrivacy ? getPrivacyPolicyModal() : ''}
-                        ${needsPassword ? getPasswordResetModal() : ''}
+                        ${needsPassword ? getPasswordResetModal(!needsPrivacy) : ''}
                     </div>
                 </div>
             `;
@@ -1201,24 +1237,27 @@
     // Privacy Policy Modal HTML
     function getPrivacyPolicyModal() {
         return `
-            <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white;">
+            <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white; position: relative;">
                 <h2 style="color: #00e5db; margin-bottom: 20px; text-align: center;">Privacy Policy Agreement</h2>
                 
-                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; position: relative;">
                     <iframe src="https://vespa.academy/assets/MVIMAGES/privacy-policy.html" 
-                            style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px;"
+                            style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px; pointer-events: none;"
                             title="Privacy Policy">
                     </iframe>
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: auto; overflow-y: auto;">
+                        <!-- Invisible overlay to allow scrolling but prevent iframe interaction -->
+                    </div>
                 </div>
                 
-                <div style="margin: 20px 0;">
+                <div style="margin: 20px 0; position: relative; z-index: 10;">
                     <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
-                        <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
-                        <span>I have read and agree to the VESPA Academy Privacy Policy</span>
+                        <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer; position: relative; z-index: 11;">
+                        <span style="cursor: pointer; user-select: none;">I have read and agree to the VESPA Academy Privacy Policy</span>
                     </label>
                 </div>
                 
-                <div style="text-align: center; margin-top: 20px;">
+                <div style="text-align: center; margin-top: 20px; position: relative; z-index: 10;">
                     <button id="privacy-continue-btn" disabled style="
                         background: #666;
                         color: white;
@@ -1229,6 +1268,8 @@
                         font-weight: bold;
                         cursor: not-allowed;
                         transition: all 0.3s ease;
+                        position: relative;
+                        z-index: 11;
                     ">
                         Continue
                     </button>
@@ -1238,9 +1279,9 @@
     }
 
     // Password Reset Modal HTML
-    function getPasswordResetModal() {
+    function getPasswordResetModal(visibleByDefault = false) {
         return `
-            <div id="password-reset-modal" class="verification-modal" style="padding: 30px; color: white; display: none;">
+            <div id="password-reset-modal" class="verification-modal" style="padding: 30px; color: white; ${visibleByDefault ? '' : 'display: none;'}">
                 <h2 style="color: #00e5db; margin-bottom: 20px; text-align: center;">Set Your Password</h2>
                 
                 <p style="text-align: center; margin-bottom: 20px; color: #ccc;">
@@ -1302,57 +1343,141 @@
 
     // Setup Privacy Policy Modal Handlers
     function setupPrivacyPolicyHandlers(staffRecordId, needsPassword, resolve) {
-        const checkbox = document.getElementById('privacy-accept-checkbox');
-        const continueBtn = document.getElementById('privacy-continue-btn');
+        // Prevent multiple setups
+        if (window._privacyHandlersSetup) {
+            log('Privacy policy handlers already set up, skipping...');
+            return;
+        }
+        window._privacyHandlersSetup = true;
         
-        // Enable/disable continue button based on checkbox
-        checkbox.addEventListener('change', function() {
-            if (this.checked) {
-                continueBtn.disabled = false;
-                continueBtn.style.background = '#00e5db';
-                continueBtn.style.color = '#0a2b8c';
-                continueBtn.style.cursor = 'pointer';
-            } else {
+        // Add a small delay to ensure DOM is ready
+        setTimeout(() => {
+            const checkbox = document.getElementById('privacy-accept-checkbox');
+            const continueBtn = document.getElementById('privacy-continue-btn');
+            
+            if (!checkbox || !continueBtn) {
+                log('Privacy policy elements not found, retrying...', { checkbox: !!checkbox, continueBtn: !!continueBtn });
+                window._privacyHandlersSetup = false; // Reset flag for retry
+                // Retry after another delay if elements not found
+                setTimeout(() => setupPrivacyPolicyHandlers(staffRecordId, needsPassword, resolve), 100);
+                return;
+            }
+            
+            log('Privacy policy handler setup', { 
+                checkboxFound: !!checkbox, 
+                buttonFound: !!continueBtn,
+                checkboxId: checkbox?.id,
+                buttonId: continueBtn?.id
+            });
+            
+            // Ensure button starts in correct state
+            if (checkbox && continueBtn) {
                 continueBtn.disabled = true;
                 continueBtn.style.background = '#666';
                 continueBtn.style.color = 'white';
                 continueBtn.style.cursor = 'not-allowed';
+                
+                // Function to update button state
+                const updateButtonState = () => {
+                    const currentCheckbox = document.getElementById('privacy-accept-checkbox');
+                    const currentBtn = document.getElementById('privacy-continue-btn');
+                    
+                    if (currentCheckbox && currentBtn) {
+                        if (currentCheckbox.checked) {
+                            currentBtn.disabled = false;
+                            currentBtn.style.background = '#00e5db';
+                            currentBtn.style.color = '#0a2b8c';
+                            currentBtn.style.cursor = 'pointer';
+                            currentBtn.style.opacity = '1';
+                            log('Checkbox checked - button enabled');
+                        } else {
+                            currentBtn.disabled = true;
+                            currentBtn.style.background = '#666';
+                            currentBtn.style.color = 'white';
+                            currentBtn.style.cursor = 'not-allowed';
+                            currentBtn.style.opacity = '0.6';
+                            log('Checkbox unchecked - button disabled');
+                        }
+                    }
+                };
+                
+                // Remove any existing event listeners by using a new approach
+                // Instead of cloning, we'll use a named function and remove/add it
+                const checkboxChangeHandler = (e) => {
+                    log('Checkbox change event fired', { checked: e.target.checked });
+                    updateButtonState();
+                };
+                
+                const checkboxClickHandler = (e) => {
+                    log('Checkbox click event fired');
+                    // Small delay to ensure the checked state has updated
+                    setTimeout(updateButtonState, 20);
+                };
+                
+                // Remove existing listeners if they exist
+                checkbox.removeEventListener('change', checkboxChangeHandler);
+                checkbox.removeEventListener('click', checkboxClickHandler);
+                
+                // Add fresh event listeners
+                checkbox.addEventListener('change', checkboxChangeHandler);
+                checkbox.addEventListener('click', checkboxClickHandler);
+                
+                // Also listen for input event as a fallback
+                checkbox.addEventListener('input', (e) => {
+                    log('Checkbox input event fired');
+                    updateButtonState();
+                });
+                
+                // Check initial state
+                updateButtonState();
+            } else {
+                errorLog('Privacy policy elements not found:', {
+                    checkbox: checkbox,
+                    continueBtn: continueBtn
+                });
             }
-        });
+        }, 100); // 100ms delay to ensure DOM is ready
         
         // Handle continue button click
-        continueBtn.addEventListener('click', async function() {
-            if (!checkbox.checked) return;
-            
-            // Show loading state
-            continueBtn.disabled = true;
-            continueBtn.innerHTML = 'Updating...';
-            
-            try {
-                // Update the privacy policy field (Knack uses "Yes"/"No" for boolean fields)
-                await updateStaffVerificationFields(staffRecordId, { field_127: "Yes" });
+        if (continueBtn) {
+            continueBtn.addEventListener('click', async function() {
+                // Need to reference the current checkbox
+                const currentCheckbox = document.getElementById('privacy-accept-checkbox');
+                if (!currentCheckbox || !currentCheckbox.checked) return;
                 
-                // Hide privacy modal
-                const privacyModal = document.getElementById('privacy-policy-modal');
-                if (privacyModal) privacyModal.style.display = 'none';
+                // Show loading state
+                continueBtn.disabled = true;
+                continueBtn.innerHTML = 'Updating...';
                 
-                // Show password modal if needed
-                if (needsPassword) {
-                    const passwordModal = document.getElementById('password-reset-modal');
-                    if (passwordModal) passwordModal.style.display = 'block';
-                    setupPasswordResetHandlers(staffRecordId, resolve);
-                } else {
-                    // All done, close modal and proceed
-                    document.getElementById('verification-modal-overlay').remove();
-                    resolve(true);
+                try {
+                    // Update the privacy policy field
+                    await updateStaffVerificationFields(staffRecordId, { field_127: "Yes" });
+                    
+                    log('Privacy policy acceptance updated successfully');
+                    
+                    // Hide privacy modal
+                    const privacyModal = document.getElementById('privacy-policy-modal');
+                    if (privacyModal) privacyModal.style.display = 'none';
+                    
+                    // Show password modal if needed
+                    if (needsPassword) {
+                        const passwordModal = document.getElementById('password-reset-modal');
+                        if (passwordModal) passwordModal.style.display = 'block';
+                        setupPasswordResetHandlers(staffRecordId, resolve);
+                    } else {
+                        // All done, close modal and proceed
+                        document.getElementById('verification-modal-overlay').remove();
+                        window._privacyHandlersSetup = false; // Reset flag
+                        resolve(true);
+                    }
+                } catch (error) {
+                    errorLog('Error updating privacy policy acceptance:', error);
+                    alert('Error updating your preferences. Please try again.');
+                    continueBtn.disabled = false;
+                    continueBtn.innerHTML = 'Continue';
                 }
-            } catch (error) {
-                errorLog('Error updating privacy policy acceptance:', error);
-                alert('Error updating your preferences. Please try again.');
-                continueBtn.disabled = false;
-                continueBtn.innerHTML = 'Continue';
-            }
-        });
+            });
+        }
     }
 
     // Setup Password Reset Modal Handlers
@@ -1387,25 +1512,28 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = 'Setting Password...';
             
-            try {
-                // Update password via Knack API
-                await updateUserPassword(newPassword.value);
-                
-                // Update the password field and reset flags
-                await updateStaffVerificationFields(staffRecordId, { 
-                    field_71: newPassword.value,   // Update the actual password field
-                    field_539: "Yes",              // Mark password as reset
-                    field_128: "Yes"               // Mark user as verified
-                });
-                
-                // Success - close modal and proceed
-                document.getElementById('verification-modal-overlay').remove();
-                resolve(true);
-                
-                // Show success message
-                alert('Password set successfully! You can now access the platform.');
-                
-            } catch (error) {
+                            try {
+                    // Update password via Knack API
+                    await updateUserPassword(newPassword.value);
+                    
+                    // Update the password field and verification flags with CORRECTED logic
+                    await updateStaffVerificationFields(staffRecordId, { 
+                        field_71: newPassword.value,   // Update the actual password field
+                        field_539: "Yes",              // "Yes" means password HAS been reset (user doesn't need to reset)
+                        field_189: "Yes"               // Mark user as verified
+                    });
+                    
+                    log('Password and verification status updated successfully');
+                    
+                    // Success - close modal and proceed
+                    document.getElementById('verification-modal-overlay').remove();
+                    window._privacyHandlersSetup = false; // Reset flag
+                    resolve(true);
+                    
+                    // Show success message
+                    alert('Password set successfully! You can now access the platform.');
+                    
+                } catch (error) {
                 errorLog('Error setting password:', error);
                 errorDiv.innerHTML = 'Error setting password. Please try again.';
                 errorDiv.style.display = 'block';
