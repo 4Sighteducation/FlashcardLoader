@@ -31,7 +31,13 @@
         schoolConnection: 'field_122',
         schoolName: 'field_2',
         schoolEstablishmentName: 'field_44',
-        schoolLogo: 'field_45'
+        schoolLogo: 'field_45',
+        
+        // Verification fields
+        password: 'field_71',         // Password field
+        privacyPolicy: 'field_127',   // Privacy Policy acceptance (Yes/No)
+        verifiedUser: 'field_128',    // Verified User status (Yes/No)
+        passwordReset: 'field_539'    // Password Reset status (Yes/No)
     };
 
     const OBJECT_KEYS = {
@@ -136,6 +142,25 @@
         return formattedRoles.join(', ');
     }
     
+    // Add admin role checking function
+    function isStaffAdmin(roles) {
+        if (!roles) return false;
+        
+        // Check if roles is an array
+        if (Array.isArray(roles)) {
+            return roles.some(role => {
+                const roleStr = typeof role === 'object' ? (role.identifier || role.name || '') : String(role);
+                return roleStr.toLowerCase().includes('admin') || 
+                       roleStr.includes('object_7') || 
+                       roleStr.toLowerCase().includes('administrator');
+            });
+        }
+        
+        // Check if it's a single role string
+        const roleStr = String(roles).toLowerCase();
+        return roleStr.includes('admin') || roleStr.includes('object_7');
+    }
+
     async function getStaffProfileData() {
         const user = Knack.getUserAttributes();
         if (!user || !user.id) {
@@ -146,7 +171,13 @@
         log("Fetching staff profile data for:", user.email);
         const staffRecord = await findStaffRecord(user.email);
         if (!staffRecord) {
-            return { name: user.name, roles: formatRoles(Knack.getUserRoles()), school: 'Unknown School', schoolLogo: null };
+            return { 
+                name: user.name, 
+                roles: formatRoles(Knack.getUserRoles()), 
+                school: 'Unknown School', 
+                schoolLogo: null,
+                hasAdminRole: isStaffAdmin(Knack.getUserRoles())
+            };
         }
 
         const schoolId = extractValidRecordId(staffRecord[FIELD_MAPPING.schoolConnection + '_raw']);
@@ -173,6 +204,7 @@
             roles: formatRoles(Knack.getUserRoles()),
             school: schoolName,
             schoolLogo: schoolLogo,
+            hasAdminRole: isStaffAdmin(Knack.getUserRoles())
         };
     }
 
@@ -429,6 +461,13 @@
        { name: "Worksheets", url: "https://vespaacademy.knack.com/vespa-academy#worksheets/", icon: "fa-solid fa-file-pdf" },
     ];
     
+    const ADMIN_APPS = [
+       { name: "Manage Schools", url: "https://vespaacademy.knack.com/vespa-academy#manage-schools/", icon: "fa-solid fa-school" },
+       { name: "Manage Staff", url: "https://vespaacademy.knack.com/vespa-academy#manage-staff/", icon: "fa-solid fa-users-cog" },
+       { name: "Manage Students", url: "https://vespaacademy.knack.com/vespa-academy#students/", icon: "fa-solid fa-user-graduate" },
+       { name: "Import Data", url: "https://vespaacademy.knack.com/vespa-academy#import-data/", icon: "fa-solid fa-file-import" },
+    ];
+
     function renderNavigationSection() {
         const navButtons = MY_RESOURCES_APPS.map(app => `
             <a href="${app.url}" class="nav-button" target="_blank">
@@ -442,6 +481,24 @@
                 <h2 class="vespa-section-title">MY RESOURCES</h2>
                 <div class="nav-container">
                     ${navButtons}
+                </div>
+            </section>
+        `;
+    }
+    
+    function renderAdminSection() {
+        const adminButtons = ADMIN_APPS.map(app => `
+            <a href="${app.url}" class="admin-button" target="_blank">
+                <i class="${app.icon}"></i>
+                <span>${app.name}</span>
+            </a>
+        `).join('');
+
+        return `
+            <section class="vespa-section admin-section">
+                <h2 class="vespa-section-title">ADMINISTRATION</h2>
+                <div class="admin-container">
+                    ${adminButtons}
                 </div>
             </section>
         `;
@@ -513,12 +570,14 @@
                         </div>
                         <div class="activity-buttons">
                             ${activity.pdfLink ? `
-                                <a href="${activity.pdfLink}" target="_blank" class="pdf-download-button">
+                                <a href="${activity.pdfLink}" target="_blank" class="pdf-download-button" title="Download PDF">
                                     <i class="fas fa-file-pdf"></i>
                                     <span>DOWNLOAD PDF</span>
                                 </a>
                             ` : ''}
-                            ${addFullscreenButton()}
+                            <button class="fullscreen-toggle" onclick="toggleActivityFullscreen(this)" title="Toggle Fullscreen">
+                                <i class="fas fa-expand"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="activity-embed-frame">
@@ -794,6 +853,7 @@
                 display: flex;
                 gap: 10px;
                 align-items: center;
+                flex-shrink: 0;
             }
 
             .pdf-download-button {
@@ -801,7 +861,7 @@
                 align-items: center;
                 gap: 10px;
                 background: linear-gradient(135deg, #e59437 0%, #d88327 100%);
-                color: #ffffff;
+                color: #ffffff !important;
                 text-decoration: none;
                 padding: 12px 24px;
                 border-radius: 6px;
@@ -812,16 +872,22 @@
                 transition: all 0.3s ease;
                 box-shadow: 0 4px 12px rgba(229, 148, 55, 0.3);
                 border: 1px solid rgba(255, 255, 255, 0.2);
+                white-space: nowrap;
             }
 
             .pdf-download-button:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 6px 20px rgba(229, 148, 55, 0.5);
                 background: linear-gradient(135deg, #f0a040 0%, #e59437 100%);
+                color: #ffffff !important;
             }
 
             .pdf-download-button i {
                 font-size: 18px;
+            }
+            
+            .pdf-download-button span {
+                color: #ffffff !important;
             }
             
             /* Fullscreen Button */
@@ -936,17 +1002,78 @@
                 min-height: 500px;
             }
 
+            /* Admin Section */
+            .admin-section {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border-left: 4px solid #ff4757;
+                box-shadow: 0 4px 12px rgba(255, 71, 87, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+                margin-top: 30px;
+            }
+
+            .admin-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 20px;
+                margin-top: 15px;
+            }
+
+            .admin-button {
+                background: linear-gradient(135deg, #2d3561 0%, #1e2549 100%);
+                color: #ff4757 !important;
+                text-decoration: none;
+                padding: 20px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                transition: all 0.3s ease;
+                border: 2px solid #ff4757;
+                font-weight: 700;
+                font-size: 16px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                min-height: 80px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .admin-button span {
+                color: #ff4757 !important;
+                text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            }
+
+            .admin-button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 8px 20px rgba(255, 71, 87, 0.4);
+                background: linear-gradient(135deg, #3a4270 0%, #2a3157 100%);
+            }
+
+            .admin-button i {
+                font-size: 24px;
+                color: #ff4757 !important;
+            }
+
+            .admin-button:hover i {
+                color: #ffffff !important;
+            }
+
+            .admin-button:hover span {
+                color: #ffffff !important;
+            }
+
             /* Responsive adjustments */
             @media (max-width: 768px) {
                 #resource-dashboard-container {
                     padding: 15px;
                 }
 
-                .nav-container {
+                .nav-container,
+                .admin-container {
                     grid-template-columns: 1fr;
                 }
 
-                .nav-button {
+                .nav-button,
+                .admin-button {
                     width: 100%;
                     justify-content: center;
                 }
@@ -956,8 +1083,13 @@
                     align-items: flex-start;
                 }
 
-                .pdf-download-button {
+                .activity-buttons {
                     width: 100%;
+                    justify-content: space-between;
+                }
+
+                .pdf-download-button {
+                    flex: 1;
                     justify-content: center;
                 }
 
@@ -974,6 +1106,350 @@
     }
 
     // --- Initialization ---
+    
+    // --- User Verification Functions ---
+    // Check user verification status and show appropriate modals
+    async function checkUserVerificationStatus() {
+        try {
+            const user = Knack.getUserAttributes();
+            if (!user || !user.email) {
+                errorLog("Cannot check verification status: No user data");
+                return true; // Allow access on error
+            }
+            
+            // Find the staff record to check verification fields
+            const staffRecord = await findStaffRecord(user.email);
+            if (!staffRecord) {
+                errorLog("Cannot find staff record for verification check");
+                return true; // Allow access if we can't find the record
+            }
+            
+            // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
+            const isVerified = staffRecord.field_128 === "Yes";
+            const hasAcceptedPrivacy = staffRecord.field_127 === "Yes";
+            const hasResetPassword = staffRecord.field_539 === "Yes";
+            
+            log(`User verification status:`, {
+                verified: isVerified,
+                privacyAccepted: hasAcceptedPrivacy,
+                passwordReset: hasResetPassword
+            });
+            
+            // Check what needs to be shown
+            if (!isVerified || !hasAcceptedPrivacy || !hasResetPassword) {
+                // Something needs to be completed
+                const needsPrivacy = !hasAcceptedPrivacy;
+                const needsPassword = !hasResetPassword;
+                
+                // Show appropriate modals
+                return await showVerificationModals(needsPrivacy, needsPassword, staffRecord.id);
+            }
+            
+            // All checks passed
+            return true;
+        } catch (error) {
+            errorLog("Error in checkUserVerificationStatus:", error);
+            return true; // Allow access on error
+        }
+    }
+
+    // Show verification modals based on what's needed
+    async function showVerificationModals(needsPrivacy, needsPassword, staffRecordId) {
+        return new Promise((resolve) => {
+            // Create modal container
+            const modalHTML = `
+                <div id="verification-modal-overlay" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 100000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                ">
+                    <div id="verification-modal-container" style="
+                        background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
+                        border: 3px solid #00e5db;
+                        border-radius: 10px;
+                        max-width: 600px;
+                        width: 90%;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+                    ">
+                        ${needsPrivacy ? getPrivacyPolicyModal() : ''}
+                        ${needsPassword ? getPasswordResetModal() : ''}
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Handle modal flow
+            if (needsPrivacy) {
+                setupPrivacyPolicyHandlers(staffRecordId, needsPassword, resolve);
+            } else if (needsPassword) {
+                setupPasswordResetHandlers(staffRecordId, resolve);
+            }
+        });
+    }
+
+    // Privacy Policy Modal HTML
+    function getPrivacyPolicyModal() {
+        return `
+            <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white;">
+                <h2 style="color: #00e5db; margin-bottom: 20px; text-align: center;">Privacy Policy Agreement</h2>
+                
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
+                    <iframe src="https://vespa.academy/assets/MVIMAGESprivacy-policy.html" 
+                            style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px;"
+                            title="Privacy Policy">
+                    </iframe>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
+                        <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
+                        <span>I have read and agree to the VESPA Academy Privacy Policy</span>
+                    </label>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="privacy-continue-btn" disabled style="
+                        background: #666;
+                        color: white;
+                        border: none;
+                        padding: 12px 30px;
+                        border-radius: 6px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        cursor: not-allowed;
+                        transition: all 0.3s ease;
+                    ">
+                        Continue
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Password Reset Modal HTML
+    function getPasswordResetModal() {
+        return `
+            <div id="password-reset-modal" class="verification-modal" style="padding: 30px; color: white; display: none;">
+                <h2 style="color: #00e5db; margin-bottom: 20px; text-align: center;">Set Your Password</h2>
+                
+                <p style="text-align: center; margin-bottom: 20px; color: #ccc;">
+                    Please set a new password for your account to continue.
+                </p>
+                
+                <form id="password-reset-form" style="max-width: 400px; margin: 0 auto;">
+                    <div style="margin-bottom: 20px;">
+                        <label for="new-password" style="display: block; margin-bottom: 5px; font-weight: bold;">
+                            New Password
+                        </label>
+                        <input type="password" id="new-password" required style="
+                            width: 100%;
+                            padding: 10px;
+                            border-radius: 4px;
+                            border: 1px solid #00e5db;
+                            background: rgba(255, 255, 255, 0.1);
+                            color: white;
+                            font-size: 16px;
+                        " placeholder="Enter new password">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label for="confirm-password" style="display: block; margin-bottom: 5px; font-weight: bold;">
+                            Confirm Password
+                        </label>
+                        <input type="password" id="confirm-password" required style="
+                            width: 100%;
+                            padding: 10px;
+                            border-radius: 4px;
+                            border: 1px solid #00e5db;
+                            background: rgba(255, 255, 255, 0.1);
+                            color: white;
+                            font-size: 16px;
+                        " placeholder="Confirm new password">
+                    </div>
+                    
+                    <div id="password-error" style="color: #ff6b6b; margin-bottom: 20px; display: none;"></div>
+                    
+                    <div style="text-align: center;">
+                        <button type="submit" id="password-submit-btn" style="
+                            background: #00e5db;
+                            color: #0a2b8c;
+                            border: none;
+                            padding: 12px 30px;
+                            border-radius: 6px;
+                            font-size: 16px;
+                            font-weight: bold;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            Set Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+    }
+
+    // Setup Privacy Policy Modal Handlers
+    function setupPrivacyPolicyHandlers(staffRecordId, needsPassword, resolve) {
+        const checkbox = document.getElementById('privacy-accept-checkbox');
+        const continueBtn = document.getElementById('privacy-continue-btn');
+        
+        // Enable/disable continue button based on checkbox
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                continueBtn.disabled = false;
+                continueBtn.style.background = '#00e5db';
+                continueBtn.style.color = '#0a2b8c';
+                continueBtn.style.cursor = 'pointer';
+            } else {
+                continueBtn.disabled = true;
+                continueBtn.style.background = '#666';
+                continueBtn.style.color = 'white';
+                continueBtn.style.cursor = 'not-allowed';
+            }
+        });
+        
+        // Handle continue button click
+        continueBtn.addEventListener('click', async function() {
+            if (!checkbox.checked) return;
+            
+            // Show loading state
+            continueBtn.disabled = true;
+            continueBtn.innerHTML = 'Updating...';
+            
+            try {
+                // Update the privacy policy field (Knack uses "Yes"/"No" for boolean fields)
+                await updateStaffVerificationFields(staffRecordId, { field_127: "Yes" });
+                
+                // Hide privacy modal
+                const privacyModal = document.getElementById('privacy-policy-modal');
+                if (privacyModal) privacyModal.style.display = 'none';
+                
+                // Show password modal if needed
+                if (needsPassword) {
+                    const passwordModal = document.getElementById('password-reset-modal');
+                    if (passwordModal) passwordModal.style.display = 'block';
+                    setupPasswordResetHandlers(staffRecordId, resolve);
+                } else {
+                    // All done, close modal and proceed
+                    document.getElementById('verification-modal-overlay').remove();
+                    resolve(true);
+                }
+            } catch (error) {
+                errorLog('Error updating privacy policy acceptance:', error);
+                alert('Error updating your preferences. Please try again.');
+                continueBtn.disabled = false;
+                continueBtn.innerHTML = 'Continue';
+            }
+        });
+    }
+
+    // Setup Password Reset Modal Handlers
+    function setupPasswordResetHandlers(staffRecordId, resolve) {
+        const form = document.getElementById('password-reset-form');
+        const newPassword = document.getElementById('new-password');
+        const confirmPassword = document.getElementById('confirm-password');
+        const errorDiv = document.getElementById('password-error');
+        const submitBtn = document.getElementById('password-submit-btn');
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Clear previous errors
+            errorDiv.style.display = 'none';
+            errorDiv.innerHTML = '';
+            
+            // Validate passwords
+            if (newPassword.value.length < 8) {
+                errorDiv.innerHTML = 'Password must be at least 8 characters long.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (newPassword.value !== confirmPassword.value) {
+                errorDiv.innerHTML = 'Passwords do not match.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Setting Password...';
+            
+            try {
+                // Update password via Knack API
+                await updateUserPassword(newPassword.value);
+                
+                // Update the password field and reset flags
+                await updateStaffVerificationFields(staffRecordId, { 
+                    field_71: newPassword.value,   // Update the actual password field
+                    field_539: "Yes",              // Mark password as reset
+                    field_128: "Yes"               // Mark user as verified
+                });
+                
+                // Success - close modal and proceed
+                document.getElementById('verification-modal-overlay').remove();
+                resolve(true);
+                
+                // Show success message
+                alert('Password set successfully! You can now access the platform.');
+                
+            } catch (error) {
+                errorLog('Error setting password:', error);
+                errorDiv.innerHTML = 'Error setting password. Please try again.';
+                errorDiv.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Set Password';
+            }
+        });
+    }
+
+    // Update staff verification fields
+    async function updateStaffVerificationFields(staffRecordId, updates) {
+        const response = await $.ajax({
+            url: `${KNACK_API_URL}/objects/object_3/records/${staffRecordId}`,
+            type: 'PUT',
+            headers: {
+                'X-Knack-Application-Id': SCRIPT_CONFIG.knackAppId,
+                'X-Knack-REST-API-Key': SCRIPT_CONFIG.knackApiKey,
+                'Authorization': Knack.getUserToken(),
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify(updates)
+        });
+        return response;
+    }
+
+    // Update user password
+    async function updateUserPassword(newPassword) {
+        const user = Knack.getUserAttributes();
+        
+        // Use Knack's built-in API to update password
+        return await $.ajax({
+            url: `${KNACK_API_URL}/applications/${Knack.application_id}/session`,
+            type: 'PUT',
+            headers: {
+                'X-Knack-Application-Id': Knack.application_id,
+                'Authorization': Knack.getUserToken(),
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({
+                password: newPassword
+            })
+        });
+    }
+
     async function initializeResourceDashboard() {
         console.log('[Resource Dashboard] initializeResourceDashboard function called!');
         log('Initializing Resource Dashboard...');
@@ -990,6 +1466,19 @@
         }
         
         console.log('[Resource Dashboard] Container found, proceeding with initialization');
+
+        // NEW: Check user verification status before proceeding
+        try {
+            const canProceed = await checkUserVerificationStatus();
+            if (!canProceed) {
+                // User needs to complete verification steps
+                // The modals are already being shown
+                return;
+            }
+        } catch (error) {
+            errorLog('Error checking user verification status:', error);
+            // Continue anyway on error
+        }
 
         // Add styles - with debugging
         const cssContent = getDashboardCSS();
@@ -1025,6 +1514,7 @@
                     ${renderProfileSection(profileData)}
                     ${renderNavigationSection()}
                     ${renderActivitySection(activity)}
+                    ${profileData.hasAdminRole ? renderAdminSection() : ''}
                 </div>
             `;
 
