@@ -2205,6 +2205,13 @@
 
   // Setup Privacy Policy Modal Handlers
   function setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve) {
+    // Prevent multiple setups
+    if (window._privacyHandlersSetup) {
+      debugLog('Privacy policy handlers already set up, skipping...');
+      return;
+    }
+    window._privacyHandlersSetup = true;
+    
     // Use setTimeout to ensure DOM is ready
     setTimeout(() => {
       const checkbox = document.getElementById('privacy-accept-checkbox');
@@ -2212,6 +2219,7 @@
       
       if (!checkbox || !continueBtn) {
         debugLog('Privacy policy elements not found, retrying...', { checkbox: !!checkbox, continueBtn: !!continueBtn });
+        window._privacyHandlersSetup = false; // Reset flag for retry
         // Retry after another delay if elements not found
         setTimeout(() => setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve), 100);
         return;
@@ -2226,31 +2234,54 @@
       
       // Function to update button state
       const updateButtonState = () => {
-        if (checkbox.checked) {
-          continueBtn.disabled = false;
-          continueBtn.style.background = '#079baa';
-          continueBtn.style.cursor = 'pointer';
-          debugLog('Checkbox checked - button enabled');
-        } else {
-          continueBtn.disabled = true;
-          continueBtn.style.background = '#666';
-          continueBtn.style.cursor = 'not-allowed';
-          debugLog('Checkbox unchecked - button disabled');
+        const currentCheckbox = document.getElementById('privacy-accept-checkbox');
+        const currentBtn = document.getElementById('privacy-continue-btn');
+        
+        if (currentCheckbox && currentBtn) {
+          if (currentCheckbox.checked) {
+            currentBtn.disabled = false;
+            currentBtn.style.background = '#079baa';
+            currentBtn.style.cursor = 'pointer';
+            currentBtn.style.opacity = '1';
+            debugLog('Checkbox checked - button enabled');
+          } else {
+            currentBtn.disabled = true;
+            currentBtn.style.background = '#666';
+            currentBtn.style.cursor = 'not-allowed';
+            currentBtn.style.opacity = '0.6';
+            debugLog('Checkbox unchecked - button disabled');
+          }
         }
       };
       
-      // Remove any existing listeners to prevent duplicates
-      const newCheckbox = checkbox.cloneNode(true);
-      checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+      // Remove any existing event listeners by using a new approach
+      // Instead of cloning, we'll use a named function and remove/add it
+      const checkboxChangeHandler = (e) => {
+        debugLog('Checkbox change event fired', { checked: e.target.checked });
+        updateButtonState();
+      };
       
-      // Add event listeners for multiple events to ensure it works
-      newCheckbox.addEventListener('change', updateButtonState);
-      newCheckbox.addEventListener('click', () => {
-        // Use setTimeout to ensure the checked state has updated
-        setTimeout(updateButtonState, 10);
+      const checkboxClickHandler = (e) => {
+        debugLog('Checkbox click event fired');
+        // Small delay to ensure the checked state has updated
+        setTimeout(updateButtonState, 20);
+      };
+      
+      // Remove existing listeners if they exist
+      checkbox.removeEventListener('change', checkboxChangeHandler);
+      checkbox.removeEventListener('click', checkboxClickHandler);
+      
+      // Add fresh event listeners
+      checkbox.addEventListener('change', checkboxChangeHandler);
+      checkbox.addEventListener('click', checkboxClickHandler);
+      
+      // Also listen for input event as a fallback
+      checkbox.addEventListener('input', (e) => {
+        debugLog('Checkbox input event fired');
+        updateButtonState();
       });
       
-      // Check initial state in case checkbox was somehow already checked
+      // Check initial state
       updateButtonState();
       
       // Handle continue button click
@@ -2296,6 +2327,7 @@
           } else {
             // All done, close modal and proceed
             document.getElementById('verification-modal-overlay').remove();
+            window._privacyHandlersSetup = false; // Reset flag
             resolve(true);
           }
         } catch (error) {
@@ -2372,6 +2404,7 @@
         
         // Success - close modal and proceed
         document.getElementById('verification-modal-overlay').remove();
+        window._privacyHandlersSetup = false; // Reset flag
         resolve(true);
         
         // Show success message
@@ -2463,6 +2496,13 @@
   // --- Entry Point Function ---
   // Main initialization function, exposed globally
   window.initializeHomepage = async function() {
+    // Prevent multiple initializations
+    if (window._homepageInitializing || window._homepageInitialized) {
+      debugLog("Homepage already initializing or initialized, skipping...");
+      return;
+    }
+    window._homepageInitializing = true;
+    
     debugLog("Initializing Homepage...");
     
     // Clean up any existing tooltips from previous sessions
@@ -2472,18 +2512,21 @@
     const config = window.HOMEPAGE_CONFIG;
     if (!config || !config.elementSelector) {
       if (DEBUG_MODE) console.error("Homepage Error: Missing configuration when initializeHomepage called.");
+      window._homepageInitializing = false;
       return;
     }
     
     // Verify Knack context and authentication
     if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
       if (DEBUG_MODE) console.error("Homepage Error: Knack context not available.");
+      window._homepageInitializing = false;
       return;
     }
     
     const userToken = Knack.getUserToken();
     if (!userToken) {
       if (DEBUG_MODE) console.error("Homepage Error: User is not authenticated (no token).");
+      window._homepageInitializing = false;
       return;
     }
     
@@ -2491,6 +2534,7 @@
     const user = Knack.getUserAttributes();
     if (!user || !user.id) {
       if (DEBUG_MODE) console.error("Homepage Error: Cannot get user attributes.");
+      window._homepageInitializing = false;
       return;
     }
     
@@ -2505,6 +2549,7 @@
         // User needs to complete verification steps
         // The modals are already being shown
         debugLog("User verification required, showing modals");
+        window._homepageInitializing = false;
         return;
       }
     } catch (error) {
@@ -2632,7 +2677,10 @@
         
         // Render the homepage UI with all data
         renderHomepage(userProfile, flashcardReviewCounts, studyPlannerNotificationData, taskboardNotificationData, vespaScoresData);
+        window._homepageInitializing = false;
+        window._homepageInitialized = true;
       } else {
+        window._homepageInitializing = false;
         container.innerHTML = `
           <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
             <h3>Error Loading Homepage</h3>
@@ -2643,6 +2691,7 @@
       }
     } catch (error) {
       debugLog("Homepage Error during initialization", { error: error.message, stack: error.stack });
+      window._homepageInitializing = false;
       container.innerHTML = `
         <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Homepage</h3>
@@ -2674,6 +2723,10 @@
     if (verificationModal && verificationModal.parentNode) {
         verificationModal.parentNode.removeChild(verificationModal);
     }
+    // Reset privacy handlers flag and homepage initialization flags
+    window._privacyHandlersSetup = false;
+    window._homepageInitializing = false;
+    window._homepageInitialized = false;
   });
 
   // NEW: Setup for profile information tooltip
