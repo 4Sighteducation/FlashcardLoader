@@ -4,7 +4,7 @@
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
-  const DEBUG_MODE = false; // Enable console logging
+  const DEBUG_MODE = true; // Enable console logging
 
   // Flashcard specific constants
   const FLASHCARD_DATA_OBJECT = 'object_102';
@@ -1994,7 +1994,7 @@
       // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
       const isVerified = studentRecord.field_189 === "Yes";  // CORRECTED FIELD
       const hasAcceptedPrivacy = studentRecord.field_127 === "Yes";
-      const hasResetPassword = studentRecord.field_539 === "No";  // CORRECTED LOGIC - "No" means they HAVE reset
+      const hasResetPassword = studentRecord.field_539 === "Yes";  // "Yes" means they HAVE reset password (don't need to reset)
       
       debugLog(`User verification status:`, {
         verified: isVerified,
@@ -2011,25 +2011,25 @@
       let needsPrivacy = false;
       let needsPassword = false;
       
-      // First time user: All fields are "No" - show both privacy and password
+      // First time user: field_189="No", field_539="No", field_127="No" - show both privacy and password
       if (!isVerified && !hasAcceptedPrivacy && !hasResetPassword) {
         needsPrivacy = true;
         needsPassword = true;
         debugLog("First time user - showing both privacy and password modals");
       }
-      // User has reset password but needs to accept privacy: field_189="Yes", field_539="No", field_127="No"
+      // User has reset password but needs to accept privacy: field_189="Yes", field_539="Yes", field_127="No"
       else if (isVerified && hasResetPassword && !hasAcceptedPrivacy) {
         needsPrivacy = true;
         needsPassword = false;
         debugLog("User needs to accept privacy policy only");
       }
-      // User accepted privacy but needs password reset: field_189="No", field_539="Yes", field_127="Yes"
+      // User accepted privacy but needs password reset: field_189="No", field_539="No", field_127="Yes"
       else if (!isVerified && !hasResetPassword && hasAcceptedPrivacy) {
         needsPrivacy = false;
         needsPassword = true;
         debugLog("User needs to reset password only");
       }
-      // All complete: field_189="Yes", field_539="No", field_127="Yes"
+      // All complete: field_189="Yes", field_539="Yes", field_127="Yes"
       else if (isVerified && hasResetPassword && hasAcceptedPrivacy) {
         debugLog("User verification complete - allowing access");
         return true;
@@ -2205,45 +2205,84 @@
 
   // Setup Privacy Policy Modal Handlers
   function setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve) {
-    const checkbox = document.getElementById('privacy-accept-checkbox');
-    const continueBtn = document.getElementById('privacy-continue-btn');
-    
-    // Ensure button starts in correct state
-    if (checkbox && continueBtn) {
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+      const checkbox = document.getElementById('privacy-accept-checkbox');
+      const continueBtn = document.getElementById('privacy-continue-btn');
+      
+      if (!checkbox || !continueBtn) {
+        debugLog('Privacy policy elements not found, retrying...', { checkbox: !!checkbox, continueBtn: !!continueBtn });
+        // Retry after another delay if elements not found
+        setTimeout(() => setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve), 100);
+        return;
+      }
+      
+      debugLog('Setting up privacy policy handlers', { checkbox: !!checkbox, continueBtn: !!continueBtn });
+      
+      // Ensure button starts in correct state
       continueBtn.disabled = true;
       continueBtn.style.background = '#666';
       continueBtn.style.cursor = 'not-allowed';
-    }
-    
-    // Enable/disable continue button based on checkbox
-    if (checkbox) {
-      checkbox.addEventListener('change', function() {
-        if (this.checked) {
+      
+      // Function to update button state
+      const updateButtonState = () => {
+        if (checkbox.checked) {
           continueBtn.disabled = false;
           continueBtn.style.background = '#079baa';
           continueBtn.style.cursor = 'pointer';
+          debugLog('Checkbox checked - button enabled');
         } else {
           continueBtn.disabled = true;
           continueBtn.style.background = '#666';
           continueBtn.style.cursor = 'not-allowed';
+          debugLog('Checkbox unchecked - button disabled');
         }
+      };
+      
+      // Remove any existing listeners to prevent duplicates
+      const newCheckbox = checkbox.cloneNode(true);
+      checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+      
+      // Add event listeners for multiple events to ensure it works
+      newCheckbox.addEventListener('change', updateButtonState);
+      newCheckbox.addEventListener('click', () => {
+        // Use setTimeout to ensure the checked state has updated
+        setTimeout(updateButtonState, 10);
       });
-    }
-    
-    // Handle continue button click
-    if (continueBtn) {
-      continueBtn.addEventListener('click', async function() {
-        if (!checkbox.checked) return;
+      
+      // Check initial state in case checkbox was somehow already checked
+      updateButtonState();
+      
+      // Handle continue button click
+      if (continueBtn) {
+        continueBtn.addEventListener('click', async function() {
+          // Need to reference the current checkbox (newCheckbox after cloning)
+          const currentCheckbox = document.getElementById('privacy-accept-checkbox');
+          if (!currentCheckbox || !currentCheckbox.checked) return;
         
         // Show loading state
         continueBtn.disabled = true;
         continueBtn.innerHTML = 'Updating...';
         
         try {
-          // Update the privacy policy field
+          // Get current user to update in object_3
+          const user = Knack.getUserAttributes();
+          
+          // Update privacy policy field in BOTH object_3 (user account) and object_6 (student record)
+          // Update object_3 first (user account)
+          try {
+            await updateUserAccountVerificationFields(user.id, { 
+              field_127: "Yes"  // Privacy policy accepted
+            });
+            debugLog('Privacy policy acceptance updated in object_3');
+          } catch (obj3Error) {
+            debugLog('Error updating object_3 privacy policy field (continuing anyway)', obj3Error);
+          }
+          
+          // Then update object_6 (student record)
           await updateStudentVerificationFields(studentRecordId, { field_127: "Yes" });
           
-          debugLog('Privacy policy acceptance updated successfully');
+          debugLog('Privacy policy acceptance updated successfully in both objects');
           
           // Hide privacy modal
           const privacyModal = document.getElementById('privacy-policy-modal');
@@ -2267,6 +2306,7 @@
         }
       });
     }
+    }, 50); // End of setTimeout
   }
 
   // Setup Password Reset Modal Handlers
@@ -2302,17 +2342,33 @@
       submitBtn.innerHTML = 'Setting Password...';
       
       try {
-        // Update password via Knack API
+        // Update password via Knack API in object_3
         await updateUserPassword(newPassword.value);
         
-        // Update the password field and verification flags with CORRECTED logic
+        // Get current user to update verification fields in object_3
+        const user = Knack.getUserAttributes();
+        
+        // Update verification flags in BOTH object_3 (user account) and object_6 (student record)
+        // Update object_3 first (user account)
+        try {
+          await updateUserAccountVerificationFields(user.id, {
+            field_539: "Yes",  // "Yes" means password HAS been reset (user doesn't need to reset)
+            field_189: "Yes",  // Mark user as verified
+            field_127: "Yes"   // Privacy policy accepted (if it exists in object_3)
+          });
+          debugLog('User account verification updated in object_3');
+        } catch (obj3Error) {
+          debugLog('Error updating object_3 verification fields (continuing anyway)', obj3Error);
+        }
+        
+        // Then update object_6 (student record)
         await updateStudentVerificationFields(studentRecordId, { 
-          field_71: newPassword.value,  // Update the actual password field
-          field_539: "No",               // CORRECTED: "No" means password HAS been reset
-          field_189: "Yes"               // CORRECTED: Mark user as verified using correct field
+          field_71: newPassword.value,  // Update the password field in student record
+          field_539: "Yes",              // "Yes" means password HAS been reset (user doesn't need to reset)
+          field_189: "Yes"               // Mark user as verified
         });
         
-        debugLog('Password and verification status updated successfully');
+        debugLog('Password and verification status updated successfully in both objects');
         
         // Success - close modal and proceed
         document.getElementById('verification-modal-overlay').remove();
@@ -2348,25 +2404,58 @@
     });
   }
 
+  // Update user account verification fields in object_3
+  async function updateUserAccountVerificationFields(userId, updates) {
+    debugLog('Updating user account verification fields in object_3', { userId, updates });
+    
+    return await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_3/records/${userId}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify(updates),
+          contentType: 'application/json',
+          success: (response) => {
+            debugLog('User account verification fields updated successfully in object_3', response);
+            resolve(response);
+          },
+          error: (error) => {
+            debugLog('Error updating user account verification fields in object_3', { error: error.message, responseText: error.responseText });
+            reject(error);
+          }
+        });
+      });
+    });
+  }
+
   // Update user password
   async function updateUserPassword(newPassword) {
     const user = Knack.getUserAttributes();
     
-    // Use Knack's built-in API to update password
-    return new Promise((resolve, reject) => {
-      $.ajax({
-        url: `${KNACK_API_URL}/applications/${Knack.application_id}/session`,
-        type: 'PUT',
-        headers: {
-          'X-Knack-Application-Id': Knack.application_id,
-          'Authorization': Knack.getUserToken(),
-          'Content-Type': 'application/json'
-        },
-        data: JSON.stringify({
-          password: newPassword
-        }),
-        success: resolve,
-        error: reject
+    // Update password in the actual user account (object_3)
+    debugLog('Updating password for user in object_3', { userId: user.id, email: user.email });
+    
+    // Update the password field in the actual Knack user account object
+    return await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_3/records/${user.id}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify({
+            field_71: newPassword  // Password field in object_3
+          }),
+          contentType: 'application/json',
+          success: (response) => {
+            debugLog('Password updated successfully in object_3', response);
+            resolve(response);
+          },
+          error: (error) => {
+            debugLog('Error updating password in object_3', { error: error.message, responseText: error.responseText });
+            reject(error);
+          }
+        });
       });
     });
   }
