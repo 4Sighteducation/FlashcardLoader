@@ -2104,24 +2104,27 @@
   // Privacy Policy Modal HTML - Using student privacy policy URL
   function getPrivacyPolicyModal() {
     return `
-      <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white;">
+      <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white; position: relative;">
         <h2 style="color: #079baa; margin-bottom: 20px; text-align: center;">Privacy Policy Agreement</h2>
         
-        <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
+        <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; position: relative;">
           <iframe src="https://vespa.academy/assets/MVIMAGES/student-privacy-policy.html" 
-                  style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px;"
+                  style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px; pointer-events: none;"
                   title="Privacy Policy">
           </iframe>
+          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: auto; overflow-y: auto;">
+            <!-- Invisible overlay to allow scrolling but prevent iframe interaction -->
+          </div>
         </div>
         
-        <div style="margin: 20px 0;">
+        <div style="margin: 20px 0; position: relative; z-index: 10;">
           <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
-            <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
-            <span>I have read and agree to the VESPA Academy Privacy Policy</span>
+            <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer; position: relative; z-index: 11;">
+            <span style="cursor: pointer; user-select: none;">I have read and agree to the VESPA Academy Privacy Policy</span>
           </label>
         </div>
         
-        <div style="text-align: center; margin-top: 20px;">
+        <div style="text-align: center; margin-top: 20px; position: relative; z-index: 10;">
           <button id="privacy-continue-btn" disabled style="
             background: #666;
             color: white;
@@ -2132,6 +2135,8 @@
             font-weight: bold;
             cursor: not-allowed;
             transition: all 0.3s ease;
+            position: relative;
+            z-index: 11;
           ">
             Continue
           </button>
@@ -2205,30 +2210,65 @@
 
   // Setup Privacy Policy Modal Handlers
   function setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve) {
-    const checkbox = document.getElementById('privacy-accept-checkbox');
-    const continueBtn = document.getElementById('privacy-continue-btn');
-    
-    // Ensure button starts in correct state
-    if (checkbox && continueBtn) {
-      continueBtn.disabled = true;
-      continueBtn.style.background = '#666';
-      continueBtn.style.cursor = 'not-allowed';
-    }
-    
-    // Enable/disable continue button based on checkbox
-    if (checkbox) {
-      checkbox.addEventListener('change', function() {
-        if (this.checked) {
+    // Add a small delay to ensure DOM is ready
+    setTimeout(() => {
+      const checkbox = document.getElementById('privacy-accept-checkbox');
+      const continueBtn = document.getElementById('privacy-continue-btn');
+      
+      debugLog('Privacy policy handler setup', { 
+        checkboxFound: !!checkbox, 
+        buttonFound: !!continueBtn,
+        checkboxId: checkbox?.id,
+        buttonId: continueBtn?.id
+      });
+      
+      // Ensure button starts in correct state
+      if (checkbox && continueBtn) {
+        continueBtn.disabled = true;
+        continueBtn.style.background = '#666';
+        continueBtn.style.cursor = 'not-allowed';
+        
+        // Also try click event as backup
+        checkbox.addEventListener('click', function(e) {
+          debugLog('Checkbox clicked', { checked: this.checked });
+          if (this.checked) {
+            continueBtn.disabled = false;
+            continueBtn.style.background = '#079baa';
+            continueBtn.style.cursor = 'pointer';
+          } else {
+            continueBtn.disabled = true;
+            continueBtn.style.background = '#666';
+            continueBtn.style.cursor = 'not-allowed';
+          }
+        });
+        
+        // Original change event
+        checkbox.addEventListener('change', function(e) {
+          debugLog('Checkbox changed', { checked: this.checked });
+          if (this.checked) {
+            continueBtn.disabled = false;
+            continueBtn.style.background = '#079baa';
+            continueBtn.style.cursor = 'pointer';
+          } else {
+            continueBtn.disabled = true;
+            continueBtn.style.background = '#666';
+            continueBtn.style.cursor = 'not-allowed';
+          }
+        });
+        
+        // Force check the current state in case checkbox was already checked
+        if (checkbox.checked) {
           continueBtn.disabled = false;
           continueBtn.style.background = '#079baa';
           continueBtn.style.cursor = 'pointer';
-        } else {
-          continueBtn.disabled = true;
-          continueBtn.style.background = '#666';
-          continueBtn.style.cursor = 'not-allowed';
         }
-      });
-    }
+      } else {
+        console.error('[Homepage] Privacy policy elements not found:', {
+          checkbox: checkbox,
+          continueBtn: continueBtn
+        });
+      }
+    }, 100); // 100ms delay to ensure DOM is ready
     
     // Handle continue button click
     if (continueBtn) {
