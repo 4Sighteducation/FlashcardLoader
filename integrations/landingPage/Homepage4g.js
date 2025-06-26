@@ -67,10 +67,10 @@
     numLogins: 'field_3079',       // NumLogins
     upn: 'field_3136',            // Unique Pupil Number (UPN)
     
-    // Verification fields (in Object_6)
+    // Verification fields (in Object_6) - CORRECTED
     password: 'field_71',         // Password field
     privacyPolicy: 'field_127',   // Privacy Policy acceptance (Yes/No)
-    verifiedUser: 'field_128',    // Verified User status (Yes/No)
+    verifiedUser: 'field_189',    // Verified User status (Yes/No) - CORRECTED FROM field_128
     passwordReset: 'field_539',   // Password Reset status (Yes/No)
     
     // Subject fields
@@ -1987,28 +1987,66 @@
       // Find the student record to check verification fields
       const studentRecord = await findStudentRecord(user.email);
       if (!studentRecord) {
-        debugLog("Cannot find student record for verification check");
+        debugLog("[Homepage] Cannot find student record for verification check");
         return true; // Allow access if we can't find the record
       }
       
+      debugLog(`[Homepage] Found student record with ID: ${studentRecord.id}`);
+      
       // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
-      const isVerified = studentRecord.field_128 === "Yes";
+      const isVerified = studentRecord.field_189 === "Yes";  // CORRECTED FIELD
       const hasAcceptedPrivacy = studentRecord.field_127 === "Yes";
-      const hasResetPassword = studentRecord.field_539 === "Yes";
+      const hasResetPassword = studentRecord.field_539 === "No";  // CORRECTED LOGIC - "No" means they HAVE reset
       
       debugLog(`User verification status:`, {
         verified: isVerified,
         privacyAccepted: hasAcceptedPrivacy,
-        passwordReset: hasResetPassword
+        passwordReset: hasResetPassword,
+        rawValues: {
+          field_189: studentRecord.field_189,
+          field_127: studentRecord.field_127,
+          field_539: studentRecord.field_539
+        }
       });
       
-      // Check what needs to be shown
-      if (!isVerified || !hasAcceptedPrivacy || !hasResetPassword) {
-        // Something needs to be completed
-        const needsPrivacy = !hasAcceptedPrivacy;
-        const needsPassword = !hasResetPassword;
-        
-        // Show appropriate modals
+      // Determine what needs to be shown based on the correct logic
+      let needsPrivacy = false;
+      let needsPassword = false;
+      
+      // First time user: All fields are "No" - show both privacy and password
+      if (!isVerified && !hasAcceptedPrivacy && !hasResetPassword) {
+        needsPrivacy = true;
+        needsPassword = true;
+        debugLog("First time user - showing both privacy and password modals");
+      }
+      // User has reset password but needs to accept privacy: field_189="Yes", field_539="No", field_127="No"
+      else if (isVerified && hasResetPassword && !hasAcceptedPrivacy) {
+        needsPrivacy = true;
+        needsPassword = false;
+        debugLog("User needs to accept privacy policy only");
+      }
+      // User accepted privacy but needs password reset: field_189="No", field_539="Yes", field_127="Yes"
+      else if (!isVerified && !hasResetPassword && hasAcceptedPrivacy) {
+        needsPrivacy = false;
+        needsPassword = true;
+        debugLog("User needs to reset password only");
+      }
+      // All complete: field_189="Yes", field_539="No", field_127="Yes"
+      else if (isVerified && hasResetPassword && hasAcceptedPrivacy) {
+        debugLog("User verification complete - allowing access");
+        return true;
+      }
+      else {
+        // Edge case - log the state and default to showing what's missing
+        console.warn("[Homepage] Unexpected verification state", {
+          isVerified, hasAcceptedPrivacy, hasResetPassword
+        });
+        needsPrivacy = !hasAcceptedPrivacy;
+        needsPassword = !hasResetPassword;
+      }
+      
+      // Show appropriate modals if needed
+      if (needsPrivacy || needsPassword) {
         return await showVerificationModals(needsPrivacy, needsPassword, studentRecord.id);
       }
       
@@ -2068,24 +2106,27 @@
   // Privacy Policy Modal HTML - Using student privacy policy URL
   function getPrivacyPolicyModal() {
     return `
-      <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white;">
+      <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white; position: relative;">
         <h2 style="color: #079baa; margin-bottom: 20px; text-align: center;">Privacy Policy Agreement</h2>
         
-        <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
+        <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; position: relative;">
           <iframe src="https://vespa.academy/assets/MVIMAGES/student-privacy-policy.html" 
-                  style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px;"
+                  style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px; pointer-events: none;"
                   title="Privacy Policy">
           </iframe>
+          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: auto; overflow-y: auto;">
+            <!-- Invisible overlay to allow scrolling but prevent iframe interaction -->
+          </div>
         </div>
         
-        <div style="margin: 20px 0;">
+        <div style="margin: 20px 0; position: relative; z-index: 10;">
           <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
-            <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
-            <span>I have read and agree to the VESPA Academy Privacy Policy</span>
+            <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer; position: relative; z-index: 11;">
+            <span style="cursor: pointer; user-select: none;">I have read and agree to the VESPA Academy Privacy Policy</span>
           </label>
         </div>
         
-        <div style="text-align: center; margin-top: 20px;">
+        <div style="text-align: center; margin-top: 20px; position: relative; z-index: 10;">
           <button id="privacy-continue-btn" disabled style="
             background: #666;
             color: white;
@@ -2096,6 +2137,8 @@
             font-weight: bold;
             cursor: not-allowed;
             transition: all 0.3s ease;
+            position: relative;
+            z-index: 11;
           ">
             Continue
           </button>
@@ -2169,55 +2212,107 @@
 
   // Setup Privacy Policy Modal Handlers
   function setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve) {
-    const checkbox = document.getElementById('privacy-accept-checkbox');
-    const continueBtn = document.getElementById('privacy-continue-btn');
-    
-    // Enable/disable continue button based on checkbox
-    checkbox.addEventListener('change', function() {
-      if (this.checked) {
-        continueBtn.disabled = false;
-        continueBtn.style.background = '#079baa';
-        continueBtn.style.cursor = 'pointer';
-      } else {
+    // Add a small delay to ensure DOM is ready
+    setTimeout(() => {
+      const checkbox = document.getElementById('privacy-accept-checkbox');
+      const continueBtn = document.getElementById('privacy-continue-btn');
+      
+      debugLog('Privacy policy handler setup', { 
+        checkboxFound: !!checkbox, 
+        buttonFound: !!continueBtn,
+        checkboxId: checkbox?.id,
+        buttonId: continueBtn?.id
+      });
+      
+      // Ensure button starts in correct state
+      if (checkbox && continueBtn) {
         continueBtn.disabled = true;
         continueBtn.style.background = '#666';
         continueBtn.style.cursor = 'not-allowed';
+        
+        // Also try click event as backup
+        checkbox.addEventListener('click', function(e) {
+          debugLog('Checkbox clicked', { checked: this.checked });
+          if (this.checked) {
+            continueBtn.disabled = false;
+            continueBtn.style.background = '#079baa';
+            continueBtn.style.cursor = 'pointer';
+          } else {
+            continueBtn.disabled = true;
+            continueBtn.style.background = '#666';
+            continueBtn.style.cursor = 'not-allowed';
+          }
+        });
+        
+        // Original change event
+        checkbox.addEventListener('change', function(e) {
+          debugLog('Checkbox changed', { checked: this.checked });
+          if (this.checked) {
+            continueBtn.disabled = false;
+            continueBtn.style.background = '#079baa';
+            continueBtn.style.cursor = 'pointer';
+          } else {
+            continueBtn.disabled = true;
+            continueBtn.style.background = '#666';
+            continueBtn.style.cursor = 'not-allowed';
+          }
+        });
+        
+        // Force check the current state in case checkbox was already checked
+        if (checkbox.checked) {
+          continueBtn.disabled = false;
+          continueBtn.style.background = '#079baa';
+          continueBtn.style.cursor = 'pointer';
+        }
+      } else {
+        console.error('[Homepage] Privacy policy elements not found:', {
+          checkbox: checkbox,
+          continueBtn: continueBtn
+        });
       }
-    });
+    }, 100); // 100ms delay to ensure DOM is ready
     
     // Handle continue button click
-    continueBtn.addEventListener('click', async function() {
-      if (!checkbox.checked) return;
-      
-      // Show loading state
-      continueBtn.disabled = true;
-      continueBtn.innerHTML = 'Updating...';
-      
-      try {
-        // Update the privacy policy field (Knack uses "Yes"/"No" for boolean fields)
-        await updateStudentVerificationFields(studentRecordId, { field_127: "Yes" });
+    if (continueBtn) {
+      continueBtn.addEventListener('click', async function() {
+        if (!checkbox.checked) return;
         
-        // Hide privacy modal
-        const privacyModal = document.getElementById('privacy-policy-modal');
-        if (privacyModal) privacyModal.style.display = 'none';
+        // Show loading state
+        continueBtn.disabled = true;
+        continueBtn.innerHTML = 'Updating...';
         
-        // Show password modal if needed
-        if (needsPassword) {
-          const passwordModal = document.getElementById('password-reset-modal');
-          if (passwordModal) passwordModal.style.display = 'block';
-          setupPasswordResetHandlers(studentRecordId, resolve);
-        } else {
-          // All done, close modal and proceed
-          document.getElementById('verification-modal-overlay').remove();
-          resolve(true);
+        try {
+          debugLog('[Homepage] Updating privacy policy acceptance for student:', studentRecordId);
+          
+          // Update the privacy policy field
+          await updateStudentVerificationFields(studentRecordId, { field_127: "Yes" });
+          
+          debugLog('[Homepage] Privacy policy acceptance updated successfully');
+          
+          // Hide privacy modal
+          const privacyModal = document.getElementById('privacy-policy-modal');
+          if (privacyModal) privacyModal.style.display = 'none';
+          
+          // Show password modal if needed
+          if (needsPassword) {
+            debugLog('[Homepage] User also needs password reset, showing password modal');
+            const passwordModal = document.getElementById('password-reset-modal');
+            if (passwordModal) passwordModal.style.display = 'block';
+            setupPasswordResetHandlers(studentRecordId, resolve);
+          } else {
+            // All done, close modal and proceed
+            debugLog('[Homepage] Verification complete, closing modal');
+            document.getElementById('verification-modal-overlay').remove();
+            resolve(true);
+          }
+        } catch (error) {
+          console.error('[Homepage] Error updating privacy policy acceptance:', error);
+          alert('Error updating your preferences. Please check the browser console for details and try again.');
+          continueBtn.disabled = false;
+          continueBtn.innerHTML = 'Continue';
         }
-      } catch (error) {
-        debugLog('Error updating privacy policy acceptance:', error);
-        alert('Error updating your preferences. Please try again.');
-        continueBtn.disabled = false;
-        continueBtn.innerHTML = 'Continue';
-      }
-    });
+      });
+    }
   }
 
   // Setup Password Reset Modal Handlers
@@ -2253,15 +2348,19 @@
       submitBtn.innerHTML = 'Setting Password...';
       
       try {
-        // Update password via Knack API
+        // Update password via Knack API first
         await updateUserPassword(newPassword.value);
         
-        // Update the password field and reset flags
+        debugLog('[Homepage] Password updated, now updating verification flags');
+        
+        // Update ONLY the verification flags (not the password field again)
         await updateStudentVerificationFields(studentRecordId, { 
-          field_71: newPassword.value,  // Update the actual password field
-          field_539: "Yes",              // Mark password as reset
-          field_128: "Yes"               // Mark user as verified
+          // Don't update field_71 (password) as it's already updated via session API
+          field_539: "No",               // CORRECTED: "No" means password HAS been reset
+          field_189: "Yes"               // CORRECTED: Mark user as verified using correct field
         });
+        
+        debugLog('[Homepage] Password and verification status updated successfully');
         
         // Success - close modal and proceed
         document.getElementById('verification-modal-overlay').remove();
@@ -2271,8 +2370,8 @@
         alert('Password set successfully! You can now access the platform.');
         
       } catch (error) {
-        debugLog('Error setting password:', error);
-        errorDiv.innerHTML = 'Error setting password. Please try again.';
+        console.error('[Homepage] Error in password reset process:', error);
+        errorDiv.innerHTML = 'Error setting password. Please check the console for details and try again.';
         errorDiv.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Set Password';
@@ -2282,28 +2381,52 @@
 
   // Update student verification fields
   async function updateStudentVerificationFields(studentRecordId, updates) {
-    return await retryApiCall(() => {
-      return new Promise((resolve, reject) => {
-        $.ajax({
-          url: `${KNACK_API_URL}/objects/object_6/records/${studentRecordId}`,
-          type: 'PUT',
-          headers: getKnackHeaders(),
-          data: JSON.stringify(updates),
-          contentType: 'application/json',
-          success: resolve,
-          error: reject
+    debugLog('[Homepage] Updating student verification fields', { recordId: studentRecordId, updates });
+    
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          const headers = getKnackHeaders();
+          debugLog('[Homepage] Making verification update request with headers', headers);
+          
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_6/records/${studentRecordId}`,
+            type: 'PUT',
+            headers: headers,
+            data: JSON.stringify(updates),
+            success: (response) => {
+              debugLog('[Homepage] Verification fields updated successfully', response);
+              resolve(response);
+            },
+            error: (xhr, status, error) => {
+              console.error('[Homepage] Failed to update verification fields', {
+                status: xhr.status,
+                statusText: xhr.statusText,
+                responseText: xhr.responseText,
+                error: error
+              });
+              reject(xhr);
+            }
+          });
         });
       });
-    });
+      
+      return response;
+    } catch (error) {
+      console.error('[Homepage] Error in updateStudentVerificationFields', error);
+      throw error;
+    }
   }
 
   // Update user password
   async function updateUserPassword(newPassword) {
     const user = Knack.getUserAttributes();
     
-    // Use Knack's built-in API to update password
-    return new Promise((resolve, reject) => {
-      $.ajax({
+    debugLog('[Homepage] Updating user password via Knack session API');
+    
+    try {
+      // Use Knack's built-in API to update password
+      const response = await $.ajax({
         url: `${KNACK_API_URL}/applications/${Knack.application_id}/session`,
         type: 'PUT',
         headers: {
@@ -2313,11 +2436,19 @@
         },
         data: JSON.stringify({
           password: newPassword
-        }),
-        success: resolve,
-        error: reject
+        })
       });
-    });
+      
+      debugLog('[Homepage] Password updated successfully via session API');
+      return response;
+    } catch (error) {
+      console.error('[Homepage] Failed to update password via session API', {
+        status: error.status,
+        statusText: error.statusText,
+        responseText: error.responseText
+      });
+      throw error;
+    }
   }
 
   // --- Entry Point Function ---
