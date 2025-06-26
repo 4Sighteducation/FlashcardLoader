@@ -1205,7 +1205,7 @@
                 <h2 style="color: #00e5db; margin-bottom: 20px; text-align: center;">Privacy Policy Agreement</h2>
                 
                 <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
-                    <iframe src="https://vespa.academy/assets/MVIMAGESprivacy-policy.html" 
+                    <iframe src="https://vespa.academy/assets/MVIMAGES/privacy-policy.html" 
                             style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px;"
                             title="Privacy Policy">
                     </iframe>
