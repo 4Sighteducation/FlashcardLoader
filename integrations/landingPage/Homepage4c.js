@@ -66,6 +66,13 @@
     yearGroup: 'field_3078',       // Year Group
     numLogins: 'field_3079',       // NumLogins
     upn: 'field_3136',            // Unique Pupil Number (UPN)
+    
+    // Verification fields (in Object_6)
+    password: 'field_71',         // Password field
+    privacyPolicy: 'field_127',   // Privacy Policy acceptance (Yes/No)
+    verifiedUser: 'field_128',    // Verified User status (Yes/No)
+    passwordReset: 'field_539',   // Password Reset status (Yes/No)
+    
     // Subject fields
     sub1: 'field_3080',
     sub2: 'field_3081',
@@ -1967,6 +1974,352 @@
     `;
   }
   
+  // --- User Verification Functions ---
+  // Check user verification status and show appropriate modals
+  async function checkUserVerificationStatus() {
+    try {
+      const user = Knack.getUserAttributes();
+      if (!user || !user.email) {
+        debugLog("Cannot check verification status: No user data");
+        return true; // Allow access on error
+      }
+      
+      // Find the student record to check verification fields
+      const studentRecord = await findStudentRecord(user.email);
+      if (!studentRecord) {
+        debugLog("Cannot find student record for verification check");
+        return true; // Allow access if we can't find the record
+      }
+      
+      // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
+      const isVerified = studentRecord.field_128 === "Yes";
+      const hasAcceptedPrivacy = studentRecord.field_127 === "Yes";
+      const hasResetPassword = studentRecord.field_539 === "Yes";
+      
+      debugLog(`User verification status:`, {
+        verified: isVerified,
+        privacyAccepted: hasAcceptedPrivacy,
+        passwordReset: hasResetPassword
+      });
+      
+      // Check what needs to be shown
+      if (!isVerified || !hasAcceptedPrivacy || !hasResetPassword) {
+        // Something needs to be completed
+        const needsPrivacy = !hasAcceptedPrivacy;
+        const needsPassword = !hasResetPassword;
+        
+        // Show appropriate modals
+        return await showVerificationModals(needsPrivacy, needsPassword, studentRecord.id);
+      }
+      
+      // All checks passed
+      return true;
+    } catch (error) {
+      debugLog("Error in checkUserVerificationStatus:", error);
+      return true; // Allow access on error
+    }
+  }
+
+  // Show verification modals based on what's needed
+  async function showVerificationModals(needsPrivacy, needsPassword, studentRecordId) {
+    return new Promise((resolve) => {
+      // Create modal container
+      const modalHTML = `
+        <div id="verification-modal-overlay" style="
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.8);
+          z-index: 100000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <div id="verification-modal-container" style="
+            background: linear-gradient(135deg, #23356f 0%, #1a2754 100%);
+            border: 3px solid #079baa;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+          ">
+            ${needsPrivacy ? getPrivacyPolicyModal() : ''}
+            ${needsPassword ? getPasswordResetModal() : ''}
+          </div>
+        </div>
+      `;
+      
+      // Add modal to page
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+      
+      // Handle modal flow
+      if (needsPrivacy) {
+        setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve);
+      } else if (needsPassword) {
+        setupPasswordResetHandlers(studentRecordId, resolve);
+      }
+    });
+  }
+
+  // Privacy Policy Modal HTML - Using student privacy policy URL
+  function getPrivacyPolicyModal() {
+    return `
+      <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white;">
+        <h2 style="color: #079baa; margin-bottom: 20px; text-align: center;">Privacy Policy Agreement</h2>
+        
+        <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
+          <iframe src="https://vespa.academy/assets/MVIMAGES/student-privacy-policy.html" 
+                  style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px;"
+                  title="Privacy Policy">
+          </iframe>
+        </div>
+        
+        <div style="margin: 20px 0;">
+          <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
+            <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
+            <span>I have read and agree to the VESPA Academy Privacy Policy</span>
+          </label>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <button id="privacy-continue-btn" disabled style="
+            background: #666;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: not-allowed;
+            transition: all 0.3s ease;
+          ">
+            Continue
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Password Reset Modal HTML
+  function getPasswordResetModal() {
+    return `
+      <div id="password-reset-modal" class="verification-modal" style="padding: 30px; color: white; display: none;">
+        <h2 style="color: #079baa; margin-bottom: 20px; text-align: center;">Set Your Password</h2>
+        
+        <p style="text-align: center; margin-bottom: 20px; color: #ccc;">
+          Please set a new password for your account to continue.
+        </p>
+        
+        <form id="password-reset-form" style="max-width: 400px; margin: 0 auto;">
+          <div style="margin-bottom: 20px;">
+            <label for="new-password" style="display: block; margin-bottom: 5px; font-weight: bold;">
+              New Password
+            </label>
+            <input type="password" id="new-password" required style="
+              width: 100%;
+              padding: 10px;
+              border-radius: 4px;
+              border: 1px solid #079baa;
+              background: rgba(255, 255, 255, 0.1);
+              color: white;
+              font-size: 16px;
+            " placeholder="Enter new password">
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label for="confirm-password" style="display: block; margin-bottom: 5px; font-weight: bold;">
+              Confirm Password
+            </label>
+            <input type="password" id="confirm-password" required style="
+              width: 100%;
+              padding: 10px;
+              border-radius: 4px;
+              border: 1px solid #079baa;
+              background: rgba(255, 255, 255, 0.1);
+              color: white;
+              font-size: 16px;
+            " placeholder="Confirm new password">
+          </div>
+          
+          <div id="password-error" style="color: #ff6b6b; margin-bottom: 20px; display: none;"></div>
+          
+          <div style="text-align: center;">
+            <button type="submit" id="password-submit-btn" style="
+              background: #079baa;
+              color: white;
+              border: none;
+              padding: 12px 30px;
+              border-radius: 6px;
+              font-size: 16px;
+              font-weight: bold;
+              cursor: pointer;
+              transition: all 0.3s ease;
+            ">
+              Set Password
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+  }
+
+  // Setup Privacy Policy Modal Handlers
+  function setupPrivacyPolicyHandlers(studentRecordId, needsPassword, resolve) {
+    const checkbox = document.getElementById('privacy-accept-checkbox');
+    const continueBtn = document.getElementById('privacy-continue-btn');
+    
+    // Enable/disable continue button based on checkbox
+    checkbox.addEventListener('change', function() {
+      if (this.checked) {
+        continueBtn.disabled = false;
+        continueBtn.style.background = '#079baa';
+        continueBtn.style.cursor = 'pointer';
+      } else {
+        continueBtn.disabled = true;
+        continueBtn.style.background = '#666';
+        continueBtn.style.cursor = 'not-allowed';
+      }
+    });
+    
+    // Handle continue button click
+    continueBtn.addEventListener('click', async function() {
+      if (!checkbox.checked) return;
+      
+      // Show loading state
+      continueBtn.disabled = true;
+      continueBtn.innerHTML = 'Updating...';
+      
+      try {
+        // Update the privacy policy field (Knack uses "Yes"/"No" for boolean fields)
+        await updateStudentVerificationFields(studentRecordId, { field_127: "Yes" });
+        
+        // Hide privacy modal
+        const privacyModal = document.getElementById('privacy-policy-modal');
+        if (privacyModal) privacyModal.style.display = 'none';
+        
+        // Show password modal if needed
+        if (needsPassword) {
+          const passwordModal = document.getElementById('password-reset-modal');
+          if (passwordModal) passwordModal.style.display = 'block';
+          setupPasswordResetHandlers(studentRecordId, resolve);
+        } else {
+          // All done, close modal and proceed
+          document.getElementById('verification-modal-overlay').remove();
+          resolve(true);
+        }
+      } catch (error) {
+        debugLog('Error updating privacy policy acceptance:', error);
+        alert('Error updating your preferences. Please try again.');
+        continueBtn.disabled = false;
+        continueBtn.innerHTML = 'Continue';
+      }
+    });
+  }
+
+  // Setup Password Reset Modal Handlers
+  function setupPasswordResetHandlers(studentRecordId, resolve) {
+    const form = document.getElementById('password-reset-form');
+    const newPassword = document.getElementById('new-password');
+    const confirmPassword = document.getElementById('confirm-password');
+    const errorDiv = document.getElementById('password-error');
+    const submitBtn = document.getElementById('password-submit-btn');
+    
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      // Clear previous errors
+      errorDiv.style.display = 'none';
+      errorDiv.innerHTML = '';
+      
+      // Validate passwords
+      if (newPassword.value.length < 8) {
+        errorDiv.innerHTML = 'Password must be at least 8 characters long.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      if (newPassword.value !== confirmPassword.value) {
+        errorDiv.innerHTML = 'Passwords do not match.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = 'Setting Password...';
+      
+      try {
+        // Update password via Knack API
+        await updateUserPassword(newPassword.value);
+        
+        // Update the password field and reset flags
+        await updateStudentVerificationFields(studentRecordId, { 
+          field_71: newPassword.value,  // Update the actual password field
+          field_539: "Yes",              // Mark password as reset
+          field_128: "Yes"               // Mark user as verified
+        });
+        
+        // Success - close modal and proceed
+        document.getElementById('verification-modal-overlay').remove();
+        resolve(true);
+        
+        // Show success message
+        alert('Password set successfully! You can now access the platform.');
+        
+      } catch (error) {
+        debugLog('Error setting password:', error);
+        errorDiv.innerHTML = 'Error setting password. Please try again.';
+        errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Set Password';
+      }
+    });
+  }
+
+  // Update student verification fields
+  async function updateStudentVerificationFields(studentRecordId, updates) {
+    return await retryApiCall(() => {
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: `${KNACK_API_URL}/objects/object_6/records/${studentRecordId}`,
+          type: 'PUT',
+          headers: getKnackHeaders(),
+          data: JSON.stringify(updates),
+          contentType: 'application/json',
+          success: resolve,
+          error: reject
+        });
+      });
+    });
+  }
+
+  // Update user password
+  async function updateUserPassword(newPassword) {
+    const user = Knack.getUserAttributes();
+    
+    // Use Knack's built-in API to update password
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: `${KNACK_API_URL}/applications/${Knack.application_id}/session`,
+        type: 'PUT',
+        headers: {
+          'X-Knack-Application-Id': Knack.application_id,
+          'Authorization': Knack.getUserToken(),
+          'Content-Type': 'application/json'
+        },
+        data: JSON.stringify({
+          password: newPassword
+        }),
+        success: resolve,
+        error: reject
+      });
+    });
+  }
+
   // --- Entry Point Function ---
   // Main initialization function, exposed globally
   window.initializeHomepage = async function() {
@@ -2004,6 +2357,20 @@
     // Store user info globally
     window.currentKnackUser = user;
     debugLog("Current user:", user);
+    
+    // Check user verification status before proceeding
+    try {
+      const canProceed = await checkUserVerificationStatus();
+      if (!canProceed) {
+        // User needs to complete verification steps
+        // The modals are already being shown
+        debugLog("User verification required, showing modals");
+        return;
+      }
+    } catch (error) {
+      debugLog("Error checking user verification status:", error);
+      // Continue anyway on error
+    }
     
     // Find the target container - add more logging to troubleshoot
     debugLog(`Looking for container with selector: ${config.elementSelector}`);
@@ -2161,6 +2528,11 @@
     const megTooltip = document.getElementById('megInfoTooltip');
     if (megTooltip && megTooltip.parentNode) {
         megTooltip.parentNode.removeChild(megTooltip);
+    }
+    // Remove verification modal if it exists
+    const verificationModal = document.getElementById('verification-modal-overlay');
+    if (verificationModal && verificationModal.parentNode) {
+        verificationModal.parentNode.removeChild(verificationModal);
     }
   });
 
