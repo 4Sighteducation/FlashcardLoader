@@ -1979,32 +1979,58 @@
   async function checkUserVerificationStatus() {
     try {
       const user = Knack.getUserAttributes();
-      if (!user || !user.email) {
+      if (!user || !user.email || !user.id) {
         debugLog("Cannot check verification status: No user data");
         return true; // Allow access on error
       }
       
-      // Find the student record to check verification fields
-      const studentRecord = await findStudentRecord(user.email);
-      if (!studentRecord) {
-        debugLog("Cannot find student record for verification check");
-        return true; // Allow access if we can't find the record
+      // Fetch the user account record from object_3 to check verification fields
+      debugLog("Fetching user account from object_3 for verification check");
+      let userAccountRecord;
+      let studentRecord = null; // Initialize to track if we're using student record as fallback
+      
+      try {
+        const response = await retryApiCall(() => {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/object_3/records/${user.id}`,
+              type: 'GET',
+              headers: getKnackHeaders(),
+              data: { format: 'raw' },
+              success: resolve,
+              error: reject
+            });
+          });
+        });
+        userAccountRecord = response;
+        debugLog("Successfully fetched user account from object_3", userAccountRecord);
+      } catch (error) {
+        debugLog("Error fetching user account from object_3", error);
+        // If we can't fetch object_3, fall back to checking student record
+        studentRecord = await findStudentRecord(user.email);
+        if (!studentRecord) {
+          debugLog("Cannot find user account or student record for verification check");
+          return true; // Allow access if we can't find the record
+        }
+        userAccountRecord = studentRecord; // Use student record as fallback
+        debugLog("Using student record as fallback for verification check");
       }
       
-      // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
-      const isVerified = studentRecord.field_189 === "Yes";  // CORRECTED FIELD
-      const hasAcceptedPrivacy = studentRecord.field_127 === "Yes";
-      const hasResetPassword = studentRecord.field_539 === "Yes";  // "Yes" means they HAVE reset password (don't need to reset)
+      // Extract the boolean field values from object_3 (they come as "Yes"/"No" strings in Knack)
+      const isVerified = userAccountRecord.field_189 === "Yes";  
+      const hasAcceptedPrivacy = userAccountRecord.field_127 === "Yes";
+      const hasResetPassword = userAccountRecord.field_539 === "Yes";  // "Yes" means they HAVE reset password (don't need to reset)
       
-      debugLog(`User verification status:`, {
+      debugLog(`User verification status from object_3:`, {
         verified: isVerified,
         privacyAccepted: hasAcceptedPrivacy,
         passwordReset: hasResetPassword,
         rawValues: {
-          field_189: studentRecord.field_189,
-          field_127: studentRecord.field_127,
-          field_539: studentRecord.field_539
-        }
+          field_189: userAccountRecord.field_189,
+          field_127: userAccountRecord.field_127,
+          field_539: userAccountRecord.field_539
+        },
+        source: studentRecord && userAccountRecord === studentRecord ? 'object_6 (fallback)' : 'object_3'
       });
       
       // Determine what needs to be shown based on the correct logic
@@ -2045,7 +2071,23 @@
       
       // Show appropriate modals if needed
       if (needsPrivacy || needsPassword) {
-        return await showVerificationModals(needsPrivacy, needsPassword, studentRecord.id);
+        // Get student record ID for updating object_6
+        let studentRecordId;
+        if (userAccountRecord === studentRecord) {
+          // We already have the student record
+          studentRecordId = userAccountRecord.id;
+        } else {
+          // Need to fetch student record to get its ID
+          const studentRec = await findStudentRecord(user.email);
+          studentRecordId = studentRec ? studentRec.id : null;
+        }
+        
+        if (!studentRecordId) {
+          debugLog("Cannot find student record ID for updating verification fields");
+          return true; // Allow access if we can't update
+        }
+        
+        return await showVerificationModals(needsPrivacy, needsPassword, studentRecordId);
       }
       
       // All checks passed
