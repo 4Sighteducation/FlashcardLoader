@@ -5037,15 +5037,18 @@ if (emulatorBtn && emulatorModal) {
 // --- User Verification Functions ---
 // Check user verification status and show appropriate modals
 async function checkUserVerificationStatus() {
+  let user = null; // Define user outside try block
   try {
-    const user = Knack.getUserAttributes();
+    user = Knack.getUserAttributes();
     if (!user || !user.email) {
       console.error("[Staff Homepage] Cannot check verification status: No user data");
       return true; // Allow access on error
     }
     
     // Find the staff record to check verification fields
+    console.log("[Staff Homepage] Attempting to find staff record for email:", user.email);
     const staffRecord = await findStaffRecord(user.email);
+    
     if (!staffRecord) {
       console.error("[Staff Homepage] Cannot find staff record for verification check for email:", user.email);
       
@@ -5061,10 +5064,10 @@ async function checkUserVerificationStatus() {
       return false; // Don't allow access to staff homepage
     }
     
-    // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
-    const isVerified = staffRecord.field_189 === "Yes";  // CORRECTED FIELD
-    const hasAcceptedPrivacy = staffRecord.field_127 === "Yes";
-    const hasResetPassword = staffRecord.field_539 === "Yes";  // "Yes" means they HAVE reset password (don't need to reset)
+    // Extract the boolean field values (they can be either boolean true/false or "Yes"/"No" strings)
+    const isVerified = staffRecord.field_189 === "Yes" || staffRecord.field_189 === true;
+    const hasAcceptedPrivacy = staffRecord.field_127 === "Yes" || staffRecord.field_127 === true;
+    const hasResetPassword = staffRecord.field_539 === "Yes" || staffRecord.field_539 === true;
     
     console.log(`[Staff Homepage] User verification status:`, {
       verified: isVerified,
