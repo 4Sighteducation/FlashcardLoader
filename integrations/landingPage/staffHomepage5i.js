@@ -167,7 +167,7 @@ function sanitizeDataForLogging(data) {
   // Define sensitive fields to mask
   const sensitiveFields = [
     'Authorization', 'X-Knack-REST-API-Key', 'X-Knack-Application-Id', 
-    'token', 'email', 'password', 'knackApiKey', 'field_91', 'field_70'
+    'token', 'email', 'password', 'knackApiKey', 'field_70'
   ];
   
   // Helper function to recursively sanitize an object
@@ -1255,10 +1255,9 @@ async function trackUserLogin() {
   
   // Find the user's record in Object_3
   const filters = encodeURIComponent(JSON.stringify({
-    match: 'or',
+    match: 'and',
     rules: [
-      { field: 'field_91', operator: 'is', value: user.email },
-      { field: 'field_70', operator: 'is', value: user.email }
+      { field: 'field_70', operator: 'is', value: user.email }  // Staff email field only
     ]
   }));
   
@@ -1310,10 +1309,9 @@ try {
   
   // Find the user's record in Object_3
   const filters = encodeURIComponent(JSON.stringify({
-    match: 'or',
+    match: 'and',
     rules: [
-      { field: 'field_91', operator: 'is', value: user.email },
-      { field: 'field_70', operator: 'is', value: user.email }
+      { field: 'field_70', operator: 'is', value: user.email }  // Staff email field only
     ]
   }));
   
@@ -1564,15 +1562,18 @@ async function getStaffProfileData() {
 
 // Find the staff record for the user by email
 async function findStaffRecord(email) {
-  if (!email) return null;
+  if (!email) {
+    console.error('[Staff Homepage] findStaffRecord called with no email');
+    return null;
+  }
   
   // Don't expose actual email in filter logs
   const maskedEmail = email.substring(0, 3) + "..." + email.substring(email.indexOf('@'));
+  console.log(`[Staff Homepage] Searching for staff record with email: ${maskedEmail}`);
   
   const filters = encodeURIComponent(JSON.stringify({
-    match: 'or',
+    match: 'and',
     rules: [
-      { field: 'field_91', operator: 'is', value: email },
       { field: 'field_70', operator: 'is', value: email }
     ]
   }));
@@ -1598,6 +1599,11 @@ async function findStaffRecord(email) {
       return staffRecord;
     }
     
+    console.warn(`[Staff Homepage] No staff record found for email: ${maskedEmail}`);
+    console.warn('[Staff Homepage] API response:', {
+      recordsFound: response?.records?.length || 0,
+      hasResponse: !!response
+    });
     return null;
   } catch (error) {
     console.error('[Staff Homepage] Error finding staff record:', error);
@@ -5041,8 +5047,18 @@ async function checkUserVerificationStatus() {
     // Find the staff record to check verification fields
     const staffRecord = await findStaffRecord(user.email);
     if (!staffRecord) {
-      console.error("[Staff Homepage] Cannot find staff record for verification check");
-      return true; // Allow access if we can't find the record
+      console.error("[Staff Homepage] Cannot find staff record for verification check for email:", user.email);
+      
+      // Special handling for test/admin accounts
+      if (user.email === 'lucas@vespa.academy' || user.email.includes('@vespa.academy')) {
+        console.log("[Staff Homepage] Test/admin account detected, allowing access without verification check");
+        return true;
+      }
+      
+      // For other users, redirect to regular homepage
+      console.log("[Staff Homepage] No staff record found, redirecting to regular homepage");
+      window.location.href = 'https://vespaacademy.knack.com/vespa-academy#landing-page/';
+      return false; // Don't allow access to staff homepage
     }
     
     // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
@@ -5106,7 +5122,20 @@ async function checkUserVerificationStatus() {
     return true;
   } catch (error) {
     console.error("[Staff Homepage] Error in checkUserVerificationStatus:", error);
-    return true; // Allow access on error
+    console.error("[Staff Homepage] Error details:", {
+      message: error.message,
+      stack: error.stack,
+      userEmail: user?.email || 'No email'
+    });
+    
+    // If we can't verify, redirect to regular homepage as fallback
+    if (window.location.href.includes('#dashboard3') || window.location.href.includes('#staff-landing-page')) {
+      console.log("[Staff Homepage] Redirecting to regular homepage due to verification error");
+      window.location.href = 'https://vespaacademy.knack.com/vespa-academy#landing-page/';
+      return false; // Don't allow access to staff homepage
+    }
+    
+    return true; // Allow access on error for other pages
   }
 }
 
@@ -5787,10 +5816,9 @@ async function storeFeedbackInKnack(feedbackRequest) {
     
     // Find the user's record in Object_3
     const filters = encodeURIComponent(JSON.stringify({
-      match: 'or',
+      match: 'and',
       rules: [
-        { field: 'field_91', operator: 'is', value: user.email },
-        { field: 'field_70', operator: 'is', value: user.email }
+        { field: 'field_70', operator: 'is', value: user.email }  // Staff email field only
       ]
     }));
     
