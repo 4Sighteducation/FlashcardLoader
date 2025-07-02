@@ -1268,9 +1268,9 @@
                     </iframe>
                 </div>
                 
-                <div style="margin: 20px 0; position: relative; z-index: 10;">
-                    <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
-                        <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer; position: relative; z-index: 11;">
+                <div style="margin: 20px 0; position: relative; z-index: 20;">
+                    <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px; position: relative;">
+                        <input type="checkbox" id="privacy-accept-checkbox" style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer; position: relative; z-index: 21; flex-shrink: 0;">
                         <span style="cursor: pointer; user-select: none;">I have read and agree to the VESPA Academy Privacy Policy</span>
                     </label>
                 </div>
@@ -1288,6 +1288,10 @@
                         transition: all 0.3s ease;
                         position: relative;
                         z-index: 11;
+                        opacity: 0.6;
+                        transform: scale(1);
+                        box-shadow: none;
+                        min-width: 150px;
                     ">
                         Continue
                     </button>
@@ -1407,6 +1411,19 @@
                             currentBtn.style.color = '#0a2b8c';
                             currentBtn.style.cursor = 'pointer';
                             currentBtn.style.opacity = '1';
+                            currentBtn.style.transform = 'scale(1)';
+                            currentBtn.style.boxShadow = '0 4px 8px rgba(0, 229, 219, 0.3)';
+                            // Add hover effect
+                            currentBtn.onmouseover = function() {
+                                this.style.background = '#00f5eb';
+                                this.style.transform = 'scale(1.05)';
+                                this.style.boxShadow = '0 6px 12px rgba(0, 229, 219, 0.5)';
+                            };
+                            currentBtn.onmouseout = function() {
+                                this.style.background = '#00e5db';
+                                this.style.transform = 'scale(1)';
+                                this.style.boxShadow = '0 4px 8px rgba(0, 229, 219, 0.3)';
+                            };
                             log('Checkbox checked - button enabled');
                         } else {
                             currentBtn.disabled = true;
@@ -1414,40 +1431,92 @@
                             currentBtn.style.color = 'white';
                             currentBtn.style.cursor = 'not-allowed';
                             currentBtn.style.opacity = '0.6';
+                            currentBtn.style.transform = 'scale(1)';
+                            currentBtn.style.boxShadow = 'none';
+                            currentBtn.onmouseover = null;
+                            currentBtn.onmouseout = null;
                             log('Checkbox unchecked - button disabled');
                         }
                     }
                 };
                 
                 // Remove any existing event listeners by using a new approach
-                // Instead of cloning, we'll use a named function and remove/add it
-                const checkboxChangeHandler = (e) => {
-                    log('Checkbox change event fired', { checked: e.target.checked });
-                    updateButtonState();
-                };
+                // Clone the checkbox to remove all event listeners
+                const oldCheckbox = checkbox;
+                const newCheckbox = oldCheckbox.cloneNode(true);
+                oldCheckbox.parentNode.replaceChild(newCheckbox, oldCheckbox);
                 
-                const checkboxClickHandler = (e) => {
-                    log('Checkbox click event fired');
-                    // Small delay to ensure the checked state has updated
-                    setTimeout(updateButtonState, 20);
-                };
+                // Get reference to the new checkbox
+                const finalCheckbox = document.getElementById('privacy-accept-checkbox');
                 
-                // Remove existing listeners if they exist
-                checkbox.removeEventListener('change', checkboxChangeHandler);
-                checkbox.removeEventListener('click', checkboxClickHandler);
-                
-                // Add fresh event listeners
-                checkbox.addEventListener('change', checkboxChangeHandler);
-                checkbox.addEventListener('click', checkboxClickHandler);
-                
-                // Also listen for input event as a fallback
-                checkbox.addEventListener('input', (e) => {
-                    log('Checkbox input event fired');
-                    updateButtonState();
-                });
+                if (finalCheckbox) {
+                    // Add event listeners to the fresh checkbox
+                    finalCheckbox.addEventListener('change', (e) => {
+                        log('Checkbox change event fired', { checked: e.target.checked });
+                        updateButtonState();
+                    });
+                    
+                    finalCheckbox.addEventListener('click', (e) => {
+                        log('Checkbox click event fired', { checked: e.target.checked });
+                        // Small delay to ensure the checked state has updated
+                        setTimeout(() => {
+                            log('Updating button state after click');
+                            updateButtonState();
+                        }, 10);
+                    });
+                    
+                    // Also listen for input event as a fallback
+                    finalCheckbox.addEventListener('input', (e) => {
+                        log('Checkbox input event fired', { checked: e.target.checked });
+                        updateButtonState();
+                    });
+                    
+                    log('Event listeners attached successfully');
+                } else {
+                    errorLog('Failed to get checkbox after cloning');
+                }
                 
                 // Check initial state
                 updateButtonState();
+                
+                // Handle continue button click - MUST be inside setTimeout where continueBtn is defined
+                continueBtn.addEventListener('click', async function() {
+                    // Need to reference the current checkbox
+                    const currentCheckbox = document.getElementById('privacy-accept-checkbox');
+                    if (!currentCheckbox || !currentCheckbox.checked) return;
+                    
+                    // Show loading state
+                    this.disabled = true;
+                    this.innerHTML = 'Updating...';
+                    
+                    try {
+                        // Update the privacy policy field
+                        await updateStaffVerificationFields(staffRecordId, { field_127: "Yes" });
+                        
+                        log('Privacy policy acceptance updated successfully');
+                        
+                        // Hide privacy modal
+                        const privacyModal = document.getElementById('privacy-policy-modal');
+                        if (privacyModal) privacyModal.style.display = 'none';
+                        
+                        // Show password modal if needed
+                        if (needsPassword) {
+                            const passwordModal = document.getElementById('password-reset-modal');
+                            if (passwordModal) passwordModal.style.display = 'block';
+                            setupPasswordResetHandlers(staffRecordId, resolve);
+                        } else {
+                            // All done, close modal and proceed
+                            document.getElementById('verification-modal-overlay').remove();
+                            window._privacyHandlersSetup = false; // Reset flag
+                            resolve(true);
+                        }
+                    } catch (error) {
+                        errorLog('Error updating privacy policy acceptance:', error);
+                        alert('Error updating your preferences. Please try again.');
+                        this.disabled = false;
+                        this.innerHTML = 'Continue';
+                    }
+                });
             } else {
                 errorLog('Privacy policy elements not found:', {
                     checkbox: checkbox,
@@ -1455,47 +1524,6 @@
                 });
             }
         }, 100); // 100ms delay to ensure DOM is ready
-        
-        // Handle continue button click
-        if (continueBtn) {
-            continueBtn.addEventListener('click', async function() {
-                // Need to reference the current checkbox
-                const currentCheckbox = document.getElementById('privacy-accept-checkbox');
-                if (!currentCheckbox || !currentCheckbox.checked) return;
-                
-                // Show loading state
-                continueBtn.disabled = true;
-                continueBtn.innerHTML = 'Updating...';
-                
-                try {
-                    // Update the privacy policy field
-                    await updateStaffVerificationFields(staffRecordId, { field_127: "Yes" });
-                    
-                    log('Privacy policy acceptance updated successfully');
-                    
-                    // Hide privacy modal
-                    const privacyModal = document.getElementById('privacy-policy-modal');
-                    if (privacyModal) privacyModal.style.display = 'none';
-                    
-                    // Show password modal if needed
-                    if (needsPassword) {
-                        const passwordModal = document.getElementById('password-reset-modal');
-                        if (passwordModal) passwordModal.style.display = 'block';
-                        setupPasswordResetHandlers(staffRecordId, resolve);
-                    } else {
-                        // All done, close modal and proceed
-                        document.getElementById('verification-modal-overlay').remove();
-                        window._privacyHandlersSetup = false; // Reset flag
-                        resolve(true);
-                    }
-                } catch (error) {
-                    errorLog('Error updating privacy policy acceptance:', error);
-                    alert('Error updating your preferences. Please try again.');
-                    continueBtn.disabled = false;
-                    continueBtn.innerHTML = 'Continue';
-                }
-            });
-        }
     }
 
     // Setup Password Reset Modal Handlers
@@ -1692,3 +1720,4 @@
     }
 
 })();
+
