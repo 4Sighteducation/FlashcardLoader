@@ -389,16 +389,22 @@
             const history = getActivityHistory();
             const recentActivityIds = history.map(h => h.id);
             
+            // Filter out Welsh activities (where field_1924 is "Yes")
+            const nonWelshActivities = response.records.filter(activity => {
+                // Check if field_1924 exists and is not "Yes"
+                return !activity.field_1924 || activity.field_1924 !== "Yes";
+            });
+            
             // Filter activities by current month
-            let monthActivities = response.records.filter(activity => {
+            let monthActivities = nonWelshActivities.filter(activity => {
                 const activityMonth = extractMonthFromIdentifier(activity.group_info?.identifier);
                 return activityMonth === currentMonth;
             });
             
-            // If no activities for current month, use all activities
+            // If no activities for current month, use all non-Welsh activities
             if (monthActivities.length === 0) {
-                log(`No activities found for ${currentMonth}, using all activities`);
-                monthActivities = response.records;
+                log(`No activities found for ${currentMonth}, using all non-Welsh activities`);
+                monthActivities = nonWelshActivities;
             }
             
             // Filter out recently shown activities
@@ -427,23 +433,30 @@
             
             log(`Selected activity for ${currentMonth}:`, activity.title);
 
-            // Extract PDF link from embed code
-            let pdfLink = null;
-            const pdfMatch = activity.html_content.match(/href="([^"]+\.pdf[^"]*)"/i);
-            if (pdfMatch) {
-                pdfLink = pdfMatch[1];
-                log('Found PDF link:', pdfLink);
+            // Extract only the iframe from html_content (field_1448)
+            let embedCode = '';
+            if (activity.html_content) {
+                // Extract iframe using regex
+                const iframeMatch = activity.html_content.match(/<iframe[^>]*>[\s\S]*?<\/iframe>/i);
+                if (iframeMatch) {
+                    embedCode = iframeMatch[0];
+                    log('Extracted iframe from activity HTML');
+                } else {
+                    // If no iframe found, use the full content as fallback
+                    embedCode = activity.html_content;
+                    log('No iframe found, using full HTML content');
+                }
             }
             
             // Enhance embed code for kiosk mode
-            const enhancedEmbedCode = enhanceEmbedForKioskMode(activity.html_content);
+            const enhancedEmbedCode = enhanceEmbedForKioskMode(embedCode);
 
             return {
                 name: activity.title,
                 group: activity.group_info?.identifier || 'N/A',
                 category: activity.category,
                 embedCode: enhancedEmbedCode,
-                pdfLink: pdfLink
+                pdfLink: null // Always null to prevent PDF button from showing
             };
         } catch (error) {
             errorLog('Failed to fetch activities from CDN:', error);
@@ -548,13 +561,6 @@
             `;
         }
 
-        // Remove PDF link from embed code if it exists
-        let cleanedEmbedCode = activity.embedCode;
-        if (activity.pdfLink) {
-            // Remove the entire PDF section (hr tags and link)
-            cleanedEmbedCode = cleanedEmbedCode.replace(/<hr[^>]*>[\s\S]*?<\/hr>/gi, '');
-        }
-
         return `
             <section class="vespa-section activity-section">
                 <h2 class="vespa-section-title">ACTIVITY OF THE DAY</h2>
@@ -568,19 +574,13 @@
                             </div>
                         </div>
                         <div class="activity-buttons">
-                            ${activity.pdfLink ? `
-                                <a href="${activity.pdfLink}" target="_blank" class="pdf-download-button" title="Download PDF">
-                                    <i class="fas fa-file-pdf"></i>
-                                    <span>DOWNLOAD PDF</span>
-                                </a>
-                            ` : ''}
                             <button class="fullscreen-toggle" onclick="toggleActivityFullscreen(this)" title="Toggle Fullscreen">
                                 <i class="fas fa-expand"></i>
                             </button>
                         </div>
                     </div>
                     <div class="activity-embed-frame">
-                        ${cleanedEmbedCode || '<p style="text-align:center; color:#999;">No embed content available</p>'}
+                        ${activity.embedCode || '<p style="text-align:center; color:#999;">No embed content available</p>'}
                     </div>
                 </div>
             </section>
@@ -847,46 +847,12 @@
                 color: #00e5db;
             }
 
-            /* PDF Download Button */
+            /* Activity Buttons Container */
             .activity-buttons {
                 display: flex;
                 gap: 10px;
                 align-items: center;
                 flex-shrink: 0;
-            }
-
-            .pdf-download-button {
-                display: inline-flex;
-                align-items: center;
-                gap: 10px;
-                background: linear-gradient(135deg, #e59437 0%, #d88327 100%);
-                color: #ffffff !important;
-                text-decoration: none;
-                padding: 12px 24px;
-                border-radius: 6px;
-                font-weight: 600;
-                font-size: 14px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 12px rgba(229, 148, 55, 0.3);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                white-space: nowrap;
-            }
-
-            .pdf-download-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(229, 148, 55, 0.5);
-                background: linear-gradient(135deg, #f0a040 0%, #e59437 100%);
-                color: #ffffff !important;
-            }
-
-            .pdf-download-button i {
-                font-size: 18px;
-            }
-            
-            .pdf-download-button span {
-                color: #ffffff !important;
             }
             
             /* Fullscreen Button */
@@ -1084,12 +1050,7 @@
 
                 .activity-buttons {
                     width: 100%;
-                    justify-content: space-between;
-                }
-
-                .pdf-download-button {
-                    flex: 1;
-                    justify-content: center;
+                    justify-content: flex-end;
                 }
 
                 .profile-details {
