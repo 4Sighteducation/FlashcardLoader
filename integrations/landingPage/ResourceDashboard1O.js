@@ -433,6 +433,16 @@
             
             log(`Selected activity for ${currentMonth}:`, activity.title);
 
+            // Extract PDF link from the full HTML content first
+            let pdfLink = null;
+            if (activity.html_content) {
+                const pdfMatch = activity.html_content.match(/href="([^"]+\.pdf[^"]*)"/i);
+                if (pdfMatch) {
+                    pdfLink = pdfMatch[1];
+                    log('Found PDF link:', pdfLink);
+                }
+            }
+
             // Extract only the iframe from html_content (field_1448)
             let embedCode = '';
             if (activity.html_content) {
@@ -441,6 +451,10 @@
                 if (iframeMatch) {
                     embedCode = iframeMatch[0];
                     log('Extracted iframe from activity HTML');
+                    
+                    // Debug: Log the full HTML content to see what we're dealing with
+                    log('Full HTML content:', activity.html_content);
+                    log('Extracted iframe:', embedCode);
                 } else {
                     // If no iframe found, use the full content as fallback
                     embedCode = activity.html_content;
@@ -456,7 +470,7 @@
                 group: activity.group_info?.identifier || 'N/A',
                 category: activity.category,
                 embedCode: enhancedEmbedCode,
-                pdfLink: null // Always null to prevent PDF button from showing
+                pdfLink: pdfLink
             };
         } catch (error) {
             errorLog('Failed to fetch activities from CDN:', error);
@@ -574,6 +588,12 @@
                             </div>
                         </div>
                         <div class="activity-buttons">
+                            ${activity.pdfLink ? `
+                                <a href="${activity.pdfLink}" target="_blank" class="pdf-download-button" title="Download PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>DOWNLOAD PDF</span>
+                                </a>
+                            ` : ''}
                             <button class="fullscreen-toggle" onclick="toggleActivityFullscreen(this)" title="Toggle Fullscreen">
                                 <i class="fas fa-expand"></i>
                             </button>
@@ -854,6 +874,41 @@
                 align-items: center;
                 flex-shrink: 0;
             }
+
+            /* PDF Download Button */
+            .pdf-download-button {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                background: linear-gradient(135deg, #e59437 0%, #d88327 100%);
+                color: #ffffff !important;
+                text-decoration: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 12px rgba(229, 148, 55, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                white-space: nowrap;
+            }
+
+            .pdf-download-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(229, 148, 55, 0.5);
+                background: linear-gradient(135deg, #f0a040 0%, #e59437 100%);
+                color: #ffffff !important;
+            }
+
+            .pdf-download-button i {
+                font-size: 18px;
+            }
+            
+            .pdf-download-button span {
+                color: #ffffff !important;
+            }
             
             /* Fullscreen Button */
             .fullscreen-toggle {
@@ -898,6 +953,29 @@
                 align-items: center;
                 justify-content: center;
                 position: relative;
+            }
+            
+            /* Hide any Knack-generated PDF download buttons within the embed */
+            .activity-embed-frame a[href*=".pdf"],
+            .activity-embed-frame a[download],
+            .activity-embed-frame .download-button,
+            .activity-embed-frame .pdf-button,
+            .activity-embed-frame a[title*="Download"],
+            .activity-embed-frame a[title*="download"],
+            .activity-embed-frame a[title*="PDF"],
+            .activity-embed-frame a[title*="pdf"],
+            /* Target Knack-specific elements */
+            .activity-embed-frame .kn-asset-download,
+            .activity-embed-frame .kn-download-link,
+            .activity-embed-frame .field_1448 a[href*=".pdf"],
+            .activity-embed-frame [data-field-key="field_1448"] a[href*=".pdf"] {
+                display: none !important;
+            }
+            
+            /* Also hide any overlaid download elements */
+            .activity-embed-frame > a,
+            .activity-embed-frame > div > a[href*=".pdf"] {
+                display: none !important;
             }
 
             .activity-embed-frame iframe {
@@ -1050,7 +1128,12 @@
 
                 .activity-buttons {
                     width: 100%;
-                    justify-content: flex-end;
+                    justify-content: space-between;
+                }
+
+                .pdf-download-button {
+                    flex: 1;
+                    justify-content: center;
                 }
 
                 .profile-details {
@@ -1655,6 +1738,25 @@
 
             $container.html(dashboardHtml);
             log('Dashboard rendered.');
+            
+            // Remove any Knack-generated PDF download links after render
+            setTimeout(() => {
+                // Remove PDF links within the activity embed frame
+                $('.activity-embed-frame a[href*=".pdf"]').remove();
+                $('.activity-embed-frame .kn-asset-download').remove();
+                $('.activity-embed-frame .kn-download-link').remove();
+                
+                // Also check for any Knack-specific download buttons
+                $('.activity-embed-frame').find('a:contains("DOWNLOAD"), a:contains("Download"), a:contains("PDF")').each(function() {
+                    const $link = $(this);
+                    // Only remove if it's not our header button
+                    if (!$link.hasClass('pdf-download-button')) {
+                        $link.remove();
+                    }
+                });
+                
+                log('Cleaned up any Knack-generated PDF download elements');
+            }, 500); // Wait for Knack to finish rendering
 
         } catch (err) {
             $container.html('<div class="error-state">Could not load dashboard. Please try again later.</div>');
