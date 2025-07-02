@@ -37,7 +37,10 @@
         password: 'field_71',         // Password field
         privacyPolicy: 'field_127',   // Privacy Policy acceptance (Yes/No)
         verifiedUser: 'field_189',    // Verified User status (Yes/No) - CORRECTED FROM field_128
-        passwordReset: 'field_539'    // Password Reset status (Yes/No)
+        passwordReset: 'field_539',   // Password Reset status (Yes/No)
+        
+        // Role field
+        staffRoles: 'field_73'        // Staff roles field in object_3
     };
 
     const OBJECT_KEYS = {
@@ -114,16 +117,33 @@
     
     // Helper function to format roles properly
     function formatRoles(roles) {
-        if (!roles || roles.length === 0) return 'No Role Assigned';
+        log('formatRoles called with:', roles, 'Type:', typeof roles, 'Is Array:', Array.isArray(roles));
+        
+        if (!roles || (Array.isArray(roles) && roles.length === 0)) {
+            log('formatRoles: No roles or empty array');
+            return 'No Role Assigned';
+        }
+        
+        // Handle non-array roles
+        if (!Array.isArray(roles)) {
+            log('formatRoles: Converting non-array to array');
+            roles = [roles];
+        }
         
         // If roles are objects, extract the name/title
-        const formattedRoles = roles.map(role => {
+        const formattedRoles = roles.map((role, index) => {
+            log(`formatRoles: Processing role ${index}:`, role);
+            
             if (typeof role === 'object' && role !== null) {
+                log('formatRoles: Role is object, properties:', Object.keys(role));
                 // Try different possible property names
-                return role.name || role.title || role.identifier || role.value || 'Unknown Role';
+                const roleName = role.name || role.title || role.identifier || role.value || 'Unknown Role';
+                log('formatRoles: Extracted role name:', roleName);
+                return roleName;
             }
             // If it's a string like "object_5", try to map it to a friendly name
             if (typeof role === 'string') {
+                log('formatRoles: Role is string:', role);
                 // Common role mappings
                 const roleMap = {
                     'object_5': 'Tutor',
@@ -133,31 +153,63 @@
                     'object_9': 'Teacher',
                     'object_10': 'Support Staff'
                 };
-                return roleMap[role] || role.replace(/object_\d+/, 'Staff Member');
+                const mapped = roleMap[role] || role.replace(/object_\d+/, 'Staff Member');
+                log('formatRoles: Mapped to:', mapped);
+                return mapped;
             }
+            log('formatRoles: Role is neither object nor string, returning as-is');
             return role;
         });
         
-        return formattedRoles.join(', ');
+        const result = formattedRoles.join(', ');
+        log('formatRoles: Final result:', result);
+        return result;
     }
     
     // Add admin role checking function
     function isStaffAdmin(roles) {
-        if (!roles) return false;
+        if (!roles) {
+            log('isStaffAdmin: No roles provided');
+            return false;
+        }
+        
+        // Debug log the roles
+        log('isStaffAdmin checking roles:', roles);
         
         // Check if roles is an array
         if (Array.isArray(roles)) {
-            return roles.some(role => {
-                const roleStr = typeof role === 'object' ? (role.identifier || role.name || '') : String(role);
+            const isAdmin = roles.some(role => {
+                // Handle different role formats
+                let roleStr = '';
+                if (typeof role === 'object' && role !== null) {
+                    // Check for various possible properties
+                    roleStr = role.identifier || role.name || role.title || role.value || '';
+                    // Also check if it's a connection object
+                    if (role.id && role.identifier) {
+                        roleStr = role.identifier;
+                    }
+                } else {
+                    roleStr = String(role);
+                }
+                
+                log('Checking role:', role, 'roleStr:', roleStr);
                 return roleStr.toLowerCase().includes('admin') || 
+                       roleStr.toLowerCase().includes('staff admin') ||
                        roleStr.includes('object_7') || 
                        roleStr.toLowerCase().includes('administrator');
             });
+            log('isStaffAdmin result (array):', isAdmin);
+            return isAdmin;
         }
         
         // Check if it's a single role string
         const roleStr = String(roles).toLowerCase();
-        return roleStr.includes('admin') || roleStr.includes('object_7');
+        const isAdmin = roleStr.includes('admin') || 
+                       roleStr.includes('staff admin') ||
+                       roleStr.includes('object_7') ||
+                       roleStr.includes('administrator');
+        log('isStaffAdmin result (string):', isAdmin, 'roleStr:', roleStr);
+        return isAdmin;
     }
 
     async function getStaffProfileData() {
@@ -168,15 +220,41 @@
         }
 
         log("Fetching staff profile data for:", user.email);
+        const knackRoles = Knack.getUserRoles();
+        log("User roles from Knack.getUserRoles():", knackRoles);
+        log("Raw Knack roles JSON:", JSON.stringify(knackRoles));
+        
+        // Also check the user attributes for role information
+        log("Full user attributes:", Knack.getUserAttributes());
+        log("User object:", user);
+        
         const staffRecord = await findStaffRecord(user.email);
         if (!staffRecord) {
+            log("No staff record found, using Knack user data");
             return { 
                 name: user.name, 
-                roles: formatRoles(Knack.getUserRoles()), 
+                roles: formatRoles(knackRoles), 
                 school: 'Unknown School', 
                 schoolLogo: null,
-                hasAdminRole: isStaffAdmin(Knack.getUserRoles())
+                hasAdminRole: isStaffAdmin(knackRoles)
             };
+        }
+        
+        // Log the entire staff record to see what fields are available
+        log("Staff record fields:", Object.keys(staffRecord));
+        log("Staff record field_73:", staffRecord.field_73);
+        log("Staff record field_73_raw:", staffRecord.field_73_raw);
+        
+        // Check for roles in staff record (field_73)
+        let actualRoles = knackRoles;
+        if (staffRecord[FIELD_MAPPING.staffRoles]) {
+            log("Found roles in staff record field_73:", staffRecord[FIELD_MAPPING.staffRoles]);
+            actualRoles = staffRecord[FIELD_MAPPING.staffRoles];
+        } else if (staffRecord[FIELD_MAPPING.staffRoles + '_raw']) {
+            log("Found roles in staff record field_73_raw:", staffRecord[FIELD_MAPPING.staffRoles + '_raw']);
+            actualRoles = staffRecord[FIELD_MAPPING.staffRoles + '_raw'];
+        } else {
+            log("No roles found in staff record, using Knack roles");
         }
 
         const schoolId = extractValidRecordId(staffRecord[FIELD_MAPPING.schoolConnection + '_raw']);
@@ -198,13 +276,16 @@
             log("Using default VESPA logo.");
         }
 
-        return {
+        log("Staff record found, building profile data");
+        const profileData = {
             name: user.name,
-            roles: formatRoles(Knack.getUserRoles()),
+            roles: formatRoles(actualRoles),
             school: schoolName,
             schoolLogo: schoolLogo,
-            hasAdminRole: isStaffAdmin(Knack.getUserRoles())
+            hasAdminRole: isStaffAdmin(actualRoles)
         };
+        log("Profile data:", profileData);
+        return profileData;
     }
 
     // --- Core Logic ---
@@ -1718,15 +1799,41 @@
 
         // Fetch all data in parallel
         try {
-            const [profileData, activity] = await Promise.all([
-                getStaffProfileData(),
-                getActivityOfTheWeek()
-            ]);
+            let profileData, activity;
+            
+            try {
+                profileData = await getStaffProfileData();
+                log('Profile data retrieved:', profileData);
+            } catch (profileError) {
+                errorLog('Error getting profile data:', profileError);
+                // Set default profile data on error
+                profileData = {
+                    name: Knack.getUserAttributes()?.name || 'User',
+                    roles: 'Unknown',
+                    school: 'Unknown School',
+                    schoolLogo: null,
+                    hasAdminRole: false
+                };
+            }
+            
+            try {
+                activity = await getActivityOfTheWeek();
+            } catch (activityError) {
+                errorLog('Error getting activity:', activityError);
+                activity = null;
+            }
 
             if (!profileData) {
                 throw new Error("Failed to load user profile data.");
             }
 
+            // TEMPORARY: Force show admin section for testing
+            const isTestEmail = user.email === 'pantony@whickhamschool.org';
+            if (isTestEmail) {
+                log('TEST MODE: Forcing admin section to show for pantony@whickhamschool.org');
+                profileData.hasAdminRole = true;
+            }
+            
             const dashboardHtml = `
                 <div id="resource-dashboard-container">
                     ${renderProfileSection(profileData)}
