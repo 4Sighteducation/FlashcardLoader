@@ -25,7 +25,7 @@
     }
     
     const FIELD_MAPPING = {
-        staffLoginEmail: 'field_91', // Or field_70
+        staffLoginEmail: 'field_70', // Email field in object_3
         staffToCustomerConnection: 'field_122',
         customerAccountType: 'field_63',
         schoolConnection: 'field_122',
@@ -90,9 +90,8 @@
 
     async function findStaffRecord(email) {
         const filters = encodeURIComponent(JSON.stringify({
-            match: 'or', rules: [
-                { field: FIELD_MAPPING.staffLoginEmail, operator: 'is', value: email },
-                { field: 'field_70', operator: 'is', value: email } // Fallback email field
+            match: 'and', rules: [
+                { field: 'field_70', operator: 'is', value: email } // Email field in object_3
             ]
         }));
         const response = await makeKnackRequest(`objects/${OBJECT_KEYS.staff}/records?filters=${filters}`);
@@ -1110,8 +1109,9 @@
     // --- User Verification Functions ---
     // Check user verification status and show appropriate modals
     async function checkUserVerificationStatus() {
+        let user = null; // Define user outside try block
         try {
-            const user = Knack.getUserAttributes();
+            user = Knack.getUserAttributes();
             if (!user || !user.email) {
                 errorLog("Cannot check verification status: No user data");
                 return true; // Allow access on error
@@ -1120,14 +1120,23 @@
             // Find the staff record to check verification fields
             const staffRecord = await findStaffRecord(user.email);
             if (!staffRecord) {
-                errorLog("Cannot find staff record for verification check");
-                return true; // Allow access if we can't find the record
+                errorLog("Cannot find staff record for verification check for email:", user.email);
+                
+                // Special handling for test/admin accounts
+                if (user.email === 'lucas@vespa.academy' || user.email.includes('@vespa.academy')) {
+                    log("Test/admin account detected, allowing access without verification check");
+                    return true;
+                }
+                
+                // For other users, show error
+                errorLog("No staff record found, cannot proceed with resource dashboard");
+                return false; // Don't allow access to resource dashboard
             }
             
-            // Extract the boolean field values (they come as "Yes"/"No" strings in Knack)
-            const isVerified = staffRecord.field_189 === "Yes";  // CORRECTED FIELD
-            const hasAcceptedPrivacy = staffRecord.field_127 === "Yes";
-            const hasResetPassword = staffRecord.field_539 === "Yes";  // "Yes" means they HAVE reset password (don't need to reset)
+            // Extract the boolean field values (they can be either boolean true/false or "Yes"/"No" strings)
+            const isVerified = staffRecord.field_189 === "Yes" || staffRecord.field_189 === true;
+            const hasAcceptedPrivacy = staffRecord.field_127 === "Yes" || staffRecord.field_127 === true;
+            const hasResetPassword = staffRecord.field_539 === "Yes" || staffRecord.field_539 === true;
             
             log(`User verification status:`, {
                 verified: isVerified,
@@ -1185,7 +1194,19 @@
             return true;
         } catch (error) {
             errorLog("Error in checkUserVerificationStatus:", error);
-            return true; // Allow access on error
+            errorLog("Error details:", {
+                message: error.message,
+                stack: error.stack,
+                userEmail: user?.email || 'No email'
+            });
+            
+            // Show error message to user
+            if (document.querySelector(SCRIPT_CONFIG.elementSelector)) {
+                document.querySelector(SCRIPT_CONFIG.elementSelector).innerHTML = 
+                    '<div class="error-state">Could not verify user account. Please contact support if this issue persists.</div>';
+            }
+            
+            return false; // Don't allow access on error
         }
     }
 
