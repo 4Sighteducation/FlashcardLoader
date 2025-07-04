@@ -470,11 +470,21 @@
             const history = getActivityHistory();
             const recentActivityIds = history.map(h => h.id);
             
-            // Filter out Welsh activities (where field_1924 is "Yes")
+            // Filter out Welsh activities (where field_1924 is "Yes" OR is_welsh is true)
             const nonWelshActivities = response.records.filter(activity => {
-                // Check if field_1924 exists and is not "Yes"
-                return !activity.field_1924 || activity.field_1924 !== "Yes";
+                // Check both field_1924 and is_welsh property
+                const hasWelshField = activity.field_1924 === "Yes";
+                const isWelshFlag = activity.is_welsh === true;
+                const isWelsh = hasWelshField || isWelshFlag;
+                
+                if (isWelsh) {
+                    log(`Filtering out Welsh activity: ${activity.title}`);
+                }
+                
+                return !isWelsh;
             });
+            
+            log(`Total activities: ${response.records.length}, Non-Welsh activities: ${nonWelshActivities.length}`);
             
             // Filter activities by current month
             let monthActivities = nonWelshActivities.filter(activity => {
