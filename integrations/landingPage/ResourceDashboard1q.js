@@ -1235,8 +1235,12 @@
     // Check user verification status and show appropriate modals
     async function checkUserVerificationStatus() {
         let user = null; // Define user outside try block
+        let userEmail = 'Unknown'; // Define userEmail for error logging
         try {
             user = Knack.getUserAttributes();
+            if (user && user.email) {
+                userEmail = user.email; // Store email for error logging
+            }
             if (!user || !user.email) {
                 errorLog("Cannot check verification status: No user data");
                 return true; // Allow access on error
@@ -1322,7 +1326,7 @@
             errorLog("Error details:", {
                 message: error.message,
                 stack: error.stack,
-                userEmail: user?.email || 'No email'
+                userEmail: userEmail
             });
             
             // Show error message to user
@@ -1827,13 +1831,6 @@
                 throw new Error("Failed to load user profile data.");
             }
 
-            // TEMPORARY: Force show admin section for testing
-            const isTestEmail = user.email === 'pantony@whickhamschool.org';
-            if (isTestEmail) {
-                log('TEST MODE: Forcing admin section to show for pantony@whickhamschool.org');
-                profileData.hasAdminRole = true;
-            }
-            
             const dashboardHtml = `
                 <div id="resource-dashboard-container">
                     ${renderProfileSection(profileData)}
