@@ -1,5 +1,15 @@
 // Resource Dashboard Script for Knack - v1.0
 (function() {
+    // IMMEDIATE DEBUG - This should show first if the script is loaded
+    console.log('==========================================');
+    console.log('[Resource Dashboard] SCRIPT FILE LOADED!');
+    console.log('[Resource Dashboard] Window location:', window.location.href);
+    console.log('[Resource Dashboard] Checking for STAFFHOMEPAGE_CONFIG:', !!window.STAFFHOMEPAGE_CONFIG);
+    if (window.STAFFHOMEPAGE_CONFIG) {
+        console.log('[Resource Dashboard] Config found:', window.STAFFHOMEPAGE_CONFIG);
+    }
+    console.log('==========================================');
+    
     console.log('[Resource Dashboard] Script loaded and executing');
     
     // --- Basic Setup ---
@@ -1376,6 +1386,172 @@
             }
 
             /* Responsive adjustments */
+            /* Feedback button styles */
+            .feedback-button {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background-color: #ea5a2a;
+                color: white;
+                border: none;
+                border-radius: 50px;
+                padding: 12px 20px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 0 4px 12px rgba(234, 90, 42, 0.3);
+                transition: all 0.3s ease;
+                z-index: 9999;
+            }
+            
+            .feedback-button:hover {
+                background-color: #d54a1a;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(234, 90, 42, 0.4);
+            }
+            
+            .feedback-button i {
+                font-size: 16px;
+            }
+            
+            /* Modal styles */
+            .vespa-modal {
+                position: fixed;
+                z-index: 10000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0, 0, 0, 0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .vespa-modal-content {
+                background-color: #fefefe;
+                margin: 15px;
+                padding: 30px;
+                border: 1px solid #888;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+                max-width: 600px;
+                width: 100%;
+                max-height: 90vh;
+                overflow-y: auto;
+                position: relative;
+            }
+            
+            .vespa-modal-close {
+                color: #aaa;
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+            
+            .vespa-modal-close:hover,
+            .vespa-modal-close:focus {
+                color: #000;
+                text-decoration: none;
+            }
+            
+            .vespa-modal-content h3 {
+                margin-top: 0;
+                color: #1e3a5f;
+                font-size: 24px;
+                font-weight: 600;
+                margin-bottom: 20px;
+            }
+            
+            /* Form styles */
+            .form-group {
+                margin-bottom: 20px;
+            }
+            
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 600;
+                color: #333;
+            }
+            
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+                font-family: inherit;
+                transition: border-color 0.3s;
+            }
+            
+            .form-group input:focus,
+            .form-group select:focus,
+            .form-group textarea:focus {
+                outline: none;
+                border-color: #ea5a2a;
+            }
+            
+            .form-group textarea {
+                resize: vertical;
+            }
+            
+            .form-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 30px;
+            }
+            
+            .vespa-btn {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            
+            .vespa-btn-primary {
+                background-color: #ea5a2a;
+                color: white;
+            }
+            
+            .vespa-btn-primary:hover {
+                background-color: #d54a1a;
+            }
+            
+            .vespa-btn-secondary {
+                background-color: #6c757d;
+                color: white;
+            }
+            
+            .vespa-btn-secondary:hover {
+                background-color: #5a6268;
+            }
+            
+            #feedback-success {
+                text-align: center;
+                padding: 20px;
+            }
+            
+            #feedback-success p {
+                margin: 10px 0;
+                color: #28a745;
+                font-size: 16px;
+            }
+
+            /* Responsive adjustments */
             @media (max-width: 768px) {
                 #resource-dashboard-container {
                     padding: 15px;
@@ -1410,6 +1586,18 @@
                 .profile-details {
                     flex-direction: column;
                     gap: 10px;
+                }
+                
+                .feedback-button {
+                    bottom: 10px;
+                    right: 10px;
+                    padding: 10px 15px;
+                    font-size: 13px;
+                }
+                
+                .vespa-modal-content {
+                    padding: 20px;
+                    margin: 10px;
                 }
 
                 .activity-embed-frame iframe {
