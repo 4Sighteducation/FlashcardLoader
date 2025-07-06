@@ -1426,19 +1426,20 @@
                 width: 100%;
                 height: 100%;
                 overflow: auto;
-                background-color: rgba(0, 0, 0, 0.4);
+                background-color: rgba(0, 0, 0, 0.5);
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                padding: 20px;
             }
             
             .vespa-modal-content {
-                background-color: #fefefe;
-                margin: 15px;
+                background-color: #ffffff;
+                margin: auto;
                 padding: 30px;
-                border: 1px solid #888;
-                border-radius: 8px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+                border: none;
+                border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
                 max-width: 600px;
                 width: 100%;
                 max-height: 90vh;
@@ -1447,19 +1448,22 @@
             }
             
             .vespa-modal-close {
-                color: #aaa;
+                color: #333;
                 position: absolute;
-                top: 10px;
-                right: 15px;
-                font-size: 28px;
+                top: 15px;
+                right: 20px;
+                font-size: 32px;
                 font-weight: bold;
                 cursor: pointer;
+                line-height: 1;
+                transition: all 0.3s ease;
             }
             
             .vespa-modal-close:hover,
             .vespa-modal-close:focus {
-                color: #000;
+                color: #ea5a2a;
                 text-decoration: none;
+                transform: scale(1.1);
             }
             
             .vespa-modal-content h3 {
@@ -1468,6 +1472,37 @@
                 font-size: 24px;
                 font-weight: 600;
                 margin-bottom: 20px;
+            }
+            
+            /* Ensure modal content has proper styling with blue background */
+            #feedback-modal {
+                z-index: 999999 !important;
+            }
+            
+            #feedback-modal .vespa-modal-content {
+                background-color: #1e3a5f !important;
+                color: #ffffff !important;
+            }
+            
+            #feedback-modal .form-group label {
+                color: #ffffff !important;
+                font-weight: 600 !important;
+            }
+            
+            #feedback-modal h3 {
+                color: #ffffff !important;
+            }
+            
+            #feedback-form {
+                background-color: transparent !important;
+            }
+            
+            #feedback-modal .vespa-modal-close {
+                color: #ffffff !important;
+            }
+            
+            #feedback-modal .vespa-modal-close:hover {
+                color: #ea5a2a !important;
             }
             
             /* Form styles */
@@ -1479,19 +1514,22 @@
                 display: block;
                 margin-bottom: 5px;
                 font-weight: 600;
-                color: #333;
+                color: #1e3a5f;
+                font-size: 14px;
             }
             
             .form-group input,
             .form-group select,
             .form-group textarea {
                 width: 100%;
-                padding: 10px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
+                padding: 12px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 6px;
                 font-size: 14px;
                 font-family: inherit;
-                transition: border-color 0.3s;
+                transition: all 0.3s;
+                background-color: rgba(255, 255, 255, 0.95);
+                color: #1e3a5f;
             }
             
             .form-group input:focus,
@@ -1499,6 +1537,14 @@
             .form-group textarea:focus {
                 outline: none;
                 border-color: #ea5a2a;
+                background-color: #ffffff;
+                box-shadow: 0 0 0 3px rgba(234, 90, 42, 0.3);
+            }
+            
+            .form-group input::placeholder,
+            .form-group textarea::placeholder {
+                color: #666;
+                opacity: 0.8;
             }
             
             .form-group textarea {
@@ -1547,8 +1593,31 @@
             
             #feedback-success p {
                 margin: 10px 0;
-                color: #28a745;
+                color: #ffffff;
                 font-size: 16px;
+                font-weight: 500;
+            }
+            
+            #feedback-modal .vespa-btn-primary {
+                background-color: #ea5a2a;
+                color: white;
+                border: none;
+            }
+            
+            #feedback-modal .vespa-btn-primary:hover {
+                background-color: #d54a1a;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
+            
+            #feedback-modal .vespa-btn-secondary {
+                background-color: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+            }
+            
+            #feedback-modal .vespa-btn-secondary:hover {
+                background-color: rgba(255, 255, 255, 0.3);
             }
 
             /* Responsive adjustments */
@@ -1597,7 +1666,12 @@
                 
                 .vespa-modal-content {
                     padding: 20px;
-                    margin: 10px;
+                    margin: auto;
+                    max-width: calc(100% - 20px);
+                }
+                
+                .vespa-modal {
+                    padding: 10px;
                 }
 
                 .activity-embed-frame iframe {
