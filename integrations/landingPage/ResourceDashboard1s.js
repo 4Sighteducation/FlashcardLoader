@@ -10,6 +10,13 @@
         knackApiKey: loaderConfig.knackApiKey || '8f733aa5-dd35-4464-8348-64824d1f5f0d',
         elementSelector: loaderConfig.elementSelector || '#view_3024',
         debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : true,
+        sendGrid: loaderConfig.sendGrid || {
+            proxyUrl: 'https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email',
+            fromEmail: 'noreply@notifications.vespa.academy',
+            fromName: 'VESPA Academy',
+            templateId: 'd-6a6ac61c9bab43e28706dbb3da4acdcf',
+            confirmationtemplateId: 'd-2e21f98579f947b08f2520c567b43c35'
+        }
     };
 
     const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -1195,6 +1202,179 @@
                 color: #ffffff !important;
             }
 
+            /* Feedback Button & Modal Styles */
+            .feedback-button {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: #00e5db;
+                color: #0a2b8c;
+                border: none;
+                border-radius: 50px;
+                padding: 12px 20px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                z-index: 9999;
+                transition: all 0.3s ease;
+            }
+
+            .feedback-button i {
+                margin-right: 8px;
+            }
+
+            .feedback-button:hover {
+                background: white;
+                transform: translateY(-3px);
+                box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+            }
+
+            /* Modal Styles */
+            .vespa-modal {
+                display: none;
+                position: fixed;
+                z-index: 10000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+            }
+
+            .vespa-modal-content {
+                background: linear-gradient(135deg, #132c7a 0%, #0d2274 100%);
+                margin: 5% auto;
+                padding: 25px 25px 60px 25px;
+                border: 2px solid #00e5db;
+                border-radius: 10px;
+                width: 80%;
+                max-width: 500px;
+                color: #ffffff;
+                position: relative;
+                animation: modalFadeIn 0.3s;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+
+            @keyframes modalFadeIn {
+                from {opacity: 0; transform: translateY(-20px);}
+                to {opacity: 1; transform: translateY(0);}
+            }
+
+            .vespa-modal-close {
+                color: #00e5db;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            .vespa-modal-close:hover {
+                color: #ffffff;
+            }
+
+            .vespa-modal h3 {
+                color: #00e5db;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+
+            .form-group {
+                margin-bottom: 15px;
+            }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 600;
+                color: #00e5db;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                width: 100%;
+                padding: 10px;
+                border-radius: 4px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                font-size: 14px;
+            }
+
+            .form-group select option {
+                background-color: #132c7a;
+                color: white;
+            }
+
+            .form-actions {
+                display: flex;
+                justify-content: flex-end;
+                margin-top: 20px;
+                position: sticky;
+                bottom: 15px;
+                background: inherit;
+                padding: 10px 0;
+            }
+
+            .vespa-btn {
+                padding: 8px 16px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: bold;
+                transition: all 0.3s ease;
+                border: none;
+                margin-bottom: 5px;
+            }
+
+            .vespa-btn-primary {
+                background-color: #00e5db;
+                color: #0a2b8c;
+            }
+
+            .vespa-btn-primary:hover {
+                background-color: #ffffff;
+                transform: translateY(-2px);
+            }
+
+            .vespa-btn-secondary {
+                background-color: #ff6b6b;
+                color: #ffffff;
+            }
+
+            .vespa-btn-secondary:hover {
+                background-color: #ff5252;
+                transform: translateY(-2px);
+            }
+
+            #feedback-success {
+                text-align: center;
+                padding: 20px;
+            }
+
+            #feedback-success p {
+                margin: 10px 0;
+            }
+
+            /* Screenshot preview styling */
+            #screenshot-preview {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                padding: 10px;
+                text-align: center;
+                margin-top: 10px;
+            }
+
+            #screenshot-image {
+                max-width: 100%;
+                max-height: 200px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                margin-bottom: 8px;
+            }
+
             /* Responsive adjustments */
             @media (max-width: 768px) {
                 #resource-dashboard-container {
@@ -1234,6 +1414,11 @@
 
                 .activity-embed-frame iframe {
                     height: 400px;
+                }
+
+                .vespa-modal-content {
+                    width: 95%;
+                    margin: 2% auto;
                 }
             }
         `;
@@ -1763,6 +1948,448 @@
         });
     }
 
+    // --- Feedback System Functions ---
+    
+    // Setup feedback system event handlers
+    function setupFeedbackSystem() {
+        const feedbackBtn = document.getElementById('feedback-button');
+        const feedbackModal = document.getElementById('feedback-modal');
+        const feedbackCloseBtn = document.getElementById('feedback-modal-close');
+        const feedbackForm = document.getElementById('feedback-form');
+        
+        if (!feedbackBtn || !feedbackModal) {
+            log('Feedback elements not found');
+            return;
+        }
+        
+        // Pre-populate form with user data
+        const user = Knack.getUserAttributes();
+        if (user) {
+            const nameInput = document.getElementById('feedback-name');
+            const emailInput = document.getElementById('feedback-email');
+            
+            if (nameInput && user.name) {
+                nameInput.value = user.name;
+            }
+            if (emailInput && user.email) {
+                emailInput.value = user.email;
+            }
+        }
+        
+        // Show modal when clicking feedback button
+        feedbackBtn.addEventListener('click', function() {
+            feedbackModal.style.display = 'block';
+        });
+        
+        // Close modal when clicking X
+        if (feedbackCloseBtn) {
+            feedbackCloseBtn.addEventListener('click', function() {
+                feedbackModal.style.display = 'none';
+            });
+        }
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target === feedbackModal) {
+                feedbackModal.style.display = 'none';
+            }
+        });
+        
+        // Handle form submission
+        if (feedbackForm) {
+            feedbackForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Show loading state
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = 'Submitting...';
+                
+                try {
+                    // Collect all form data
+                    const name = document.getElementById('feedback-name').value;
+                    const email = document.getElementById('feedback-email').value;
+                    const type = document.getElementById('feedback-type').value;
+                    const priority = document.getElementById('feedback-priority').value;
+                    const category = document.getElementById('feedback-category').value;
+                    const message = document.getElementById('feedback-message').value;
+                    const context = document.getElementById('feedback-context').value;
+                    
+                    // Get screenshot if available
+                    let screenshotData = null;
+                    const screenshotInput = document.getElementById('feedback-screenshot');
+                    if (screenshotInput && screenshotInput.files && screenshotInput.files[0]) {
+                        try {
+                            // Get the screenshot as data URL
+                            screenshotData = await new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = e => resolve(e.target.result);
+                                reader.onerror = e => reject(e);
+                                reader.readAsDataURL(screenshotInput.files[0]);
+                            });
+                        } catch (err) {
+                            errorLog('Error reading screenshot:', err);
+                            // Continue without screenshot if there's an error
+                        }
+                    }
+                    
+                    // Create feedback request object
+                    const feedbackRequest = {
+                        timestamp: new Date().toISOString(),
+                        submittedBy: {
+                            name: name,
+                            email: email
+                        },
+                        requestType: type,
+                        priority: priority,
+                        category: category,
+                        description: message,
+                        additionalContext: context || 'None provided',
+                        screenshot: screenshotData,
+                        status: 'New'
+                    };
+                    
+                    // First store in Knack
+                    const storedInKnack = await storeFeedbackInKnack(feedbackRequest);
+                    
+                    // Then try to send email
+                    let emailSent = false;
+                    try {
+                        emailSent = await sendFeedbackEmail(feedbackRequest);
+                    } catch (emailError) {
+                        errorLog('Email sending failed:', emailError);
+                        // Continue - we've still saved the feedback
+                    }
+                    
+                    log('Feedback processed:', { 
+                        storedInKnack, 
+                        emailSent 
+                    });
+                    
+                    // Show success message even if email failed (feedback was saved)
+                    feedbackForm.style.display = 'none';
+                    const successDiv = document.getElementById('feedback-success');
+                    if (successDiv) {
+                        if (!emailSent) {
+                            // Modify success message if email failed
+                            successDiv.innerHTML = `
+                                <p>Thank you for your feedback! Your request has been saved successfully.</p>
+                                <p style="color: #ffa500;">Note: Email confirmation could not be sent at this time, but your request has been recorded and will be reviewed.</p>
+                            `;
+                        }
+                        successDiv.style.display = 'block';
+                    }
+                    
+                    // Close modal after 3 seconds
+                    setTimeout(function() {
+                        feedbackModal.style.display = 'none';
+                        // Reset form for next time
+                        setTimeout(function() {
+                            feedbackForm.reset();
+                            // Re-populate user data
+                            if (user) {
+                                const nameInput = document.getElementById('feedback-name');
+                                const emailInput = document.getElementById('feedback-email');
+                                if (nameInput && user.name) nameInput.value = user.name;
+                                if (emailInput && user.email) emailInput.value = user.email;
+                            }
+                            feedbackForm.style.display = 'block';
+                            document.getElementById('feedback-success').style.display = 'none';
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnText;
+                            // Clear screenshot preview
+                            const screenshotPreview = document.getElementById('screenshot-preview');
+                            const screenshotInput = document.getElementById('feedback-screenshot');
+                            if (screenshotPreview) screenshotPreview.style.display = 'none';
+                            if (screenshotInput) screenshotInput.value = '';
+                        }, 500);
+                    }, 3000);
+                } catch (error) {
+                    errorLog('Error processing feedback:', error);
+                    alert('There was an error submitting your request. Please try again later.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
+            });
+        }
+        
+        // Setup screenshot upload preview
+        const setupScreenshotUpload = function() {
+            const screenshotInput = document.getElementById('feedback-screenshot');
+            const screenshotPreview = document.getElementById('screenshot-preview');
+            const screenshotImage = document.getElementById('screenshot-image');
+            const removeScreenshotBtn = document.getElementById('remove-screenshot');
+            
+            if (!screenshotInput || !screenshotPreview || !screenshotImage || !removeScreenshotBtn) return;
+            
+            // Show preview when image is selected
+            screenshotInput.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    
+                    // Check file size (limit to 5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('Screenshot too large. Please select an image smaller than 5MB.');
+                        this.value = '';
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        screenshotImage.src = e.target.result;
+                        screenshotPreview.style.display = 'block';
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Remove button functionality
+            removeScreenshotBtn.addEventListener('click', function() {
+                screenshotInput.value = '';
+                screenshotPreview.style.display = 'none';
+                screenshotImage.src = '';
+            });
+        };
+        
+        // Initialize screenshot upload handling
+        setupScreenshotUpload();
+        
+        log('Feedback system initialized');
+    }
+    
+    // Store feedback in Knack field_3207
+    async function storeFeedbackInKnack(feedbackRequest) {
+        try {
+            log('Storing feedback in Knack:', feedbackRequest);
+            
+            // Get the current user
+            const user = Knack.getUserAttributes();
+            if (!user || !user.id) {
+                throw new Error('User not authenticated');
+            }
+            
+            // Find the user's record in Object_3
+            const filters = encodeURIComponent(JSON.stringify({
+                match: 'and',
+                rules: [
+                    { field: 'field_70', operator: 'is', value: user.email }  // Staff email field only
+                ]
+            }));
+            
+            const response = await makeKnackRequest(`objects/object_3/records?filters=${filters}`);
+            
+            if (!response || !response.records || response.records.length === 0) {
+                throw new Error('User record not found');
+            }
+            
+            const userRecord = response.records[0];
+            
+            // Get existing feedback data or initialize new structure
+            let feedbackData = { feedbackRequests: [] };
+            
+            if (userRecord.field_3207) {
+                try {
+                    feedbackData = JSON.parse(userRecord.field_3207);
+                    // Ensure feedbackRequests exists
+                    if (!feedbackData.feedbackRequests) {
+                        feedbackData.feedbackRequests = [];
+                    }
+                } catch (e) {
+                    console.warn('[Resource Dashboard] Error parsing existing feedback data, initializing new array');
+                    feedbackData = { feedbackRequests: [] };
+                }
+            }
+            
+            // Add new request to the array
+            feedbackData.feedbackRequests.push(feedbackRequest);
+            
+            // Update the record with new feedback data
+            await $.ajax({
+                url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+                type: 'PUT',
+                headers: {
+                    'X-Knack-Application-Id': SCRIPT_CONFIG.knackAppId,
+                    'X-Knack-REST-API-Key': SCRIPT_CONFIG.knackApiKey,
+                    'Authorization': Knack.getUserToken(),
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    field_3207: JSON.stringify(feedbackData)
+                })
+            });
+            
+            log('Successfully stored feedback in Knack');
+            return true;
+            
+        } catch (error) {
+            errorLog('Error storing feedback in Knack:', error);
+            throw error;
+        }
+    }
+
+    // Send feedback email via SendGrid Proxy
+    async function sendFeedbackEmail(feedbackRequest) {
+        try {
+            log('Sending feedback email via SendGrid Proxy');
+            
+            // Get SendGrid config from the loader config or use defaults
+            const sendGridConfig = SCRIPT_CONFIG.sendGrid || {
+                proxyUrl: 'https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email',
+                fromEmail: 'noreply@notifications.vespa.academy',
+                fromName: 'VESPA Academy',
+                templateId: 'd-6a6ac61c9bab43e28706dbb3da4acdcf',
+                confirmationtemplateId: 'd-2e21f98579f947b08f2520c567b43c35'
+            };
+            
+            // Check if proxy URL is configured
+            if (!sendGridConfig.proxyUrl) {
+                errorLog('SendGrid proxy URL not configured');
+                return false;
+            }
+            
+            // Format timestamp for display
+            const formattedTimestamp = new Date(feedbackRequest.timestamp).toLocaleString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // Send two separate emails: one to admin and one as confirmation to user
+            
+            // 1. Admin notification email
+            const adminEmailData = {
+                personalizations: [
+                    {
+                        to: [{ email: 'admin@vespa.academy' }],
+                        dynamic_template_data: {
+                            name: feedbackRequest.submittedBy.name,
+                            email: feedbackRequest.submittedBy.email,
+                            requestType: feedbackRequest.requestType,
+                            priority: feedbackRequest.priority,
+                            category: feedbackRequest.category,
+                            description: feedbackRequest.description,
+                            additionalContext: feedbackRequest.additionalContext,
+                            timestamp: formattedTimestamp
+                        }
+                    }
+                ],
+                from: {
+                    email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
+                    name: sendGridConfig.fromName || "VESPA Academy"
+                },
+                template_id: sendGridConfig.templateId
+            };
+            
+            // 2. User confirmation email
+            const userEmailData = {
+                personalizations: [
+                    {
+                        to: [{ email: feedbackRequest.submittedBy.email }],
+                        dynamic_template_data: {
+                            name: feedbackRequest.submittedBy.name,
+                            requestType: feedbackRequest.requestType,
+                            priority: feedbackRequest.priority,
+                            category: feedbackRequest.category,
+                            description: feedbackRequest.description,
+                            timestamp: formattedTimestamp
+                        }
+                    }
+                ],
+                from: {
+                    email: sendGridConfig.fromEmail || "noreply@notifications.vespa.academy",
+                    name: sendGridConfig.fromName || "VESPA Academy"
+                },
+                template_id: sendGridConfig.confirmationtemplateId
+            };
+            
+            // Add screenshot attachment if available
+            if (feedbackRequest.screenshot) {
+                // Extract base64 data from the data URL
+                const base64Data = feedbackRequest.screenshot.split(',')[1];
+                
+                adminEmailData.attachments = [
+                    {
+                        content: base64Data,
+                        filename: 'screenshot.png',
+                        type: 'image/png',
+                        disposition: 'attachment'
+                    }
+                ];
+                
+                // Include a reference in the dynamic template data
+                adminEmailData.personalizations[0].dynamic_template_data.hasScreenshot = true;
+            } else {
+                adminEmailData.personalizations[0].dynamic_template_data.hasScreenshot = false;
+            }
+            
+            // Log the request for debugging
+            log('Sending request to proxy:', sendGridConfig.proxyUrl);
+            log('Request data structure:', {
+                personalizations: adminEmailData.personalizations?.length || 0,
+                hasFrom: !!adminEmailData.from,
+                hasTemplateId: !!adminEmailData.template_id,
+                hasAttachments: !!adminEmailData.attachments
+            });
+            
+            // Send admin email (proxy server has its own SendGrid API key)
+            const adminResponse = await fetch(sendGridConfig.proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(adminEmailData)
+            });
+            
+            // Check if admin email was successful
+            if (!adminResponse.ok) {
+                let errorDetails = 'Unknown error';
+                try {
+                    const errorData = await adminResponse.json();
+                    errorDetails = errorData.details || errorData.error || 'No details provided';
+                } catch (e) {
+                    errorDetails = `Status ${adminResponse.status}: ${adminResponse.statusText}`;
+                }
+                errorLog('Proxy API error (admin email):', errorDetails);
+                // Don't throw - we still saved to Knack successfully
+                return false;
+            }
+            
+            // Send user confirmation email
+            const userResponse = await fetch(sendGridConfig.proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userEmailData)
+            });
+            
+            // Check if user email was successful
+            if (!userResponse.ok) {
+                let errorDetails = 'Unknown error';
+                try {
+                    const errorData = await userResponse.json();
+                    errorDetails = errorData.details || errorData.error || 'No details provided';
+                } catch (e) {
+                    errorDetails = `Status ${userResponse.status}: ${userResponse.statusText}`;
+                }
+                errorLog('Proxy API error (user email):', errorDetails);
+                // Still return true if admin email worked but user email failed
+                return adminResponse.ok;
+            }
+            
+            log('Emails sent successfully via proxy');
+            return true;
+            
+        } catch (error) {
+            errorLog('Error sending feedback email:', error);
+            // Continue even if email fails - we've saved to Knack already
+            return false;
+        }
+    }
+
     async function initializeResourceDashboard() {
         console.log('[Resource Dashboard] initializeResourceDashboard function called!');
         log('Initializing Resource Dashboard...');
@@ -1841,6 +2468,87 @@
                 throw new Error("Failed to load user profile data.");
             }
 
+            // Feedback button and modal HTML
+            const feedbackHTML = `
+                <button id="feedback-button" class="feedback-button">
+                    <i class="fas fa-comment-alt"></i>
+                    Support & Feedback
+                </button>
+
+                <div id="feedback-modal" class="vespa-modal" style="display: none;">
+                    <div class="vespa-modal-content">
+                        <span class="vespa-modal-close" id="feedback-modal-close">&times;</span>
+                        <h3>VESPA Academy Support / Contact Us</h3>
+                        <form id="feedback-form">
+                            <div class="form-group">
+                                <label for="feedback-name">Your Name</label>
+                                <input type="text" id="feedback-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="feedback-email">Your Email</label>
+                                <input type="email" id="feedback-email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="feedback-type">Request Type</label>
+                                <select id="feedback-type" required>
+                                    <option value="">Please select...</option>
+                                    <option value="Support Request">Support Request</option>
+                                    <option value="Feature Request">Feature Request</option>
+                                    <option value="Bug Report">Bug Report</option>
+                                    <option value="General Feedback">General Feedback</option>
+                                    <option value="Question">Question</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="feedback-priority">Priority Level</label>
+                                <select id="feedback-priority" required>
+                                    <option value="">Please select...</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="feedback-category">Category</label>
+                                <select id="feedback-category" required>
+                                    <option value="">Please select...</option>
+                                    <option value="User Interface">User Interface</option>
+                                    <option value="Data/Results">Data/Results</option>
+                                    <option value="Performance">Performance</option>
+                                    <option value="Account Access">Account Access</option>
+                                    <option value="Documentation">Documentation</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="feedback-message">Description</label>
+                                <textarea id="feedback-message" rows="5" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="feedback-context">Additional Context (optional)</label>
+                                <textarea id="feedback-context" rows="3" placeholder="Browser details, steps to reproduce, etc."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="feedback-screenshot">Screenshot (optional)</label>
+                                <input type="file" id="feedback-screenshot" accept="image/*">
+                                <div id="screenshot-preview" style="display:none; margin-top:10px;">
+                                    <img id="screenshot-image" style="max-width:100%; max-height:200px; border:1px solid #ccc;">
+                                    <button type="button" id="remove-screenshot" class="vespa-btn vespa-btn-secondary" style="margin-top:5px;">Remove</button>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="vespa-btn vespa-btn-primary">Submit Request</button>
+                            </div>
+                        </form>
+                        <div id="feedback-success" style="display:none;">
+                            <p>Thank you for your feedback! Your request has been submitted successfully.</p>
+                            <p>A confirmation has been sent to your email address.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
             const dashboardHtml = `
                 <div id="resource-dashboard-container">
                     ${renderProfileSection(profileData)}
@@ -1851,7 +2559,14 @@
             `;
 
             $container.html(dashboardHtml);
+            
+            // Add feedback elements to body
+            $('body').append(feedbackHTML);
+            
             log('Dashboard rendered.');
+            
+            // Setup feedback functionality
+            setupFeedbackSystem();
             
             // Remove any Knack-generated PDF download links after render
             setTimeout(() => {
