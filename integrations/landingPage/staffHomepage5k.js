@@ -4913,16 +4913,32 @@ if (feedbackForm) {
       const storedInKnack = await storeFeedbackInKnack(feedbackRequest);
       
       // Then try to send email
-      const emailSent = await sendFeedbackEmail(feedbackRequest);
+      let emailSent = false;
+      try {
+        emailSent = await sendFeedbackEmail(feedbackRequest);
+      } catch (emailError) {
+        console.error('[VESPA Support] Email sending failed:', emailError);
+        // Continue - we've still saved the feedback
+      }
       
       console.log('[VESPA Support] Feedback processed:', { 
         storedInKnack, 
         emailSent 
       });
       
-      // Show success message
+      // Show success message even if email failed (feedback was saved)
       feedbackForm.style.display = 'none';
-      document.getElementById('feedback-success').style.display = 'block';
+      const successDiv = document.getElementById('feedback-success');
+      if (successDiv) {
+        if (!emailSent) {
+          // Modify success message if email failed
+          successDiv.innerHTML = `
+            <p>Thank you for your feedback! Your request has been saved successfully.</p>
+            <p style="color: #ffa500;">Note: Email confirmation could not be sent at this time, but your request has been recorded and will be reviewed.</p>
+          `;
+        }
+        successDiv.style.display = 'block';
+      }
       
       // Close modal after 3 seconds
       setTimeout(function() {
@@ -5193,14 +5209,11 @@ function getPrivacyPolicyModal() {
     <div id="privacy-policy-modal" class="verification-modal" style="padding: 30px; color: white; position: relative;">
       <h2 style="color: #00e5db; margin-bottom: 20px; text-align: center;">Privacy Policy Agreement</h2>
       
-      <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; position: relative;">
+      <div style="background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
         <iframe src="https://vespa.academy/assets/MVIMAGES/privacy-policy.html" 
-                style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px; pointer-events: none;"
+                style="width: 100%; height: 350px; border: none; background: white; border-radius: 4px;"
                 title="Privacy Policy">
         </iframe>
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: auto; overflow-y: auto;">
-          <!-- Invisible overlay to allow scrolling but prevent iframe interaction -->
-        </div>
       </div>
       
       <div style="margin: 20px 0; position: relative; z-index: 10;">
@@ -5383,6 +5396,45 @@ function getPasswordResetModal(visibleByDefault = false) {
           
           // Check initial state
           updateButtonState();
+          
+          // Handle continue button click - MUST be inside setTimeout where continueBtn is defined
+          continueBtn.addEventListener('click', async function() {
+            // Need to reference the current checkbox
+            const currentCheckbox = document.getElementById('privacy-accept-checkbox');
+            if (!currentCheckbox || !currentCheckbox.checked) return;
+            
+            // Show loading state
+            this.disabled = true;
+            this.innerHTML = 'Updating...';
+            
+            try {
+              // Update the privacy policy field
+              await updateStaffVerificationFields(staffRecordId, { field_127: "Yes" });
+              
+              console.log('[Staff Homepage] Privacy policy acceptance updated successfully');
+              
+              // Hide privacy modal
+              const privacyModal = document.getElementById('privacy-policy-modal');
+              if (privacyModal) privacyModal.style.display = 'none';
+              
+              // Show password modal if needed
+              if (needsPassword) {
+                const passwordModal = document.getElementById('password-reset-modal');
+                if (passwordModal) passwordModal.style.display = 'block';
+                setupPasswordResetHandlers(staffRecordId, resolve);
+              } else {
+                // All done, close modal and proceed
+                document.getElementById('verification-modal-overlay').remove();
+                window._privacyHandlersSetup = false; // Reset flag
+                resolve(true);
+              }
+            } catch (error) {
+              console.error('[Staff Homepage] Error updating privacy policy acceptance:', error);
+              alert('Error updating your preferences. Please try again.');
+              this.disabled = false;
+              this.innerHTML = 'Continue';
+            }
+          });
         } else {
           console.error('[Staff Homepage] Privacy policy elements not found:', {
             checkbox: checkbox,
@@ -5390,47 +5442,6 @@ function getPasswordResetModal(visibleByDefault = false) {
           });
         }
       }, 100); // 100ms delay to ensure DOM is ready
-  
-        // Handle continue button click
-      if (continueBtn) {
-        continueBtn.addEventListener('click', async function() {
-          // Need to reference the current checkbox
-          const currentCheckbox = document.getElementById('privacy-accept-checkbox');
-          if (!currentCheckbox || !currentCheckbox.checked) return;
-          
-          // Show loading state
-          continueBtn.disabled = true;
-          continueBtn.innerHTML = 'Updating...';
-          
-          try {
-            // Update the privacy policy field
-            await updateStaffVerificationFields(staffRecordId, { field_127: "Yes" });
-            
-            console.log('[Staff Homepage] Privacy policy acceptance updated successfully');
-            
-            // Hide privacy modal
-            const privacyModal = document.getElementById('privacy-policy-modal');
-            if (privacyModal) privacyModal.style.display = 'none';
-            
-            // Show password modal if needed
-            if (needsPassword) {
-              const passwordModal = document.getElementById('password-reset-modal');
-              if (passwordModal) passwordModal.style.display = 'block';
-              setupPasswordResetHandlers(staffRecordId, resolve);
-            } else {
-              // All done, close modal and proceed
-              document.getElementById('verification-modal-overlay').remove();
-              window._privacyHandlersSetup = false; // Reset flag
-              resolve(true);
-            }
-          } catch (error) {
-            console.error('[Staff Homepage] Error updating privacy policy acceptance:', error);
-            alert('Error updating your preferences. Please try again.');
-            continueBtn.disabled = false;
-            continueBtn.innerHTML = 'Continue';
-          }
-        });
-      }
 }
 
 // Setup Password Reset Modal Handlers
@@ -5972,19 +5983,39 @@ if (feedbackRequest.screenshot) {
   adminEmailData.personalizations[0].dynamic_template_data.hasScreenshot = false;
 }
 
+    // Get API key from shared config if available
+    const sharedConfig = window.STAFFHOMEPAGE_CONFIG || {};
+    const apiKey = sharedConfig.sendGrid?.apiKey || sendGridConfig.apiKey;
+    
+    // Check if API key is available
+    if (!apiKey) {
+      console.error('[VESPA Support] SendGrid API key not configured');
+      // Continue anyway - we've already saved to Knack
+      return false;
+    }
+    
     // Send admin email
     const adminResponse = await fetch(sendGridConfig.proxyUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'X-API-Key': apiKey // Alternative header format the proxy might expect
       },
       body: JSON.stringify(adminEmailData)
     });
     
     // Check if admin email was successful
     if (!adminResponse.ok) {
-      const errorData = await adminResponse.json();
-      console.error('[VESPA Support] Proxy API error (admin email):', errorData);
+      let errorDetails = 'Unknown error';
+      try {
+        const errorData = await adminResponse.json();
+        errorDetails = errorData.details || errorData.error || 'No details provided';
+      } catch (e) {
+        errorDetails = `Status ${adminResponse.status}: ${adminResponse.statusText}`;
+      }
+      console.error('[VESPA Support] Proxy API error (admin email):', errorDetails);
+      // Don't throw - we still saved to Knack successfully
       return false;
     }
     
@@ -5992,17 +6023,25 @@ if (feedbackRequest.screenshot) {
     const userResponse = await fetch(sendGridConfig.proxyUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'X-API-Key': apiKey // Alternative header format
       },
       body: JSON.stringify(userEmailData)
     });
     
     // Check if user email was successful
     if (!userResponse.ok) {
-      const errorData = await userResponse.json();
-      console.error('[VESPA Support] Proxy API error (user email):', errorData);
+      let errorDetails = 'Unknown error';
+      try {
+        const errorData = await userResponse.json();
+        errorDetails = errorData.details || errorData.error || 'No details provided';
+      } catch (e) {
+        errorDetails = `Status ${userResponse.status}: ${userResponse.statusText}`;
+      }
+      console.error('[VESPA Support] Proxy API error (user email):', errorDetails);
       // Still return true if admin email worked but user email failed
-      return true;
+      return adminResponse.ok;
     }
     
     console.log('[VESPA Support] Emails sent successfully via proxy');
