@@ -5983,24 +5983,20 @@ if (feedbackRequest.screenshot) {
   adminEmailData.personalizations[0].dynamic_template_data.hasScreenshot = false;
 }
 
-    // Get API key from shared config if available
-    const sharedConfig = window.STAFFHOMEPAGE_CONFIG || {};
-    const apiKey = sharedConfig.sendGrid?.apiKey || sendGridConfig.apiKey;
+    // Log the request for debugging
+    console.log('[VESPA Support] Sending request to proxy:', sendGridConfig.proxyUrl);
+    console.log('[VESPA Support] Request data structure:', {
+      personalizations: adminEmailData.personalizations?.length || 0,
+      hasFrom: !!adminEmailData.from,
+      hasTemplateId: !!adminEmailData.template_id,
+      hasAttachments: !!adminEmailData.attachments
+    });
     
-    // Check if API key is available
-    if (!apiKey) {
-      console.error('[VESPA Support] SendGrid API key not configured');
-      // Continue anyway - we've already saved to Knack
-      return false;
-    }
-    
-    // Send admin email
+    // Send admin email (proxy server has its own SendGrid API key)
     const adminResponse = await fetch(sendGridConfig.proxyUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'X-API-Key': apiKey // Alternative header format the proxy might expect
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(adminEmailData)
     });
@@ -6023,9 +6019,7 @@ if (feedbackRequest.screenshot) {
     const userResponse = await fetch(sendGridConfig.proxyUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'X-API-Key': apiKey // Alternative header format
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(userEmailData)
     });
