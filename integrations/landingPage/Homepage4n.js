@@ -4,7 +4,7 @@
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
-  const DEBUG_MODE = true; // Enable console logging
+  const DEBUG_MODE = false; // Enable console logging
 
   // Flashcard specific constants
   const FLASHCARD_DATA_OBJECT = 'object_102';
