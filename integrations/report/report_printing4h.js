@@ -578,7 +578,7 @@
                 // - Alert administrators
                 // - Log this as a security incident
                 // - Return empty array or limited results
-                console.error('Potential data breach attempt detected - limiting results');
+                err('Potential data breach attempt detected - limiting results');
                 return allStudents.slice(0, 100); // Limit to reasonable number
             }
             
@@ -1536,13 +1536,13 @@
             img.onload = () => {
                 // Check if image actually loaded (sometimes returns 1x1 pixel on error)
                 if (img.naturalWidth < 10 || img.naturalHeight < 10) {
-                    console.warn('Logo appears to be invalid (too small):', logoUrl);
+                    log('Logo appears to be invalid (too small):', logoUrl);
                     img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiNlMGUwZTAiLz4KPHRleHQgeD0iMjAiIHk9IjI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkxPR088L3RleHQ+Cjwvc3ZnPg==';
                 }
             };
             
             img.onerror = () => {
-                console.warn('Failed to load school logo:', logoUrl);
+                log('Failed to load school logo:', logoUrl);
                 // Try the fallback URL if we haven't already
                 if (fallbackUrl && img.dataset.fallbackTried !== 'yes') {
                     img.dataset.fallbackTried = 'yes';
@@ -2047,8 +2047,8 @@
         }
         
         // Debug: Check if we're on the right view
-        console.log('[BulkPrint] Current scene:', Knack.scene?.key);
-        console.log('[BulkPrint] Looking for button #bulkPrintbtn in view_3062');
+        log('Current scene:', Knack.scene?.key);
+        log('Looking for button #bulkPrintbtn in view_3062');
         
         // Change the button text and ID for clarity
         const btn = $('#view_3062 #bulkPrintbtn')
@@ -2070,7 +2070,7 @@
             );
 
         if (btn.length && !btn.data('bulk-print-bound')) {
-            console.log('[BulkPrint] Button found, binding click handler');
+            log('Button found, binding click handler');
             btn.data('bulk-print-bound', true); // Mark as bound
             btn.off('click.bulk').on('click.bulk', function (e) {
                 e.preventDefault();
@@ -2080,6 +2080,5 @@
     };
     
     // Also log when script loads
-    console.log('[BulkPrint] Script loaded successfully (v2g)');
+    log('Script loaded successfully (v2g)');
 })();
-
