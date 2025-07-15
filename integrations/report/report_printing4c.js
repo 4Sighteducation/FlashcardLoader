@@ -323,12 +323,16 @@
         const user = Knack.getUserAttributes();
         const userRole = await getUserRole();
         
-        log('Fetching students for non-admin user:', userRole.primaryRole);
+        log('Fetching students for non-admin user with roles:', {
+            isTutor: userRole.isTutor,
+            isHeadOfYear: userRole.isHeadOfYear,
+            isSubjectTeacher: userRole.isSubjectTeacher
+        });
         
-        // Build filters based on user role
-        const rules = [];
+        // Build filters based on user role - now handling multiple roles
+        const roleFilters = [];
         
-        // Get the user's record ID based on their role
+        // Check for Tutor role
         if (userRole.isTutor) {
             // For tutors, find their tutor record
             const tutorData = await knackRequest('objects/object_7/records', {
@@ -338,12 +342,13 @@
             if (tutorData.records && tutorData.records.length > 0) {
                 const tutorId = tutorData.records[0].id;
                 // Filter by tutor connection (field_145)
-                rules.push({ field: 'field_145', operator: 'is', value: tutorId });
-            } else {
-                log('No tutor record found for user');
-                return []; // No access if no tutor record found
+                roleFilters.push({ field: 'field_145', operator: 'is', value: tutorId });
+                log(`Added tutor filter for ID: ${tutorId}`);
             }
-        } else if (userRole.isSubjectTeacher) {
+        }
+        
+        // Check for Subject Teacher role
+        if (userRole.isSubjectTeacher) {
             // For subject teachers, we need to find students where they are in field_2191
             // First, get the user's account record to find their ID
             const userAccount = await knackRequest('objects/object_3/records', {
@@ -354,18 +359,85 @@
             if (userAccount.records && userAccount.records.length > 0) {
                 const teacherId = userAccount.records[0].id;
                 // Filter by subject teacher connection (field_2191)
-                rules.push({ field: 'field_2191', operator: 'is', value: teacherId });
-            } else {
-                log('No teacher record found for user');
-                return [];
+                roleFilters.push({ field: 'field_2191', operator: 'is', value: teacherId });
+                log(`Added subject teacher filter for ID: ${teacherId}`);
             }
-        } else if (userRole.isHeadOfYear) {
-            // For Head of Year, they typically see all students in their year groups
-            // This would need to be configured based on your specific setup
-            // For now, we'll need to determine which year groups they oversee
-            // This might require an additional field or configuration
-            log('Head of Year access - needs configuration for year group assignment');
-            // You may need to add logic here based on how Head of Year assignments work in your system
+        }
+        
+        // Check for Head of Year role
+        if (userRole.isHeadOfYear) {
+            log('Head of Year access detected - setting up filters');
+            
+            // Method 1: Direct connection via field_429 in Object_10
+            // First, we need to find the Head of Year record in Object_18
+            try {
+                const hoyData = await knackRequest('objects/object_18/records', {
+                    filters: { match: 'and', rules: [{ field: 'field_417', operator: 'is', value: user.email }] },
+                    rows: 10
+                });
+                
+                if (hoyData.records && hoyData.records.length > 0) {
+                    const hoyId = hoyData.records[0].id;
+                    // Filter by Head of Year connection (field_429)
+                    roleFilters.push({ field: 'field_429', operator: 'is', value: hoyId });
+                    log(`Added Head of Year filter for ID: ${hoyId}`);
+                } else {
+                    // Fallback: Try Method 2 - Year Group from Object_3
+                    log('No Head of Year record found in Object_18, trying year group method');
+                    
+                    const userAccount = await knackRequest(`objects/object_3/records/${user.id}`);
+                    const yearGroup = userAccount.field_550 || userAccount.field_550_raw;
+                    
+                    if (yearGroup) {
+                        // Handle if it's an array (connection field)
+                        const yearGroupValue = Array.isArray(yearGroup) ? yearGroup[0] : yearGroup;
+                        roleFilters.push({ field: 'field_144', operator: 'is', value: yearGroupValue });
+                        log(`Added Head of Year filter for year group: ${yearGroupValue}`);
+                    } else {
+                        log('WARNING: Head of Year has no year group assigned in field_550');
+                        // Show notification to user
+                        if (!$('#hoyConfigWarning').length) {
+                            $('#userRoleDisplay').after(`
+                                <div id="hoyConfigWarning" style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                                    <strong>⚠️ Head of Year Configuration Needed:</strong> Your account is not linked to a specific year group. 
+                                    Please contact your administrator to assign you to a year group, or use the Year Group filter below to manually select students.
+                                </div>
+                            `);
+                        }
+                    }
+                }
+            } catch (e) {
+                log('Error setting up Head of Year filters:', e);
+                // Try the fallback method
+                try {
+                    const userAccount = await knackRequest(`objects/object_3/records/${user.id}`);
+                    const yearGroup = userAccount.field_550 || userAccount.field_550_raw;
+                    
+                    if (yearGroup) {
+                        const yearGroupValue = Array.isArray(yearGroup) ? yearGroup[0] : yearGroup;
+                        roleFilters.push({ field: 'field_144', operator: 'is', value: yearGroupValue });
+                        log(`Added Head of Year filter for year group (fallback): ${yearGroupValue}`);
+                    }
+                } catch (fallbackError) {
+                    log('Error in Head of Year fallback method:', fallbackError);
+                }
+            }
+        }
+        
+        // If no role filters were added, user has no access
+        if (roleFilters.length === 0) {
+            log('No valid role filters found for user');
+            return [];
+        }
+        
+        // Build the main filter structure
+        const rules = [];
+        
+        // If user has multiple roles, combine them with OR logic
+        if (roleFilters.length > 1) {
+            rules.push({ match: 'or', rules: roleFilters });
+        } else {
+            rules.push(roleFilters[0]);
         }
         
         // Add user-selected filters
@@ -381,6 +453,28 @@
         if (filters.searchTerm) {
             // Search by student name (field_187 contains full name)
             rules.push({ field: 'field_187', operator: 'contains', value: filters.searchTerm });
+        }
+        
+        // Handle specific role filtering when user has multiple roles
+        if (filters.tutorId && userRole.isTutor) {
+            // User selected to see only their tutees
+            // Override the role filters to only show tutor students
+            const tutorFilter = roleFilters.find(f => f.field === 'field_145');
+            if (tutorFilter) {
+                // Replace the combined OR filter with just the tutor filter
+                rules = rules.filter(r => !r.match); // Remove the OR filter
+                rules.push(tutorFilter);
+            }
+        }
+        
+        if (filters.subjectTeacherId === 'filter_by_role' && userRole.isSubjectTeacher) {
+            // User selected to see only their subject students
+            const teacherFilter = roleFilters.find(f => f.field === 'field_2191');
+            if (teacherFilter) {
+                // Replace the combined OR filter with just the teacher filter
+                rules = rules.filter(r => !r.match); // Remove the OR filter
+                rules.push(teacherFilter);
+            }
         }
         
         const finalFilters = rules.length > 0 ? { match: 'and', rules } : undefined;
@@ -689,6 +783,10 @@
             <div id="bulkPrintFilters">
                 <h3>🔍 Filter Student Reports</h3>
                 
+                <div id="userRoleDisplay" style="background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 6px; margin-bottom: 15px; display: none;">
+                    <strong>Your Access Level:</strong> <span id="userRolesList"></span>
+                </div>
+                
                 <div class="search-section">
                     <h4>🔎 Search for Student</h4>
                     <div class="filter-item">
@@ -737,6 +835,11 @@
                             <option value="" disabled>Loading...</option>
                         </select>
                     </div>
+                </div>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button id="clearFiltersBtn" class="Knack-button" style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                        🔄 Clear All Filters
+                    </button>
                 </div>
             </div>
         `;
@@ -1163,7 +1266,9 @@
                 
                 log(`Loaded ${tutors.length} tutors and ${subjectTeachers.length} subject teachers`);
             } else {
-                // For non-admin users, only show their own name in relevant filter
+                // For non-admin users with multiple roles, show filters differently
+                const tutorSelect = $('#filterTutor');
+                
                 if (userRole.isTutor) {
                     // Find their tutor record
                     const tutorData = await knackRequest('objects/object_7/records', {
@@ -1171,29 +1276,64 @@
                         rows: 10
                     });
                     
-                    const tutorSelect = $('#filterTutor');
-                    tutorSelect.empty();
                     if (tutorData.records && tutorData.records.length > 0) {
                         const tutorRecord = tutorData.records[0];
-                        tutorSelect.append(`<option value="${tutorRecord.id}" selected>${tutorRecord.field_95}</option>`);
-                        tutorSelect.prop('disabled', true); // Disable since they can only see their own
+                        tutorSelect.empty();
+                        // If user has multiple roles, allow them to filter or see all
+                        if (userRole.isHeadOfYear || userRole.isSubjectTeacher) {
+                            tutorSelect.append('<option value="">All My Students</option>');
+                            tutorSelect.append(`<option value="${tutorRecord.id}">Only My Tutees (${tutorRecord.field_95})</option>`);
+                        } else {
+                            // Single role - just show their name and disable
+                            tutorSelect.append(`<option value="${tutorRecord.id}" selected>${tutorRecord.field_95}</option>`);
+                            tutorSelect.prop('disabled', true);
+                        }
                     }
                 } else {
                     // Hide tutor filter for non-tutors
                     $('#filterTutor').parent().hide();
                 }
                 
-                // Hide subject teacher filter for non-admin users
-                $('#subjectTeacherFilter').hide();
+                // Show subject teacher filter if they are a subject teacher
+                if (userRole.isSubjectTeacher) {
+                    $('#subjectTeacherFilter').show();
+                    const subjectTeacherSelect = $('#filterSubjectTeacher');
+                    subjectTeacherSelect.empty();
+                    
+                    // If they have multiple roles, allow filtering
+                    if (userRole.isTutor || userRole.isHeadOfYear) {
+                        subjectTeacherSelect.append('<option value="">All My Students</option>');
+                        subjectTeacherSelect.append(`<option value="filter_by_role">Only My Subject Students</option>`);
+                    } else {
+                        subjectTeacherSelect.append('<option value="" selected>My Subject Students</option>');
+                        subjectTeacherSelect.prop('disabled', true);
+                    }
+                } else {
+                    $('#subjectTeacherFilter').hide();
+                }
             }
 
             // Fetch students to derive year group & group options
-            const students = await fetchStudents(staffIds, {}, 1000);
+            let students = [];
+            
+            // For Staff Admin, fetch using their staff IDs
+            if (userRole.isStaffAdmin && staffIds.length > 0) {
+                students = await fetchStudents(staffIds, {}, 1000);
+            } else if (userRole.isTutor || userRole.isHeadOfYear || userRole.isSubjectTeacher) {
+                // For non-admin users, fetch their accessible students
+                students = await fetchStudentsForNonAdmin({}, 1000);
+            }
 
-            // For non-admin users, only show year groups and groups they have access to
+            // Extract year groups and groups from fetched students
             const yearGroups = [...new Set(students.map(s => s.field_144).filter(Boolean))].sort();
             const yearGroupSelect = $('#filterYearGroup');
             yearGroupSelect.empty().append('<option value="">All Year Groups</option>');
+            
+            // For Head of Year without proper configuration, highlight available year groups
+            if (userRole.isHeadOfYear && !userRole.isStaffAdmin && $('#hoyConfigWarning').length) {
+                yearGroupSelect.append('<option value="" disabled>── Select Your Year Group ──</option>');
+            }
+            
             yearGroups.forEach(yg => {
                 yearGroupSelect.append(`<option value="${yg}">${yg}</option>`);
             });
@@ -1749,6 +1889,18 @@
         if (!$('#bulkPrintFilters').length) {
             renderFilterUI();
             
+            // Display user roles
+            if (userRole.primaryRole) {
+                const rolesList = [];
+                if (userRole.isStaffAdmin) rolesList.push('📊 Staff Admin');
+                if (userRole.isTutor) rolesList.push('👨‍🏫 Tutor');
+                if (userRole.isHeadOfYear) rolesList.push('🎓 Head of Year');
+                if (userRole.isSubjectTeacher) rolesList.push('📚 Subject Teacher');
+                
+                $('#userRoleDisplay').show();
+                $('#userRolesList').html(rolesList.join(' | '));
+            }
+            
             // Bind filter change events
             $('#filterCycle, #filterYearGroup, #filterGroup, #filterTutor, #filterSubjectTeacher').on('change', function() {
                 updateActiveFilters();
@@ -1764,6 +1916,27 @@
                     updateActiveFilters();
                     $('#studentListContainer').empty();
                 }, 500); // Wait 500ms after user stops typing
+            });
+            
+            // Bind clear filters button
+            $('#clearFiltersBtn').on('click', function() {
+                // Reset all filters to default values
+                $('#filterCycle').val('');
+                $('#filterYearGroup').val('');
+                $('#filterGroup').val('');
+                $('#filterTutor').val('');
+                $('#filterSubjectTeacher').val('');
+                $('#studentSearch').val('');
+                
+                // Update UI
+                updateActiveFilters();
+                $('#studentListContainer').empty();
+                
+                // Visual feedback
+                $(this).text('✓ Filters Cleared').css('background', '#27ae60');
+                setTimeout(() => {
+                    $(this).text('🔄 Clear All Filters').css('background', '#e74c3c');
+                }, 1500);
             });
             
             try {
@@ -1821,3 +1994,4 @@
     // Also log when script loads
     console.log('[BulkPrint] Script loaded successfully (v2g)');
 })();
+
