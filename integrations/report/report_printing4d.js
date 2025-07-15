@@ -18,7 +18,7 @@
 
     // --- DEBUG FLAG ---
     // Default to false for production; can be overridden via BULK_PRINT_CONFIG.debugMode=true
-    let DEBUG = false;
+    let DEBUG = true;
 
     // Helper – safe console (only logs when DEBUG is true)
     const log = (...m) => { if (DEBUG) console.log('[BulkPrint]', ...m); };
