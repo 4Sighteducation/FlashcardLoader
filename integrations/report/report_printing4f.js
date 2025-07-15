@@ -18,7 +18,7 @@
 
     // --- DEBUG FLAG ---
     // Default to false for production; can be overridden via BULK_PRINT_CONFIG.debugMode=true
-    let DEBUG = true;
+    let DEBUG = false;
 
     // Helper – safe console (only logs when DEBUG is true)
     const log = (...m) => { if (DEBUG) console.log('[BulkPrint]', ...m); };
@@ -103,12 +103,23 @@
             'X-Knack-REST-API-Key': cfg.knackApiKey,
             'Content-Type': 'application/json'
         };
+        
+        // CRITICAL SECURITY: Log and check for unfiltered Object_10 requests
+        if (path.includes('object_10/records') && (!params.filters || Object.keys(params.filters).length === 0)) {
+            err('SECURITY WARNING: Attempting unfiltered request to Object_10!');
+            log('Request params:', params);
+            // In production, we should throw an error here
+            // throw new Error('Security: Unfiltered access to student records is not allowed');
+        }
+        
         const qs = new URLSearchParams({ rows_per_page: params.rows || 1000, page: params.page || 1 });
         if (params.filters) qs.append('filters', JSON.stringify(params.filters));
         const url = `https://api.knack.com/v1/${path}?${qs.toString()}`;
         
         log('Making API request to:', url);
-        log('With headers:', headers);
+        if (params.filters) {
+            log('With filters:', JSON.stringify(params.filters, null, 2));
+        }
         
         const res = await fetch(url, { headers });
         if (!res.ok) {
@@ -290,6 +301,12 @@
         if (establishmentRule) finalRules.push(establishmentRule);
         finalRules.push(...uiFilterRules);
 
+        // CRITICAL SECURITY CHECK: Ensure we always have filters
+        if (finalRules.length === 0) {
+            log('SECURITY: No filters defined for staff admin, this should not happen');
+            return [];
+        }
+        
         const finalFilters = { match: 'and', rules: finalRules };
 
         const allStudents = [];
@@ -312,6 +329,11 @@
             }
             
             page++;
+        }
+        
+        // SECURITY: Log if we're returning a large number of students
+        if (allStudents.length > 500) {
+            log(`Staff Admin ${staffIds[0]} has access to ${allStudents.length} students`);
         }
         
         // Return only up to maxStudents
@@ -433,10 +455,51 @@
         // Build the main filter structure
         const rules = [];
         
+        // CRITICAL: Add establishment filter to prevent cross-school data access
+        // First, we need to determine the user's establishment
+        let establishmentId = null;
+        try {
+            // Get user's account record to find their establishment
+            const userAccountResp = await knackRequest(`objects/object_3/records/${user.id}`);
+            const userAccount = userAccountResp.record || userAccountResp; // Handle both response formats
+            // Try various possible establishment fields
+            establishmentId = userAccount.field_133_raw || userAccount.field_133 || 
+                            userAccount.field_220_raw || userAccount.field_220;
+            
+            if (!establishmentId) {
+                // Try to get establishment from one of their role records
+                if (userRole.isTutor && roleFilters.length > 0) {
+                    // Get from tutor record
+                    const tutorFilter = roleFilters.find(f => f.field === 'field_145');
+                    if (tutorFilter) {
+                        const tutorResp = await knackRequest(`objects/object_7/records/${tutorFilter.value}`);
+                        const tutorRec = tutorResp.record || tutorResp; // Handle both response formats
+                        establishmentId = tutorRec.field_133_raw || tutorRec.field_133 || 
+                                       tutorRec.field_220_raw || tutorRec.field_220;
+                    }
+                }
+            }
+            
+            if (establishmentId) {
+                // Handle array format
+                if (Array.isArray(establishmentId)) {
+                    establishmentId = establishmentId[0].id || establishmentId[0];
+                }
+                rules.push({ field: 'field_133', operator: 'is', value: establishmentId });
+                log(`Added establishment filter: ${establishmentId}`);
+            } else {
+                err('SECURITY: Could not determine user establishment - blocking access');
+                return [];
+            }
+        } catch (e) {
+            err('SECURITY: Error determining establishment:', e);
+            return [];
+        }
+        
         // If user has multiple roles, combine them with OR logic
         if (roleFilters.length > 1) {
             rules.push({ match: 'or', rules: roleFilters });
-        } else {
+        } else if (roleFilters.length === 1) {
             rules.push(roleFilters[0]);
         }
         
@@ -477,7 +540,13 @@
             }
         }
         
-        const finalFilters = rules.length > 0 ? { match: 'and', rules } : undefined;
+        // CRITICAL: Never allow unfiltered access to all students
+        if (rules.length === 0) {
+            log('SECURITY: No filters defined, returning empty result to prevent data breach');
+            return [];
+        }
+        
+        const finalFilters = { match: 'and', rules };
         
         const allStudents = [];
         let page = 1;
@@ -500,8 +569,20 @@
             page++;
         }
         
-        log(`Found ${allStudents.length} students for ${userRole.primaryRole}`);
-        return allStudents.slice(0, maxStudents);
+                    log(`Found ${allStudents.length} students for ${userRole.primaryRole}`);
+            
+            // SECURITY: Final sanity check - non-admin users should never see more than a reasonable number of students
+            if (!userRole.isStaffAdmin && allStudents.length > 500) {
+                err(`SECURITY WARNING: Non-admin user ${user.email} attempting to access ${allStudents.length} students!`);
+                // In a production environment, you might want to:
+                // - Alert administrators
+                // - Log this as a security incident
+                // - Return empty array or limited results
+                console.error('Potential data breach attempt detected - limiting results');
+                return allStudents.slice(0, 100); // Limit to reasonable number
+            }
+            
+            return allStudents.slice(0, maxStudents);
     }
 
     // Step 3: Fetch coaching template records (Object_33)
@@ -1316,12 +1397,19 @@
             // Fetch students to derive year group & group options
             let students = [];
             
-            // For Staff Admin, fetch using their staff IDs
-            if (userRole.isStaffAdmin && staffIds.length > 0) {
-                students = await fetchStudents(staffIds, {}, 1000);
-            } else if (userRole.isTutor || userRole.isHeadOfYear || userRole.isSubjectTeacher) {
-                // For non-admin users, fetch their accessible students
-                students = await fetchStudentsForNonAdmin({}, 1000);
+            // IMPORTANT: Only fetch students for filter population if user has proper access
+            try {
+                // For Staff Admin, fetch using their staff IDs
+                if (userRole.isStaffAdmin && staffIds.length > 0) {
+                    students = await fetchStudents(staffIds, {}, 100); // Reduced limit for filter population
+                } else if (userRole.isTutor || userRole.isHeadOfYear || userRole.isSubjectTeacher) {
+                    // For non-admin users, fetch a small sample of their accessible students
+                    // This is ONLY for populating filter dropdowns, not for displaying all students
+                    students = await fetchStudentsForNonAdmin({}, 100); // Reduced limit
+                }
+            } catch (e) {
+                log('Error fetching students for filter population:', e);
+                students = []; // Default to empty array on error
             }
 
             // Extract year groups and groups from fetched students
