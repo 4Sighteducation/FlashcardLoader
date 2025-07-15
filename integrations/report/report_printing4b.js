@@ -1348,8 +1348,9 @@
             const user = Knack.getUserAttributes();
             if (!user || !user.email) throw new Error('Cannot determine logged-in user');
             
-            const staffIds = await getStaffAdminRecordIds(user.email);
-            if (!staffIds.length) throw new Error('No Staff-Admin record found for user');
+            // Check user role first
+            const userRole = await getUserRole();
+            log('User role in searchStudents:', userRole);
             
             const filters = {
                 cycle: $('#filterCycle').val(),
@@ -1360,8 +1361,21 @@
                 searchTerm: $('#studentSearch').val().trim()
             };
 
-            // Fetch all matching students without a hard limit for the search result
-            let students = await fetchStudents(staffIds, filters, 1000); // Generous limit for search
+            let students = [];
+            
+            // For Staff Admin users, use the original flow
+            if (userRole.isStaffAdmin) {
+                const staffIds = await getStaffAdminRecordIds(user.email);
+                if (!staffIds.length) throw new Error('No Staff-Admin record found for user');
+                
+                // Fetch all matching students without a hard limit for the search result
+                students = await fetchStudents(staffIds, filters, 1000); // Generous limit for search
+            } else if (userRole.isTutor || userRole.isHeadOfYear || userRole.isSubjectTeacher) {
+                // For non-admin users, use the dedicated function
+                students = await fetchStudentsForNonAdmin(filters, 1000);
+            } else {
+                throw new Error('User does not have permission to access student reports');
+            }
 
             // If a specific cycle is chosen, ensure students actually have scores recorded
             if (filters.cycle) {
@@ -1722,14 +1736,6 @@
         const userRole = await getUserRole();
         const user = Knack.getUserAttributes();
         
-        // TEMPORARY: If no roles detected, assume Staff Admin for testing
-        if (!userRole.roles && user?.email) {
-            log('WARNING: No roles detected, temporarily allowing access for testing');
-            userRole.hasAccess = true;
-            userRole.isStaffAdmin = true;
-            userRole.primaryRole = 'Staff Admin';
-        }
-        
         if (!userRole.hasAccess) {
             log('User does not have access to bulk print feature');
             $('#bulkPrintbtn').hide();
@@ -1763,7 +1769,16 @@
             try {
                 const user = Knack.getUserAttributes();
                 if (!user || !user.email) throw new Error('Cannot determine logged-in user for filter population');
-                const staffIds = await getStaffAdminRecordIds(user.email);
+                
+                // Check user role first
+                const userRole = await getUserRole();
+                let staffIds = [];
+                
+                // Only get staff IDs if user is a staff admin
+                if (userRole.isStaffAdmin) {
+                    staffIds = await getStaffAdminRecordIds(user.email);
+                }
+                
                 await fetchFilterOptions(staffIds);
             } catch (e) {
                 err('Failed to initialize filter options:', e);
