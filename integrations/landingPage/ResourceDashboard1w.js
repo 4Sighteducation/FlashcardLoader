@@ -1,16 +1,16 @@
 // Resource Dashboard Script for Knack - v1.0
 (function() {
-    // IMMEDIATE DEBUG - This should show first if the script is loaded
-    console.log('==========================================');
-    console.log('[Resource Dashboard] SCRIPT FILE LOADED!');
-    console.log('[Resource Dashboard] Window location:', window.location.href);
-    console.log('[Resource Dashboard] Checking for STAFFHOMEPAGE_CONFIG:', !!window.STAFFHOMEPAGE_CONFIG);
-    if (window.STAFFHOMEPAGE_CONFIG) {
-        console.log('[Resource Dashboard] Config found:', window.STAFFHOMEPAGE_CONFIG);
-    }
-    console.log('==========================================');
+    // IMMEDIATE DEBUG - Commented out for production
+    // console.log('==========================================');
+    // console.log('[Resource Dashboard] SCRIPT FILE LOADED!');
+    // console.log('[Resource Dashboard] Window location:', window.location.href);
+    // console.log('[Resource Dashboard] Checking for STAFFHOMEPAGE_CONFIG:', !!window.STAFFHOMEPAGE_CONFIG);
+    // if (window.STAFFHOMEPAGE_CONFIG) {
+    //     console.log('[Resource Dashboard] Config found:', window.STAFFHOMEPAGE_CONFIG);
+    // }
+    // console.log('==========================================');
     
-    console.log('[Resource Dashboard] Script loaded and executing');
+    // console.log('[Resource Dashboard] Script loaded and executing');
     
     // --- Basic Setup ---
     // Use config from loader if available, otherwise use defaults
@@ -1894,7 +1894,7 @@
             }
             else {
                 // Edge case - log the state and default to showing what's missing
-                console.warn("[Resource Dashboard] Unexpected verification state", {
+                errorLog("Unexpected verification state", {
                     isVerified, hasAcceptedPrivacy, hasResetPassword
                 });
                 needsPrivacy = !hasAcceptedPrivacy;
@@ -2588,7 +2588,7 @@
                         feedbackData.feedbackRequests = [];
                     }
                 } catch (e) {
-                    console.warn('[Resource Dashboard] Error parsing existing feedback data, initializing new array');
+                    errorLog('Error parsing existing feedback data, initializing new array');
                     feedbackData = { feedbackRequests: [] };
                 }
             }
@@ -2783,12 +2783,12 @@
     }
 
     async function initializeResourceDashboard() {
-        console.log('[Resource Dashboard] initializeResourceDashboard function called!');
+        log('initializeResourceDashboard function called!');
         log('Initializing Resource Dashboard...');
         
         // Extra debug info
-        console.log('[Resource Dashboard] Config:', SCRIPT_CONFIG);
-        console.log('[Resource Dashboard] Looking for container:', SCRIPT_CONFIG.elementSelector);
+        log('Config:', SCRIPT_CONFIG);
+        log('Looking for container:', SCRIPT_CONFIG.elementSelector);
         
         const $container = $(SCRIPT_CONFIG.elementSelector);
         
@@ -2797,7 +2797,7 @@
             return;
         }
         
-        console.log('[Resource Dashboard] Container found, proceeding with initialization');
+        log('Container found, proceeding with initialization');
 
         // NEW: Check user verification status before proceeding
         try {
@@ -2814,17 +2814,17 @@
 
         // Add styles - with debugging
         const cssContent = getDashboardCSS();
-        console.log('[Resource Dashboard] CSS content length:', cssContent.length);
+        log('CSS content length:', cssContent.length);
         const styleElement = $(`<style id="resource-dashboard-styles">${cssContent}</style>`);
         $('head').append(styleElement);
-        console.log('[Resource Dashboard] Style element added to head:', $('#resource-dashboard-styles').length > 0);
+        log('Style element added to head:', $('#resource-dashboard-styles').length > 0);
         
         // Add Font Awesome
         if (!$('link[href*="font-awesome"]').length) {
-            console.log('[Resource Dashboard] Adding Font Awesome...');
+            log('Adding Font Awesome...');
             $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">');
         } else {
-            console.log('[Resource Dashboard] Font Awesome already loaded');
+            log('Font Awesome already loaded');
         }
 
         // Show a loading state
@@ -2840,7 +2840,7 @@
                 
                 // Track user login after successful profile load
                 trackUserLogin().catch(error => {
-                    console.warn("[Resource Dashboard] Error tracking login:", error);
+                    errorLog("Error tracking login:", error);
                 });
             } catch (profileError) {
                 errorLog('Error getting profile data:', profileError);
@@ -2964,7 +2964,7 @@
             
             // Track page view for Resource Dashboard
             trackPageView('Resource Dashboard').catch(err => 
-                console.warn('[Resource Dashboard] Page view tracking failed:', err)
+                errorLog('Page view tracking failed:', err)
             );
             
             // Setup feedback functionality
@@ -2974,7 +2974,7 @@
             $(document).on('click', '.nav-button, .admin-button', function(e) {
                 const buttonText = $(this).find('span').text();
                 trackPageView(buttonText).catch(err => 
-                    console.warn(`[Resource Dashboard] Feature tracking failed for ${buttonText}:`, err)
+                    errorLog(`Feature tracking failed for ${buttonText}:`, err)
                 );
             });
             
@@ -3006,20 +3006,27 @@
     try {
         // Expose the initializer function globally for the loader
         window.initializeResourceDashboard = initializeResourceDashboard;
-        console.log('[Resource Dashboard] Exposed initializeResourceDashboard to window');
-        console.log('[Resource Dashboard] Type check:', typeof window.initializeResourceDashboard);
+        if (SCRIPT_CONFIG && SCRIPT_CONFIG.debugMode) {
+            console.log('[Resource Dashboard] Exposed initializeResourceDashboard to window');
+            console.log('[Resource Dashboard] Type check:', typeof window.initializeResourceDashboard);
+        }
         
         // Only auto-run if not being loaded by the loader
         if (!window.STAFFHOMEPAGE_CONFIG) {
-            console.log('[Resource Dashboard] No loader config found, auto-initializing');
+            if (SCRIPT_CONFIG && SCRIPT_CONFIG.debugMode) {
+                console.log('[Resource Dashboard] No loader config found, auto-initializing');
+            }
             $(initializeResourceDashboard);
         } else {
-            console.log('[Resource Dashboard] Loader config found, waiting for loader to call initialize');
+            if (SCRIPT_CONFIG && SCRIPT_CONFIG.debugMode) {
+                console.log('[Resource Dashboard] Loader config found, waiting for loader to call initialize');
+            }
         }
     } catch (error) {
-        console.error('[Resource Dashboard] Error during script initialization:', error);
-        console.error('[Resource Dashboard] Stack trace:', error.stack);
+        errorLog('Error during script initialization:', error);
+        errorLog('Stack trace:', error.stack);
     }
 
 })();
+
 
