@@ -602,6 +602,136 @@
        { name: "Import Data", url: "https://vespaacademy.knack.com/vespa-academy#import-data/", icon: "fa-solid fa-file-import" },
     ];
 
+    // --- User Activity Tracking Functions ---
+    
+    // Track user login activity
+    async function trackUserLogin() {
+        try {
+            const user = Knack.getUserAttributes();
+            if (!user || !user.id) return;
+            
+            log(`Tracking login for user: ${user.email}`);
+            
+            // Browser detection
+            const browser = navigator.userAgent;
+            
+            // Device type detection (simplified)
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const isTablet = /iPad|Android(?!.*Mobile)/i.test(navigator.userAgent);
+            const deviceType = isMobile ? (isTablet ? 'Tablet' : 'Mobile') : 'Desktop';
+            
+            // Find the user's record in Object_3
+            const filters = encodeURIComponent(JSON.stringify({
+                match: 'and',
+                rules: [
+                    { field: 'field_70', operator: 'is', value: user.email }  // Staff email field only
+                ]
+            }));
+            
+            const response = await makeKnackRequest(`objects/object_3/records?filters=${filters}`);
+            
+            if (response && response.records && response.records.length > 0) {
+                const userRecord = response.records[0];
+                
+                // Get current login count and increment it
+                const currentLogins = parseInt(userRecord.field_3208) || 0;
+                const newLoginCount = currentLogins + 1;
+                log(`Incrementing login count from ${currentLogins} to ${newLoginCount}`);
+                
+                // Update user record with login information
+                await $.ajax({
+                    url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+                    type: 'PUT',
+                    headers: {
+                        'X-Knack-Application-Id': SCRIPT_CONFIG.knackAppId,
+                        'X-Knack-REST-API-Key': SCRIPT_CONFIG.knackApiKey,
+                        'Authorization': Knack.getUserToken(),
+                    },
+                    data: JSON.stringify({
+                        field_3198: new Date().toISOString(), // Login Date
+                        field_3201: 0, // Page Views (reset on login)
+                        field_3203: deviceType, // Device Type
+                        field_3204: browser.substring(0, 100), // Browser (truncated if too long)
+                        field_3208: newLoginCount // Number of Logins - INCREMENT THIS!
+                    })
+                });
+                
+                log(`Successfully tracked login for user ${user.email}`);
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            errorLog('Error tracking user login:', error);
+            return false;
+        }
+    }
+    
+    // Track page views and feature usage
+    async function trackPageView(featureUsed = null) {
+        try {
+            const user = Knack.getUserAttributes();
+            if (!user || !user.id) return;
+            
+            log(`Tracking page view for user: ${user.email}`);
+            
+            // Find the user's record in Object_3
+            const filters = encodeURIComponent(JSON.stringify({
+                match: 'and',
+                rules: [
+                    { field: 'field_70', operator: 'is', value: user.email }  // Staff email field only
+                ]
+            }));
+            
+            const response = await makeKnackRequest(`objects/object_3/records?filters=${filters}`);
+            
+            if (response && response.records && response.records.length > 0) {
+                const userRecord = response.records[0];
+                
+                // Update fields for tracking
+                const updateData = {
+                    // Increment page views
+                    field_3201: (parseInt(userRecord.field_3201) || 0) + 1
+                };
+                
+                // Add feature used if provided
+                if (featureUsed) {
+                    // Get current features (as array)
+                    let currentFeatures = userRecord.field_3202 || [];
+                    if (!Array.isArray(currentFeatures)) {
+                        currentFeatures = [currentFeatures];
+                    }
+                    
+                    // Add new feature if not already there
+                    if (!currentFeatures.includes(featureUsed)) {
+                        currentFeatures.push(featureUsed);
+                        updateData.field_3202 = currentFeatures;
+                    }
+                }
+                
+                // Update user record
+                await $.ajax({
+                    url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+                    type: 'PUT',
+                    headers: {
+                        'X-Knack-Application-Id': SCRIPT_CONFIG.knackAppId,
+                        'X-Knack-REST-API-Key': SCRIPT_CONFIG.knackApiKey,
+                        'Authorization': Knack.getUserToken(),
+                    },
+                    data: JSON.stringify(updateData)
+                });
+                
+                log(`Successfully tracked page view for ${user.email}`);
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            errorLog('Error tracking page view:', error);
+            return false;
+        }
+    }
+
     function renderNavigationSection() {
         const navButtons = MY_RESOURCES_APPS.map(app => `
             <a href="${app.url}" class="nav-button" target="_blank">
@@ -2707,6 +2837,11 @@
             try {
                 profileData = await getStaffProfileData();
                 log('Profile data retrieved:', profileData);
+                
+                // Track user login after successful profile load
+                trackUserLogin().catch(error => {
+                    console.warn("[Resource Dashboard] Error tracking login:", error);
+                });
             } catch (profileError) {
                 errorLog('Error getting profile data:', profileError);
                 // Set default profile data on error
@@ -2827,8 +2962,21 @@
             
             log('Dashboard rendered.');
             
+            // Track page view for Resource Dashboard
+            trackPageView('Resource Dashboard').catch(err => 
+                console.warn('[Resource Dashboard] Page view tracking failed:', err)
+            );
+            
             // Setup feedback functionality
             setupFeedbackSystem();
+            
+            // Setup navigation button click tracking
+            $(document).on('click', '.nav-button, .admin-button', function(e) {
+                const buttonText = $(this).find('span').text();
+                trackPageView(buttonText).catch(err => 
+                    console.warn(`[Resource Dashboard] Feature tracking failed for ${buttonText}:`, err)
+                );
+            });
             
             // Remove any Knack-generated PDF download links after render
             setTimeout(() => {
