@@ -1273,6 +1273,11 @@ async function trackUserLogin() {
   if (response && response.records && response.records.length > 0) {
     const userRecord = response.records[0];
     
+    // Get current login count and increment it
+    const currentLogins = parseInt(userRecord.field_3208) || 0;
+    const newLoginCount = currentLogins + 1;
+    console.log(`[Staff Homepage] Incrementing login count from ${currentLogins} to ${newLoginCount}`);
+    
     // Update user record with login information
     await retryApiCall(() => {
       return KnackAPIQueue.addRequest({
@@ -1283,7 +1288,8 @@ async function trackUserLogin() {
           field_3198: new Date().toISOString(), // Login Date
           field_3201: 0, // Page Views (reset on login) - CORRECTED FIELD
           field_3203: deviceType, // Device Type
-          field_3204: browser.substring(0, 100) // Browser (truncated if too long)
+          field_3204: browser.substring(0, 100), // Browser (truncated if too long)
+          field_3208: newLoginCount // Number of Logins - INCREMENT THIS!
         })
       });
     });
