@@ -451,7 +451,7 @@
                 key.startsWith('field_308') && profileRecord[key]);
               
               if (hadNoSubjects) {
-                console.log('[Homepage] Successfully recovered subject data for existing profile that had no subjects');
+                debugLog('Successfully recovered subject data for existing profile that had no subjects');
               }
             }
           } else {
@@ -1787,7 +1787,7 @@
       card.addEventListener('mouseenter', function(e) {
         // e.preventDefault(); // Removed: Not necessary for mouseenter on a div
         e.stopPropagation();
-        // console.log("[Homepage] Mouse enter on app card TYPE:", this.dataset.appType); 
+                    // debugLog("Mouse enter on app card TYPE:", this.dataset.appType); 
 
         if (tooltipHideTimeout) {
           clearTimeout(tooltipHideTimeout);
@@ -1893,7 +1893,7 @@
       });
 
       card.addEventListener('mouseleave', function() {
-        // console.log("[Homepage] Mouse leave on app card TYPE:", this.dataset.appType);
+                        // debugLog("Mouse leave on app card TYPE:", this.dataset.appType);
         if (tooltipHideTimeout) {
             clearTimeout(tooltipHideTimeout);
         }
@@ -2904,3 +2904,4 @@
     });
   }
 })(); // End of IIFE
+
