@@ -6110,7 +6110,7 @@ function loadStudentEmulationModule() {
   
   const script = document.createElement('script');
   // Using the CDN URL for the student emulation setup module
-  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-homepage-integration-snippet1c.js';
+  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-homepage-integration-snippet1d.js';
   script.async = true;
   script.onload = function() {
     console.log('[Staff Homepage] Student emulation setup module loaded successfully from CDN');
