@@ -6102,9 +6102,15 @@ if (feedbackRequest.screenshot) {
 
 // --- Student Emulation Module Loader ---
 function loadStudentEmulationModule() {
+  // Set the API credentials for the module to use
+  if (window.Knack && window.Knack.application_id) {
+    window.KNACK_APP_ID = window.Knack.application_id;
+    window.KNACK_API_KEY = window.Knack.api_key;
+  }
+  
   const script = document.createElement('script');
   // Using the CDN URL for the student emulation setup module
-  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-homepage-integration-snippet1b.js';
+  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-homepage-integration-snippet1c.js';
   script.async = true;
   script.onload = function() {
     console.log('[Staff Homepage] Student emulation setup module loaded successfully from CDN');
