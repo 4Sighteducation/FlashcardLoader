@@ -303,5 +303,3 @@
 
   console.log('[Student Emulation Setup] Module loaded successfully');
 })(); 
-  }
-} 
