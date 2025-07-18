@@ -208,14 +208,15 @@
   
     // Add Student role to user
     async function addStudentRole(userEmail) {
-      // First, get the current user record
+      // First, get the current user record WITH RAW DATA
       const filters = encodeURIComponent(JSON.stringify({
         match: 'and',
         rules: [{ field: FIELDS.OBJECT_3.EMAIL, operator: 'is', value: userEmail }]
       }));
   
+      // Get both formatted and raw data to ensure we preserve profile connections
       const response = await apiCall({
-        url: `${CONFIG.KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+        url: `${CONFIG.KNACK_API_URL}/objects/object_3/records?filters=${filters}&format=both`,
         method: 'GET'
       });
   
@@ -224,16 +225,57 @@
       }
   
       const staffRecord = response.records[0];
-      let currentRoles = staffRecord[FIELDS.OBJECT_3.USER_ROLES] || [];
       
-      // Ensure currentRoles is an array
-      if (!Array.isArray(currentRoles)) {
-        currentRoles = [currentRoles];
+      // CRITICAL: Log existing roles before any changes
+      console.log('[Student Emulation Setup] Current user roles (field_73):', staffRecord[FIELDS.OBJECT_3.USER_ROLES]);
+      console.log('[Student Emulation Setup] Current user roles RAW (field_73_raw):', staffRecord[`${FIELDS.OBJECT_3.USER_ROLES}_raw`]);
+      
+      // Get the raw profile data which contains the connection IDs
+      let currentRolesRaw = staffRecord[`${FIELDS.OBJECT_3.USER_ROLES}_raw`] || [];
+      
+      // If raw data isn't available, try the regular field
+      if (!currentRolesRaw || currentRolesRaw.length === 0) {
+        currentRolesRaw = staffRecord[FIELDS.OBJECT_3.USER_ROLES] || [];
       }
-  
-      // Add Student role if not present
-      if (!currentRoles.includes('Student') && !currentRoles.includes('profile_6')) {
-        currentRoles.push('Student');
+      
+      // Ensure it's an array
+      if (!Array.isArray(currentRolesRaw)) {
+        currentRolesRaw = [currentRolesRaw];
+      }
+      
+      // SAFETY CHECK: Abort if no existing roles found
+      if (currentRolesRaw.length === 0) {
+        console.error('[Student Emulation Setup] SAFETY ABORT: No existing roles found. Refusing to update to prevent role loss.');
+        throw new Error('Safety check failed: No existing roles found for user');
+      }
+      
+      // Check if Student role (profile_6) already exists
+      const hasStudentRole = currentRolesRaw.some(role => {
+        if (typeof role === 'string') {
+          return role === 'Student' || role === 'profile_6';
+        }
+        if (typeof role === 'object' && role.id) {
+          return role.id === 'profile_6' || role.identifier === 'profile_6';
+        }
+        return false;
+      });
+      
+      if (hasStudentRole) {
+        console.log('[Student Emulation Setup] User already has Student role, skipping update');
+        return;
+      }
+      
+      // Add Student role (profile_6) to the array
+      // We need to add it as a profile connection ID
+      const updatedRoles = [...currentRolesRaw, 'profile_6'];
+      
+      console.log('[Student Emulation Setup] Updating roles from:', currentRolesRaw);
+      console.log('[Student Emulation Setup] Updating roles to:', updatedRoles);
+      
+      // CRITICAL: Confirm we're not losing any roles
+      if (updatedRoles.length <= currentRolesRaw.length) {
+        console.error('[Student Emulation Setup] SAFETY ABORT: Updated roles count is not greater than original.');
+        throw new Error('Safety check failed: Role count did not increase');
       }
   
       // Update the user record with new roles
@@ -242,9 +284,11 @@
         url: `${CONFIG.KNACK_API_URL}/objects/object_3/records/${staffRecord.id}`,
         method: 'PUT',
         data: {
-          [FIELDS.OBJECT_3.USER_ROLES]: currentRoles
+          [FIELDS.OBJECT_3.USER_ROLES]: updatedRoles
         }
       });
+      
+      console.log('[Student Emulation Setup] Role update completed successfully');
     }
   
     // Create Object_10 record
