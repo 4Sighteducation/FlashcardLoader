@@ -199,6 +199,30 @@ function sanitizeDataForLogging(data) {
   
   return sanitizeObject(result);
 }
+
+})(); // Close IIFE properly
+
+// --- Student Emulation Module Loader ---
+function loadStudentEmulationModule() {
+  const script = document.createElement('script');
+  // Using the CDN URL for the student emulation setup module
+  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-student-emulation-setup.js';
+  script.async = true;
+  script.onload = function() {
+    console.log('[Staff Homepage] Student emulation setup module loaded successfully from CDN');
+  };
+  script.onerror = function() {
+    console.error('[Staff Homepage] Failed to load student emulation setup module from CDN');
+  };
+  document.head.appendChild(script);
+}
+
+// Add to an initialization queue to ensure all required resources are loaded
+if (!window.staffHomepageInitQueue) {
+  window.staffHomepageInitQueue = [];
+}
+window.staffHomepageInitQueue.push(loadStudentEmulationModule);
+
 // --- API Queue for Rate Limiting ---
 const KnackAPIQueue = (function() {
   // Private members
@@ -4713,6 +4737,36 @@ try {
     return;
   }
   
+  // Initialize student emulation setup if module is loaded
+  if (window.StaffStudentEmulationSetup && profileData.email) {
+    console.log('[Staff Homepage] Initializing student emulation setup...');
+    
+    try {
+      const emulationResult = await window.StaffStudentEmulationSetup.setup(
+        profileData.email,
+        profileData.userId
+      );
+      
+      if (emulationResult.success) {
+        console.log('[Staff Homepage] Student emulation setup completed:', emulationResult.message);
+        
+        // Optionally refresh profile data if roles were updated
+        if (emulationResult.message !== 'User already has Student role') {
+          // Re-fetch profile data to get updated roles
+          const updatedProfile = await getStaffProfileData();
+          if (updatedProfile) {
+            profileData.roles = updatedProfile.roles;
+          }
+        }
+      } else {
+        console.error('[Staff Homepage] Student emulation setup failed:', emulationResult.error);
+      }
+    } catch (setupError) {
+      console.error('[Staff Homepage] Error during student emulation setup:', setupError);
+      // Continue with homepage rendering even if setup fails
+    }
+  }
+  
   // Check if user is a staff admin
   const hasAdminRole = isStaffAdmin(profileData.roles);
   console.log(`[Staff Homepage] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
@@ -5554,6 +5608,21 @@ window.initializeStaffHomepage = function() {
     window.cleanupStaffHomepage();
   }
 
+  // Load the student emulation module
+  if (window.staffHomepageInitQueue && window.staffHomepageInitQueue.length > 0) {
+    window.staffHomepageInitQueue.forEach(fn => {
+      if (typeof fn === 'function') {
+        try {
+          fn();
+        } catch (error) {
+          console.error('[Staff Homepage] Error loading module:', error);
+        }
+      }
+    });
+    // Clear the queue after loading
+    window.staffHomepageInitQueue = [];
+  }
+
  // Get current user from Knack
  const currentUser = Knack.getUserAttributes();
  if (currentUser && currentUser.id) {
@@ -6054,4 +6123,26 @@ if (feedbackRequest.screenshot) {
   }
 }
 
-})(); // Close IIFE properly
+// --- Student Emulation Module Loader ---
+function loadStudentEmulationModule() {
+  const script = document.createElement('script');
+  // Using the CDN URL for the student emulation setup module
+  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-student-emulation-setup.js';
+  script.async = true;
+  script.onload = function() {
+    console.log('[Staff Homepage] Student emulation setup module loaded successfully from CDN');
+  };
+  script.onerror = function() {
+    console.error('[Staff Homepage] Failed to load student emulation setup module from CDN');
+  };
+  document.head.appendChild(script);
+}
+
+// Add to an initialization queue to ensure all required resources are loaded
+if (!window.staffHomepageInitQueue) {
+  window.staffHomepageInitQueue = [];
+}
+window.staffHomepageInitQueue.push(loadStudentEmulationModule);
+
+// Add the Knack API Queue system
+// ... existing code ...
