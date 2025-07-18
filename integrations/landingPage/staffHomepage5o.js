@@ -200,29 +200,6 @@ function sanitizeDataForLogging(data) {
   return sanitizeObject(result);
 }
 
-})(); // Close IIFE properly
-
-// --- Student Emulation Module Loader ---
-function loadStudentEmulationModule() {
-  const script = document.createElement('script');
-  // Using the CDN URL for the student emulation setup module
-  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-student-emulation-setup.js';
-  script.async = true;
-  script.onload = function() {
-    console.log('[Staff Homepage] Student emulation setup module loaded successfully from CDN');
-  };
-  script.onerror = function() {
-    console.error('[Staff Homepage] Failed to load student emulation setup module from CDN');
-  };
-  document.head.appendChild(script);
-}
-
-// Add to an initialization queue to ensure all required resources are loaded
-if (!window.staffHomepageInitQueue) {
-  window.staffHomepageInitQueue = [];
-}
-window.staffHomepageInitQueue.push(loadStudentEmulationModule);
-
 // --- API Queue for Rate Limiting ---
 const KnackAPIQueue = (function() {
   // Private members
@@ -6144,5 +6121,4 @@ if (!window.staffHomepageInitQueue) {
 }
 window.staffHomepageInitQueue.push(loadStudentEmulationModule);
 
-// Add the Knack API Queue system
-// ... existing code ...
+})(); // Close main IIFE
