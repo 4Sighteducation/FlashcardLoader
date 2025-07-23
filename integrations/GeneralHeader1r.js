@@ -206,7 +206,9 @@
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
+                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
+                    { label: 'Curriculum', icon: 'fa-table', href: '#suggested-curriculum', scene: 'scene_1124' }
+
                 ]
             },
             staffAdminResource: {
