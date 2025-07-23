@@ -377,13 +377,21 @@
                         border: 1px solid transparent;
                         position: relative;
                         overflow: hidden;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
                     }
                     
                     /* Reduce padding for resource accounts specifically */
                     .vespa-general-header.staffResource .nav-button,
                     .vespa-general-header.staffAdminResource .nav-button {
-                        padding: 6px 12px;
-                        font-size: 13px;
+                        padding: 6px 10px;
+                        font-size: 12px;
+                        gap: 5px;
+                    }
+                    
+                    .vespa-general-header.staffResource .nav-button i,
+                    .vespa-general-header.staffAdminResource .nav-button i {
+                        font-size: 14px;
                     }
                     
                     .nav-button::before {
@@ -419,6 +427,29 @@
                     .nav-button i {
                         font-size: 16px;
                         opacity: 0.9;
+                    }
+                    
+                    /* Button text color styling for each user type */
+                    .vespa-general-header.student .nav-button {
+                        color: #e3f2fd;
+                    }
+                    
+                    .vespa-general-header.staffResource .nav-button {
+                        color: #f1f8e9;
+                    }
+                    
+                    .vespa-general-header.staffCoaching .nav-button {
+                        color: #fff3e0;
+                    }
+                    
+                    .vespa-general-header.staffAdminResource .nav-button,
+                    .vespa-general-header.staffAdminCoaching .nav-button {
+                        color: #f3e5f5;
+                    }
+                    
+                    /* Active state maintains bright white */
+                    .nav-button.active {
+                        color: white !important;
                     }
                     
                     /* User info styles */
@@ -533,6 +564,13 @@
                         
                         .vespa-logo {
                             height: 40px;
+                        }
+                        
+                        /* Even smaller for resource accounts on medium screens */
+                        .vespa-general-header.staffResource .nav-button,
+                        .vespa-general-header.staffAdminResource .nav-button {
+                            padding: 5px 8px;
+                            font-size: 11px;
                         }
                     }
                     
