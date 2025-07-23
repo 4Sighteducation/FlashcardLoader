@@ -1,52 +1,93 @@
 /**
  * Scene 481 Resources Page Layout Fix
  * Hides unnecessary elements and improves the display of book images
- * Version 2 - More robust handling of multiple view renders
+ * Version 3 - Ultra aggressive hiding with MutationObserver
  */
 
 (function() {
     'use strict';
     
-    console.log('[Scene 481 Fix] Script loaded');
+    console.log('[Scene 481 Fix v3] Script loaded');
     
     // Track if we've already applied certain one-time fixes
     let stylesApplied = false;
+    let observer = null;
     
     function fixScene481Layout() {
         // Check if we're on scene_481
         const currentScene = window.location.hash;
         if (!currentScene.includes('tutor-activities') && !currentScene.includes('scene_481')) {
+            // Disconnect observer if we navigate away
+            if (observer) {
+                observer.disconnect();
+                observer = null;
+            }
             return;
         }
         
-        console.log('[Scene 481 Fix] Applying layout fixes for resources page');
+        console.log('[Scene 481 Fix v3] Applying layout fixes for resources page');
         
         // Apply CSS fixes (only once)
         if (!stylesApplied) {
-            const styleId = 'scene-481-fixes';
+            const styleId = 'scene-481-fixes-v3';
             if (!document.getElementById(styleId)) {
                 const style = document.createElement('style');
                 style.id = styleId;
                 style.textContent = `
-                    /* Hide the unnecessary table view at the top */
-                    #kn-scene_481 #view_1255 {
+                    /* Ultra-high specificity selectors to override Knack */
+                    html body #kn-scene_481 #view_1255,
+                    html body #kn-scene_481 .view_1255,
+                    html body div#kn-scene_481 div#view_1255 {
                         display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        height: 0 !important;
+                        max-height: 0 !important;
+                        overflow: hidden !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        position: absolute !important;
+                        left: -9999px !important;
+                        top: -9999px !important;
                     }
                     
                     /* Hide the "Hello World" rich text view */
-                    #kn-scene_481 #view_3150 {
+                    html body #kn-scene_481 #view_3150,
+                    html body #kn-scene_481 .view_3150,
+                    html body div#kn-scene_481 div#view_3150 {
                         display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        height: 0 !important;
+                        max-height: 0 !important;
+                        overflow: hidden !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        position: absolute !important;
+                        left: -9999px !important;
+                        top: -9999px !important;
                     }
                     
-                    /* Hide the entire first view group if it only contains hidden elements */
-                    #kn-scene_481 .view-group-1:has(#view_1255):not(:has(.kn-view:not([style*="display: none"]))) {
+                    /* Hide the entire first view group if it contains these views */
+                    html body #kn-scene_481 .view-group:has(#view_1255),
+                    html body #kn-scene_481 .view-group:has(#view_3150),
+                    html body #kn-scene_481 .view-group-1 {
                         display: none !important;
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        overflow: hidden !important;
                     }
                     
                     /* Adjust the details view to be more prominent */
                     #kn-scene_481 #view_1277 {
                         margin-top: 0 !important;
                         padding-top: 20px;
+                    }
+                    
+                    /* Make sure the second view group is visible and at the top */
+                    #kn-scene_481 .view-group-2 {
+                        margin-top: 0 !important;
+                        padding-top: 0 !important;
                     }
                     
                     /* Style the book images better */
@@ -144,24 +185,115 @@
                             grid-template-columns: 1fr;
                         }
                     }
-                    
-                    /* Force hide elements that might be shown by JavaScript */
-                    body #kn-scene_481 #view_1255,
-                    body #kn-scene_481 #view_3150 {
-                        display: none !important;
-                        visibility: hidden !important;
-                        height: 0 !important;
-                        overflow: hidden !important;
-                    }
                 `;
                 document.head.appendChild(style);
                 stylesApplied = true;
-                console.log('[Scene 481 Fix] Styles applied');
+                console.log('[Scene 481 Fix v3] Styles applied');
             }
         }
         
-        // Additional JavaScript enhancements - run each time
+        // Force hide elements immediately
+        forceHideElements();
+        
+        // Set up MutationObserver to catch any attempts to show hidden elements
+        setupMutationObserver();
+        
+        // Additional JavaScript enhancements
         enhanceBookImages();
+    }
+    
+    function forceHideElements() {
+        // List of selectors to hide
+        const selectorsToHide = [
+            '#kn-scene_481 #view_1255',
+            '#kn-scene_481 #view_3150',
+            '#kn-scene_481 .view-group-1',
+            '#kn-scene_481 .view-group:has(#view_1255)',
+            '#kn-scene_481 .view-group:has(#view_3150)'
+        ];
+        
+        selectorsToHide.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(element => {
+                // Apply inline styles as the most aggressive approach
+                element.style.cssText = `
+                    display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    height: 0 !important;
+                    max-height: 0 !important;
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    position: absolute !important;
+                    left: -9999px !important;
+                    top: -9999px !important;
+                `;
+                // Also add a data attribute to track that we've hidden it
+                element.setAttribute('data-force-hidden', 'true');
+            });
+        });
+    }
+    
+    function setupMutationObserver() {
+        // Disconnect existing observer if any
+        if (observer) {
+            observer.disconnect();
+        }
+        
+        // Create new observer
+        observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                // Check if any hidden elements are being shown
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    const element = mutation.target;
+                    if (element.hasAttribute('data-force-hidden') || 
+                        element.id === 'view_1255' || 
+                        element.id === 'view_3150' ||
+                        element.classList.contains('view-group-1')) {
+                        // Re-hide it immediately
+                        element.style.cssText = `
+                            display: none !important;
+                            visibility: hidden !important;
+                            opacity: 0 !important;
+                            height: 0 !important;
+                            max-height: 0 !important;
+                            overflow: hidden !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            position: absolute !important;
+                            left: -9999px !important;
+                            top: -9999px !important;
+                        `;
+                        console.log('[Scene 481 Fix v3] Re-hidden element:', element.id || element.className);
+                    }
+                }
+                
+                // Check for new nodes being added
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) { // Element node
+                            // Check if it's one of our hidden elements
+                            if (node.id === 'view_1255' || node.id === 'view_3150') {
+                                forceHideElements();
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing
+        const scene = document.querySelector('#kn-scene_481');
+        if (scene) {
+            observer.observe(scene, {
+                attributes: true,
+                attributeFilter: ['style', 'class'],
+                childList: true,
+                subtree: true
+            });
+            console.log('[Scene 481 Fix v3] MutationObserver started');
+        }
     }
     
     function enhanceBookImages() {
@@ -170,11 +302,14 @@
         
         attempts.forEach(delay => {
             setTimeout(() => {
+                // Force hide elements again
+                forceHideElements();
+                
                 // Find all book images and add click handlers
                 const bookImages = document.querySelectorAll('#kn-scene_481 .field_1439 img, #kn-scene_481 .field_2922 img, #kn-scene_481 .field_2924 img');
                 
                 if (bookImages.length > 0) {
-                    console.log(`[Scene 481 Fix] Found ${bookImages.length} book images after ${delay}ms`);
+                    console.log(`[Scene 481 Fix v3] Found ${bookImages.length} book images after ${delay}ms`);
                     
                     bookImages.forEach(img => {
                         // Only add click handler if not already added
@@ -214,15 +349,6 @@
                     }
                 }
                 
-                // Force hide problematic elements again
-                const elementsToHide = ['#view_1255', '#view_3150'];
-                elementsToHide.forEach(selector => {
-                    const element = document.querySelector(`#kn-scene_481 ${selector}`);
-                    if (element) {
-                        element.style.cssText = 'display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important;';
-                    }
-                });
-                
             }, delay);
         });
     }
@@ -236,14 +362,14 @@
     
     // Re-apply fixes on scene render
     $(document).on('knack-scene-render.scene_481', function() {
-        console.log('[Scene 481 Fix] Scene rendered, applying fixes');
+        console.log('[Scene 481 Fix v3] Scene rendered, applying fixes');
         fixScene481Layout();
     });
     
     // Also listen for view renders within scene_481
     $(document).on('knack-view-render.any', function(event, view) {
         if (window.location.hash.includes('tutor-activities') || window.location.hash.includes('scene_481')) {
-            console.log(`[Scene 481 Fix] View ${view.key} rendered in scene_481, reapplying fixes`);
+            console.log(`[Scene 481 Fix v3] View ${view.key} rendered in scene_481, reapplying fixes`);
             fixScene481Layout();
         }
     });
@@ -251,10 +377,19 @@
     // Also listen for any navigation to tutor-activities
     $(document).on('knack-scene-render.any', function(event, scene) {
         if (window.location.hash.includes('tutor-activities')) {
-            console.log('[Scene 481 Fix] Navigated to tutor activities');
+            console.log('[Scene 481 Fix v3] Navigated to tutor activities');
             fixScene481Layout();
         }
     });
     
-    console.log('[Scene 481 Fix] Initialization complete');
+    // Clean up observer when navigating away
+    $(document).on('knack-scene-render.any', function(event, scene) {
+        if (scene.key !== 'scene_481' && observer) {
+            observer.disconnect();
+            observer = null;
+            console.log('[Scene 481 Fix v3] MutationObserver disconnected');
+        }
+    });
+    
+    console.log('[Scene 481 Fix v3] Initialization complete');
 })(); 
