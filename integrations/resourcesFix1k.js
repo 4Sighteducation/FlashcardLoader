@@ -60,12 +60,15 @@
                     display: none !important;
                     visibility: hidden !important;
                     height: 0 !important;
+                    width: 0 !important;
                     max-height: 0 !important;
+                    max-width: 0 !important;
                     overflow: hidden !important;
                     margin: 0 !important;
                     padding: 0 !important;
-                    position: absolute !important;
+                    position: fixed !important;
                     left: -9999px !important;
+                    top: -9999px !important;
                 }
                 
                 /* Also hide the first two groups if they're empty */
@@ -93,17 +96,19 @@
                     display: none !important;
                     visibility: hidden !important;
                     height: 0 !important;
+                    width: 0 !important;
                     overflow: hidden !important;
-                    position: absolute !important;
+                    position: fixed !important;
                     left: -9999px !important;
+                    top: -9999px !important;
                 }
                 
                 /* Ensure the book details view is visible and at the top */
                 #kn-scene_481 #view_1277 {
                     display: block !important;
                     visibility: visible !important;
-                    margin-top: -40px !important; /* Pull content up */
-                    padding-top: 20px !important;
+                    margin-top: -80px !important; /* Pull content up even more */
+                    padding-top: 10px !important;
                     position: relative !important;
                     z-index: 10 !important;
                 }
@@ -119,10 +124,23 @@
                     left: auto !important;
                 }
                 
-                /* Remove top padding/margin from scene */
+                /* Remove top padding/margin from scene and fix scrollbar */
                 #kn-scene_481 {
                     padding-top: 0 !important;
                     margin-top: 0 !important;
+                    overflow-x: hidden !important;
+                    overflow-y: auto !important;
+                }
+                
+                /* Fix the main container to prevent horizontal scroll */
+                #kn-scene_481.kn-scene {
+                    max-width: 100% !important;
+                    overflow-x: hidden !important;
+                }
+                
+                /* Ensure the body doesn't create unnecessary scrollbars */
+                body.kn-scene-active-scene_481 {
+                    overflow-x: hidden !important;
                 }
                 
                 /* Style the book images with fancy borders and positioning */
@@ -146,7 +164,7 @@
                     
                     /* Add some visual depth */
                     position: relative !important;
-                    top: -20px !important; /* Move books up */
+                    top: -40px !important; /* Move books up even more */
                     
                     /* Force remove any background images that might create borders */
                     background: none !important;
@@ -295,6 +313,17 @@
                     align-items: start !important;
                     justify-items: center !important;
                     padding: 20px 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                
+                /* Ensure wrapper doesn't cause horizontal scroll */
+                #kn-scene_481 .kn-container,
+                #kn-scene_481 .group-layout-wrapper {
+                    max-width: 100% !important;
+                    overflow-x: hidden !important;
+                    box-sizing: border-box !important;
                 }
                 
                 /* Add animation to books on load */
@@ -460,15 +489,11 @@
         
         bookImages.forEach((img, index) => {
             console.log(`[Scene 481 Fix v6] Enhancing book image ${index + 1}:`, img.src);
-            if (!img.hasAttribute('data-click-handler-added')) {
+            if (!img.hasAttribute('data-hover-handler-added')) {
                 img.style.cursor = 'pointer';
-                img.title = 'Click to view larger';
+                // DO NOT add click handlers - preserve original Knack navigation!
                 
-                img.addEventListener('click', function() {
-                    window.open(this.src, '_blank');
-                });
-                
-                // Add hover event listeners to clean up any rogue borders
+                // Only add hover event listeners to clean up any rogue borders
                 img.addEventListener('mouseenter', function() {
                     // Clean up the image itself
                     this.style.backgroundImage = 'none';
@@ -484,7 +509,7 @@
                     }
                 });
                 
-                img.setAttribute('data-click-handler-added', 'true');
+                img.setAttribute('data-hover-handler-added', 'true');
             }
         });
         
@@ -572,7 +597,7 @@
                 border-radius: 12px !important;
                 box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
                 position: relative !important;
-                top: -20px !important;
+                top: -40px !important;
                 cursor: pointer !important;
                 transition: all 0.3s ease !important;
                 background: none !important;
@@ -655,3 +680,4 @@
     
     console.log('[Scene 481 Fix v6] Border detective available: window.findBorderCulprit()');
 })(); 
+
