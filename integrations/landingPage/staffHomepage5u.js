@@ -4785,6 +4785,66 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   const styleElement = document.createElement('style');
   styleElement.textContent = getStyleCSS();
   
+  // Add scene-level CSS overrides if we're in scene-level mode
+  const isSceneLevel = container.id === 'scene-level-container' || 
+                      container.classList.contains('scene-level-dashboard-container');
+  
+  if (isSceneLevel) {
+    const overrideStyleId = 'staff-homepage-scene-level-overrides';
+    if (!document.getElementById(overrideStyleId)) {
+      const overrideStyle = document.createElement('style');
+      overrideStyle.id = overrideStyleId;
+      overrideStyle.textContent = `
+        /* Scene-level overrides for full-width display */
+        #staff-homepage {
+          max-width: none !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 20px !important;
+          box-sizing: border-box !important;
+        }
+        
+        /* Ensure top-row container is full width */
+        #staff-homepage .top-row {
+          max-width: none !important;
+          width: 100% !important;
+        }
+        
+        /* Ensure group-resources container is full width */
+        #staff-homepage .group-resources-container {
+          max-width: none !important;
+          width: 100% !important;
+        }
+        
+        /* Ensure admin section is full width */
+        #staff-homepage .admin-section {
+          max-width: none !important;
+          width: 100% !important;
+        }
+        
+        /* Responsive adjustments for larger screens */
+        @media (min-width: 1440px) {
+          #staff-homepage {
+            padding: 30px !important;
+          }
+          
+          #staff-homepage .top-row {
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+          }
+        }
+        
+        /* Ultra-wide screen adjustments */
+        @media (min-width: 1920px) {
+          #staff-homepage {
+            padding: 40px !important;
+          }
+        }
+      `;
+      document.head.appendChild(overrideStyle);
+    }
+  }
+  
   // OPTIMIZATION: Use DocumentFragment for better performance
   const fragment = document.createDocumentFragment();
   fragment.appendChild(styleElement);
@@ -6110,7 +6170,7 @@ function loadStudentEmulationModule() {
   
   const script = document.createElement('script');
   // Using the CDN URL for the student emulation setup module
-  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-homepage-integration-snippet1d.js';
+  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-homepage-integration-snippet1c.js';
   script.async = true;
   script.onload = function() {
     console.log('[Staff Homepage] Student emulation setup module loaded successfully from CDN');
