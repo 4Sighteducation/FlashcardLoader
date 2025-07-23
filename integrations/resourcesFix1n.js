@@ -107,8 +107,8 @@
                 #kn-scene_481 #view_1277 {
                     display: block !important;
                     visibility: visible !important;
-                    margin-top: -80px !important; /* Pull content up even more */
-                    padding-top: 10px !important;
+                    margin-top: 0 !important; /* Reset to normal position */
+                    padding-top: 20px !important;
                     position: relative !important;
                     z-index: 10 !important;
                 }
@@ -147,6 +147,14 @@
                 html, body {
                     overflow-x: hidden !important;
                     max-width: 100vw !important;
+                }
+                
+                /* Ultimate scrollbar killer - when scene 481 is active */
+                body:has(#kn-scene_481) {
+                    overflow-x: hidden !important;
+                    position: relative !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
                 }
                 
                 /* If it's a vertical scrollbar issue, handle that too */
@@ -189,7 +197,7 @@
                 #kn-scene_481 .col-3 img,
                 #kn-scene_481 .col-5 img,
                 #kn-scene_481 .levels img {
-                    width: 100% !important;
+                    width: calc(100% - 20px) !important; /* Account for margins */
                     max-width: 420px !important; /* Much larger on desktop */
                     height: auto !important;
                     border-radius: 12px !important;
@@ -204,7 +212,7 @@
                     
                     /* Add some visual depth */
                     position: relative !important;
-                    top: -40px !important; /* Move books up even more */
+                    top: 0 !important; /* Reset to normal position */
                     
                     /* Force remove any background images that might create borders */
                     background: none !important;
@@ -323,7 +331,7 @@
                 #kn-scene_481 .col-3 img:hover,
                 #kn-scene_481 .col-5 img:hover,
                 #kn-scene_481 .levels img:hover {
-                    transform: translateY(-25px) scale(1.05) !important; /* Smaller scale for larger images */
+                    transform: translateY(-5px) scale(1.05) !important; /* Much less vertical movement */
                     
                     /* Remove the gradient border on hover - just use solid */
                     border: 3px solid #5f497a !important;
@@ -403,7 +411,7 @@
                     gap: 40px !important;
                     align-items: start !important;
                     justify-items: center !important;
-                    padding: 20px !important;
+                    padding: 20px 10px !important; /* Less horizontal padding to prevent overflow */
                     width: 100% !important;
                     max-width: 100% !important;
                     box-sizing: border-box !important;
@@ -425,11 +433,31 @@
                 }
                 
                 /* Ensure wrapper doesn't cause horizontal scroll */
-                #kn-scene_481 .kn-container,
-                #kn-scene_481 .group-layout-wrapper {
+                #kn-scene_481.kn-container,
+                #kn-scene_481.group-layout-wrapper {
                     max-width: 100% !important;
                     overflow-x: hidden !important;
+                    overflow-y: auto !important;
                     box-sizing: border-box !important;
+                }
+                
+                /* Target the specific container classes together */
+                .kn-scene.kn-container.group-layout-wrapper {
+                    overflow: hidden !important;
+                    overflow-y: auto !important;
+                    max-width: 100vw !important;
+                    width: 100% !important;
+                }
+                
+                /* Remove scroll from the scene specifically */
+                #kn-scene_481.kn-scene.kn-container.group-layout-wrapper {
+                    overflow-x: hidden !important;
+                    overflow-y: auto !important;
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                    padding-right: 0 !important;
+                    margin-right: 0 !important;
                 }
                 
                 /* Add animation to books on load */
@@ -500,7 +528,7 @@
                     }
                     
                     #kn-scene_481 #view_1277 {
-                        margin-top: -40px !important; /* Less negative margin on mobile */
+                        margin-top: 0 !important; /* No negative margin on mobile */
                     }
                 }
             `;
@@ -656,6 +684,16 @@
                 knackDist.style.maxWidth = '100%';
             }
             
+            // Target the specific scene container
+            const sceneContainer = document.querySelector('#kn-scene_481.kn-scene.kn-container.group-layout-wrapper');
+            if (sceneContainer) {
+                sceneContainer.style.overflowX = 'hidden';
+                sceneContainer.style.overflowY = 'auto';
+                sceneContainer.style.maxWidth = '100%';
+                sceneContainer.style.width = '100%';
+                console.log('[Scene 481 Fix v6] Fixed scene container overflow');
+            }
+            
             console.log('[Scene 481 Fix v6] Forced scrollbar removal applied');
         }, 1000);
     }, 500);
@@ -723,7 +761,7 @@
                 border-radius: 12px !important;
                 box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
                 position: relative !important;
-                top: -40px !important;
+                top: 0 !important;
                 cursor: pointer !important;
                 transition: all 0.3s ease !important;
                 background: none !important;
