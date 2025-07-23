@@ -80,12 +80,13 @@
             student: {
                 brand: 'VESPA Student',
                 brandIcon: 'fa-graduation-cap',
-                color: '#2c3e50',
+                color: '#7f31a4',
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_43' },
-                    { label: 'My Profile', icon: 'fa-user', href: '#my-academic-profile', scene: 'scene_43' },
-                    { label: 'Resources', icon: 'fa-book', href: '#student-resources', scene: 'scene_1206' },
-                    { label: 'Study Planner', icon: 'fa-calendar', href: '#study-planner', scene: 'scene_1208' },
+                    { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
+                    { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
+                    { label: 'MY Report', icon: 'fa-book', href: '#vespa-results', scene: 'scene_43' },
+                    { label: 'My Activities', icon: 'fa-clone', href: '#my-vespa2', scene: 'scene_572' }
+                    { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' }
                 ]
             },
@@ -507,4 +508,3 @@
     
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
-
