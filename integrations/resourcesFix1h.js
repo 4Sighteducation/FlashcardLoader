@@ -128,7 +128,11 @@
                 /* Style the book images with fancy borders and positioning */
                 #kn-scene_481 .field_1439 img,
                 #kn-scene_481 .field_2922 img,
-                #kn-scene_481 .field_2924 img {
+                #kn-scene_481 .field_2924 img,
+                #kn-scene_481 .col-1 img,
+                #kn-scene_481 .col-3 img,
+                #kn-scene_481 .col-5 img,
+                #kn-scene_481 .levels img {
                     max-width: 280px !important;
                     height: auto !important;
                     border-radius: 12px !important;
@@ -150,11 +154,15 @@
                     top: -20px !important; /* Move books up */
                 }
                 
-                /* Even fancier hover effect */
+                /* Even fancier hover effect - fixed positioning */
                 #kn-scene_481 .field_1439 img:hover,
                 #kn-scene_481 .field_2922 img:hover,
-                #kn-scene_481 .field_2924 img:hover {
-                    transform: translateY(-10px) scale(1.08) rotate(1deg) !important;
+                #kn-scene_481 .field_2924 img:hover,
+                #kn-scene_481 .col-1 img:hover,
+                #kn-scene_481 .col-3 img:hover,
+                #kn-scene_481 .col-5 img:hover,
+                #kn-scene_481 .levels img:hover {
+                    transform: translateY(-25px) scale(1.08) !important; /* Adjusted Y translation */
                     box-shadow: 
                         0 20px 40px rgba(95, 73, 122, 0.3),
                         0 10px 20px rgba(0,0,0,0.15) !important;
@@ -166,6 +174,10 @@
                     background-image: 
                         linear-gradient(white, white),
                         linear-gradient(90deg, #5f497a, #8b7aa0, #b19dc0, #8b7aa0, #5f497a) !important;
+                    
+                    /* Ensure border stays with image */
+                    background-attachment: local !important;
+                    border: 4px solid transparent !important; /* Slightly thicker on hover */
                 }
                 
                 /* Style the book section with enhanced appearance */
@@ -453,15 +465,24 @@
             console.log('- Parent class:', img.parentElement?.className);
             console.log('- Src:', img.src);
             
-            // Try to manually apply styles
+            // Try to manually apply styles with gradient border
             img.style.cssText = `
                 max-width: 280px !important;
-                border: 3px solid #5f497a !important;
+                border: 3px solid transparent !important;
                 border-radius: 12px !important;
                 box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
                 position: relative !important;
                 top: -20px !important;
                 cursor: pointer !important;
+                background-origin: border-box !important;
+                background-clip: padding-box, border-box !important;
+                transition: all 0.3s ease !important;
+            `;
+            
+            // Apply gradient border separately (CSS can't set multiple backgrounds inline easily)
+            img.style.backgroundImage = `
+                linear-gradient(white, white),
+                linear-gradient(45deg, #5f497a, #8b7aa0, #5f497a)
             `;
             console.log('- Manual styles applied!');
         });
