@@ -9,9 +9,15 @@
     let isInitialized = false;
     let headerCheckInterval = null;
     
-    function initializeGeneralHeader(config) {
+    function initializeGeneralHeader() {
         if (isInitialized) {
             console.log('[General Header] Already initialized, skipping');
+            return;
+        }
+        
+        const config = window.GENERAL_HEADER_CONFIG;
+        if (!config) {
+            console.error('[General Header] Configuration not found');
             return;
         }
         
@@ -540,3 +546,4 @@
     window.initializeGeneralHeader = initializeGeneralHeader;
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
+
