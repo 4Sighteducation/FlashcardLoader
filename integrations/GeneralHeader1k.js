@@ -219,13 +219,14 @@
                 <div id="vespaGeneralHeader" class="vespa-general-header ${userType}">
                     <div class="header-content">
                         <div class="header-brand">
-                            <i class="fa ${navConfig.brandIcon}"></i>
+                            <img src="https://vespa.academy/astro/vespalogo.BGrK1ARl.png" alt="VESPA Academy" class="vespa-logo">
                             <span>${navConfig.brand}</span>
                         </div>
                         <nav class="header-navigation">
                             ${navItemsHTML}
                         </nav>
                         <div class="header-actions">
+                            <div class="user-info-container"></div>
                             <button class="mobile-menu-toggle" aria-label="Toggle menu">
                                 <i class="fa fa-bars"></i>
                             </button>
@@ -242,6 +243,11 @@
                 </div>
                 <div class="mobile-nav-overlay"></div>
                 <style>
+                    /* Hide entire Knack header */
+                    .knHeader {
+                        display: none !important;
+                    }
+                    
                     /* Base Header Styles */
                     .vespa-general-header {
                         position: fixed;
@@ -268,13 +274,15 @@
                     .header-brand {
                         display: flex;
                         align-items: center;
-                        gap: 10px;
+                        gap: 12px;
                         font-size: 20px;
                         font-weight: 600;
                     }
                     
-                    .header-brand i {
-                        font-size: 24px;
+                    .vespa-logo {
+                        height: 40px;
+                        width: auto;
+                        filter: brightness(0) invert(1); /* Make logo white */
                     }
                     
                     .header-navigation {
@@ -283,6 +291,7 @@
                         align-items: center;
                         flex: 1;
                         justify-content: center;
+                        margin: 0 20px;
                     }
                     
                     .nav-button {
@@ -317,7 +326,38 @@
                     .header-actions {
                         display: flex;
                         align-items: center;
-                        gap: 10px;
+                        gap: 15px;
+                    }
+                    
+                    /* User info styles */
+                    .user-info-container {
+                        display: flex;
+                        align-items: center;
+                        font-size: 13px;
+                        opacity: 0.9;
+                    }
+                    
+                    .user-info-container .kn-current_user {
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        gap: 5px;
+                    }
+                    
+                    .user-info-container .kn-current_user a {
+                        color: white;
+                        text-decoration: none;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        transition: background-color 0.2s ease;
+                    }
+                    
+                    .user-info-container .kn-current_user a:hover {
+                        background-color: rgba(255,255,255,0.2);
+                    }
+                    
+                    .user-info-container .kn-log-out {
+                        font-weight: 600;
                     }
                     
                     .mobile-menu-toggle {
@@ -362,7 +402,7 @@
                         padding-top: 100px !important;
                     }
                     
-                    /* Hide Knack's default navigation if desired */
+                    /* Hide Knack's default navigation but keep user info initially */
                     body.has-general-header .kn-menu.kn-view {
                         display: none !important;
                     }
@@ -376,6 +416,14 @@
                     @media (max-width: 768px) {
                         .header-brand span {
                             display: none;
+                        }
+                        
+                        .vespa-logo {
+                            height: 35px;
+                        }
+                        
+                        .user-info-container {
+                            display: none; /* Hide user info on mobile to save space */
                         }
                         
                         .header-navigation {
@@ -478,11 +526,40 @@
             
             log('Header injected successfully');
             
+            // Move the user info into our header
+            moveUserInfo();
+            
             // Setup event listeners
             setupEventListeners();
             
             // Track current page
             trackPageView(userType, currentScene);
+        }
+        
+        // New function to move user info into our header
+        function moveUserInfo() {
+            const userInfoElement = document.querySelector('.kn-current_user');
+            const targetContainer = document.querySelector('.user-info-container');
+            
+            if (userInfoElement && targetContainer) {
+                // Clone the user info element to preserve it
+                const userInfoClone = userInfoElement.cloneNode(true);
+                
+                // Clear any existing content
+                targetContainer.innerHTML = '';
+                
+                // Move it into our header
+                targetContainer.appendChild(userInfoClone);
+                
+                // Hide the original (it might be needed by Knack internally)
+                userInfoElement.style.display = 'none';
+                
+                log('User info moved to custom header');
+            } else if (targetContainer && !userInfoElement) {
+                // If user info doesn't exist yet, retry after a delay
+                log('User info not found, retrying...');
+                setTimeout(() => moveUserInfo(), 500);
+            }
         }
         
         // Setup event listeners
@@ -573,6 +650,9 @@
                 // Longer delay for scene changes to ensure other apps load first
                 setTimeout(() => {
                     injectHeader(); // This will handle both injection and removal based on login state
+                    
+                    // Re-apply user info move after scene changes
+                    setTimeout(() => moveUserInfo(), 100);
                 }, 300);
             });
             
