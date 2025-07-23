@@ -143,6 +143,44 @@
                     overflow-x: hidden !important;
                 }
                 
+                /* More aggressive scrollbar removal */
+                html, body {
+                    overflow-x: hidden !important;
+                    max-width: 100vw !important;
+                }
+                
+                /* If it's a vertical scrollbar issue, handle that too */
+                #kn-scene_481:only-child {
+                    min-height: auto !important;
+                    height: auto !important;
+                }
+                
+                /* Remove any minimum heights that might cause unnecessary vertical scroll */
+                #kn-scene_481 .kn-container {
+                    min-height: auto !important;
+                }
+                
+                /* Target Knack's main content wrapper */
+                #knack-body, 
+                #knack-dist_1,
+                .kn-content,
+                .kn-scenes {
+                    overflow-x: hidden !important;
+                    max-width: 100% !important;
+                }
+                
+                /* Ensure no element can cause horizontal scroll */
+                #kn-scene_481 * {
+                    max-width: 100% !important;
+                }
+                
+                /* Fix any potential wide elements */
+                #kn-scene_481 table,
+                #kn-scene_481 .kn-table-wrapper {
+                    max-width: 100% !important;
+                    overflow-x: auto !important;
+                }
+                
                 /* Style the book images with fancy borders and positioning */
                 #kn-scene_481 .field_1439 img,
                 #kn-scene_481 .field_2922 img,
@@ -151,13 +189,15 @@
                 #kn-scene_481 .col-3 img,
                 #kn-scene_481 .col-5 img,
                 #kn-scene_481 .levels img {
-                    max-width: 280px !important;
+                    width: 100% !important;
+                    max-width: 420px !important; /* Much larger on desktop */
                     height: auto !important;
                     border-radius: 12px !important;
                     box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
                     transition: all 0.3s ease !important;
                     cursor: pointer !important;
-                    margin: 10px !important;
+                    margin: 10px auto !important;
+                    display: block !important;
                     
                     /* Simple elegant border */
                     border: 2px solid rgba(95, 73, 122, 0.3) !important;
@@ -170,6 +210,56 @@
                     background: none !important;
                     background-image: none !important;
                     outline: none !important;
+                }
+                
+                /* Responsive sizing for different screens */
+                @media (max-width: 1400px) {
+                    #kn-scene_481 .field_1439 img,
+                    #kn-scene_481 .field_2922 img,
+                    #kn-scene_481 .field_2924 img,
+                    #kn-scene_481 .col-1 img,
+                    #kn-scene_481 .col-3 img,
+                    #kn-scene_481 .col-5 img,
+                    #kn-scene_481 .levels img {
+                        max-width: 350px !important;
+                    }
+                }
+                
+                @media (max-width: 1200px) {
+                    #kn-scene_481 .field_1439 img,
+                    #kn-scene_481 .field_2922 img,
+                    #kn-scene_481 .field_2924 img,
+                    #kn-scene_481 .col-1 img,
+                    #kn-scene_481 .col-3 img,
+                    #kn-scene_481 .col-5 img,
+                    #kn-scene_481 .levels img {
+                        max-width: 300px !important;
+                    }
+                }
+                
+                @media (max-width: 768px) {
+                    #kn-scene_481 .field_1439 img,
+                    #kn-scene_481 .field_2922 img,
+                    #kn-scene_481 .field_2924 img,
+                    #kn-scene_481 .col-1 img,
+                    #kn-scene_481 .col-3 img,
+                    #kn-scene_481 .col-5 img,
+                    #kn-scene_481 .levels img {
+                        max-width: 250px !important;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    #kn-scene_481 .field_1439 img,
+                    #kn-scene_481 .field_2922 img,
+                    #kn-scene_481 .field_2924 img,
+                    #kn-scene_481 .col-1 img,
+                    #kn-scene_481 .col-3 img,
+                    #kn-scene_481 .col-5 img,
+                    #kn-scene_481 .levels img {
+                        max-width: 200px !important;
+                        top: -20px !important; /* Less uplift on mobile */
+                    }
                 }
                 
                 /* Remove any pseudo-elements that might create borders */
@@ -203,6 +293,7 @@
                     background-image: none !important;
                     border: none !important;
                     outline: none !important;
+                    text-align: center !important; /* Center the images within containers */
                 }
                 
                 /* Remove pseudo-elements from parent divs too */
@@ -232,7 +323,7 @@
                 #kn-scene_481 .col-3 img:hover,
                 #kn-scene_481 .col-5 img:hover,
                 #kn-scene_481 .levels img:hover {
-                    transform: translateY(-25px) scale(1.08) !important;
+                    transform: translateY(-25px) scale(1.05) !important; /* Smaller scale for larger images */
                     
                     /* Remove the gradient border on hover - just use solid */
                     border: 3px solid #5f497a !important;
@@ -308,14 +399,29 @@
                 /* Grid layout for book images */
                 #kn-scene_481 .kn-details-group-column {
                     display: grid !important;
-                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
-                    gap: 35px !important;
+                    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)) !important;
+                    gap: 40px !important;
                     align-items: start !important;
                     justify-items: center !important;
-                    padding: 20px 0 !important;
+                    padding: 20px !important;
                     width: 100% !important;
                     max-width: 100% !important;
                     box-sizing: border-box !important;
+                }
+                
+                /* Responsive grid adjustments */
+                @media (max-width: 1200px) {
+                    #kn-scene_481 .kn-details-group-column {
+                        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+                        gap: 30px !important;
+                    }
+                }
+                
+                @media (max-width: 768px) {
+                    #kn-scene_481 .kn-details-group-column {
+                        grid-template-columns: 1fr !important;
+                        gap: 25px !important;
+                    }
                 }
                 
                 /* Ensure wrapper doesn't cause horizontal scroll */
@@ -387,16 +493,14 @@
                     display: none !important;
                 }
                 
-                /* Responsive */
+                /* Clean up any extra spacing on mobile */
                 @media (max-width: 768px) {
-                    #kn-scene_481 .field_1439 img,
-                    #kn-scene_481 .field_2922 img,
-                    #kn-scene_481 .field_2924 img {
-                        max-width: 100%;
+                    #kn-scene_481 .kn-details-group {
+                        padding: 20px 15px !important;
                     }
                     
-                    #kn-scene_481 .kn-details-group-column {
-                        grid-template-columns: 1fr;
+                    #kn-scene_481 #view_1277 {
+                        margin-top: -40px !important; /* Less negative margin on mobile */
                     }
                 }
             `;
@@ -533,6 +637,27 @@
     // Initialize
     setTimeout(() => {
         fixScene481Layout();
+        
+        // Force remove scrollbars after everything loads
+        setTimeout(() => {
+            document.documentElement.style.overflowX = 'hidden';
+            document.body.style.overflowX = 'hidden';
+            
+            // Find Knack content wrapper and hide overflow
+            const knackBody = document.getElementById('knack-body');
+            if (knackBody) {
+                knackBody.style.overflowX = 'hidden';
+                knackBody.style.maxWidth = '100%';
+            }
+            
+            const knackDist = document.getElementById('knack-dist_1');
+            if (knackDist) {
+                knackDist.style.overflowX = 'hidden';
+                knackDist.style.maxWidth = '100%';
+            }
+            
+            console.log('[Scene 481 Fix v6] Forced scrollbar removal applied');
+        }, 1000);
     }, 500);
     
     // Re-apply on scene render
@@ -592,7 +717,8 @@
             
             // Try to manually apply styles with simple border
             img.style.cssText = `
-                max-width: 280px !important;
+                width: 100% !important;
+                max-width: 420px !important;
                 border: 2px solid rgba(95, 73, 122, 0.3) !important;
                 border-radius: 12px !important;
                 box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
@@ -602,6 +728,8 @@
                 transition: all 0.3s ease !important;
                 background: none !important;
                 background-image: none !important;
+                display: block !important;
+                margin: 10px auto !important;
             `;
             
             // Also clean up parent elements
@@ -679,5 +807,48 @@
     };
     
     console.log('[Scene 481 Fix v6] Border detective available: window.findBorderCulprit()');
+    
+    // Add function to find what's causing horizontal scroll
+    window.findScrollCulprit = function() {
+        console.log('=== Finding Horizontal Scroll Culprit ===');
+        
+        const docWidth = document.documentElement.scrollWidth;
+        const viewWidth = document.documentElement.clientWidth;
+        
+        console.log(`Document width: ${docWidth}px`);
+        console.log(`Viewport width: ${viewWidth}px`);
+        console.log(`Overflow: ${docWidth - viewWidth}px`);
+        
+        const allElements = document.querySelectorAll('*');
+        const overflowingElements = [];
+        
+        allElements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (rect.right > viewWidth || rect.left < 0) {
+                overflowingElements.push({
+                    element: el,
+                    rect: rect,
+                    overflow: rect.right - viewWidth,
+                    className: el.className,
+                    id: el.id
+                });
+            }
+        });
+        
+        console.log('\nElements causing horizontal overflow:');
+        overflowingElements.forEach(item => {
+            console.log(`- ${item.element.tagName}${item.id ? '#' + item.id : ''} (${item.className})`);
+            console.log(`  Right edge: ${item.rect.right}px, Overflow: ${item.overflow}px`);
+            item.element.style.outline = '3px solid red';
+        });
+        
+        // Also check computed styles on body and html
+        console.log('\nBody/HTML styles:');
+        console.log('HTML overflow-x:', getComputedStyle(document.documentElement).overflowX);
+        console.log('Body overflow-x:', getComputedStyle(document.body).overflowX);
+        
+        console.log('\nTo remove highlights, refresh the page');
+    };
+    
+    console.log('[Scene 481 Fix v6] Scroll detective available: window.findScrollCulprit()');
 })(); 
-
