@@ -19,7 +19,7 @@
         knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
         knackApiKey: loaderConfig.knackApiKey || '8f733aa5-dd35-4464-8348-64824d1f5f0d',
         elementSelector: loaderConfig.elementSelector || '#view_3024',
-        debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : true,
+        debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : false,
         sendGrid: loaderConfig.sendGrid || {
             proxyUrl: 'https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email',
             fromEmail: 'noreply@notifications.vespa.academy',
@@ -2819,6 +2819,73 @@
         $('head').append(styleElement);
         log('Style element added to head:', $('#resource-dashboard-styles').length > 0);
         
+        // Add scene-level CSS overrides if we're in scene-level mode
+        const container = document.querySelector(SCRIPT_CONFIG.elementSelector);
+        const isSceneLevel = container && (container.id === 'scene-level-container' || 
+                            container.classList.contains('scene-level-dashboard-container'));
+        
+        if (isSceneLevel) {
+            const overrideStyleId = 'resource-dashboard-scene-level-overrides';
+            if (!document.getElementById(overrideStyleId)) {
+                const overrideStyle = document.createElement('style');
+                overrideStyle.id = overrideStyleId;
+                overrideStyle.textContent = `
+                    /* Scene-level overrides for full-width display */
+                    #resource-dashboard {
+                        max-width: none !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 20px !important;
+                        box-sizing: border-box !important;
+                    }
+                    
+                    /* Ensure navigation is full width */
+                    #resource-dashboard .navigation-section {
+                        max-width: none !important;
+                        width: 100% !important;
+                    }
+                    
+                    /* Ensure profile section is properly sized */
+                    #resource-dashboard .profile-section {
+                        max-width: none !important;
+                    }
+                    
+                    /* Ensure activity section is full width */
+                    #resource-dashboard .activity-section {
+                        max-width: none !important;
+                        width: 100% !important;
+                    }
+                    
+                    /* Ensure admin section is full width */
+                    #resource-dashboard .admin-section {
+                        max-width: none !important;
+                        width: 100% !important;
+                    }
+                    
+                    /* Ensure activity iframe is responsive */
+                    #resource-dashboard .activity-iframe {
+                        max-width: 100% !important;
+                    }
+                    
+                    /* Responsive adjustments for larger screens */
+                    @media (min-width: 1440px) {
+                        #resource-dashboard {
+                            padding: 30px !important;
+                        }
+                    }
+                    
+                    /* Ultra-wide screen adjustments */
+                    @media (min-width: 1920px) {
+                        #resource-dashboard {
+                            padding: 40px !important;
+                        }
+                    }
+                `;
+                document.head.appendChild(overrideStyle);
+            }
+            log('Scene-level CSS overrides added');
+        }
+        
         // Add Font Awesome
         if (!$('link[href*="font-awesome"]').length) {
             log('Adding Font Awesome...');
@@ -3028,5 +3095,4 @@
     }
 
 })();
-
 
