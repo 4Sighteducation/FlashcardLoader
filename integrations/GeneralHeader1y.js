@@ -262,7 +262,7 @@
                 const isActive = currentScene === item.scene;
                 return `
                     <a href="${item.href}" 
-                       class="nav-button ${isActive ? 'active' : ''}" 
+                       class="header-nav-button ${isActive ? 'active' : ''}" 
                        data-scene="${item.scene}">
                         <i class="fa ${item.icon}"></i>
                         <span>${item.label}</span>
@@ -372,7 +372,7 @@
                         margin: 0 20px;
                     }
                     
-                    #vespaGeneralHeader .nav-button {
+                    .header-nav-button {
                         display: flex;
                         align-items: center;
                         gap: 5px;
@@ -392,7 +392,7 @@
                         letter-spacing: 0.3px;
                     }
                     
-                    #vespaGeneralHeader .nav-button::before {
+                    .header-nav-button::before {
                         content: '';
                         position: absolute;
                         top: 0;
@@ -403,18 +403,18 @@
                         transition: left 0.5s ease;
                     }
                     
-                    #vespaGeneralHeader .nav-button:hover {
+                    .header-nav-button:hover {
                         background: rgba(255,255,255,0.2);
                         transform: translateY(-1px);
                         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
                         border-color: rgba(255,255,255,0.2);
                     }
                     
-                    #vespaGeneralHeader .nav-button:hover::before {
+                    .header-nav-button:hover::before {
                         left: 100%;
                     }
                     
-                    #vespaGeneralHeader .nav-button.active {
+                    .header-nav-button.active {
                         background: rgba(255,255,255,0.25);
                         box-shadow: 0 2px 10px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.15);
                         border-color: rgba(255,255,255,0.3);
@@ -424,31 +424,31 @@
                     
 
                     
-                    #vespaGeneralHeader .nav-button i {
+                    .header-nav-button i {
                         font-size: 14px;
                         opacity: 0.9;
                     }
                     
                     /* Button text color styling for each user type */
-                    .vespa-general-header.student .nav-button {
+                    .vespa-general-header.student .header-nav-button {
                         color: #e3f2fd;
                     }
                     
-                    .vespa-general-header.staffResource .nav-button {
+                    .vespa-general-header.staffResource .header-nav-button {
                         color: #f1f8e9;
                     }
                     
-                    .vespa-general-header.staffCoaching .nav-button {
+                    .vespa-general-header.staffCoaching .header-nav-button {
                         color: #fff3e0;
                     }
                     
-                    .vespa-general-header.staffAdminResource .nav-button,
-                    .vespa-general-header.staffAdminCoaching .nav-button {
+                    .vespa-general-header.staffAdminResource .header-nav-button,
+                    .vespa-general-header.staffAdminCoaching .header-nav-button {
                         color: #f3e5f5;
                     }
                     
                     /* Active state maintains bright white */
-                    #vespaGeneralHeader .nav-button.active {
+                    .header-nav-button.active {
                         color: white !important;
                     }
                     
@@ -549,12 +549,12 @@
                             margin: 0 10px;
                         }
                         
-                        #vespaGeneralHeader .nav-button {
+                        .header-nav-button {
                             padding: 5px 8px;
                             font-size: 11px;
                         }
                         
-                        #vespaGeneralHeader .nav-button i {
+                        .header-nav-button i {
                             font-size: 12px;
                         }
                         
@@ -607,7 +607,7 @@
                             right: 0;
                         }
                         
-                        #vespaGeneralHeader .nav-button {
+                        .header-nav-button {
                             width: 100%;
                             justify-content: flex-start;
                             padding: 12px 16px;
@@ -615,7 +615,7 @@
                             background: rgba(255,255,255,0.08);
                         }
                         
-                        #vespaGeneralHeader .nav-button i {
+                        .header-nav-button i {
                             font-size: 18px;
                             width: 24px;
                             text-align: center;
@@ -675,20 +675,20 @@
                     }
                     
                     /* Subtle hover effects for each type */
-                    .vespa-general-header.student .nav-button:hover {
+                    .vespa-general-header.student .header-nav-button:hover {
                         box-shadow: 0 2px 8px rgba(7, 155, 170, 0.3);
                     }
                     
-                    .vespa-general-header.staffResource .nav-button:hover {
+                    .vespa-general-header.staffResource .header-nav-button:hover {
                         box-shadow: 0 2px 8px rgba(114, 203, 68, 0.3);
                     }
                     
-                    .vespa-general-header.staffCoaching .nav-button:hover {
+                    .vespa-general-header.staffCoaching .header-nav-button:hover {
                         box-shadow: 0 2px 8px rgba(255, 143, 0, 0.3);
                     }
                     
-                    .vespa-general-header.staffAdminResource .nav-button:hover,
-                    .vespa-general-header.staffAdminCoaching .nav-button:hover {
+                    .vespa-general-header.staffAdminResource .header-nav-button:hover,
+                    .vespa-general-header.staffAdminCoaching .header-nav-button:hover {
                         box-shadow: 0 2px 8px rgba(127, 49, 164, 0.3);
                     }
                     
@@ -699,7 +699,7 @@
                     }
                     
                     /* Focus styles for accessibility */
-                    #vespaGeneralHeader .nav-button:focus,
+                    .header-nav-button:focus,
                     #vespaGeneralHeader .mobile-menu-toggle:focus,
                     #vespaGeneralHeader .breadcrumb-back:focus {
                         outline: 2px solid rgba(255,255,255,0.5);
@@ -709,7 +709,7 @@
                     /* SIMPLIFIED STYLING APPROACH
                      * With uniform button count (7 buttons), all account types now use the same clean styling.
                      * No special cases or overrides needed - just consistent, maintainable CSS!
-                     * All styles are scoped to #vespaGeneralHeader to prevent conflicts with other components.
+                     * Using unique class name .header-nav-button to prevent conflicts with other components.
                      */
                 </style>
             `;
@@ -759,7 +759,7 @@
             trackPageView(userType, currentScene);
             
             // DEBUG: Watch for style changes on nav buttons
-            const navButtons = document.querySelectorAll('#vespaGeneralHeader .nav-button');
+            const navButtons = document.querySelectorAll('#vespaGeneralHeader .header-nav-button');
             navButtons.forEach((button, index) => {
                 const observer = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
@@ -822,7 +822,7 @@
             
             // DEBUG: Log nav button styles after setup
             setTimeout(() => {
-                const navButtons = document.querySelectorAll('#vespaGeneralHeader .nav-button');
+                const navButtons = document.querySelectorAll('#vespaGeneralHeader .header-nav-button');
                 if (navButtons.length > 0) {
                     const firstButton = navButtons[0];
                     const computedStyle = window.getComputedStyle(firstButton);
@@ -850,7 +850,7 @@
             }
             
             // Navigation click handling
-            const navLinks = document.querySelectorAll('#vespaGeneralHeader .nav-button, #vespaGeneralHeader .breadcrumb-back');
+            const navLinks = document.querySelectorAll('#vespaGeneralHeader .header-nav-button, #vespaGeneralHeader .breadcrumb-back');
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
