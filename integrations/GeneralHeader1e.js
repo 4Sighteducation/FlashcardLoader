@@ -43,7 +43,7 @@
             }
             
             // Get the user role from field_73
-            const userRole = userAttributes.values?.field_73 || userAttributes.field_73;
+            let userRole = userAttributes.values?.field_73 || userAttributes.field_73;
             log('User role from field_73:', userRole);
             
             // If no role found, user might not be logged in properly
@@ -52,14 +52,63 @@
                 return null;
             }
             
-            // Convert to string and check if it's "Student"
-            const roleText = userRole.toString();
+            // Handle different field formats
+            let roleText = '';
             
-            if (roleText === 'Student') {
+            // If it's an array (like ['profile_6']), get the first element
+            if (Array.isArray(userRole) && userRole.length > 0) {
+                userRole = userRole[0];
+            }
+            
+            // Check if we have raw field data
+            const rawRole = userAttributes.values?.field_73_raw || userAttributes.field_73_raw;
+            if (rawRole && rawRole.length > 0) {
+                // Try to get the identifier from raw data
+                const roleIdentifier = rawRole[0]?.identifier || rawRole[0];
+                log('Role identifier from raw:', roleIdentifier);
+                roleText = roleIdentifier;
+            } else {
+                roleText = userRole.toString();
+            }
+            
+            // Profile mapping - map profile IDs to user types
+            const profileMapping = {
+                'profile_6': 'student',      // Student profile
+                'profile_7': 'staff',        // Tutor profile
+                'profile_5': 'staff',        // Staff Admin profile
+                'profile_4': 'student',      // Alternative student profile
+                'profile_8': 'staff',        // Super User profile
+                // Add more mappings as needed
+            };
+            
+            // Check if we have a profile ID
+            if (roleText.includes('profile_')) {
+                const mappedRole = profileMapping[roleText];
+                if (mappedRole === 'student') {
+                    log('Detected as student based on profile mapping');
+                    return 'student';
+                } else if (mappedRole === 'staff') {
+                    log('Detected as staff based on profile mapping');
+                    
+                    // Check for Resources-only staff using field_441
+                    const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
+                    log('Account type field_441:', accountType);
+                    
+                    if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+                        log('Detected as staffResource');
+                        return 'staffResource';
+                    }
+                    log('Detected as staffCoaching');
+                    return 'staffCoaching';
+                }
+            }
+            
+            // Fallback to text comparison if we have actual role text
+            if (roleText.toLowerCase() === 'student') {
                 log('Detected as student');
                 return 'student';
-            } else {
-                // Any role that is NOT "Student" is staff
+            } else if (roleText.toLowerCase().includes('staff') || roleText.toLowerCase().includes('tutor') || 
+                      roleText.toLowerCase().includes('admin') || roleText.toLowerCase().includes('super')) {
                 log(`Detected as staff with role: ${roleText}`);
                 
                 // Check for Resources-only staff using field_441
@@ -73,6 +122,17 @@
                 log('Detected as staffCoaching');
                 return 'staffCoaching';
             }
+            
+            // Default based on which landing page they can access
+            log('Could not determine role from field_73, checking current page');
+            const currentUrl = window.location.href;
+            if (currentUrl.includes('landing-page') && !currentUrl.includes('staff-landing-page')) {
+                log('On student landing page, assuming student');
+                return 'student';
+            }
+            
+            log('Defaulting to staff');
+            return 'staffCoaching';
         }
         
         // Navigation configurations for different user types
@@ -80,7 +140,7 @@
             student: {
                 brand: 'VESPA Student',
                 brandIcon: 'fa-graduation-cap',
-                color: '#7f31a4',
+                color: '#5f497a', // VESPA purple
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
