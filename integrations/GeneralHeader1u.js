@@ -19,7 +19,7 @@
         console.log('[General Header] Initializing with config:', config);
         
         // Configuration
-        const DEBUG = config.debugMode || false;
+        const DEBUG = true; // TEMPORARILY ENABLED for debugging resource button issue
         const currentScene = config.sceneKey;
         const currentView = config.viewKey;
         const userRoles = config.userRoles || [];
@@ -246,6 +246,9 @@
             const navConfig = navigationConfig[userType];
             const isHomePage = currentScene === navConfig.items[0].scene;
             
+            // Debug log for resource type detection
+            log(`Creating header for userType: ${userType}, isResource: ${userType.includes('Resource')}`);
+            
             // Build navigation items
             const navItemsHTML = navConfig.items.map(item => {
                 const isActive = currentScene === item.scene;
@@ -384,14 +387,37 @@
                     /* Reduce padding for resource accounts specifically */
                     .vespa-general-header.staffResource .nav-button,
                     .vespa-general-header.staffAdminResource .nav-button {
-                        padding: 6px 10px;
-                        font-size: 12px;
-                        gap: 5px;
+                        padding: 5px 8px !important;
+                        font-size: 11px !important;
+                        gap: 4px !important;
+                        letter-spacing: 0.3px !important;
+                        flex-shrink: 0;
+                        flex-grow: 0;
+                        min-width: 0;
                     }
                     
                     .vespa-general-header.staffResource .nav-button i,
                     .vespa-general-header.staffAdminResource .nav-button i {
-                        font-size: 14px;
+                        font-size: 13px !important;
+                    }
+                    
+                    /* Maintain size on hover for resource accounts */
+                    .vespa-general-header.staffResource .nav-button:hover,
+                    .vespa-general-header.staffAdminResource .nav-button:hover {
+                        padding: 5px 8px !important;
+                    }
+                    
+                    /* Additional constraint for resource navigation containers */
+                    .vespa-general-header.staffResource .header-navigation,
+                    .vespa-general-header.staffAdminResource .header-navigation {
+                        gap: 5px;
+                        max-width: 900px;
+                    }
+                    
+                    /* Ensure button text doesn't add extra spacing for resource accounts */
+                    .vespa-general-header.staffResource .nav-button span,
+                    .vespa-general-header.staffAdminResource .nav-button span {
+                        line-height: 1.2;
                     }
                     
                     .nav-button::before {
@@ -422,6 +448,13 @@
                         border-color: rgba(255,255,255,0.3);
                         color: white;
                         font-weight: 600;
+                    }
+                    
+                    /* Maintain reduced size for resource accounts even when active */
+                    .vespa-general-header.staffResource .nav-button.active,
+                    .vespa-general-header.staffAdminResource .nav-button.active {
+                        padding: 5px 8px !important;
+                        font-size: 11px !important;
                     }
                     
                     .nav-button i {
@@ -569,8 +602,8 @@
                         /* Even smaller for resource accounts on medium screens */
                         .vespa-general-header.staffResource .nav-button,
                         .vespa-general-header.staffAdminResource .nav-button {
-                            padding: 5px 8px;
-                            font-size: 11px;
+                            padding: 4px 6px !important;
+                            font-size: 10px !important;
                         }
                     }
                     
