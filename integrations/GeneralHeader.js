@@ -1,107 +1,201 @@
 /**
- * Resource Page Header Injector
- * Monitors for curriculum app to load and injects navigation header above it
+ * VESPA Universal Header System - Phase 1
+ * Loads on all pages and provides context-aware navigation
  */
 
 (function() {
     'use strict';
     
-    console.log('[Resource Page Header] Script loaded, waiting for initialization...');
+    console.log('[General Header] Script loaded, waiting for initialization...');
     
-    function initializeResourcePageHeader() {
-        const config = window.RESOURCE_PAGE_HEADER_CONFIG;
+    function initializeGeneralHeader() {
+        const config = window.GENERAL_HEADER_CONFIG;
         
         if (!config) {
-            console.error('[Resource Page Header] Configuration not found');
+            console.error('[General Header] Configuration not found');
             return;
         }
         
-        console.log('[Resource Page Header] Initializing with config:', config);
+        console.log('[General Header] Initializing with config:', config);
         
         // Configuration
         const DEBUG = config.debugMode || false;
-        const CURRICULUM_SELECTORS = config.curriculumSelectors || {
-            sidePanel: '#sidePanel',
-            courseMain: '#course-main'
-        };
+        const currentScene = config.sceneKey;
+        const currentView = config.viewKey;
+        const userRoles = config.userRoles || [];
+        const userAttributes = config.userAttributes || {};
         
         // Helper function for debug logging
         function log(message, data) {
             if (DEBUG) {
-                console.log(`[Resource Page Header] ${message}`, data || '');
+                console.log(`[General Header] ${message}`, data || '');
             }
         }
         
+        // Detect user type
+        function getUserType() {
+            // Check if user is a student
+            if (userRoles.includes('object_4') || userRoles.includes('Student')) {
+                return 'student';
+            }
+            
+            // Check if user is staff
+            if (userRoles.includes('object_3') || userRoles.includes('Staff') || 
+                userRoles.includes('object_5') || userRoles.includes('Staff Admin')) {
+                
+                // Check for Resources-only staff using field_441
+                const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
+                if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+                    return 'staffResource';
+                }
+                return 'staffCoaching';
+            }
+            
+            // Default to student if unknown
+            return 'student';
+        }
+        
+        // Navigation configurations for different user types
+        const navigationConfig = {
+            student: {
+                brand: 'VESPA Student',
+                brandIcon: 'fa-graduation-cap',
+                color: '#2c3e50',
+                items: [
+                    { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_43' },
+                    { label: 'My Profile', icon: 'fa-user', href: '#my-academic-profile', scene: 'scene_43' },
+                    { label: 'Resources', icon: 'fa-book', href: '#student-resources', scene: 'scene_1206' },
+                    { label: 'Study Planner', icon: 'fa-calendar', href: '#study-planner', scene: 'scene_1208' },
+                    { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' }
+                ]
+            },
+            staffResource: {
+                brand: 'VESPA Resources',
+                brandIcon: 'fa-book',
+                color: '#27ae60',
+                items: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_482' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#tutor-activities/suggested-curriculum', scene: 'scene_499' },
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1177' }
+                ]
+            },
+            staffCoaching: {
+                brand: 'VESPA Coaching',
+                brandIcon: 'fa-users',
+                color: '#e74c3c',
+                items: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Reports', icon: 'fa-bar-chart', href: '#vespa-report-profiles/', scene: 'scene_1095' },
+                    { label: 'Students', icon: 'fa-users', href: '#students', scene: 'scene_488' },
+                    { label: 'Resources', icon: 'fa-book', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
+                    { label: 'Analytics', icon: 'fa-line-chart', href: '#dashboard', scene: 'scene_1225' }
+                ]
+            }
+        };
+        
         // Create the header HTML
-        function createHeaderHTML() {
+        function createHeaderHTML(userType, currentScene) {
+            const navConfig = navigationConfig[userType];
+            const isHomePage = currentScene === navConfig.items[0].scene;
+            
+            // Build navigation items
+            const navItemsHTML = navConfig.items.map(item => {
+                const isActive = currentScene === item.scene;
+                return `
+                    <a href="${item.href}" 
+                       class="nav-button ${isActive ? 'active' : ''}" 
+                       data-scene="${item.scene}">
+                        <i class="fa ${item.icon}"></i>
+                        <span>${item.label}</span>
+                    </a>
+                `;
+            }).join('');
+            
             return `
-                <div id="resourcePageHeader" class="resource-page-header">
+                <div id="vespaGeneralHeader" class="vespa-general-header ${userType}">
                     <div class="header-content">
-                        <div class="header-navigation">
-                            <a href="#staff-landing-page/" class="nav-button home-button">
-                                <i class="fa fa-home"></i>
-                                <span>Home</span>
-                            </a>
-                            <a href="#worksheets" class="nav-button">
-                                <i class="fa fa-files-o"></i>
-                                <span>Activity Worksheets</span>
-                            </a>
-                            <a href="#tutor-activities/suggested-curriculum" class="nav-button">
-                                <i class="fa fa-calendar"></i>
-                                <span>Suggested Curriculum</span>
-                            </a>
-                            <a href="#vespa-newsletter" class="nav-button">
-                                <i class="fa fa-newspaper-o"></i>
-                                <span>Newsletter</span>
-                            </a>
+                        <div class="header-brand">
+                            <i class="fa ${navConfig.brandIcon}"></i>
+                            <span>${navConfig.brand}</span>
                         </div>
-                        <div class="header-title">
-                            <h1>VESPA Resources</h1>
+                        <nav class="header-navigation">
+                            ${navItemsHTML}
+                        </nav>
+                        <div class="header-actions">
+                            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                                <i class="fa fa-bars"></i>
+                            </button>
                         </div>
                     </div>
+                    ${!isHomePage ? `
+                    <div class="header-breadcrumb">
+                        <a href="${navConfig.items[0].href}" class="breadcrumb-back">
+                            <i class="fa fa-arrow-left"></i>
+                            Back to ${navConfig.items[0].label}
+                        </a>
+                    </div>
+                    ` : ''}
                 </div>
+                <div class="mobile-nav-overlay"></div>
                 <style>
-                    /* Header Styles */
-                    .resource-page-header {
+                    /* Base Header Styles */
+                    .vespa-general-header {
                         position: fixed;
                         top: 0;
                         left: 0;
                         right: 0;
-                        background-color: #1a3a52;
+                        background-color: ${navConfig.color};
                         color: white;
-                        z-index: 1000;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        height: 80px;
+                        z-index: 9999;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                        transition: all 0.3s ease;
                     }
                     
                     .header-content {
                         max-width: 1400px;
                         margin: 0 auto;
                         padding: 0 20px;
-                        height: 100%;
+                        height: 60px;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
                     }
                     
+                    .header-brand {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        font-size: 20px;
+                        font-weight: 600;
+                    }
+                    
+                    .header-brand i {
+                        font-size: 24px;
+                    }
+                    
                     .header-navigation {
                         display: flex;
-                        gap: 20px;
+                        gap: 15px;
                         align-items: center;
+                        flex: 1;
+                        justify-content: center;
                     }
                     
                     .nav-button {
                         display: flex;
                         align-items: center;
                         gap: 8px;
-                        padding: 10px 16px;
+                        padding: 8px 16px;
                         background-color: rgba(255,255,255,0.1);
                         color: white;
                         text-decoration: none;
-                        border-radius: 4px;
+                        border-radius: 6px;
                         transition: all 0.3s ease;
                         font-size: 14px;
                         font-weight: 500;
+                        white-space: nowrap;
                     }
                     
                     .nav-button:hover {
@@ -109,83 +203,135 @@
                         transform: translateY(-1px);
                     }
                     
+                    .nav-button.active {
+                        background-color: rgba(255,255,255,0.25);
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    
                     .nav-button i {
                         font-size: 16px;
                     }
                     
-                    .home-button {
-                        background-color: #ff8f00;
+                    .header-actions {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
                     }
                     
-                    .home-button:hover {
-                        background-color: #e67e00;
-                    }
-                    
-                    .header-title h1 {
-                        margin: 0;
+                    .mobile-menu-toggle {
+                        display: none;
+                        background: none;
+                        border: none;
+                        color: white;
                         font-size: 24px;
-                        font-weight: 600;
+                        cursor: pointer;
+                        padding: 8px;
                     }
                     
-                    /* Adjust body and curriculum content */
-                    body.has-resource-header {
-                        padding-top: 80px !important;
+                    .header-breadcrumb {
+                        background-color: rgba(0,0,0,0.1);
+                        padding: 8px 0;
                     }
                     
-                    /* Ensure side panel doesn't overlap header */
-                    body.has-resource-header #sidePanel {
-                        top: 80px !important;
-                        height: calc(100vh - 80px) !important;
+                    .breadcrumb-back {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        color: white;
+                        text-decoration: none;
+                        font-size: 13px;
+                        padding: 4px 20px;
+                        max-width: 1400px;
+                        margin: 0 auto;
+                        opacity: 0.9;
+                        transition: opacity 0.2s ease;
                     }
                     
-                    /* Adjust course main content */
-                    body.has-resource-header #course-main {
-                        margin-top: 20px;
+                    .breadcrumb-back:hover {
+                        opacity: 1;
                     }
                     
-                    /* Hide the original rich text view to prevent conflicts */
-                    #view_3150 {
+                    /* Adjust body for header */
+                    body {
+                        padding-top: 60px !important;
+                    }
+                    
+                    body:has(.header-breadcrumb) {
+                        padding-top: 100px !important;
+                    }
+                    
+                    /* Hide Knack's default navigation if desired */
+                    .kn-menu.kn-view {
                         display: none !important;
                     }
                     
-                    /* Mobile responsive */
+                    /* Mobile Styles */
                     @media (max-width: 768px) {
-                        .resource-page-header {
-                            height: auto;
-                            padding: 10px 0;
-                        }
-                        
-                        .header-content {
-                            flex-direction: column;
-                            gap: 10px;
-                        }
-                        
-                        .header-navigation {
-                            flex-wrap: wrap;
-                            justify-content: center;
-                        }
-                        
-                        .nav-button {
-                            font-size: 12px;
-                            padding: 8px 12px;
-                        }
-                        
-                        .nav-button span {
+                        .header-brand span {
                             display: none;
                         }
                         
-                        .header-title h1 {
-                            font-size: 20px;
+                        .header-navigation {
+                            position: fixed;
+                            top: 60px;
+                            right: -300px;
+                            width: 300px;
+                            height: calc(100vh - 60px);
+                            background-color: ${navConfig.color};
+                            flex-direction: column;
+                            justify-content: flex-start;
+                            padding: 20px;
+                            gap: 10px;
+                            transition: right 0.3s ease;
+                            box-shadow: -2px 0 8px rgba(0,0,0,0.15);
                         }
                         
-                        body.has-resource-header {
-                            padding-top: 120px !important;
+                        .header-navigation.mobile-open {
+                            right: 0;
                         }
                         
-                        body.has-resource-header #sidePanel {
-                            top: 120px !important;
-                            height: calc(100vh - 120px) !important;
+                        .nav-button {
+                            width: 100%;
+                            justify-content: flex-start;
                         }
+                        
+                        .mobile-menu-toggle {
+                            display: block;
+                        }
+                        
+                        .mobile-nav-overlay {
+                            display: none;
+                            position: fixed;
+                            top: 60px;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background-color: rgba(0,0,0,0.5);
+                            z-index: 9998;
+                        }
+                        
+                        .mobile-nav-overlay.active {
+                            display: block;
+                        }
+                    }
+                    
+                    /* Specific adjustments for different user types */
+                    .vespa-general-header.student {
+                        background-color: #3498db;
+                    }
+                    
+                    .vespa-general-header.staffResource {
+                        background-color: #27ae60;
+                    }
+                    
+                    .vespa-general-header.staffCoaching {
+                        background-color: #e74c3c;
+                    }
+                    
+                    /* Smooth transitions */
+                    * {
+                        -webkit-font-smoothing: antialiased;
+                        -moz-osx-font-smoothing: grayscale;
                     }
                 </style>
             `;
@@ -194,104 +340,96 @@
         // Function to inject the header
         function injectHeader() {
             // Check if header already exists
-            if (document.getElementById('resourcePageHeader')) {
-                log('Header already exists, skipping injection');
+            if (document.getElementById('vespaGeneralHeader')) {
+                log('Header already exists, updating if needed');
                 return;
             }
             
-            // Create and inject the header
-            const headerHTML = createHeaderHTML();
-            document.body.insertAdjacentHTML('afterbegin', headerHTML);
+            const userType = getUserType();
+            log('Detected user type:', userType);
             
-            // Add class to body for CSS adjustments
-            document.body.classList.add('has-resource-header');
+            // Create and inject the header
+            const headerHTML = createHeaderHTML(userType, currentScene);
+            document.body.insertAdjacentHTML('afterbegin', headerHTML);
             
             log('Header injected successfully');
             
-            // Update navigation links to use Knack navigation
-            const navLinks = document.querySelectorAll('#resourcePageHeader .nav-button');
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Track current page
+            trackPageView(userType, currentScene);
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu toggle
+            const mobileToggle = document.querySelector('.mobile-menu-toggle');
+            const navigation = document.querySelector('.header-navigation');
+            const overlay = document.querySelector('.mobile-nav-overlay');
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', function() {
+                    navigation.classList.toggle('mobile-open');
+                    overlay.classList.toggle('active');
+                });
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    navigation.classList.remove('mobile-open');
+                    overlay.classList.remove('active');
+                });
+            }
+            
+            // Navigation click handling
+            const navLinks = document.querySelectorAll('#vespaGeneralHeader .nav-button, #vespaGeneralHeader .breadcrumb-back');
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
                     const href = this.getAttribute('href');
                     if (href && href.startsWith('#')) {
-                        // Use Knack's navigation
+                        // Close mobile menu if open
+                        navigation.classList.remove('mobile-open');
+                        overlay.classList.remove('active');
+                        // Navigate using Knack
                         window.location.hash = href;
                     }
                 });
             });
         }
         
-        // Function to check if curriculum has loaded
-        function checkCurriculumLoaded() {
-            const sidePanel = document.querySelector(CURRICULUM_SELECTORS.sidePanel);
-            const courseMain = document.querySelector(CURRICULUM_SELECTORS.courseMain);
-            
-            return sidePanel && courseMain;
+        // Track page views for analytics
+        function trackPageView(userType, scene) {
+            log('Page view tracked:', { userType, scene });
+            // You can add analytics tracking here if needed
         }
         
-        // Main initialization function
+        // Initialize the header
         function init() {
-            log('Starting initialization...');
+            log('Starting General Header initialization...');
             
-            // Check if curriculum is already loaded
-            if (checkCurriculumLoaded()) {
-                log('Curriculum already loaded, injecting header immediately');
-                injectHeader();
-                return;
-            }
+            // Inject header immediately
+            injectHeader();
             
-            // Set up MutationObserver to watch for curriculum load
-            log('Setting up MutationObserver to watch for curriculum...');
-            
-            const observer = new MutationObserver((mutations, obs) => {
-                if (checkCurriculumLoaded()) {
-                    log('Curriculum detected via MutationObserver');
-                    obs.disconnect();
-                    // Small delay to ensure curriculum is fully rendered
-                    setTimeout(() => {
-                        injectHeader();
-                    }, 100);
-                }
-            });
-            
-            // Start observing
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-            
-            // Fallback timeout
-            setTimeout(() => {
-                if (!document.getElementById('resourcePageHeader')) {
-                    log('Fallback timeout reached, attempting to inject header anyway');
-                    observer.disconnect();
-                    injectHeader();
-                }
-            }, 5000);
-        }
-        
-        // Handle Knack view render events in case we need to reinitialize
-        $(document).on('knack-view-render.any', function(event, view) {
-            if (view && view.key === config.viewKey) {
-                log('View render event detected for our view', view.key);
-                // Check if we need to reinject the header
+            // Re-inject on scene changes in case it gets removed
+            $(document).on('knack-scene-render.any', function(event, scene) {
+                log('Scene rendered, checking header...', scene.key);
                 setTimeout(() => {
-                    if (!document.getElementById('resourcePageHeader') && checkCurriculumLoaded()) {
-                        log('Reinjecting header after view render');
+                    if (!document.getElementById('vespaGeneralHeader')) {
+                        log('Header missing after scene render, re-injecting');
                         injectHeader();
                     }
-                }, 500);
-            }
-        });
+                }, 100);
+            });
+        }
         
         // Start initialization
         init();
     }
     
     // Export the initializer function
-    window.initializeResourcePageHeader = initializeResourcePageHeader;
+    window.initializeGeneralHeader = initializeGeneralHeader;
     
-    console.log('[Resource Page Header] Script setup complete, initializer function ready');
+    console.log('[General Header] Script setup complete, initializer function ready');
 })();
-
