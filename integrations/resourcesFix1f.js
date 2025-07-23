@@ -91,8 +91,10 @@
                 #kn-scene_481 #view_1277 {
                     display: block !important;
                     visibility: visible !important;
-                    margin-top: 0 !important;
+                    margin-top: -40px !important; /* Pull content up */
                     padding-top: 20px !important;
+                    position: relative !important;
+                    z-index: 10 !important;
                 }
                 
                 /* If view_1277 is in view-group-2, make sure that group is visible */
@@ -112,51 +114,146 @@
                     margin-top: 0 !important;
                 }
                 
-                /* Style the book images */
+                /* Style the book images with fancy borders and positioning */
                 #kn-scene_481 .field_1439 img,
                 #kn-scene_481 .field_2922 img,
                 #kn-scene_481 .field_2924 img {
-                    max-width: 280px;
-                    height: auto;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    transition: transform 0.3s ease, box-shadow 0.3s ease;
-                    cursor: pointer;
-                    margin: 10px;
+                    max-width: 280px !important;
+                    height: auto !important;
+                    border-radius: 12px !important;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+                    transition: all 0.3s ease !important;
+                    cursor: pointer !important;
+                    margin: 10px !important;
+                    
+                    /* Fancy border with gradient */
+                    border: 3px solid transparent !important;
+                    background-origin: border-box !important;
+                    background-clip: padding-box, border-box !important;
+                    background-image: 
+                        linear-gradient(white, white),
+                        linear-gradient(45deg, #5f497a, #8b7aa0, #5f497a) !important;
+                    
+                    /* Add some visual depth */
+                    position: relative !important;
+                    top: -20px !important; /* Move books up */
                 }
                 
+                /* Even fancier hover effect */
                 #kn-scene_481 .field_1439 img:hover,
                 #kn-scene_481 .field_2922 img:hover,
                 #kn-scene_481 .field_2924 img:hover {
-                    transform: translateY(-5px) scale(1.05);
-                    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+                    transform: translateY(-10px) scale(1.08) rotate(1deg) !important;
+                    box-shadow: 
+                        0 20px 40px rgba(95, 73, 122, 0.3),
+                        0 10px 20px rgba(0,0,0,0.15) !important;
+                    
+                    /* Glow effect on hover */
+                    filter: brightness(1.05) !important;
+                    
+                    /* Animated gradient border on hover */
+                    background-image: 
+                        linear-gradient(white, white),
+                        linear-gradient(90deg, #5f497a, #8b7aa0, #b19dc0, #8b7aa0, #5f497a) !important;
                 }
                 
-                /* Style the book section */
+                /* Style the book section with enhanced appearance */
                 #kn-scene_481 .kn-details-group {
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 12px;
-                    margin: 10px 0;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+                    padding: 30px !important;
+                    border-radius: 20px !important;
+                    margin: 10px 0 !important;
+                    box-shadow: 
+                        0 10px 30px rgba(95, 73, 122, 0.1),
+                        0 5px 15px rgba(0,0,0,0.08) !important;
+                    border: 1px solid rgba(95, 73, 122, 0.1) !important;
+                    position: relative !important;
+                    overflow: visible !important;
+                }
+                
+                /* Add a subtle animated background pattern */
+                #kn-scene_481 .kn-details-group::before {
+                    content: '' !important;
+                    position: absolute !important;
+                    top: -2px !important;
+                    left: -2px !important;
+                    right: -2px !important;
+                    bottom: -2px !important;
+                    background: linear-gradient(45deg, #5f497a, #8b7aa0, #5f497a) !important;
+                    border-radius: 20px !important;
+                    opacity: 0.1 !important;
+                    z-index: -1 !important;
+                    transition: opacity 0.3s ease !important;
+                }
+                
+                #kn-scene_481 .kn-details-group:hover::before {
+                    opacity: 0.15 !important;
                 }
                 
                 /* Grid layout for book images */
                 #kn-scene_481 .kn-details-group-column {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                    gap: 25px;
-                    align-items: start;
-                    justify-items: center;
+                    display: grid !important;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+                    gap: 35px !important;
+                    align-items: start !important;
+                    justify-items: center !important;
+                    padding: 20px 0 !important;
                 }
                 
-                /* Header styling */
+                /* Add animation to books on load */
+                @keyframes bookFadeIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                #kn-scene_481 .field_1439,
+                #kn-scene_481 .field_2922,
+                #kn-scene_481 .field_2924 {
+                    animation: bookFadeIn 0.6s ease-out forwards !important;
+                }
+                
+                #kn-scene_481 .field_1439 {
+                    animation-delay: 0.1s !important;
+                }
+                
+                #kn-scene_481 .field_2922 {
+                    animation-delay: 0.2s !important;
+                }
+                
+                #kn-scene_481 .field_2924 {
+                    animation-delay: 0.3s !important;
+                }
+                
+                /* Header styling with enhanced appearance */
                 #kn-scene_481 #view_1277 .view-header h2 {
-                    color: #5f497a;
-                    font-size: 28px;
-                    margin-bottom: 20px;
-                    text-align: center;
-                    font-weight: 600;
+                    color: #5f497a !important;
+                    font-size: 32px !important;
+                    margin-bottom: 30px !important;
+                    text-align: center !important;
+                    font-weight: 700 !important;
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.1) !important;
+                    letter-spacing: 1px !important;
+                    position: relative !important;
+                    padding-bottom: 15px !important;
+                }
+                
+                /* Add decorative underline to header */
+                #kn-scene_481 #view_1277 .view-header h2::after {
+                    content: '' !important;
+                    position: absolute !important;
+                    bottom: 0 !important;
+                    left: 50% !important;
+                    transform: translateX(-50%) !important;
+                    width: 100px !important;
+                    height: 3px !important;
+                    background: linear-gradient(90deg, transparent, #5f497a, transparent) !important;
+                    border-radius: 2px !important;
                 }
                 
                 /* Hide empty details */
@@ -304,3 +401,4 @@
     
     console.log('[Scene 481 Fix v6] Initialization complete');
 })(); 
+
