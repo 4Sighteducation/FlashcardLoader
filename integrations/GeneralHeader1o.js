@@ -178,9 +178,10 @@
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_482' },
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#tutor-activities/suggested-curriculum', scene: 'scene_499' },
-                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1177' }
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
+
                 ]
             },
             staffCoaching: {
@@ -188,11 +189,12 @@
                 brandIcon: 'fa-users',
                 color: '#e74c3c',
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
-                    { label: 'Reports', icon: 'fa-bar-chart', href: '#vespa-report-profiles/', scene: 'scene_1095' },
-                    { label: 'Students', icon: 'fa-users', href: '#students', scene: 'scene_488' },
-                    { label: 'Resources', icon: 'fa-book', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
-                    { label: 'Analytics', icon: 'fa-line-chart', href: '#dashboard', scene: 'scene_1225' }
+                    { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
+                    { label: 'Coaching', icon: 'fa-comments', href: 'mygroup-vespa-results2/', scene: 'scene_1095' },
+                    { label: 'Results', icon: 'fa-bar-chart', href: 'mygroup-student-results', scene: 'scene_1094' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
+                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
                 ]
             }
         };
