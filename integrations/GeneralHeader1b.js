@@ -34,25 +34,45 @@
         
         // Detect user type
         function getUserType() {
-            // Check if user is a student
-            if (userRoles.includes('object_4') || userRoles.includes('Student')) {
-                return 'student';
+            log('User attributes:', userAttributes);
+            
+            // Check if user is logged in at all
+            if (!userAttributes || (!userAttributes.email && !userAttributes.id)) {
+                log('No user attributes found - user might not be logged in');
+                return null; // Don't show header if not logged in
             }
             
-            // Check if user is staff
-            if (userRoles.includes('object_3') || userRoles.includes('Staff') || 
-                userRoles.includes('object_5') || userRoles.includes('Staff Admin')) {
+            // Get the user role from field_73
+            const userRole = userAttributes.values?.field_73 || userAttributes.field_73;
+            log('User role from field_73:', userRole);
+            
+            // If no role found, user might not be logged in properly
+            if (!userRole) {
+                log('No role found in field_73');
+                return null;
+            }
+            
+            // Convert to string and check if it's "Student"
+            const roleText = userRole.toString();
+            
+            if (roleText === 'Student') {
+                log('Detected as student');
+                return 'student';
+            } else {
+                // Any role that is NOT "Student" is staff
+                log(`Detected as staff with role: ${roleText}`);
                 
                 // Check for Resources-only staff using field_441
                 const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
+                log('Account type field_441:', accountType);
+                
                 if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+                    log('Detected as staffResource');
                     return 'staffResource';
                 }
+                log('Detected as staffCoaching');
                 return 'staffCoaching';
             }
-            
-            // Default to student if unknown
-            return 'student';
         }
         
         // Navigation configurations for different user types
@@ -341,16 +361,33 @@
         function injectHeader() {
             // Check if header already exists
             if (document.getElementById('vespaGeneralHeader')) {
-                log('Header already exists, updating if needed');
+                log('Header already exists, checking if it should be removed');
+                const userType = getUserType();
+                if (!userType) {
+                    // User is not logged in, remove header
+                    log('User not logged in, removing header');
+                    const existingHeader = document.getElementById('vespaGeneralHeader');
+                    if (existingHeader) existingHeader.remove();
+                    // Reset body padding
+                    document.body.classList.remove('has-general-header');
+                    document.body.style.paddingTop = '';
+                }
                 return;
             }
             
             const userType = getUserType();
             log('Detected user type:', userType);
             
+            // Don't show header if user is not logged in
+            if (!userType) {
+                log('User not logged in, not showing header');
+                return;
+            }
+            
             // Create and inject the header
             const headerHTML = createHeaderHTML(userType, currentScene);
             document.body.insertAdjacentHTML('afterbegin', headerHTML);
+            document.body.classList.add('has-general-header');
             
             log('Header injected successfully');
             
@@ -409,18 +446,55 @@
         function init() {
             log('Starting General Header initialization...');
             
+            // Check if we're on a login page
+            const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5']; // Add your actual login scene IDs
+            const loginPages = ['login', 'sign-in', 'register', 'forgot-password'];
+            const currentUrl = window.location.href.toLowerCase();
+            
+            const isLoginPage = loginScenes.includes(currentScene) || 
+                               loginPages.some(page => currentUrl.includes(page));
+            
+            if (isLoginPage) {
+                log('On login page, not showing header');
+                return;
+            }
+            
             // Inject header immediately
             injectHeader();
             
             // Re-inject on scene changes in case it gets removed
             $(document).on('knack-scene-render.any', function(event, scene) {
                 log('Scene rendered, checking header...', scene.key);
+                
+                // Check if this is a login scene
+                const isNowLoginPage = loginScenes.includes(scene.key) || 
+                                      loginPages.some(page => window.location.href.toLowerCase().includes(page));
+                
+                if (isNowLoginPage) {
+                    log('Navigated to login page, removing header');
+                    const existingHeader = document.getElementById('vespaGeneralHeader');
+                    if (existingHeader) existingHeader.remove();
+                    document.body.classList.remove('has-general-header');
+                    document.body.style.paddingTop = '';
+                    // Clear the global loaded flag
+                    window._generalHeaderLoaded = false;
+                    return;
+                }
+                
                 setTimeout(() => {
-                    if (!document.getElementById('vespaGeneralHeader')) {
-                        log('Header missing after scene render, re-injecting');
-                        injectHeader();
-                    }
+                    injectHeader(); // This will handle both injection and removal based on login state
                 }, 100);
+            });
+            
+            // Listen for logout events
+            $(document).on('knack-user-logout.any', function() {
+                log('User logged out, removing header and clearing flag');
+                const existingHeader = document.getElementById('vespaGeneralHeader');
+                if (existingHeader) existingHeader.remove();
+                document.body.classList.remove('has-general-header');
+                document.body.style.paddingTop = '';
+                // Clear the global loaded flag
+                window._generalHeaderLoaded = false;
             });
         }
         
@@ -433,3 +507,4 @@
     
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
+
