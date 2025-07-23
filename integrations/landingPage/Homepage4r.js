@@ -1470,12 +1470,41 @@
             max-width: none !important;
           }
           
+          /* Ensure profile containers use full width */
+          #vespa-homepage .profile-info,
+          #vespa-homepage .profile-details,
+          #vespa-homepage .subjects-container {
+            max-width: none !important;
+            width: 100% !important;
+          }
+          
+          /* Subject cards should not be constrained */
+          #vespa-homepage .subject-card {
+            max-width: none !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          
           /* Subject cards grid for full width */
           #vespa-homepage .subjects-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 15px;
             max-width: none !important;
+          }
+          
+          /* Force 3 columns on larger screens */
+          @media (min-width: 1024px) {
+            #vespa-homepage .subjects-grid {
+              grid-template-columns: repeat(3, 1fr);
+            }
+          }
+          
+          /* 2 columns on medium screens */
+          @media (min-width: 768px) and (max-width: 1023px) {
+            #vespa-homepage .subjects-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
           }
           
           @media (max-width: 768px) {
@@ -3031,5 +3060,3 @@
     });
   }
 })(); // End of IIFE
-
-
