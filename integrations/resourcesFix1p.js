@@ -103,11 +103,12 @@
                     top: -9999px !important;
                 }
                 
-                /* Ensure the book details view is visible with proper spacing */
+                /* Center the book details view on page */
                 #kn-scene_481 #view_1277 {
                     display: block !important;
                     visibility: visible !important;
-                    margin-top: 30px !important; /* Add some top margin */
+                    margin-top: 100px !important; /* Center books vertically */
+                    margin-bottom: 100px !important; /* Add bottom margin too */
                     padding-top: 20px !important;
                     position: relative !important;
                     z-index: 10 !important;
@@ -124,21 +125,15 @@
                     left: auto !important;
                 }
                 
-                /* Fix scene container to show all content without scrolling */
+                /* Keep default scrolling but optimize layout */
                 #kn-scene_481 {
-                    padding-top: 40px !important; /* Add top padding so content isn't at very top */
+                    padding-top: 20px !important;
                     margin-top: 0 !important;
-                    overflow: visible !important; /* Allow content to be visible */
-                    min-height: auto !important;
-                    height: auto !important;
                 }
                 
-                /* Fix the main container */
+                /* Ensure proper container sizing */
                 #kn-scene_481.kn-scene {
                     max-width: 100% !important;
-                    overflow: visible !important;
-                    min-height: auto !important;
-                    height: auto !important;
                 }
                 
                 /* Ensure the body doesn't create unnecessary scrollbars */
@@ -146,66 +141,11 @@
                     overflow-x: hidden !important;
                 }
                 
-                /* Allow vertical scrolling but prevent horizontal */
-                html, body {
-                    overflow-x: hidden !important;
-                    overflow-y: auto !important;
-                    max-width: 100vw !important;
-                }
+                /* Keep default scrolling behavior and layout */
                 
-                /* When scene 481 is active, ensure content is visible */
-                body:has(#kn-scene_481) {
-                    overflow-x: hidden !important;
-                    overflow-y: auto !important;
-                    position: relative !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                }
-                
-                /* If it's a vertical scrollbar issue, handle that too */
-                #kn-scene_481:only-child {
-                    min-height: auto !important;
-                    height: auto !important;
-                }
-                
-                /* Remove any minimum heights that might cause unnecessary vertical scroll */
-                #kn-scene_481 .kn-container {
-                    min-height: auto !important;
-                }
-                
-                /* Target Knack's main content wrapper */
-                #knack-body, 
-                #knack-dist_1,
-                .kn-content {
-                    overflow-x: hidden !important;
-                    max-width: 100% !important;
-                }
-                
-                /* Fix the scenes section container */
-                .kn-scenes.kn-section {
-                    overflow: visible !important;
-                    height: auto !important;
-                    min-height: auto !important;
-                    max-height: none !important;
-                }
-                
-                /* Ensure scenes container shows all content */
-                .kn-scenes {
-                    overflow: visible !important;
-                    height: auto !important;
-                    min-height: auto !important;
-                }
-                
-                /* Ensure no element can cause horizontal scroll */
+                /* Keep default scrolling and just ensure no horizontal overflow */
                 #kn-scene_481 * {
                     max-width: 100% !important;
-                }
-                
-                /* Fix any potential wide elements */
-                #kn-scene_481 table,
-                #kn-scene_481 .kn-table-wrapper {
-                    max-width: 100% !important;
-                    overflow-x: auto !important;
                 }
                 
                 /* Style the book images with fancy borders and positioning */
@@ -451,33 +391,14 @@
                     }
                 }
                 
-                /* Ensure wrapper doesn't cause horizontal scroll */
-                #kn-scene_481.kn-container,
-                #kn-scene_481.group-layout-wrapper {
-                    max-width: 100% !important;
-                    overflow-x: hidden !important;
-                    overflow-y: auto !important;
-                    box-sizing: border-box !important;
-                }
+
                 
-                /* Target the specific container classes together */
-                .kn-scene.kn-container.group-layout-wrapper {
-                    overflow: hidden !important;
-                    overflow-y: auto !important;
-                    max-width: 100vw !important;
-                    width: 100% !important;
-                }
-                
-                /* Fix the scene container to show all content */
+                /* Simple container styling */
                 #kn-scene_481.kn-scene.kn-container.group-layout-wrapper {
-                    overflow: visible !important;
                     max-width: 100% !important;
                     width: 100% !important;
-                    min-height: auto !important; /* Let content determine height */
-                    height: auto !important;
                     box-sizing: border-box !important;
-                    padding: 20px !important; /* Reasonable padding */
-                    margin: 0 !important;
+                    padding: 20px !important;
                 }
                 
                 /* Add animation to books on load */
@@ -686,44 +607,9 @@
     setTimeout(() => {
         fixScene481Layout();
         
-        // Force remove scrollbars after everything loads
+        // Simply log that initialization is complete
         setTimeout(() => {
-            document.documentElement.style.overflowX = 'hidden';
-            document.body.style.overflowX = 'hidden';
-            
-            // Find Knack content wrapper and hide overflow
-            const knackBody = document.getElementById('knack-body');
-            if (knackBody) {
-                knackBody.style.overflowX = 'hidden';
-                knackBody.style.maxWidth = '100%';
-            }
-            
-            const knackDist = document.getElementById('knack-dist_1');
-            if (knackDist) {
-                knackDist.style.overflowX = 'hidden';
-                knackDist.style.maxWidth = '100%';
-            }
-            
-            // Target the specific scene container
-            const sceneContainer = document.querySelector('#kn-scene_481.kn-scene.kn-container.group-layout-wrapper');
-            if (sceneContainer) {
-                sceneContainer.style.overflow = 'visible';
-                sceneContainer.style.height = 'auto';
-                sceneContainer.style.minHeight = 'auto';
-                console.log('[Scene 481 Fix v6] Fixed scene container overflow');
-            }
-            
-            // Fix the parent scenes section
-            const scenesSection = document.querySelector('.kn-scenes.kn-section');
-            if (scenesSection) {
-                scenesSection.style.overflow = 'visible';
-                scenesSection.style.height = 'auto';
-                scenesSection.style.minHeight = 'auto';
-                scenesSection.style.maxHeight = 'none';
-                console.log('[Scene 481 Fix v6] Fixed scenes section container');
-            }
-            
-            console.log('[Scene 481 Fix v6] Forced scrollbar removal applied');
+            console.log('[Scene 481 Fix v6] Layout fixes applied - books centered');
         }, 1000);
     }, 500);
     
