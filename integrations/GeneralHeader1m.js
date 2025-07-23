@@ -165,8 +165,8 @@
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
-                    { label: 'MY Report', icon: 'fa-book', href: '#vespa-results', scene: 'scene_43' },
-                    { label: 'My Activities', icon: 'fa-clone', href: '#my-vespa', scene: 'scene_437' },
+                    { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-results', scene: 'scene_43' },
+                    { label: 'My Activities', icon: 'fa-book', href: '#my-vespa', scene: 'scene_437' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' }
                 ]
@@ -218,18 +218,20 @@
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header ${userType}">
                     <div class="header-content">
-                        <div class="header-brand">
-                            <img src="https://vespa.academy/astro/vespalogo.BGrK1ARl.png" alt="VESPA Academy" class="vespa-logo">
-                            <span>${navConfig.brand}</span>
-                        </div>
-                        <nav class="header-navigation">
-                            ${navItemsHTML}
-                        </nav>
-                        <div class="header-actions">
-                            <div class="user-info-container"></div>
+                        <div class="header-top-row">
+                            <div class="header-brand">
+                                <img src="https://vespa.academy/_astro/vespalogo.BGrK1ARl.png" alt="VESPA Academy" class="vespa-logo">
+                                <span>${navConfig.brand}</span>
+                            </div>
+                            <nav class="header-navigation">
+                                ${navItemsHTML}
+                            </nav>
                             <button class="mobile-menu-toggle" aria-label="Toggle menu">
                                 <i class="fa fa-bars"></i>
                             </button>
+                        </div>
+                        <div class="header-bottom-row">
+                            <div class="user-info-container"></div>
                         </div>
                     </div>
                     ${!isHomePage ? `
@@ -265,24 +267,35 @@
                         max-width: 1400px;
                         margin: 0 auto;
                         padding: 0 20px;
-                        height: 60px;
+                    }
+                    
+                    .header-top-row {
+                        height: 70px;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
+                        border-bottom: 1px solid rgba(255,255,255,0.1);
+                    }
+                    
+                    .header-bottom-row {
+                        height: 35px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-end;
+                        padding: 0 5px;
                     }
                     
                     .header-brand {
                         display: flex;
                         align-items: center;
-                        gap: 12px;
-                        font-size: 20px;
+                        gap: 15px;
+                        font-size: 22px;
                         font-weight: 600;
                     }
                     
                     .vespa-logo {
-                        height: 40px;
+                        height: 50px;
                         width: auto;
-                        filter: brightness(0) invert(1); /* Make logo white */
                     }
                     
                     .header-navigation {
@@ -291,20 +304,20 @@
                         align-items: center;
                         flex: 1;
                         justify-content: center;
-                        margin: 0 20px;
+                        margin: 0 30px;
                     }
                     
                     .nav-button {
                         display: flex;
                         align-items: center;
                         gap: 8px;
-                        padding: 8px 16px;
+                        padding: 10px 18px;
                         background-color: rgba(255,255,255,0.1);
                         color: white;
                         text-decoration: none;
                         border-radius: 6px;
                         transition: all 0.3s ease;
-                        font-size: 14px;
+                        font-size: 15px;
                         font-weight: 500;
                         white-space: nowrap;
                     }
@@ -320,13 +333,7 @@
                     }
                     
                     .nav-button i {
-                        font-size: 16px;
-                    }
-                    
-                    .header-actions {
-                        display: flex;
-                        align-items: center;
-                        gap: 15px;
+                        font-size: 18px;
                     }
                     
                     /* User info styles */
@@ -334,26 +341,28 @@
                         display: flex;
                         align-items: center;
                         font-size: 13px;
-                        opacity: 0.9;
                     }
                     
                     .user-info-container .kn-current_user {
-                        color: white;
+                        color: rgba(255,255,255,0.9);
                         display: flex;
                         align-items: center;
                         gap: 5px;
+                        font-size: 13px;
                     }
                     
                     .user-info-container .kn-current_user a {
-                        color: white;
+                        color: rgba(255,255,255,0.9);
                         text-decoration: none;
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        transition: background-color 0.2s ease;
+                        padding: 2px 6px;
+                        border-radius: 3px;
+                        transition: all 0.2s ease;
+                        font-size: 13px;
                     }
                     
                     .user-info-container .kn-current_user a:hover {
-                        background-color: rgba(255,255,255,0.2);
+                        color: white;
+                        background-color: rgba(255,255,255,0.15);
                     }
                     
                     .user-info-container .kn-log-out {
@@ -395,11 +404,11 @@
                     
                     /* Adjust body for header */
                     body.has-general-header {
-                        padding-top: 60px !important;
+                        padding-top: 105px !important;
                     }
                     
                     body.has-general-header:has(.header-breadcrumb) {
-                        padding-top: 100px !important;
+                        padding-top: 145px !important;
                     }
                     
                     /* Hide Knack's default navigation but keep user info initially */
@@ -409,21 +418,25 @@
                     
                     /* Ensure content is visible */
                     .kn-scene {
-                        min-height: calc(100vh - 100px);
+                        min-height: calc(100vh - 105px);
                     }
                     
                     /* Mobile Styles */
                     @media (max-width: 768px) {
+                        .header-top-row {
+                            height: 60px;
+                        }
+                        
+                        .header-bottom-row {
+                            display: none; /* Hide user info on mobile */
+                        }
+                        
                         .header-brand span {
                             display: none;
                         }
                         
                         .vespa-logo {
-                            height: 35px;
-                        }
-                        
-                        .user-info-container {
-                            display: none; /* Hide user info on mobile to save space */
+                            height: 40px;
                         }
                         
                         .header-navigation {
@@ -439,6 +452,7 @@
                             gap: 10px;
                             transition: right 0.3s ease;
                             box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+                            margin: 0;
                         }
                         
                         .header-navigation.mobile-open {
@@ -467,6 +481,14 @@
                         
                         .mobile-nav-overlay.active {
                             display: block;
+                        }
+                        
+                        body.has-general-header {
+                            padding-top: 60px !important;
+                        }
+                        
+                        body.has-general-header:has(.header-breadcrumb) {
+                            padding-top: 100px !important;
                         }
                     }
                     
