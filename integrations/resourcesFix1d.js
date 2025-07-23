@@ -1,19 +1,17 @@
 /**
  * Scene 481 Resources Page Layout Fix
  * Hides unnecessary elements and improves the display of book images
- * Version 4 - Stable version with race condition prevention
+ * Version 5 - Aggressive whitespace removal and repositioning
  */
 
 (function() {
     'use strict';
     
-    console.log('[Scene 481 Fix v4] Script loaded');
+    console.log('[Scene 481 Fix v5] Script loaded');
     
     // Track if we've already applied certain one-time fixes
     let stylesApplied = false;
     let isProcessing = false;
-    let processCount = 0;
-    const MAX_PROCESS_COUNT = 5; // Prevent infinite loops
     
     function fixScene481Layout() {
         // Check if we're on scene_481
@@ -24,19 +22,13 @@
         
         // Prevent race conditions
         if (isProcessing) {
-            console.log('[Scene 481 Fix v4] Already processing, skipping...');
-            return;
-        }
-        
-        if (processCount >= MAX_PROCESS_COUNT) {
-            console.log('[Scene 481 Fix v4] Max process count reached, stopping to prevent infinite loop');
+            console.log('[Scene 481 Fix v5] Already processing, skipping...');
             return;
         }
         
         isProcessing = true;
-        processCount++;
         
-        console.log(`[Scene 481 Fix v4] Applying layout fixes (attempt ${processCount})`);
+        console.log('[Scene 481 Fix v5] Applying layout fixes');
         
         // Apply CSS fixes (only once)
         if (!stylesApplied) {
@@ -51,70 +43,100 @@
     }
     
     function applyStyles() {
-        const styleId = 'scene-481-fixes-v4';
+        const styleId = 'scene-481-fixes-v5';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
             style.id = styleId;
             style.textContent = `
-                /* Hide the unnecessary table view at the top */
+                /* Remove ALL padding/margin from the scene container */
+                #kn-scene_481 {
+                    padding-top: 0 !important;
+                    margin-top: 0 !important;
+                }
+                
+                /* Hide the unnecessary elements completely */
                 #kn-scene_481 #view_1255,
-                #kn-scene_481 .kn-table.view_1255 {
-                    display: none !important;
-                    visibility: hidden !important;
-                    height: 0 !important;
-                    overflow: hidden !important;
-                    position: absolute !important;
-                    left: -9999px !important;
-                }
-                
-                /* Hide the "Hello World" rich text view */
+                #kn-scene_481 .view_1255,
                 #kn-scene_481 #view_3150,
-                #kn-scene_481 .kn-rich_text.view_3150 {
+                #kn-scene_481 .view_3150 {
                     display: none !important;
                     visibility: hidden !important;
                     height: 0 !important;
+                    max-height: 0 !important;
+                    min-height: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
                     overflow: hidden !important;
                     position: absolute !important;
                     left: -9999px !important;
+                    top: -9999px !important;
+                    width: 0 !important;
                 }
                 
-                /* Hide the entire first view group */
-                #kn-scene_481 .view-group-1 {
+                /* Completely remove the first view group */
+                #kn-scene_481 .view-group-1,
+                #kn-scene_481 .view-group:first-child:has(#view_1255),
+                #kn-scene_481 .view-group:has(#view_3150) {
                     display: none !important;
                     visibility: hidden !important;
                     height: 0 !important;
+                    max-height: 0 !important;
+                    min-height: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
                     overflow: hidden !important;
+                    position: absolute !important;
+                    left: -9999px !important;
+                    top: -9999px !important;
                 }
                 
-                /* Adjust the details view to be more prominent */
+                /* Force the second view group to the top */
+                #kn-scene_481 .view-group-2 {
+                    margin-top: -20px !important;
+                    padding-top: 0 !important;
+                    position: relative !important;
+                    top: 0 !important;
+                }
+                
+                /* Make the details view prominent and at the top */
                 #kn-scene_481 #view_1277 {
                     margin-top: 0 !important;
-                    padding-top: 20px;
+                    padding-top: 10px !important;
+                    position: relative !important;
+                    top: 0 !important;
                 }
                 
-                /* Make sure the second view group is visible and at the top */
-                #kn-scene_481 .view-group-2 {
+                /* Remove any empty space at the top of the page */
+                #kn-scene_481 > *:first-child {
                     margin-top: 0 !important;
                     padding-top: 0 !important;
+                }
+                
+                /* Ensure the book images section is visible */
+                #kn-scene_481 .kn-details {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
                 }
                 
                 /* Style the book images better */
                 #kn-scene_481 .field_1439 img,
                 #kn-scene_481 .field_2922 img,
                 #kn-scene_481 .field_2924 img {
-                    max-width: 300px;
+                    max-width: 280px;
                     height: auto;
                     border-radius: 8px;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                     transition: transform 0.3s ease, box-shadow 0.3s ease;
                     cursor: pointer;
+                    margin: 10px;
                 }
                 
                 #kn-scene_481 .field_1439 img:hover,
                 #kn-scene_481 .field_2922 img:hover,
                 #kn-scene_481 .field_2924 img:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+                    transform: translateY(-5px) scale(1.05);
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
                 }
                 
                 /* Make the book image section more prominent */
@@ -122,7 +144,8 @@
                     background: #f8f9fa;
                     padding: 20px;
                     border-radius: 12px;
-                    margin: 20px 0;
+                    margin: 10px 0;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
                 }
                 
                 /* Style the labels */
@@ -130,6 +153,9 @@
                     font-weight: 600;
                     color: #333;
                     margin-bottom: 10px;
+                    font-size: 14px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
                 
                 /* Center align the book images */
@@ -146,18 +172,6 @@
                     display: none !important;
                 }
                 
-                /* Improve the overall scene layout */
-                #kn-scene_481.kn-scene {
-                    padding-top: 20px;
-                }
-                
-                /* Make view groups flex for better layout */
-                #kn-scene_481 .view-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }
-                
                 /* Style the activities table if visible */
                 #kn-scene_481 #view_1279 {
                     margin-top: 30px;
@@ -171,14 +185,32 @@
                     font-size: 28px;
                     margin-bottom: 20px;
                     text-align: center;
+                    font-weight: 600;
                 }
                 
                 /* Create a grid layout for multiple book images */
                 #kn-scene_481 .kn-details-group-column {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                    gap: 30px;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 25px;
                     align-items: start;
+                    justify-items: center;
+                }
+                
+                /* Remove any default Knack spacing */
+                #kn-scene_481 .kn-container {
+                    padding-top: 0 !important;
+                    margin-top: 0 !important;
+                }
+                
+                /* Force proper stacking order */
+                #kn-scene_481 .view-group {
+                    position: relative;
+                    z-index: 1;
+                }
+                
+                #kn-scene_481 .view-group-2 {
+                    z-index: 10;
                 }
                 
                 /* Responsive adjustments */
@@ -187,41 +219,90 @@
                     #kn-scene_481 .field_2922 img,
                     #kn-scene_481 .field_2924 img {
                         max-width: 100%;
+                        margin: 5px;
                     }
                     
                     #kn-scene_481 .kn-details-group-column {
                         grid-template-columns: 1fr;
                     }
+                    
+                    #kn-scene_481 .view-group-2 {
+                        margin-top: -10px !important;
+                    }
                 }
             `;
             document.head.appendChild(style);
             stylesApplied = true;
-            console.log('[Scene 481 Fix v4] Styles applied');
+            console.log('[Scene 481 Fix v5] Styles applied');
         }
     }
     
     function applyDOMFixes() {
-        // Only hide elements that are actually visible
-        const view1255 = document.querySelector('#kn-scene_481 #view_1255');
-        if (view1255 && view1255.style.display !== 'none') {
-            view1255.style.display = 'none';
-            console.log('[Scene 481 Fix v4] Hidden view_1255');
+        // Find the scene container and remove top padding
+        const sceneContainer = document.querySelector('#kn-scene_481');
+        if (sceneContainer) {
+            sceneContainer.style.paddingTop = '0';
+            sceneContainer.style.marginTop = '0';
         }
         
-        const view3150 = document.querySelector('#kn-scene_481 #view_3150');
-        if (view3150 && view3150.style.display !== 'none') {
-            view3150.style.display = 'none';
-            console.log('[Scene 481 Fix v4] Hidden view_3150');
-        }
+        // Hide problematic views
+        const elementsToHide = [
+            '#kn-scene_481 #view_1255',
+            '#kn-scene_481 #view_3150',
+            '#kn-scene_481 .view-group-1',
+            '#kn-scene_481 .view-group:first-child'
+        ];
         
-        const viewGroup1 = document.querySelector('#kn-scene_481 .view-group-1');
-        if (viewGroup1 && viewGroup1.style.display !== 'none') {
-            viewGroup1.style.display = 'none';
-            console.log('[Scene 481 Fix v4] Hidden view-group-1');
+        elementsToHide.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(element => {
+                element.style.display = 'none';
+                element.style.height = '0';
+                element.style.margin = '0';
+                element.style.padding = '0';
+                element.style.overflow = 'hidden';
+            });
+        });
+        
+        // Force the book images section to the top
+        const viewGroup2 = document.querySelector('#kn-scene_481 .view-group-2');
+        if (viewGroup2) {
+            viewGroup2.style.marginTop = '-20px';
+            viewGroup2.style.paddingTop = '0';
+            console.log('[Scene 481 Fix v5] Repositioned view-group-2');
         }
         
         // Enhance book images
         enhanceBookImages();
+        
+        // Remove any empty space at the top
+        removeTopWhitespace();
+    }
+    
+    function removeTopWhitespace() {
+        // Find all direct children of the scene
+        const scene = document.querySelector('#kn-scene_481');
+        if (!scene) return;
+        
+        const children = scene.children;
+        let firstVisibleFound = false;
+        
+        // Hide everything until we find the first visible element with content
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            
+            // Check if this element has the book images
+            if (child.querySelector('#view_1277') || child.querySelector('.field_1439')) {
+                firstVisibleFound = true;
+                child.style.marginTop = '0';
+                child.style.paddingTop = '0';
+                console.log('[Scene 481 Fix v5] Found book section, removing top spacing');
+            } else if (!firstVisibleFound) {
+                // Hide elements before the book section
+                child.style.display = 'none';
+                console.log('[Scene 481 Fix v5] Hiding element before book section');
+            }
+        }
     }
     
     function enhanceBookImages() {
@@ -265,42 +346,31 @@
             }
         }
         
-        console.log(`[Scene 481 Fix v4] Enhanced ${bookImages.length} book images`);
+        console.log(`[Scene 481 Fix v5] Enhanced ${bookImages.length} book images`);
     }
     
-    // Initialize on page load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(fixScene481Layout, 500);
-        });
-    } else {
-        setTimeout(fixScene481Layout, 500);
-    }
+    // Initialize with a longer delay to ensure DOM is ready
+    setTimeout(() => {
+        fixScene481Layout();
+    }, 1000);
     
-    // Re-apply fixes on scene render - but with debouncing
-    let sceneRenderTimeout;
+    // Re-apply fixes on scene render
     $(document).on('knack-scene-render.scene_481', function() {
-        console.log('[Scene 481 Fix v4] Scene rendered event');
-        clearTimeout(sceneRenderTimeout);
-        sceneRenderTimeout = setTimeout(() => {
-            processCount = 0; // Reset count for new scene render
+        console.log('[Scene 481 Fix v5] Scene rendered event');
+        setTimeout(() => {
+            isProcessing = false; // Reset flag
+            fixScene481Layout();
+        }, 500);
+    });
+    
+    // Also apply fixes when the specific view renders
+    $(document).on('knack-view-render.view_1277', function() {
+        console.log('[Scene 481 Fix v5] Book view rendered');
+        setTimeout(() => {
+            isProcessing = false; // Reset flag
             fixScene481Layout();
         }, 300);
     });
     
-    // Listen for view renders but with debouncing
-    let viewRenderTimeout;
-    $(document).on('knack-view-render.any', function(event, view) {
-        if (window.location.hash.includes('tutor-activities') || window.location.hash.includes('scene_481')) {
-            clearTimeout(viewRenderTimeout);
-            viewRenderTimeout = setTimeout(() => {
-                // Only process if we haven't hit the limit
-                if (processCount < MAX_PROCESS_COUNT) {
-                    fixScene481Layout();
-                }
-            }, 200);
-        }
-    });
-    
-    console.log('[Scene 481 Fix v4] Initialization complete');
+    console.log('[Scene 481 Fix v5] Initialization complete');
 })(); 
