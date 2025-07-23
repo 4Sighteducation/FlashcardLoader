@@ -141,20 +141,15 @@
                     cursor: pointer !important;
                     margin: 10px !important;
                     
-                    /* Fancy border with gradient */
-                    border: 3px solid transparent !important;
-                    background-origin: border-box !important;
-                    background-clip: padding-box, border-box !important;
-                    background-image: 
-                        linear-gradient(white, white),
-                        linear-gradient(45deg, #5f497a, #8b7aa0, #5f497a) !important;
+                    /* Simple elegant border */
+                    border: 2px solid rgba(95, 73, 122, 0.3) !important;
                     
                     /* Add some visual depth */
                     position: relative !important;
                     top: -20px !important; /* Move books up */
                 }
                 
-                /* Even fancier hover effect - fixed positioning */
+                /* Even fancier hover effect - with glow instead of border */
                 #kn-scene_481 .field_1439 img:hover,
                 #kn-scene_481 .field_2922 img:hover,
                 #kn-scene_481 .field_2924 img:hover,
@@ -162,22 +157,21 @@
                 #kn-scene_481 .col-3 img:hover,
                 #kn-scene_481 .col-5 img:hover,
                 #kn-scene_481 .levels img:hover {
-                    transform: translateY(-25px) scale(1.08) !important; /* Adjusted Y translation */
+                    transform: translateY(-25px) scale(1.08) !important;
+                    
+                    /* Remove the gradient border on hover - just use solid */
+                    border: 3px solid #5f497a !important;
+                    background-image: none !important;
+                    
+                    /* Enhanced shadow with purple glow effect */
                     box-shadow: 
-                        0 20px 40px rgba(95, 73, 122, 0.3),
+                        0 0 30px rgba(95, 73, 122, 0.4),  /* Purple glow */
+                        0 0 15px rgba(95, 73, 122, 0.3),  /* Inner glow */
+                        0 20px 40px rgba(95, 73, 122, 0.2),
                         0 10px 20px rgba(0,0,0,0.15) !important;
                     
-                    /* Glow effect on hover */
-                    filter: brightness(1.05) !important;
-                    
-                    /* Animated gradient border on hover */
-                    background-image: 
-                        linear-gradient(white, white),
-                        linear-gradient(90deg, #5f497a, #8b7aa0, #b19dc0, #8b7aa0, #5f497a) !important;
-                    
-                    /* Ensure border stays with image */
-                    background-attachment: local !important;
-                    border: 4px solid transparent !important; /* Slightly thicker on hover */
+                    /* Slight brightness boost */
+                    filter: brightness(1.08) !important;
                 }
                 
                 /* Style the book section with enhanced appearance */
@@ -465,24 +459,16 @@
             console.log('- Parent class:', img.parentElement?.className);
             console.log('- Src:', img.src);
             
-            // Try to manually apply styles with gradient border
+            // Try to manually apply styles with simple border
             img.style.cssText = `
                 max-width: 280px !important;
-                border: 3px solid transparent !important;
+                border: 2px solid rgba(95, 73, 122, 0.3) !important;
                 border-radius: 12px !important;
                 box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
                 position: relative !important;
                 top: -20px !important;
                 cursor: pointer !important;
-                background-origin: border-box !important;
-                background-clip: padding-box, border-box !important;
                 transition: all 0.3s ease !important;
-            `;
-            
-            // Apply gradient border separately (CSS can't set multiple backgrounds inline easily)
-            img.style.backgroundImage = `
-                linear-gradient(white, white),
-                linear-gradient(45deg, #5f497a, #8b7aa0, #5f497a)
             `;
             console.log('- Manual styles applied!');
         });
@@ -501,4 +487,3 @@
     
     console.log('[Scene 481 Fix v6] Debug function available: window.debugScene481Styles()');
 })(); 
-
