@@ -75,7 +75,7 @@
             const profileMapping = {
                 'profile_6': 'student',      // Student profile
                 'profile_7': 'staff',        // Tutor profile
-                'profile_5': 'staff',        // Staff Admin profile
+                'profile_5': 'staffAdmin',   // Staff Admin profile
                 'profile_4': 'student',      // Alternative student profile
                 'profile_8': 'staff',        // Super User profile
                 // Add more mappings as needed
@@ -84,6 +84,7 @@
             // Check ALL roles if it's an array (staff might have multiple roles including student)
             let hasStaffRole = false;
             let hasStudentRole = false;
+            let hasStaffAdminRole = false;
             
             // If field_73 contains multiple roles
             if (Array.isArray(userAttributes.values?.field_73)) {
@@ -96,6 +97,8 @@
                         hasStaffRole = true;
                     } else if (profileMapping[roleStr] === 'student') {
                         hasStudentRole = true;
+                    } else if (profileMapping[roleStr] === 'staffAdmin') {
+                        hasStaffAdminRole = true;
                     }
                 }
             } else {
@@ -103,17 +106,28 @@
                 const mappedRole = profileMapping[roleText];
                 if (mappedRole === 'staff') hasStaffRole = true;
                 if (mappedRole === 'student') hasStudentRole = true;
+                if (mappedRole === 'staffAdmin') hasStaffAdminRole = true;
             }
             
-            // PRIORITY: If user has ANY staff role, they are staff (even if they also have student role)
-            if (hasStaffRole) {
-                log('User has staff role - treating as staff (even if also has student role)');
-                
-                // Check for Resources-only staff using field_441
-                const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
-                log('Account type field_441:', accountType);
-                
-                if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+            // Get account type from field_441
+            const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
+            log('Account type field_441:', accountType);
+            
+            // Check if account type contains "RESOURCE" (case-insensitive)
+            const isResourceOnly = accountType && accountType.toString().toUpperCase().includes('RESOURCE');
+            
+            // PRIORITY: Staff Admin takes precedence, then regular staff, then student
+            if (hasStaffAdminRole) {
+                log('User has staff admin role');
+                if (isResourceOnly) {
+                    log('Detected as staffAdminResource');
+                    return 'staffAdminResource';
+                }
+                log('Detected as staffAdminCoaching');
+                return 'staffAdminCoaching';
+            } else if (hasStaffRole) {
+                log('User has staff role');
+                if (isResourceOnly) {
                     log('Detected as staffResource');
                     return 'staffResource';
                 }
@@ -128,19 +142,18 @@
             if (roleText.toLowerCase() === 'student') {
                 log('Detected as student');
                 return 'student';
+            } else if (roleText.toLowerCase().includes('admin')) {
+                log('Detected as staff admin via text');
+                if (isResourceOnly) {
+                    return 'staffAdminResource';
+                }
+                return 'staffAdminCoaching';
             } else if (roleText.toLowerCase().includes('staff') || roleText.toLowerCase().includes('tutor') || 
-                      roleText.toLowerCase().includes('admin') || roleText.toLowerCase().includes('super')) {
+                      roleText.toLowerCase().includes('super')) {
                 log(`Detected as staff with role: ${roleText}`);
-                
-                // Check for Resources-only staff using field_441
-                const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
-                log('Account type field_441:', accountType);
-                
-                if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
-                    log('Detected as staffResource');
+                if (isResourceOnly) {
                     return 'staffResource';
                 }
-                log('Detected as staffCoaching');
                 return 'staffCoaching';
             }
             
@@ -180,8 +193,7 @@
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' }
                 ]
             },
             staffCoaching: {
@@ -189,12 +201,38 @@
                 brandIcon: 'fa-users',
                 color: '#e74c3c',
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
-                    { label: 'Coaching', icon: 'fa-comments', href: 'mygroup-vespa-results2/', scene: 'scene_1095' },
-                    { label: 'Results', icon: 'fa-bar-chart', href: 'mygroup-student-results', scene: 'scene_1094' },
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
+                    { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
+                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
+                ]
+            },
+            staffAdminResource: {
+                brand: 'VESPA Admin',
+                brandIcon: 'fa-shield',
+                color: '#8e44ad', // Purple for admin
+                items: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
+                    { label: 'Analytics', icon: 'fa-line-chart', href: '#dashboard', scene: 'scene_1225' }
+                ]
+            },
+            staffAdminCoaching: {
+                brand: 'VESPA Admin',
+                brandIcon: 'fa-shield',
+                color: '#8e44ad', // Purple for admin
+                items: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
+                    { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
+                    { label: 'Analytics', icon: 'fa-line-chart', href: '#dashboard', scene: 'scene_1225' }
                 ]
             }
         };
@@ -546,6 +584,16 @@
                     
                     .vespa-general-header.staffCoaching .nav-button:hover {
                         box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+                    }
+                    
+                    .vespa-general-header.staffAdminResource,
+                    .vespa-general-header.staffAdminCoaching {
+                        background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
+                    }
+                    
+                    .vespa-general-header.staffAdminResource .nav-button:hover,
+                    .vespa-general-header.staffAdminCoaching .nav-button:hover {
+                        box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);
                     }
                     
                     /* Smooth transitions */
