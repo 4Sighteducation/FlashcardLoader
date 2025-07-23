@@ -452,25 +452,25 @@ const KnackAPIQueue = (function() {
     ],
     admin: [
       {
-        name: "Students",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/student-accounts/",
+        name: "Account Management",
+        url: "https://vespaacademy.knack.com/vespa-academy#upload-manager",
         icon: "https://www.vespa.academy/Icons/education.png",
-        description: "Manage student accounts, groups, and permissions"
+        description: "Upload Staff & Students, Manage user accounts"
       },
       {
-        name: "Staff",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/managestaff/",
+        name: "Results Dashboard",
+        url: "https://vespaacademy.knack.com/vespa-academy#dashboard/",
         icon: "https://www.vespa.academy/Icons/classroom.png",
-        description: "Manage staff accounts, roles, and access controls"
+        description: "Detailed Results Analysis"
       },
       {
         name: "Questionnaire",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/manage-questionnaire/",
+        url: "https://vespaacademy.knack.com/vespa-academy#manage/manage-questionnaire/manage-questionnaire-cycles",
         icon: "https://www.vespa.academy/Icons/teacher-day.png",
         description: "Configure and customize VESPA questionnaires"
       },
       {
-        name: "Account",
+        name: "VESPA Account",
         url: "https://vespaacademy.knack.com/vespa-academy#manage/account-details2/",
         icon: "https://www.vespa.academy/Icons/university.png",
         description: "Manage school account details and subscription"
