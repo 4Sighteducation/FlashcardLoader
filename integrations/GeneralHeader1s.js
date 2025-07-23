@@ -174,7 +174,8 @@
             student: {
                 brand: 'VESPA Student',
                 brandIcon: 'fa-graduation-cap',
-                color: '#5f497a', // VESPA purple
+                color: '#079baa', // Using main teal color
+                accentColor: '#06206e', // Dark blue for accents
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
@@ -187,7 +188,8 @@
             staffResource: {
                 brand: 'VESPA Resources',
                 brandIcon: 'fa-book',
-                color: '#27ae60',
+                color: '#72cb44', // Green (VESPA color)
+                accentColor: '#06206e',
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
@@ -199,42 +201,42 @@
             staffCoaching: {
                 brand: 'VESPA Coaching',
                 brandIcon: 'fa-users',
-                color: '#e74c3c',
+                color: '#ff8f00', // Orange (VESPA color)
+                accentColor: '#06206e',
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
-                    { label: 'Curriculum', icon: 'fa-table', href: '#suggested-curriculum', scene: 'scene_1124' }
-
+                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
                 ]
             },
             staffAdminResource: {
                 brand: 'VESPA Admin',
                 brandIcon: 'fa-shield',
-                color: '#8e44ad', // Purple for admin
+                color: '#7f31a4', // Purple (VESPA color)
+                accentColor: '#06206e',
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Manage', icon: 'fa-cog', href: '#accounts', scene: 'scene_68' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Analytics', icon: 'fa-line-chart', href: '#dashboard', scene: 'scene_1225' }
                 ]
             },
             staffAdminCoaching: {
                 brand: 'VESPA Admin',
                 brandIcon: 'fa-shield',
-                color: '#8e44ad', // Purple for admin
+                color: '#7f31a4', // Purple (VESPA color)
+                accentColor: '#06206e',
                 items: [
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
-                    { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
+                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
-                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Analytics', icon: 'fa-line-chart', href: '#dashboard', scene: 'scene_1225' }
+                    { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
+                    { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                 ]
             }
         };
@@ -308,7 +310,7 @@
                         background-color: ${navConfig.color};
                         color: white;
                         z-index: 9999;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                         transition: all 0.3s ease;
                     }
                     
@@ -319,7 +321,7 @@
                     }
                     
                     .header-top-row {
-                        height: 70px;
+                        height: 65px;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
@@ -327,51 +329,61 @@
                     }
                     
                     .header-bottom-row {
-                        height: 35px;
+                        height: 32px;
                         display: flex;
                         align-items: center;
                         justify-content: flex-end;
                         padding: 0 5px;
+                        background-color: rgba(0,0,0,0.05);
                     }
                     
                     .header-brand {
                         display: flex;
                         align-items: center;
-                        gap: 15px;
-                        font-size: 22px;
+                        gap: 12px;
+                        font-size: 20px;
                         font-weight: 600;
+                        letter-spacing: -0.5px;
                     }
                     
                     .vespa-logo {
-                        height: 50px;
+                        height: 45px;
                         width: auto;
                     }
                     
                     .header-navigation {
                         display: flex;
-                        gap: 15px;
+                        gap: 8px;
                         align-items: center;
                         flex: 1;
                         justify-content: center;
-                        margin: 0 30px;
+                        max-width: 800px;
+                        margin: 0 20px;
                     }
                     
                     .nav-button {
                         display: flex;
                         align-items: center;
-                        gap: 8px;
-                        padding: 10px 20px;
-                        background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
+                        gap: 6px;
+                        padding: 8px 14px;
+                        background: rgba(255,255,255,0.12);
                         color: white;
                         text-decoration: none;
-                        border-radius: 25px;
-                        transition: all 0.3s ease;
-                        font-size: 15px;
-                        font-weight: 600;
+                        border-radius: 8px;
+                        transition: all 0.2s ease;
+                        font-size: 14px;
+                        font-weight: 500;
                         white-space: nowrap;
-                        border: 1px solid rgba(255,255,255,0.2);
+                        border: 1px solid transparent;
                         position: relative;
                         overflow: hidden;
+                    }
+                    
+                    /* Reduce padding for resource accounts specifically */
+                    .vespa-general-header.staffResource .nav-button,
+                    .vespa-general-header.staffAdminResource .nav-button {
+                        padding: 6px 12px;
+                        font-size: 13px;
                     }
                     
                     .nav-button::before {
@@ -381,15 +393,15 @@
                         left: -100%;
                         width: 100%;
                         height: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                        transition: left 0.6s ease;
+                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                        transition: left 0.5s ease;
                     }
                     
                     .nav-button:hover {
-                        background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.2));
-                        transform: translateY(-2px);
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                        border-color: rgba(255,255,255,0.4);
+                        background: rgba(255,255,255,0.2);
+                        transform: translateY(-1px);
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                        border-color: rgba(255,255,255,0.2);
                     }
                     
                     .nav-button:hover::before {
@@ -397,38 +409,40 @@
                     }
                     
                     .nav-button.active {
-                        background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.25));
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2);
-                        border-color: rgba(255,255,255,0.5);
+                        background: rgba(255,255,255,0.25);
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.15);
+                        border-color: rgba(255,255,255,0.3);
+                        color: white;
+                        font-weight: 600;
                     }
                     
                     .nav-button i {
-                        font-size: 18px;
-                        filter: drop-shadow(0 0 2px rgba(0,0,0,0.2));
+                        font-size: 16px;
+                        opacity: 0.9;
                     }
                     
                     /* User info styles */
                     .user-info-container {
                         display: flex;
                         align-items: center;
-                        font-size: 13px;
+                        font-size: 12px;
                     }
                     
                     .user-info-container .kn-current_user {
-                        color: rgba(255,255,255,0.9);
+                        color: rgba(255,255,255,0.85);
                         display: flex;
                         align-items: center;
                         gap: 5px;
-                        font-size: 13px;
+                        font-size: 12px;
                     }
                     
                     .user-info-container .kn-current_user a {
-                        color: rgba(255,255,255,0.9);
+                        color: rgba(255,255,255,0.85);
                         text-decoration: none;
                         padding: 2px 6px;
                         border-radius: 3px;
                         transition: all 0.2s ease;
-                        font-size: 13px;
+                        font-size: 12px;
                     }
                     
                     .user-info-container .kn-current_user a:hover {
@@ -437,7 +451,7 @@
                     }
                     
                     .user-info-container .kn-log-out {
-                        font-weight: 600;
+                        font-weight: 500;
                     }
                     
                     .mobile-menu-toggle {
@@ -445,13 +459,19 @@
                         background: none;
                         border: none;
                         color: white;
-                        font-size: 24px;
+                        font-size: 22px;
                         cursor: pointer;
                         padding: 8px;
+                        border-radius: 6px;
+                        transition: background-color 0.2s ease;
+                    }
+                    
+                    .mobile-menu-toggle:hover {
+                        background-color: rgba(255,255,255,0.1);
                     }
                     
                     .header-breadcrumb {
-                        background-color: rgba(0,0,0,0.1);
+                        background-color: rgba(0,0,0,0.08);
                         padding: 8px 0;
                     }
                     
@@ -459,27 +479,26 @@
                         display: inline-flex;
                         align-items: center;
                         gap: 8px;
-                        color: white;
+                        color: rgba(255,255,255,0.85);
                         text-decoration: none;
                         font-size: 13px;
                         padding: 4px 20px;
                         max-width: 1400px;
                         margin: 0 auto;
-                        opacity: 0.9;
-                        transition: opacity 0.2s ease;
+                        transition: all 0.2s ease;
                     }
                     
                     .breadcrumb-back:hover {
-                        opacity: 1;
+                        color: white;
                     }
                     
                     /* Adjust body for header */
                     body.has-general-header {
-                        padding-top: 105px !important;
+                        padding-top: 97px !important;
                     }
                     
                     body.has-general-header:has(.header-breadcrumb) {
-                        padding-top: 145px !important;
+                        padding-top: 137px !important;
                     }
                     
                     /* Hide Knack's default navigation but keep user info initially */
@@ -489,13 +508,37 @@
                     
                     /* Ensure content is visible */
                     .kn-scene {
-                        min-height: calc(100vh - 105px);
+                        min-height: calc(100vh - 97px);
                     }
                     
                     /* Mobile Styles */
+                    @media (max-width: 992px) {
+                        .header-navigation {
+                            gap: 4px;
+                            margin: 0 10px;
+                        }
+                        
+                        .nav-button {
+                            padding: 6px 10px;
+                            font-size: 13px;
+                        }
+                        
+                        .nav-button i {
+                            font-size: 14px;
+                        }
+                        
+                        .header-brand {
+                            font-size: 18px;
+                        }
+                        
+                        .vespa-logo {
+                            height: 40px;
+                        }
+                    }
+                    
                     @media (max-width: 768px) {
                         .header-top-row {
-                            height: 60px;
+                            height: 56px;
                         }
                         
                         .header-bottom-row {
@@ -503,27 +546,28 @@
                         }
                         
                         .header-brand span {
-                            display: none;
+                            font-size: 16px;
                         }
                         
                         .vespa-logo {
-                            height: 40px;
+                            height: 36px;
                         }
                         
                         .header-navigation {
                             position: fixed;
-                            top: 60px;
-                            right: -300px;
-                            width: 300px;
-                            height: calc(100vh - 60px);
-                            background-color: ${navConfig.color};
+                            top: 56px;
+                            right: -280px;
+                            width: 280px;
+                            height: calc(100vh - 56px);
+                            background-color: ${navConfig.accentColor};
                             flex-direction: column;
                             justify-content: flex-start;
-                            padding: 20px;
-                            gap: 10px;
+                            padding: 16px;
+                            gap: 8px;
                             transition: right 0.3s ease;
-                            box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+                            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
                             margin: 0;
+                            overflow-y: auto;
                         }
                         
                         .header-navigation.mobile-open {
@@ -533,6 +577,15 @@
                         .nav-button {
                             width: 100%;
                             justify-content: flex-start;
+                            padding: 12px 16px;
+                            font-size: 15px;
+                            background: rgba(255,255,255,0.08);
+                        }
+                        
+                        .nav-button i {
+                            font-size: 18px;
+                            width: 24px;
+                            text-align: center;
                         }
                         
                         .mobile-menu-toggle {
@@ -542,12 +595,13 @@
                         .mobile-nav-overlay {
                             display: none;
                             position: fixed;
-                            top: 60px;
+                            top: 56px;
                             left: 0;
                             right: 0;
                             bottom: 0;
-                            background-color: rgba(0,0,0,0.5);
+                            background-color: rgba(0,0,0,0.4);
                             z-index: 9998;
+                            backdrop-filter: blur(2px);
                         }
                         
                         .mobile-nav-overlay.active {
@@ -555,53 +609,68 @@
                         }
                         
                         body.has-general-header {
-                            padding-top: 60px !important;
+                            padding-top: 56px !important;
                         }
                         
                         body.has-general-header:has(.header-breadcrumb) {
-                            padding-top: 100px !important;
+                            padding-top: 96px !important;
+                        }
+                    }
+                    
+                    @media (max-width: 480px) {
+                        .header-brand span {
+                            display: none;
                         }
                     }
                     
                     /* Specific adjustments for different user types */
                     .vespa-general-header.student {
-                        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-                    }
-                    
-                    .vespa-general-header.student .nav-button:hover {
-                        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+                        background: linear-gradient(135deg, ${navigationConfig.student.color} 0%, ${navigationConfig.student.accentColor} 100%);
                     }
                     
                     .vespa-general-header.staffResource {
-                        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-                    }
-                    
-                    .vespa-general-header.staffResource .nav-button:hover {
-                        box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+                        background: linear-gradient(135deg, ${navigationConfig.staffResource.color} 0%, ${navigationConfig.staffResource.accentColor} 100%);
                     }
                     
                     .vespa-general-header.staffCoaching {
-                        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-                    }
-                    
-                    .vespa-general-header.staffCoaching .nav-button:hover {
-                        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+                        background: linear-gradient(135deg, ${navigationConfig.staffCoaching.color} 0%, ${navigationConfig.staffCoaching.accentColor} 100%);
                     }
                     
                     .vespa-general-header.staffAdminResource,
                     .vespa-general-header.staffAdminCoaching {
-                        background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
+                        background: linear-gradient(135deg, ${navigationConfig.staffAdminResource.color} 0%, ${navigationConfig.staffAdminResource.accentColor} 100%);
+                    }
+                    
+                    /* Subtle hover effects for each type */
+                    .vespa-general-header.student .nav-button:hover {
+                        box-shadow: 0 2px 8px rgba(7, 155, 170, 0.3);
+                    }
+                    
+                    .vespa-general-header.staffResource .nav-button:hover {
+                        box-shadow: 0 2px 8px rgba(114, 203, 68, 0.3);
+                    }
+                    
+                    .vespa-general-header.staffCoaching .nav-button:hover {
+                        box-shadow: 0 2px 8px rgba(255, 143, 0, 0.3);
                     }
                     
                     .vespa-general-header.staffAdminResource .nav-button:hover,
                     .vespa-general-header.staffAdminCoaching .nav-button:hover {
-                        box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);
+                        box-shadow: 0 2px 8px rgba(127, 49, 164, 0.3);
                     }
                     
                     /* Smooth transitions */
                     * {
                         -webkit-font-smoothing: antialiased;
                         -moz-osx-font-smoothing: grayscale;
+                    }
+                    
+                    /* Focus styles for accessibility */
+                    .nav-button:focus,
+                    .mobile-menu-toggle:focus,
+                    .breadcrumb-back:focus {
+                        outline: 2px solid rgba(255,255,255,0.5);
+                        outline-offset: 2px;
                     }
                 </style>
             `;
