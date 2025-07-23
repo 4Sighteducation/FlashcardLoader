@@ -170,6 +170,7 @@
         }
         
         // Navigation configurations for different user types
+        // All configurations now have exactly 7 buttons (1 home + 6 pages) for consistency
         const navigationConfig = {
             student: {
                 brand: 'VESPA Student',
@@ -182,7 +183,8 @@
                     { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-results', scene: 'scene_43' },
                     { label: 'My Activities', icon: 'fa-book', href: '#my-vespa', scene: 'scene_437' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
-                    { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' }
+                    { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
+                    { label: 'Taskboard', icon: 'fa-fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' }
                 ]
             },
             staffResource: {
@@ -195,7 +197,9 @@
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' }
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#study-guides', scene: 'scene_1241' },
+                    { label: 'FAQ', icon: 'fa-graduation-cap', href: '#staff-training', scene: 'scene_1242' }
                 ]
             },
             staffCoaching: {
@@ -209,7 +213,8 @@
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
+                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
+                    { label: 'Reports', icon: 'fa-file-text', href: '#coaching-reports', scene: 'scene_1243' }
                 ]
             },
             staffAdminResource: {
@@ -223,6 +228,8 @@
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
+                    { label: 'Analytics', icon: 'fa-line-chart', href: '#resource-analytics', scene: 'scene_1244' }
                 ]
             },
             staffAdminCoaching: {
@@ -237,6 +244,7 @@
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
+                    { label: 'Reports', icon: 'fa-file-text', href: '#admin-reports', scene: 'scene_1245' }
                 ]
             }
         };
@@ -356,68 +364,32 @@
                     
                     .header-navigation {
                         display: flex;
-                        gap: 8px;
+                        gap: 6px;
                         align-items: center;
                         flex: 1;
                         justify-content: center;
-                        max-width: 800px;
+                        max-width: 900px;
                         margin: 0 20px;
                     }
                     
                     .nav-button {
                         display: flex;
                         align-items: center;
-                        gap: 6px;
-                        padding: 8px 14px;
+                        gap: 5px;
+                        padding: 6px 10px;
                         background: rgba(255,255,255,0.12);
                         color: white;
                         text-decoration: none;
                         border-radius: 8px;
                         transition: all 0.2s ease;
-                        font-size: 14px;
+                        font-size: 12px;
                         font-weight: 500;
                         white-space: nowrap;
                         border: 1px solid transparent;
                         position: relative;
                         overflow: hidden;
                         text-transform: uppercase;
-                        letter-spacing: 0.5px;
-                    }
-                    
-                    /* Reduce padding for resource accounts specifically */
-                    .vespa-general-header.staffResource .nav-button,
-                    .vespa-general-header.staffAdminResource .nav-button {
-                        padding: 5px 8px !important;
-                        font-size: 11px !important;
-                        gap: 4px !important;
-                        letter-spacing: 0.3px !important;
-                        flex-shrink: 0;
-                        flex-grow: 0;
-                        min-width: 0;
-                    }
-                    
-                    .vespa-general-header.staffResource .nav-button i,
-                    .vespa-general-header.staffAdminResource .nav-button i {
-                        font-size: 13px !important;
-                    }
-                    
-                    /* Maintain size on hover for resource accounts */
-                    .vespa-general-header.staffResource .nav-button:hover,
-                    .vespa-general-header.staffAdminResource .nav-button:hover {
-                        padding: 5px 8px !important;
-                    }
-                    
-                    /* Additional constraint for resource navigation containers */
-                    .vespa-general-header.staffResource .header-navigation,
-                    .vespa-general-header.staffAdminResource .header-navigation {
-                        gap: 5px;
-                        max-width: 900px;
-                    }
-                    
-                    /* Ensure button text doesn't add extra spacing for resource accounts */
-                    .vespa-general-header.staffResource .nav-button span,
-                    .vespa-general-header.staffAdminResource .nav-button span {
-                        line-height: 1.2;
+                        letter-spacing: 0.3px;
                     }
                     
                     .nav-button::before {
@@ -450,15 +422,10 @@
                         font-weight: 600;
                     }
                     
-                    /* Maintain reduced size for resource accounts even when active */
-                    .vespa-general-header.staffResource .nav-button.active,
-                    .vespa-general-header.staffAdminResource .nav-button.active {
-                        padding: 5px 8px !important;
-                        font-size: 11px !important;
-                    }
+
                     
                     .nav-button i {
-                        font-size: 16px;
+                        font-size: 14px;
                         opacity: 0.9;
                     }
                     
@@ -583,12 +550,12 @@
                         }
                         
                         .nav-button {
-                            padding: 6px 10px;
-                            font-size: 13px;
+                            padding: 5px 8px;
+                            font-size: 11px;
                         }
                         
                         .nav-button i {
-                            font-size: 14px;
+                            font-size: 12px;
                         }
                         
                         .header-brand {
@@ -599,12 +566,7 @@
                             height: 40px;
                         }
                         
-                        /* Even smaller for resource accounts on medium screens */
-                        .vespa-general-header.staffResource .nav-button,
-                        .vespa-general-header.staffAdminResource .nav-button {
-                            padding: 4px 6px !important;
-                            font-size: 10px !important;
-                        }
+
                     }
                     
                     @media (max-width: 768px) {
@@ -743,6 +705,11 @@
                         outline: 2px solid rgba(255,255,255,0.5);
                         outline-offset: 2px;
                     }
+                    
+                    /* SIMPLIFIED STYLING APPROACH
+                     * With uniform button count (7 buttons), all account types now use the same clean styling.
+                     * No special cases or overrides needed - just consistent, maintainable CSS!
+                     */
                 </style>
             `;
         }
