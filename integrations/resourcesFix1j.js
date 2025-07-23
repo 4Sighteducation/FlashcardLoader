@@ -147,6 +147,63 @@
                     /* Add some visual depth */
                     position: relative !important;
                     top: -20px !important; /* Move books up */
+                    
+                    /* Force remove any background images that might create borders */
+                    background: none !important;
+                    background-image: none !important;
+                    outline: none !important;
+                }
+                
+                /* Remove any pseudo-elements that might create borders */
+                #kn-scene_481 .field_1439 img::before,
+                #kn-scene_481 .field_1439 img::after,
+                #kn-scene_481 .field_2922 img::before,
+                #kn-scene_481 .field_2922 img::after,
+                #kn-scene_481 .field_2924 img::before,
+                #kn-scene_481 .field_2924 img::after,
+                #kn-scene_481 .col-1 img::before,
+                #kn-scene_481 .col-1 img::after,
+                #kn-scene_481 .col-3 img::before,
+                #kn-scene_481 .col-3 img::after,
+                #kn-scene_481 .col-5 img::before,
+                #kn-scene_481 .col-5 img::after,
+                #kn-scene_481 .levels img::before,
+                #kn-scene_481 .levels img::after {
+                    display: none !important;
+                    content: none !important;
+                }
+                
+                /* Also clean up parent elements that might have borders */
+                #kn-scene_481 .field_1439,
+                #kn-scene_481 .field_2922,
+                #kn-scene_481 .field_2924,
+                #kn-scene_481 .col-1,
+                #kn-scene_481 .col-3,
+                #kn-scene_481 .col-5,
+                #kn-scene_481 .levels {
+                    background: none !important;
+                    background-image: none !important;
+                    border: none !important;
+                    outline: none !important;
+                }
+                
+                /* Remove pseudo-elements from parent divs too */
+                #kn-scene_481 .field_1439::before,
+                #kn-scene_481 .field_1439::after,
+                #kn-scene_481 .field_2922::before,
+                #kn-scene_481 .field_2922::after,
+                #kn-scene_481 .field_2924::before,
+                #kn-scene_481 .field_2924::after,
+                #kn-scene_481 .col-1::before,
+                #kn-scene_481 .col-1::after,
+                #kn-scene_481 .col-3::before,
+                #kn-scene_481 .col-3::after,
+                #kn-scene_481 .col-5::before,
+                #kn-scene_481 .col-5::after,
+                #kn-scene_481 .levels::before,
+                #kn-scene_481 .levels::after {
+                    display: none !important;
+                    content: none !important;
                 }
                 
                 /* Even fancier hover effect - with glow instead of border */
@@ -172,6 +229,29 @@
                     
                     /* Slight brightness boost */
                     filter: brightness(1.08) !important;
+                }
+                
+                /* Aggressively clean up any hover effects on parent elements */
+                #kn-scene_481 .field_1439:hover,
+                #kn-scene_481 .field_2922:hover,
+                #kn-scene_481 .field_2924:hover,
+                #kn-scene_481 .col-1:hover,
+                #kn-scene_481 .col-3:hover,
+                #kn-scene_481 .col-5:hover,
+                #kn-scene_481 .levels:hover {
+                    background: none !important;
+                    background-image: none !important;
+                    border: none !important;
+                    outline: none !important;
+                }
+                
+                /* Force clean all possible image containers on hover */
+                #kn-scene_481 .kn-detail:has(img):hover,
+                #kn-scene_481 .kn-detail-body:has(img):hover,
+                #kn-scene_481 .kn-details-group-column:has(img):hover {
+                    background: none !important;
+                    background-image: none !important;
+                    border: none !important;
                 }
                 
                 /* Style the book section with enhanced appearance */
@@ -370,7 +450,7 @@
     }
     
     function enhanceBookImages() {
-        const bookImages = document.querySelectorAll('#kn-scene_481 .field_1439 img, #kn-scene_481 .field_2922 img, #kn-scene_481 .field_2924 img');
+        const bookImages = document.querySelectorAll('#kn-scene_481 .field_1439 img, #kn-scene_481 .field_2922 img, #kn-scene_481 .field_2924 img, #kn-scene_481 .col-1 img, #kn-scene_481 .col-3 img, #kn-scene_481 .col-5 img, #kn-scene_481 .levels img');
         
         console.log(`[Scene 481 Fix v6] Found ${bookImages.length} book images to enhance`);
         
@@ -386,6 +466,22 @@
                 
                 img.addEventListener('click', function() {
                     window.open(this.src, '_blank');
+                });
+                
+                // Add hover event listeners to clean up any rogue borders
+                img.addEventListener('mouseenter', function() {
+                    // Clean up the image itself
+                    this.style.backgroundImage = 'none';
+                    this.style.background = 'none';
+                    
+                    // Clean up all parent elements
+                    let parent = this.parentElement;
+                    while (parent && !parent.id?.includes('kn-scene')) {
+                        parent.style.background = 'none';
+                        parent.style.backgroundImage = 'none';
+                        parent.style.border = 'none';
+                        parent = parent.parentElement;
+                    }
                 });
                 
                 img.setAttribute('data-click-handler-added', 'true');
@@ -459,6 +555,16 @@
             console.log('- Parent class:', img.parentElement?.className);
             console.log('- Src:', img.src);
             
+            // Check for suspicious styles
+            const computedStyle = window.getComputedStyle(img);
+            const parentStyle = window.getComputedStyle(img.parentElement);
+            
+            console.log('- Image background:', computedStyle.background);
+            console.log('- Image background-image:', computedStyle.backgroundImage);
+            console.log('- Parent background:', parentStyle.background);
+            console.log('- Parent ::before:', window.getComputedStyle(img.parentElement, '::before').content);
+            console.log('- Parent ::after:', window.getComputedStyle(img.parentElement, '::after').content);
+            
             // Try to manually apply styles with simple border
             img.style.cssText = `
                 max-width: 280px !important;
@@ -469,7 +575,17 @@
                 top: -20px !important;
                 cursor: pointer !important;
                 transition: all 0.3s ease !important;
+                background: none !important;
+                background-image: none !important;
             `;
+            
+            // Also clean up parent elements
+            if (img.parentElement) {
+                img.parentElement.style.background = 'none';
+                img.parentElement.style.backgroundImage = 'none';
+                img.parentElement.style.position = 'relative';
+            }
+            
             console.log('- Manual styles applied!');
         });
         
@@ -486,4 +602,56 @@
     };
     
     console.log('[Scene 481 Fix v6] Debug function available: window.debugScene481Styles()');
+    
+    // Add function to find the culprit element creating the border
+    window.findBorderCulprit = function() {
+        console.log('=== Finding Border Culprit ===');
+        
+        // Get all elements in the scene
+        const allElements = document.querySelectorAll('#kn-scene_481 *');
+        const suspiciousElements = [];
+        
+        allElements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            const beforeStyle = window.getComputedStyle(el, '::before');
+            const afterStyle = window.getComputedStyle(el, '::after');
+            
+            // Check for gradient backgrounds or borders
+            if (style.backgroundImage && style.backgroundImage !== 'none' && style.backgroundImage.includes('gradient')) {
+                suspiciousElements.push({
+                    element: el,
+                    reason: 'Has gradient background',
+                    style: style.backgroundImage
+                });
+            }
+            
+            if (beforeStyle.content && beforeStyle.content !== 'none') {
+                suspiciousElements.push({
+                    element: el,
+                    reason: 'Has ::before pseudo-element',
+                    content: beforeStyle.content
+                });
+            }
+            
+            if (afterStyle.content && afterStyle.content !== 'none') {
+                suspiciousElements.push({
+                    element: el,
+                    reason: 'Has ::after pseudo-element',
+                    content: afterStyle.content
+                });
+            }
+        });
+        
+        console.log('Found suspicious elements:', suspiciousElements);
+        
+        // Highlight suspicious elements
+        suspiciousElements.forEach(item => {
+            item.element.style.outline = '3px dashed red';
+            console.log('Element:', item.element, 'Reason:', item.reason);
+        });
+        
+        console.log('\nTo remove highlights, refresh the page');
+    };
+    
+    console.log('[Scene 481 Fix v6] Border detective available: window.findBorderCulprit()');
 })(); 
