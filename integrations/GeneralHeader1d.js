@@ -85,7 +85,7 @@
                     { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
                     { label: 'MY Report', icon: 'fa-book', href: '#vespa-results', scene: 'scene_43' },
-                    { label: 'My Activities', icon: 'fa-clone', href: '#my-vespa2', scene: 'scene_572' }
+                    { label: 'My Activities', icon: 'fa-clone', href: '#my-vespa2', scene: 'scene_572' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' }
                 ]
