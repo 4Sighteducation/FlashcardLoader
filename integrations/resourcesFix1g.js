@@ -33,10 +33,21 @@
     
     function applyStyles() {
         const styleId = 'scene-481-fixes-v6';
-        if (!document.getElementById(styleId)) {
-            const style = document.createElement('style');
-            style.id = styleId;
-            style.textContent = `
+        
+        // Remove any existing style to force refresh
+        const existingStyle = document.getElementById(styleId);
+        if (existingStyle) {
+            existingStyle.remove();
+            console.log('[Scene 481 Fix v6] Removed existing styles for refresh');
+        }
+        
+        const style = document.createElement('style');
+        style.id = styleId;
+        
+        // Log that we're applying styles
+        console.log('[Scene 481 Fix v6] Injecting enhanced CSS styles...');
+        
+        style.textContent = `
                 /* Hide the specific view column groups that are taking up space */
                 #kn-scene_481 .view-column-group-3,
                 #kn-scene_481 .view-column-group-4,
@@ -274,10 +285,27 @@
                     }
                 }
             `;
-            document.head.appendChild(style);
-            stylesApplied = true;
-            console.log('[Scene 481 Fix v6] Styles applied');
-        }
+        document.head.appendChild(style);
+        stylesApplied = true;
+        
+        // Log successful injection and verify
+        console.log('[Scene 481 Fix v6] Styles applied successfully!');
+        console.log('[Scene 481 Fix v6] Verify styles by checking for #scene-481-fixes-v6 in <head>');
+        
+        // Debug: Check if specific styles are working
+        setTimeout(() => {
+            const testImg = document.querySelector('#kn-scene_481 .field_1439 img, #kn-scene_481 .field_2922 img, #kn-scene_481 .field_2924 img');
+            if (testImg) {
+                const computedStyle = window.getComputedStyle(testImg);
+                console.log('[Scene 481 Fix v6] Book image computed styles:', {
+                    border: computedStyle.border,
+                    borderRadius: computedStyle.borderRadius,
+                    position: computedStyle.position,
+                    top: computedStyle.top,
+                    maxWidth: computedStyle.maxWidth
+                });
+            }
+        }, 500);
     }
     
     function applyDOMFixes() {
@@ -338,7 +366,14 @@
     function enhanceBookImages() {
         const bookImages = document.querySelectorAll('#kn-scene_481 .field_1439 img, #kn-scene_481 .field_2922 img, #kn-scene_481 .field_2924 img');
         
-        bookImages.forEach(img => {
+        console.log(`[Scene 481 Fix v6] Found ${bookImages.length} book images to enhance`);
+        
+        // Debug: Check what selectors we're finding
+        const allImagesInView = document.querySelectorAll('#kn-scene_481 img');
+        console.log(`[Scene 481 Fix v6] Total images in scene: ${allImagesInView.length}`);
+        
+        bookImages.forEach((img, index) => {
+            console.log(`[Scene 481 Fix v6] Enhancing book image ${index + 1}:`, img.src);
             if (!img.hasAttribute('data-click-handler-added')) {
                 img.style.cursor = 'pointer';
                 img.title = 'Click to view larger';
@@ -400,5 +435,49 @@
     });
     
     console.log('[Scene 481 Fix v6] Initialization complete');
+    
+    // Add global debugging function
+    window.debugScene481Styles = function() {
+        console.log('=== Scene 481 Style Debug ===');
+        
+        // Check if our style element exists
+        const styleEl = document.getElementById('scene-481-fixes-v6');
+        console.log('Style element exists:', !!styleEl);
+        
+        // Check book images
+        const bookImages = document.querySelectorAll('#kn-scene_481 img');
+        console.log(`Found ${bookImages.length} images in scene`);
+        
+        bookImages.forEach((img, i) => {
+            console.log(`\nImage ${i + 1}:`);
+            console.log('- Parent class:', img.parentElement?.className);
+            console.log('- Src:', img.src);
+            
+            // Try to manually apply styles
+            img.style.cssText = `
+                max-width: 280px !important;
+                border: 3px solid #5f497a !important;
+                border-radius: 12px !important;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+                position: relative !important;
+                top: -20px !important;
+                cursor: pointer !important;
+            `;
+            console.log('- Manual styles applied!');
+        });
+        
+        // Check view positioning
+        const bookView = document.querySelector('#kn-scene_481 #view_1277');
+        if (bookView) {
+            console.log('\nBook view found, applying positioning...');
+            bookView.style.marginTop = '-40px';
+            bookView.style.position = 'relative';
+            bookView.style.zIndex = '10';
+        }
+        
+        console.log('\n=== Debug complete. Check if styles are now visible ===');
+    };
+    
+    console.log('[Scene 481 Fix v6] Debug function available: window.debugScene481Styles()');
 })(); 
 
