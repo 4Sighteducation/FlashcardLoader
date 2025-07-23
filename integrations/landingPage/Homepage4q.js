@@ -346,6 +346,61 @@
     return headers;
   }
 
+  // Track user login in Object_3 (accounts object)
+  async function trackUserLoginInObject3(userEmail) {
+    try {
+      debugLog(`[Homepage] Tracking login in Object_3 for user: ${userEmail}`);
+      
+      // Find the user's record in Object_3
+      const filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: 'field_70', operator: 'is', value: userEmail }  // Email field in Object_3
+        ]
+      }));
+      
+      const response = await retryApiCall(() => {
+        return $.ajax({
+          url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+          type: 'GET',
+          headers: getKnackHeaders(),
+          data: { format: 'raw' }
+        });
+      });
+      
+      if (response && response.records && response.records.length > 0) {
+        const userRecord = response.records[0];
+        
+        // Get current login count and increment it
+        const currentLogins = parseInt(userRecord.field_3208) || 0;
+        const newLoginCount = currentLogins + 1;
+        debugLog(`[Homepage] Incrementing login count from ${currentLogins} to ${newLoginCount}`);
+        
+        // Update user record with login information
+        await retryApiCall(() => {
+          return $.ajax({
+            url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify({
+              field_3198: new Date().toISOString(), // Login Date
+              field_3208: newLoginCount // Number of Logins
+            })
+          });
+        });
+        
+        debugLog(`[Homepage] Successfully tracked login in Object_3 for ${userEmail}`);
+        return true;
+      } else {
+        debugLog(`[Homepage] No record found in Object_3 for ${userEmail}`);
+        return false;
+      }
+    } catch (error) {
+      console.error('[Homepage] Error tracking user login in Object_3:', error);
+      return false;
+    }
+  }
+
   // --- User Profile Data Management ---
   // Find or create the user profile record
   async function findOrCreateUserProfile(userId, userName, userEmail) {
@@ -385,11 +440,16 @@
         profileRecord = response.records[0];
         debugLog(`Found existing user profile record: ${profileRecord.id}`, profileRecord);
         
-        // Update the login count
+        // Update the login count (in both Object_114 and Object_3)
         if (profileRecord[FIELD_MAPPING.numLogins] !== undefined) {
           const currentLogins = parseInt(profileRecord[FIELD_MAPPING.numLogins], 10) || 0;
           updateUserProfileField(profileRecord.id, FIELD_MAPPING.numLogins, currentLogins + 1);
         }
+        
+        // Also track login in Object_3 (accounts object) - field_3208
+        trackUserLoginInObject3(userEmail).catch(error => {
+          console.warn('[Homepage] Failed to track login in Object_3:', error);
+        });
       } else {
         // No profile found, create a new one
         debugLog(`No user profile found, creating new record for user: ${userId}`);
@@ -892,6 +952,12 @@
       
       if (response && response.id) {
         debugLog(`Created new user profile record: ${response.id}`, response);
+        
+        // Track initial login in Object_3 (accounts object) - field_3208
+        trackUserLoginInObject3(userEmail).catch(error => {
+          console.warn('[Homepage] Failed to track initial login in Object_3:', error);
+        });
+        
         return response;
       } else {
         debugLog('[Homepage] Failed to create user profile: No ID returned', response);
@@ -1365,6 +1431,67 @@
     fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
     document.head.appendChild(fontAwesomeLink);
     debugLog("Added Font Awesome 6.4.0 CDN link");
+    
+    // Add scene-level CSS overrides if we're in scene-level mode
+    const isSceneLevel = container.id === 'scene-level-container' || container.classList.contains('scene-level-dashboard-container');
+    if (isSceneLevel) {
+      const overrideStyleId = 'homepage-scene-level-overrides';
+      if (!document.getElementById(overrideStyleId)) {
+        const overrideStyle = document.createElement('style');
+        overrideStyle.id = overrideStyleId;
+        overrideStyle.textContent = `
+          /* Scene-level overrides for full-width display */
+          #vespa-homepage {
+            max-width: none !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+          }
+          
+          /* Ensure sections stretch full width */
+          #vespa-homepage .vespa-section {
+            max-width: none !important;
+            width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+          
+          /* Adjust app hub grid for wider display */
+          #vespa-homepage .app-grid {
+            max-width: none !important;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+          }
+          
+          /* Profile section adjustments */
+          #vespa-homepage .profile-section {
+            max-width: none !important;
+          }
+          
+          /* Subject cards grid for full width */
+          #vespa-homepage .subjects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            max-width: none !important;
+          }
+          
+          @media (max-width: 768px) {
+            #vespa-homepage {
+              padding: 10px !important;
+            }
+            
+            #vespa-homepage .subjects-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+        `;
+        document.head.appendChild(overrideStyle);
+        debugLog("Added scene-level CSS overrides for full-width display");
+      }
+    }
     
     // --- Reinstated subject parsing and profileData creation --- 
     const subjectData = [];
@@ -2904,4 +3031,5 @@
     });
   }
 })(); // End of IIFE
+
 
