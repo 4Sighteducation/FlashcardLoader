@@ -81,26 +81,47 @@
                 // Add more mappings as needed
             };
             
-            // Check if we have a profile ID
-            if (roleText.includes('profile_')) {
-                const mappedRole = profileMapping[roleText];
-                if (mappedRole === 'student') {
-                    log('Detected as student based on profile mapping');
-                    return 'student';
-                } else if (mappedRole === 'staff') {
-                    log('Detected as staff based on profile mapping');
-                    
-                    // Check for Resources-only staff using field_441
-                    const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
-                    log('Account type field_441:', accountType);
-                    
-                    if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
-                        log('Detected as staffResource');
-                        return 'staffResource';
+            // Check ALL roles if it's an array (staff might have multiple roles including student)
+            let hasStaffRole = false;
+            let hasStudentRole = false;
+            
+            // If field_73 contains multiple roles
+            if (Array.isArray(userAttributes.values?.field_73)) {
+                const allRoles = userAttributes.values.field_73;
+                log('Checking all roles:', allRoles);
+                
+                for (const role of allRoles) {
+                    const roleStr = role.toString();
+                    if (profileMapping[roleStr] === 'staff') {
+                        hasStaffRole = true;
+                    } else if (profileMapping[roleStr] === 'student') {
+                        hasStudentRole = true;
                     }
-                    log('Detected as staffCoaching');
-                    return 'staffCoaching';
                 }
+            } else {
+                // Single role
+                const mappedRole = profileMapping[roleText];
+                if (mappedRole === 'staff') hasStaffRole = true;
+                if (mappedRole === 'student') hasStudentRole = true;
+            }
+            
+            // PRIORITY: If user has ANY staff role, they are staff (even if they also have student role)
+            if (hasStaffRole) {
+                log('User has staff role - treating as staff (even if also has student role)');
+                
+                // Check for Resources-only staff using field_441
+                const accountType = userAttributes.values?.field_441 || userAttributes.field_441;
+                log('Account type field_441:', accountType);
+                
+                if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+                    log('Detected as staffResource');
+                    return 'staffResource';
+                }
+                log('Detected as staffCoaching');
+                return 'staffCoaching';
+            } else if (hasStudentRole) {
+                log('User has ONLY student role');
+                return 'student';
             }
             
             // Fallback to text comparison if we have actual role text
@@ -145,7 +166,7 @@
                     { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
                     { label: 'MY Report', icon: 'fa-book', href: '#vespa-results', scene: 'scene_43' },
-                    { label: 'My Activities', icon: 'fa-clone', href: '#my-vespa2', scene: 'scene_572' },
+                    { label: 'My Activities', icon: 'fa-clone', href: '#my-vespa', scene: 'scene_437' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' }
                 ]
@@ -333,17 +354,22 @@
                     }
                     
                     /* Adjust body for header */
-                    body {
+                    body.has-general-header {
                         padding-top: 60px !important;
                     }
                     
-                    body:has(.header-breadcrumb) {
+                    body.has-general-header:has(.header-breadcrumb) {
                         padding-top: 100px !important;
                     }
                     
                     /* Hide Knack's default navigation if desired */
-                    .kn-menu.kn-view {
+                    body.has-general-header .kn-menu.kn-view {
                         display: none !important;
+                    }
+                    
+                    /* Ensure content is visible */
+                    .kn-scene {
+                        min-height: calc(100vh - 100px);
                     }
                     
                     /* Mobile Styles */
@@ -520,8 +546,10 @@
                 return;
             }
             
-            // Inject header immediately
-            injectHeader();
+            // Inject header with slight delay to allow other apps to load
+            setTimeout(() => {
+                injectHeader();
+            }, 250);
             
             // Re-inject on scene changes in case it gets removed
             $(document).on('knack-scene-render.any', function(event, scene) {
@@ -542,9 +570,10 @@
                     return;
                 }
                 
+                // Longer delay for scene changes to ensure other apps load first
                 setTimeout(() => {
                     injectHeader(); // This will handle both injection and removal based on login state
-                }, 100);
+                }, 300);
             });
             
             // Listen for logout events
