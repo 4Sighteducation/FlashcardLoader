@@ -184,7 +184,7 @@
                     { label: 'My Activities', icon: 'fa-book', href: '#my-vespa', scene: 'scene_437' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
-                    { label: 'Taskboard', icon: 'fa-fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' }
+                    { label: 'Taskboard', icon: 'fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' }
                 ]
             },
             staffResource: {
@@ -372,7 +372,7 @@
                         margin: 0 20px;
                     }
                     
-                    .nav-button {
+                    #vespaGeneralHeader .nav-button {
                         display: flex;
                         align-items: center;
                         gap: 5px;
@@ -392,7 +392,7 @@
                         letter-spacing: 0.3px;
                     }
                     
-                    .nav-button::before {
+                    #vespaGeneralHeader .nav-button::before {
                         content: '';
                         position: absolute;
                         top: 0;
@@ -403,18 +403,18 @@
                         transition: left 0.5s ease;
                     }
                     
-                    .nav-button:hover {
+                    #vespaGeneralHeader .nav-button:hover {
                         background: rgba(255,255,255,0.2);
                         transform: translateY(-1px);
                         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
                         border-color: rgba(255,255,255,0.2);
                     }
                     
-                    .nav-button:hover::before {
+                    #vespaGeneralHeader .nav-button:hover::before {
                         left: 100%;
                     }
                     
-                    .nav-button.active {
+                    #vespaGeneralHeader .nav-button.active {
                         background: rgba(255,255,255,0.25);
                         box-shadow: 0 2px 10px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.15);
                         border-color: rgba(255,255,255,0.3);
@@ -424,7 +424,7 @@
                     
 
                     
-                    .nav-button i {
+                    #vespaGeneralHeader .nav-button i {
                         font-size: 14px;
                         opacity: 0.9;
                     }
@@ -448,7 +448,7 @@
                     }
                     
                     /* Active state maintains bright white */
-                    .nav-button.active {
+                    #vespaGeneralHeader .nav-button.active {
                         color: white !important;
                     }
                     
@@ -549,12 +549,12 @@
                             margin: 0 10px;
                         }
                         
-                        .nav-button {
+                        #vespaGeneralHeader .nav-button {
                             padding: 5px 8px;
                             font-size: 11px;
                         }
                         
-                        .nav-button i {
+                        #vespaGeneralHeader .nav-button i {
                             font-size: 12px;
                         }
                         
@@ -607,7 +607,7 @@
                             right: 0;
                         }
                         
-                        .nav-button {
+                        #vespaGeneralHeader .nav-button {
                             width: 100%;
                             justify-content: flex-start;
                             padding: 12px 16px;
@@ -615,7 +615,7 @@
                             background: rgba(255,255,255,0.08);
                         }
                         
-                        .nav-button i {
+                        #vespaGeneralHeader .nav-button i {
                             font-size: 18px;
                             width: 24px;
                             text-align: center;
@@ -699,9 +699,9 @@
                     }
                     
                     /* Focus styles for accessibility */
-                    .nav-button:focus,
-                    .mobile-menu-toggle:focus,
-                    .breadcrumb-back:focus {
+                    #vespaGeneralHeader .nav-button:focus,
+                    #vespaGeneralHeader .mobile-menu-toggle:focus,
+                    #vespaGeneralHeader .breadcrumb-back:focus {
                         outline: 2px solid rgba(255,255,255,0.5);
                         outline-offset: 2px;
                     }
@@ -709,6 +709,7 @@
                     /* SIMPLIFIED STYLING APPROACH
                      * With uniform button count (7 buttons), all account types now use the same clean styling.
                      * No special cases or overrides needed - just consistent, maintainable CSS!
+                     * All styles are scoped to #vespaGeneralHeader to prevent conflicts with other components.
                      */
                 </style>
             `;
@@ -756,6 +757,28 @@
             
             // Track current page
             trackPageView(userType, currentScene);
+            
+            // DEBUG: Watch for style changes on nav buttons
+            const navButtons = document.querySelectorAll('#vespaGeneralHeader .nav-button');
+            navButtons.forEach((button, index) => {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                            log(`DEBUG: Style attribute changed on nav button ${index}:`, {
+                                oldValue: mutation.oldValue,
+                                newValue: button.getAttribute('style'),
+                                userType: getUserType()
+                            });
+                        }
+                    });
+                });
+                
+                observer.observe(button, {
+                    attributes: true,
+                    attributeOldValue: true,
+                    attributeFilter: ['style']
+                });
+            });
         }
         
         // New function to move user info into our header
@@ -796,6 +819,21 @@
             const mobileToggle = document.querySelector('.mobile-menu-toggle');
             const navigation = document.querySelector('.header-navigation');
             const overlay = document.querySelector('.mobile-nav-overlay');
+            
+            // DEBUG: Log nav button styles after setup
+            setTimeout(() => {
+                const navButtons = document.querySelectorAll('#vespaGeneralHeader .nav-button');
+                if (navButtons.length > 0) {
+                    const firstButton = navButtons[0];
+                    const computedStyle = window.getComputedStyle(firstButton);
+                    log('DEBUG: Nav button computed styles after setup:', {
+                        padding: computedStyle.padding,
+                        fontSize: computedStyle.fontSize,
+                        width: firstButton.offsetWidth,
+                        userType: getUserType()
+                    });
+                }
+            }, 100);
             
             if (mobileToggle) {
                 mobileToggle.addEventListener('click', function() {
