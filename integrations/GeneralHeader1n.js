@@ -250,6 +250,13 @@
                         display: none !important;
                     }
                     
+                    /* Hide original user info container */
+                    body.has-general-header .kn-info,
+                    body.has-general-header .kn-current_user:not(.user-info-container .kn-current_user) {
+                        display: none !important;
+                        visibility: hidden !important;
+                    }
+                    
                     /* Base Header Styles */
                     .vespa-general-header {
                         position: fixed;
@@ -311,29 +318,51 @@
                         display: flex;
                         align-items: center;
                         gap: 8px;
-                        padding: 10px 18px;
-                        background-color: rgba(255,255,255,0.1);
+                        padding: 10px 20px;
+                        background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
                         color: white;
                         text-decoration: none;
-                        border-radius: 6px;
+                        border-radius: 25px;
                         transition: all 0.3s ease;
                         font-size: 15px;
-                        font-weight: 500;
+                        font-weight: 600;
                         white-space: nowrap;
+                        border: 1px solid rgba(255,255,255,0.2);
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    
+                    .nav-button::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: -100%;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                        transition: left 0.6s ease;
                     }
                     
                     .nav-button:hover {
-                        background-color: rgba(255,255,255,0.2);
-                        transform: translateY(-1px);
+                        background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.2));
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                        border-color: rgba(255,255,255,0.4);
+                    }
+                    
+                    .nav-button:hover::before {
+                        left: 100%;
                     }
                     
                     .nav-button.active {
-                        background-color: rgba(255,255,255,0.25);
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.25));
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2);
+                        border-color: rgba(255,255,255,0.5);
                     }
                     
                     .nav-button i {
                         font-size: 18px;
+                        filter: drop-shadow(0 0 2px rgba(0,0,0,0.2));
                     }
                     
                     /* User info styles */
@@ -494,15 +523,27 @@
                     
                     /* Specific adjustments for different user types */
                     .vespa-general-header.student {
-                        background-color: #3498db;
+                        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+                    }
+                    
+                    .vespa-general-header.student .nav-button:hover {
+                        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
                     }
                     
                     .vespa-general-header.staffResource {
-                        background-color: #27ae60;
+                        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+                    }
+                    
+                    .vespa-general-header.staffResource .nav-button:hover {
+                        box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
                     }
                     
                     .vespa-general-header.staffCoaching {
-                        background-color: #e74c3c;
+                        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                    }
+                    
+                    .vespa-general-header.staffCoaching .nav-button:hover {
+                        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
                     }
                     
                     /* Smooth transitions */
@@ -573,8 +614,14 @@
                 // Move it into our header
                 targetContainer.appendChild(userInfoClone);
                 
-                // Hide the original (it might be needed by Knack internally)
-                userInfoElement.style.display = 'none';
+                // Hide the original completely
+                userInfoElement.style.cssText = 'display: none !important; visibility: hidden !important; position: absolute !important; left: -9999px !important;';
+                
+                // Also hide any parent containers that might be showing
+                const userInfoParent = userInfoElement.parentElement;
+                if (userInfoParent && userInfoParent.classList.contains('kn-info')) {
+                    userInfoParent.style.cssText = 'display: none !important; visibility: hidden !important;';
+                }
                 
                 log('User info moved to custom header');
             } else if (targetContainer && !userInfoElement) {
