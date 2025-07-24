@@ -650,6 +650,14 @@
     
     // Initialize the validator
     function initializeQuestionnaireValidator() {
+        const config = window.QUESTIONNAIRE_VALIDATOR_CONFIG;
+        
+        // Check if validator is enabled
+        if (config && config.enabled === false) {
+            log('Questionnaire validator is DISABLED via config');
+            return; // Don't initialize if disabled
+        }
+        
         log('Initializing questionnaire validator');
         
         // Setup click interceptor using event delegation
@@ -683,8 +691,12 @@
         // Check if we're dealing with a student user
         const user = Knack.getUserAttributes();
         if (user && user.profiles && user.profiles.includes('profile_6')) {
-            log('Student user detected, initializing validator');
-            initializeQuestionnaireValidator();
+            log('Student user detected, checking if validator should initialize');
+            
+            // Wait a moment for config to be set by KnackAppLoader
+            setTimeout(() => {
+                initializeQuestionnaireValidator();
+            }, 100);
         }
     });
     
