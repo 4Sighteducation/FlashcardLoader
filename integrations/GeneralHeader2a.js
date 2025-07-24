@@ -184,7 +184,7 @@
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
                     { label: 'Taskboard', icon: 'fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' },
-                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
@@ -200,7 +200,7 @@
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#study-guides', scene: 'scene_1241' },
                     { label: 'FAQ', icon: 'fa-graduation-cap', href: '#staff-training', scene: 'scene_1242' },
-                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
@@ -216,7 +216,7 @@
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
                     { label: 'Reports', icon: 'fa-file-text', href: '#coaching-reports', scene: 'scene_1243' },
-                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
@@ -232,7 +232,7 @@
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
                     { label: 'Analytics', icon: 'fa-line-chart', href: '#resource-analytics', scene: 'scene_1244' },
-                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
@@ -248,7 +248,7 @@
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Reports', icon: 'fa-file-text', href: '#admin-reports', scene: 'scene_1245' },
-                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             }
@@ -876,6 +876,14 @@
                 document.body.style.paddingTop = '';
                 // Clear the global loaded flag
                 window._generalHeaderLoaded = false;
+                // Clear session storage flag
+                sessionStorage.removeItem('_generalHeaderLoadedSession');
+                
+                // Redirect to home page after logout
+                log('Redirecting to home page after logout');
+                setTimeout(() => {
+                    window.location.hash = '#home/';
+                }, 100); // Small delay to ensure logout completes
             });
         }
         
