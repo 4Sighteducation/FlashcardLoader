@@ -1,12 +1,13 @@
-
 // Universal Redirect Controller for VESPA Academy
 // Handles automatic routing of users to their appropriate landing pages
+
+console.log('[Universal Redirect] Script loaded!');
 
 (function() {
     'use strict';
     
     const REDIRECT_CONFIG = {
-        debugMode: false, // Set to true for console logging
+        debugMode: true, // TEMPORARILY ENABLED for debugging
         scenes: {
             student: 'scene_1210',
             staffCoaching: 'scene_1215', 
@@ -27,10 +28,14 @@
     }
     
     function getUserType() {
+        console.log('[Universal Redirect] getUserType called');
         const user = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes() : null;
+        
+        console.log('[Universal Redirect] Raw user object:', user);
         
         if (!user) {
             log('No user found - showing default home page');
+            console.log('[Universal Redirect] No user found, returning null');
             return null;
         }
         
@@ -41,9 +46,16 @@
             field_441: user.values?.field_441
         });
         
-        // Check if user is a student (profile_4)
-        if (user.roles && user.roles.includes('object_4')) {
+        // Check if user is a student
+        // Students typically have role 'object_4' in the roles array
+        if (user.roles && (user.roles.includes('object_4') || user.roles.includes('profile_4'))) {
             log('Detected as Student');
+            return 'student';
+        }
+        
+        // Also check profile_keys for students
+        if (user.values && user.values.profile_keys && user.values.profile_keys.includes('profile_4')) {
+            log('Detected as Student via profile_keys');
             return 'student';
         }
         
@@ -71,8 +83,11 @@
     }
     
     function redirectUser(userType) {
+        console.log('[Universal Redirect] redirectUser called with userType:', userType);
+        
         if (!userType) {
             log('No redirect needed - staying on home page');
+            console.log('[Universal Redirect] No user type, showing welcome page');
             showWelcomePage();
             return;
         }
@@ -135,30 +150,40 @@
     }
     
     function initializeUniversalRedirect() {
+        console.log('[Universal Redirect] initializeUniversalRedirect called!');
         log('Initializing Universal Redirect');
         
         // Check if we're on the home scene (scene_1)
         const currentScene = (typeof Knack !== 'undefined' && Knack.scene) ? Knack.scene.key : null;
+        console.log('[Universal Redirect] Current scene:', currentScene);
         
         if (currentScene !== 'scene_1') {
             log('Not on home scene, skipping redirect logic');
+            console.log('[Universal Redirect] Not on scene_1, exiting');
             return;
         }
         
-        // Small delay to ensure Knack user data is loaded
+        console.log('[Universal Redirect] On scene_1, will check user after delay');
+        
+        // Increased delay to ensure Knack user data is loaded
         setTimeout(() => {
+            console.log('[Universal Redirect] Checking user type...');
             const userType = getUserType();
+            console.log('[Universal Redirect] User type detected:', userType);
             redirectUser(userType);
-        }, 100);
+        }, 500); // Increased delay
     }
     
-    // Make function globally available
+    // Make function globally available BEFORE the IIFE closes
     window.initializeUniversalRedirect = initializeUniversalRedirect;
     
     // Auto-initialize on scene render
     $(document).on('knack-scene-render.scene_1', function() {
+        console.log('[Universal Redirect] Scene 1 render event fired!');
         log('Scene 1 rendered, checking for redirect...');
         initializeUniversalRedirect();
     });
+    
+    console.log('[Universal Redirect] Event listeners attached, initializeUniversalRedirect is available:', typeof window.initializeUniversalRedirect);
     
 })(); 
