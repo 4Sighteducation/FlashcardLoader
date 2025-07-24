@@ -13,26 +13,32 @@
     // console.log('[Resource Dashboard] Script loaded and executing');
     
     // --- Basic Setup ---
-    // Use config from loader if available, otherwise use defaults
-    const loaderConfig = window.STAFFHOMEPAGE_CONFIG || {};
-    const SCRIPT_CONFIG = {
-        knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
-        knackApiKey: loaderConfig.knackApiKey || '8f733aa5-dd35-4464-8348-64824d1f5f0d',
-        elementSelector: loaderConfig.elementSelector || '#view_3024',
-        debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : false,
-        sendGrid: loaderConfig.sendGrid || {
-            proxyUrl: 'https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email',
-            fromEmail: 'noreply@notifications.vespa.academy',
-            fromName: 'VESPA Academy',
-            templateId: 'd-6a6ac61c9bab43e28706dbb3da4acdcf',
-            confirmationtemplateId: 'd-2e21f98579f947b08f2520c567b43c35'
-        }
-    };
-
+    // Declare SCRIPT_CONFIG at script level but don't initialize it yet
+    let SCRIPT_CONFIG;
+    
     const KNACK_API_URL = 'https://api.knack.com/v1';
+    
+    // Initialize configuration inside the function instead of at script load
+    function initializeConfig() {
+        // Use config from loader if available, otherwise use defaults
+        const loaderConfig = window.STAFFHOMEPAGE_CONFIG || {};
+        SCRIPT_CONFIG = {
+            knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
+            knackApiKey: loaderConfig.knackApiKey || '8f733aa5-dd35-4464-8348-64824d1f5f0d',
+            elementSelector: loaderConfig.elementSelector || '#view_3024',
+            debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : false,
+            sendGrid: loaderConfig.sendGrid || {
+                proxyUrl: 'https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email',
+                fromEmail: 'noreply@notifications.vespa.academy',
+                fromName: 'VESPA Academy',
+                templateId: 'd-6a6ac61c9bab43e28706dbb3da4acdcf',
+                confirmationtemplateId: 'd-2e21f98579f947b08f2520c567b43c35'
+            }
+        };
+    }
 
     function log(message, ...args) {
-        if (SCRIPT_CONFIG.debugMode) {
+        if (SCRIPT_CONFIG && SCRIPT_CONFIG.debugMode) {
             console.log('[Resource Dashboard]', message, ...args);
         }
     }
@@ -2840,6 +2846,9 @@
     }
 
     async function initializeResourceDashboard() {
+        // Initialize configuration first
+        initializeConfig();
+        
         log('initializeResourceDashboard function called!');
         log('Initializing Resource Dashboard...');
         
@@ -3130,21 +3139,15 @@
     try {
         // Expose the initializer function globally for the loader
         window.initializeResourceDashboard = initializeResourceDashboard;
-        if (SCRIPT_CONFIG && SCRIPT_CONFIG.debugMode) {
-            console.log('[Resource Dashboard] Exposed initializeResourceDashboard to window');
-            console.log('[Resource Dashboard] Type check:', typeof window.initializeResourceDashboard);
-        }
+        // Can't use SCRIPT_CONFIG here as it's not initialized yet
+        // console.log('[Resource Dashboard] Exposed initializeResourceDashboard to window');
         
         // Only auto-run if not being loaded by the loader
         if (!window.STAFFHOMEPAGE_CONFIG) {
-            if (SCRIPT_CONFIG && SCRIPT_CONFIG.debugMode) {
-                console.log('[Resource Dashboard] No loader config found, auto-initializing');
-            }
+            // console.log('[Resource Dashboard] No loader config found, auto-initializing');
             $(initializeResourceDashboard);
         } else {
-            if (SCRIPT_CONFIG && SCRIPT_CONFIG.debugMode) {
-                console.log('[Resource Dashboard] Loader config found, waiting for loader to call initialize');
-            }
+            // console.log('[Resource Dashboard] Loader config found, waiting for loader to call initialize');
         }
     } catch (error) {
         errorLog('Error during script initialization:', error);
