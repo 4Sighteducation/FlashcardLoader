@@ -811,18 +811,24 @@
                     if (this.getAttribute('data-logout') === 'true') {
                         log('Logout button clicked');
                         
-                        // Set a flag to force redirect to home
-                        sessionStorage.setItem('vespa_force_home_redirect', 'true');
+                        // FIRST: Navigate to home page immediately
+                        log('Navigating to home page first');
+                        window.location.href = 'https://vespaacademy.knack.com/vespa-academy#home/';
                         
-                        // Trigger Knack logout
-                        const logoutLink = document.querySelector('.kn-log-out');
-                        if (logoutLink) {
-                            logoutLink.click();
-                        } else {
-                            // Fallback: try to find and click any logout link
-                            const altLogout = document.querySelector('a[href*="logout"]');
-                            if (altLogout) altLogout.click();
-                        }
+                        // THEN: Trigger logout after a small delay to allow navigation to start
+                        setTimeout(() => {
+                            log('Now triggering logout');
+                            // Trigger Knack logout
+                            const logoutLink = document.querySelector('.kn-log-out');
+                            if (logoutLink) {
+                                logoutLink.click();
+                            } else {
+                                // Fallback: try to find and click any logout link
+                                const altLogout = document.querySelector('a[href*="logout"]');
+                                if (altLogout) altLogout.click();
+                            }
+                        }, 100); // Small delay to ensure navigation starts first
+                        
                         return;
                     }
                     
@@ -920,15 +926,8 @@
                 // Clear session storage flag
                 sessionStorage.removeItem('_generalHeaderLoadedSession');
                 
-                // Force redirect to home page after logout
-                const shouldRedirect = sessionStorage.getItem('vespa_force_home_redirect') === 'true';
-                sessionStorage.removeItem('vespa_force_home_redirect');
-                
-                if (shouldRedirect) {
-                    log('Forcing redirect to home page after logout');
-                    // Use direct assignment to ensure redirect happens
-                    window.location.href = 'https://vespaacademy.knack.com/vespa-academy#home/';
-                }
+                // Since we navigate BEFORE logout, user should already be on home page
+                log('Logout complete - user should already be on home page');
             });
         }
         
