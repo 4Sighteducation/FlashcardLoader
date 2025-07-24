@@ -2878,7 +2878,7 @@
         
         // Add scene-level CSS overrides if we're in scene-level mode
         const container = document.querySelector(SCRIPT_CONFIG.elementSelector);
-        const isSceneLevel = container && (container.id === 'scene-level-container' || 
+        const isSceneLevel = container && (container.id.startsWith('scene-level-container') || 
                             container.classList.contains('scene-level-dashboard-container'));
         
         if (isSceneLevel) {
@@ -3152,5 +3152,3 @@
     }
 
 })();
-
-
