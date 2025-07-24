@@ -475,7 +475,7 @@
         `;
         
         // Add popup to page
-        $('body').append(popupHtml);
+        $('body').append(popupHtml).addClass('has-questionnaire-popup');
         
         // Add styles
         addPopupStyles();
@@ -486,6 +486,9 @@
         // Show popup with animation
         setTimeout(() => {
             $('.vespa-questionnaire-popup-overlay, .vespa-questionnaire-popup').addClass('show');
+            // Force opacity in case CSS doesn't apply properly
+            $('.vespa-questionnaire-popup-overlay').css('opacity', '1');
+            $('.vespa-questionnaire-popup').css('opacity', '1');
             log('Popup shown:', isAllowed ? 'Video/Instructions popup' : 'Not Available popup');
         }, 50); // Increased delay to avoid race conditions
     }
@@ -502,10 +505,12 @@
                     left: 0;
                     right: 0;
                     bottom: 0;
-                    background: rgba(0, 0, 0, 0.7);
-                    z-index: 99998;
+                    background: rgba(0, 0, 0, 0.85);
+                    z-index: 999998;
                     opacity: 0;
                     transition: opacity 0.3s ease;
+                    backdrop-filter: blur(5px);
+                    -webkit-backdrop-filter: blur(5px);
                 }
                 
                 .vespa-questionnaire-popup {
@@ -520,7 +525,7 @@
                     width: 90%;
                     max-height: 90vh;
                     overflow: hidden;
-                    z-index: 99999;
+                    z-index: 999999;
                     opacity: 0;
                     transition: all 0.3s ease;
                 }
@@ -532,6 +537,13 @@
                 
                 .vespa-questionnaire-popup.show {
                     transform: translate(-50%, -50%) scale(1);
+                }
+                
+                /* Ensure Knack content is behind overlay */
+                body.has-questionnaire-popup .kn-content,
+                body.has-questionnaire-popup .kn-scene {
+                    position: relative;
+                    z-index: 1;
                 }
                 
                 .popup-header {
@@ -747,6 +759,7 @@
     // Close popup
     function closePopup() {
         isShowingPopup = false;
+        $('body').removeClass('has-questionnaire-popup');
         $('.vespa-questionnaire-popup-overlay, .vespa-questionnaire-popup').removeClass('show');
         setTimeout(() => {
             $('.vespa-questionnaire-popup-overlay, .vespa-questionnaire-popup').remove();
