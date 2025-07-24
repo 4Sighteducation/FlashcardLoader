@@ -89,8 +89,11 @@
                     'content-type': 'application/json'
                 },
                 data: {
-                    filters: JSON.stringify(filters)
-                }
+                    filters: JSON.stringify(filters),
+                    // Add timestamp to prevent caching
+                    _t: Date.now()
+                },
+                cache: false
             });
             
             if (response.records && response.records.length > 0) {
@@ -135,8 +138,11 @@
                 data: {
                     filters: JSON.stringify(filters),
                     sort_field: CONFIG.fields.cycleNumber,
-                    sort_order: 'asc'
-                }
+                    sort_order: 'asc',
+                    // Add timestamp to prevent caching
+                    _t: Date.now()
+                },
+                cache: false
             });
             
             log('Fetched cycle dates:', response.records);
@@ -589,10 +595,16 @@
         // Proceed to questionnaire button
         $('.proceed-btn').on('click', function() {
             closePopup();
+            // Set flag to prevent re-validation
+            window._questionnaireValidated = true;
             // Navigate to questionnaire with Object_10 ID
             const questionnaireUrl = `#add-q/questionnaireqs/${validationResult.userRecord.id}`;
             log('Navigating to:', questionnaireUrl);
             window.location.hash = questionnaireUrl;
+            // Clear the flag after navigation
+            setTimeout(() => {
+                window._questionnaireValidated = false;
+            }, 2000);
         });
         
         // View report button
@@ -656,31 +668,34 @@
             target.addClass('loading');
             target.find('span').text('Checking...');
             
-            // Run validation
-            validateQuestionnaireAccess().then(result => {
-                log('Validation result:', result);
-                
-                // Restore button state
-                target.removeClass('loading');
-                target.find('span').text('VESPA Questionnaire');
-                
-                // Show appropriate popup
-                showPopup(result);
-                
-            }).catch(error => {
-                log('Validation error:', error);
-                
-                // Restore button state
-                target.removeClass('loading');
-                target.find('span').text('VESPA Questionnaire');
-                
-                // Show error popup
-                showPopup({
-                    allowed: false,
-                    reason: 'error',
-                    message: 'Unable to check questionnaire access. Please try again later.'
+            // Small delay to ensure any recent DB changes have propagated
+            setTimeout(() => {
+                // Run validation
+                validateQuestionnaireAccess().then(result => {
+                    log('Validation result:', result);
+                    
+                    // Restore button state
+                    target.removeClass('loading');
+                    target.find('span').text('VESPA Questionnaire');
+                    
+                    // Show appropriate popup
+                    showPopup(result);
+                    
+                }).catch(error => {
+                    log('Validation error:', error);
+                    
+                    // Restore button state
+                    target.removeClass('loading');
+                    target.find('span').text('VESPA Questionnaire');
+                    
+                    // Show error popup
+                    showPopup({
+                        allowed: false,
+                        reason: 'error',
+                        message: 'Unable to check questionnaire access. Please try again later.'
+                    });
                 });
-            });
+            }, 300); // 300ms delay
         }
     }
     
@@ -694,13 +709,28 @@
             return; // Don't initialize if disabled
         }
         
+        // Check if already initialized
+        if (window._questionnaireValidatorInitialized) {
+            log('Questionnaire validator already initialized, skipping');
+            return;
+        }
+        
         log('Initializing questionnaire validator');
+        
+        // Mark as initialized
+        window._questionnaireValidatorInitialized = true;
+        
+        // Remove any existing handlers first to prevent duplicates
+        $(document).off('click', 'a[href="#add-q"], a[data-scene="scene_358"]');
         
         // Setup click interceptor using event delegation
         $(document).on('click', 'a[href="#add-q"], a[data-scene="scene_358"]', interceptQuestionnaireClick);
         
+        // Remove any existing hashchange handlers first
+        $(window).off('hashchange.questionnaireValidator');
+        
         // Also intercept any direct navigation attempts
-        $(window).on('hashchange', function() {
+        $(window).on('hashchange.questionnaireValidator', function() {
             if (window.location.hash === '#add-q' || window.location.hash.includes('#add-q/')) {
                 // If someone tries to navigate directly, redirect to home and show message
                 if (!window._questionnaireValidated) {
@@ -722,6 +752,9 @@
     // Make function globally available
     window.initializeQuestionnaireValidator = initializeQuestionnaireValidator;
     
+    // Track if already initialized to prevent multiple initializations
+    let isInitialized = false;
+    
     // Auto-initialize when DOM is ready
     $(document).ready(function() {
         // Check if we're dealing with a student user
@@ -732,12 +765,15 @@
             (user.roles && user.roles.includes('profile_6'))
         );
         
-        if (isStudent) {
+        if (isStudent && !isInitialized) {
             log('Student user detected, checking if validator should initialize');
             
             // Wait a moment for config to be set by KnackAppLoader
             setTimeout(() => {
-                initializeQuestionnaireValidator();
+                if (!isInitialized) {
+                    initializeQuestionnaireValidator();
+                    isInitialized = true;
+                }
             }, 100);
         }
     });
