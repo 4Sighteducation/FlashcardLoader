@@ -96,8 +96,8 @@ console.log('[Universal Redirect] Script loaded!');
         
         if (!userType) {
             log('No redirect needed - staying on home page');
-            console.log('[Universal Redirect] No user type, showing welcome page');
-            showWelcomePage();
+            console.log('[Universal Redirect] No user type detected');
+            // Don't show welcome page - let Knack handle the display
             return;
         }
         
@@ -140,9 +140,21 @@ console.log('[Universal Redirect] Script loaded!');
     }
     
     function showWelcomePage() {
-        // Show default welcome content for users who can't be identified
+        // Don't show welcome page if there's already a login form on the page
+        const hasLoginForm = document.querySelector('.kn-login') || 
+                           document.querySelector('form[id*="login"]') ||
+                           document.querySelector('.login-form') ||
+                           document.querySelector('input[type="password"]');
+        
+        if (hasLoginForm) {
+            console.log('[Universal Redirect] Login form detected, not showing welcome page');
+            return;
+        }
+        
+        // Only show welcome page if container is empty or has default content
         const container = document.querySelector('.kn-scene-content') || document.querySelector('#kn-scene_1');
-        if (container) {
+        if (container && container.children.length < 2) {
+            console.log('[Universal Redirect] Showing welcome page');
             container.innerHTML = `
                 <div style="text-align: center; padding: 50px;">
                     <h1 style="color: #0a2b8c;">Welcome to VESPA Academy</h1>
@@ -206,6 +218,15 @@ console.log('[Universal Redirect] Script loaded!');
         // Increased delay to ensure Knack user data is loaded
         setTimeout(() => {
             console.log('[Universal Redirect] Checking user type...');
+            
+            // First check if user is logged in at all
+            const user = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes() : null;
+            if (!user || !user.email) {
+                console.log('[Universal Redirect] No user logged in, not redirecting');
+                // Don't show welcome page or do anything - let Knack handle the login
+                return;
+            }
+            
             const userType = getUserType();
             console.log('[Universal Redirect] User type detected:', userType);
             redirectUser(userType);
