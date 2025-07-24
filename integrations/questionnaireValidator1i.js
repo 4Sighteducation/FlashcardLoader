@@ -124,8 +124,17 @@
                 });
                 
                 // Verify it's the correct record by email
-                if (userRecord.field_197 !== user.email) {
-                    log(`WARNING: Email mismatch! Expected ${user.email} but got ${userRecord.field_197}`);
+                let recordEmail = userRecord.field_197;
+                // Extract email from HTML if needed
+                if (recordEmail && recordEmail.includes('mailto:')) {
+                    const emailMatch = recordEmail.match(/mailto:([^"]+)/);
+                    if (emailMatch && emailMatch[1]) {
+                        recordEmail = emailMatch[1];
+                    }
+                }
+                
+                if (recordEmail !== user.email) {
+                    log(`WARNING: Email mismatch! Expected ${user.email} but got ${recordEmail} (raw: ${userRecord.field_197})`);
                 }
                 
                 return userRecord;
@@ -193,6 +202,15 @@
             
             // Get user's connected customer
             let customerValue = userRecord[CONFIG.fields.connectedCustomer];
+            
+            // Extract raw value if it's HTML formatted
+            if (customerValue && typeof customerValue === 'string' && customerValue.includes('<')) {
+                // Extract the class name which contains the ID
+                const match = customerValue.match(/class="([^"]+)"/);
+                if (match && match[1]) {
+                    customerValue = match[1].split(' ')[0]; // Get first class which is the ID
+                }
+            }
             
             // If no customer in Object_10, check account
             if (!customerValue || customerValue === 'None') {
@@ -368,16 +386,25 @@
     
     // Create and show the popup
     function showPopup(validationResult) {
-        // Prevent multiple popups
-        if (isShowingPopup) {
-            log('Popup already showing, skipping duplicate');
-            return;
+        log('showPopup called with:', {
+            allowed: validationResult.allowed,
+            reason: validationResult.reason,
+            message: validationResult.message
+        });
+        
+        // Always remove any existing popup and show the new one
+        $('.vespa-questionnaire-popup-overlay, .vespa-questionnaire-popup').stop().remove();
+        
+        // Clear any existing timeout
+        if (window._popupTimeout) {
+            clearTimeout(window._popupTimeout);
         }
         
+        // Reset flag after a short delay to allow rapid updates
         isShowingPopup = true;
-        
-        // Remove any existing popup
-        $('.vespa-questionnaire-popup').remove();
+        window._popupTimeout = setTimeout(() => {
+            isShowingPopup = false;
+        }, 500);
         
         const isAllowed = validationResult.allowed;
         
@@ -453,7 +480,8 @@
         // Show popup with animation
         setTimeout(() => {
             $('.vespa-questionnaire-popup-overlay, .vespa-questionnaire-popup').addClass('show');
-        }, 10);
+            log('Popup shown:', isAllowed ? 'Video/Instructions popup' : 'Not Available popup');
+        }, 50); // Increased delay to avoid race conditions
     }
     
     // Add popup styles
@@ -751,6 +779,7 @@
                     target.find('span').text('VESPA Questionnaire');
                     
                     // Show appropriate popup
+                    log('About to show popup with result:', result.allowed ? 'ALLOWED' : 'NOT ALLOWED');
                     showPopup(result);
                     
                 }).catch(error => {
