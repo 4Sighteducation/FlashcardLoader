@@ -170,7 +170,7 @@
         }
         
         // Navigation configurations for different user types
-        // All configurations now have exactly 7 buttons (1 home + 6 pages) for consistency
+        // All configurations now have Settings and Log Out buttons at the end
         const navigationConfig = {
             student: {
                 brand: 'VESPA Student',
@@ -178,13 +178,14 @@
                 color: '#079baa', // Using main teal color
                 accentColor: '#06206e', // Dark blue for accents
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
                     { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-results', scene: 'scene_43' },
                     { label: 'My Activities', icon: 'fa-book', href: '#my-vespa', scene: 'scene_437' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
-                    { label: 'Taskboard', icon: 'fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' }
+                    { label: 'Taskboard', icon: 'fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
             staffResource: {
@@ -193,13 +194,14 @@
                 color: '#72cb44', // Green (VESPA color)
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#study-guides', scene: 'scene_1241' },
-                    { label: 'FAQ', icon: 'fa-graduation-cap', href: '#staff-training', scene: 'scene_1242' }
+                    { label: 'FAQ', icon: 'fa-graduation-cap', href: '#staff-training', scene: 'scene_1242' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
             staffCoaching: {
@@ -208,13 +210,14 @@
                 color: '#ff8f00', // Orange (VESPA color)
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
-                    { label: 'Reports', icon: 'fa-file-text', href: '#coaching-reports', scene: 'scene_1243' }
+                    { label: 'Reports', icon: 'fa-file-text', href: '#coaching-reports', scene: 'scene_1243' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
             staffAdminResource: {
@@ -223,13 +226,14 @@
                 color: '#7f31a4', // Purple (VESPA color)
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Manage', icon: 'fa-cog', href: '#accounts', scene: 'scene_68' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Analytics', icon: 'fa-line-chart', href: '#resource-analytics', scene: 'scene_1244' }
+                    { label: 'Analytics', icon: 'fa-line-chart', href: '#resource-analytics', scene: 'scene_1244' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
             staffAdminCoaching: {
@@ -238,13 +242,14 @@
                 color: '#7f31a4', // Purple (VESPA color)
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Reports', icon: 'fa-file-text', href: '#admin-reports', scene: 'scene_1245' }
+                    { label: 'Reports', icon: 'fa-file-text', href: '#admin-reports', scene: 'scene_1245' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_settings', isSettings: true },
+                    { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             }
         };
@@ -252,18 +257,33 @@
         // Create the header HTML
         function createHeaderHTML(userType, currentScene) {
             const navConfig = navigationConfig[userType];
-            const isHomePage = currentScene === navConfig.items[0].scene;
             
             // Debug log for resource type detection
             log(`Creating header for userType: ${userType}, isResource: ${userType.includes('Resource')}`);
             
+            // Determine home page based on user type
+            const homeHref = userType === 'student' ? '#landing-page/' : '#staff-landing-page/';
+            const homeScene = userType === 'student' ? 'scene_1210' : 'scene_1215';
+            const isHomePage = currentScene === homeScene;
+            
             // Build navigation items
             const navItemsHTML = navConfig.items.map(item => {
-                const isActive = currentScene === item.scene;
+                const isActive = currentScene === item.scene && !item.isLogout && !item.isSettings;
+                let buttonClass = 'header-nav-button';
+                
+                // Add special classes for settings and logout buttons
+                if (item.isSettings) buttonClass += ' header-settings-button';
+                if (item.isLogout) buttonClass += ' header-logout-button';
+                if (isActive) buttonClass += ' active';
+                
+                // Add data attributes for special buttons
+                const dataAttrs = item.isLogout ? 'data-logout="true"' : '';
+                
                 return `
                     <a href="${item.href}" 
-                       class="header-nav-button ${isActive ? 'active' : ''}" 
-                       data-scene="${item.scene}">
+                       class="${buttonClass}" 
+                       data-scene="${item.scene}"
+                       ${dataAttrs}>
                         <i class="fa ${item.icon}"></i>
                         <span>${item.label}</span>
                     </a>
@@ -275,7 +295,9 @@
                     <div class="header-content">
                         <div class="header-top-row">
                             <div class="header-brand">
-                                <img src="https://vespa.academy/_astro/vespalogo.BGrK1ARl.png" alt="VESPA Academy" class="vespa-logo">
+                                <a href="https://www.vespa.academy" target="_blank" class="logo-link">
+                                    <img src="https://vespa.academy/_astro/vespalogo.BGrK1ARl.png" alt="VESPA Academy" class="vespa-logo">
+                                </a>
                                 <span>${navConfig.brand}</span>
                             </div>
                             <nav class="header-navigation">
@@ -285,15 +307,12 @@
                                 <i class="fa fa-bars"></i>
                             </button>
                         </div>
-                        <div class="header-bottom-row">
-                            <div class="user-info-container"></div>
-                        </div>
                     </div>
                     ${!isHomePage ? `
                     <div class="header-breadcrumb">
-                        <a href="${navConfig.items[0].href}" class="breadcrumb-back">
+                        <a href="${homeHref}" class="breadcrumb-back">
                             <i class="fa fa-arrow-left"></i>
-                            Back to ${navConfig.items[0].label}
+                            Back to Home
                         </a>
                     </div>
                     ` : ''}
@@ -307,7 +326,7 @@
                     
                     /* Hide original user info container */
                     body.has-general-header .kn-info,
-                    body.has-general-header .kn-current_user:not(.user-info-container .kn-current_user) {
+                    body.has-general-header .kn-current_user {
                         display: none !important;
                         visibility: hidden !important;
                     }
@@ -336,16 +355,6 @@
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        border-bottom: 1px solid rgba(255,255,255,0.1);
-                    }
-                    
-                    .header-bottom-row {
-                        height: 32px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: flex-end;
-                        padding: 0 5px;
-                        background-color: rgba(0,0,0,0.05);
                     }
                     
                     .header-brand {
@@ -357,6 +366,17 @@
                         letter-spacing: -0.5px;
                     }
                     
+                    .logo-link {
+                        display: flex;
+                        align-items: center;
+                        text-decoration: none;
+                        transition: opacity 0.2s ease;
+                    }
+                    
+                    .logo-link:hover {
+                        opacity: 0.85;
+                    }
+                    
                     .vespa-logo {
                         height: 45px;
                         width: auto;
@@ -364,127 +384,76 @@
                     
                     .header-navigation {
                         display: flex;
-                        gap: 6px;
+                        gap: 8px;
                         align-items: center;
                         flex: 1;
                         justify-content: center;
-                        max-width: 900px;
+                        max-width: 1100px;
                         margin: 0 20px;
                     }
                     
                     .header-nav-button {
                         display: flex;
                         align-items: center;
-                        gap: 5px;
-                        padding: 6px 10px;
-                        background: rgba(255,255,255,0.12);
+                        gap: 6px;
+                        padding: 8px 14px;
+                        background: rgba(255,255,255,0.15);
                         color: white;
                         text-decoration: none;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         transition: all 0.2s ease;
-                        font-size: 12px;
+                        font-size: 13px;
                         font-weight: 500;
                         white-space: nowrap;
-                        border: 1px solid transparent;
+                        border: 1px solid rgba(255,255,255,0.1);
                         position: relative;
                         overflow: hidden;
-                        text-transform: uppercase;
-                        letter-spacing: 0.3px;
-                    }
-                    
-                    .header-nav-button::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: -100%;
-                        width: 100%;
-                        height: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-                        transition: left 0.5s ease;
+                        text-transform: none;
+                        letter-spacing: 0.2px;
+                        min-width: 90px;
+                        justify-content: center;
                     }
                     
                     .header-nav-button:hover {
-                        background: rgba(255,255,255,0.2);
+                        background: rgba(255,255,255,0.25);
                         transform: translateY(-1px);
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                        border-color: rgba(255,255,255,0.2);
-                    }
-                    
-                    .header-nav-button:hover::before {
-                        left: 100%;
+                        box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+                        border-color: rgba(255,255,255,0.25);
                     }
                     
                     .header-nav-button.active {
-                        background: rgba(255,255,255,0.25);
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.15);
-                        border-color: rgba(255,255,255,0.3);
+                        background: rgba(255,255,255,0.3);
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+                        border-color: rgba(255,255,255,0.35);
                         color: white;
                         font-weight: 600;
                     }
                     
-
-                    
                     .header-nav-button i {
-                        font-size: 14px;
-                        opacity: 0.9;
+                        font-size: 16px;
+                        opacity: 0.95;
                     }
                     
-                    /* Button text color styling for each user type */
-                    .vespa-general-header.student .header-nav-button {
-                        color: #e3f2fd;
+                    /* Special styling for settings and logout buttons */
+                    .header-settings-button,
+                    .header-logout-button {
+                        background: rgba(0,0,0,0.15);
+                        border-color: rgba(255,255,255,0.08);
+                        min-width: auto;
+                        padding: 8px 12px;
                     }
                     
-                    .vespa-general-header.staffResource .header-nav-button {
-                        color: #f1f8e9;
+                    .header-settings-button:hover,
+                    .header-logout-button:hover {
+                        background: rgba(0,0,0,0.25);
+                        border-color: rgba(255,255,255,0.15);
                     }
                     
-                    .vespa-general-header.staffCoaching .header-nav-button {
-                        color: #fff3e0;
+                    .header-logout-button {
+                        margin-left: auto;
                     }
                     
-                    .vespa-general-header.staffAdminResource .header-nav-button,
-                    .vespa-general-header.staffAdminCoaching .header-nav-button {
-                        color: #f3e5f5;
-                    }
-                    
-                    /* Active state maintains bright white */
-                    .header-nav-button.active {
-                        color: white !important;
-                    }
-                    
-                    /* User info styles */
-                    .user-info-container {
-                        display: flex;
-                        align-items: center;
-                        font-size: 12px;
-                    }
-                    
-                    .user-info-container .kn-current_user {
-                        color: rgba(255,255,255,0.85);
-                        display: flex;
-                        align-items: center;
-                        gap: 5px;
-                        font-size: 12px;
-                    }
-                    
-                    .user-info-container .kn-current_user a {
-                        color: rgba(255,255,255,0.85);
-                        text-decoration: none;
-                        padding: 2px 6px;
-                        border-radius: 3px;
-                        transition: all 0.2s ease;
-                        font-size: 12px;
-                    }
-                    
-                    .user-info-container .kn-current_user a:hover {
-                        color: white;
-                        background-color: rgba(255,255,255,0.15);
-                    }
-                    
-                    .user-info-container .kn-log-out {
-                        font-weight: 500;
-                    }
-                    
+                    /* Mobile menu toggle */
                     .mobile-menu-toggle {
                         display: none;
                         background: none;
@@ -501,6 +470,7 @@
                         background-color: rgba(255,255,255,0.1);
                     }
                     
+                    /* Breadcrumb styles */
                     .header-breadcrumb {
                         background-color: rgba(0,0,0,0.08);
                         padding: 8px 0;
@@ -510,7 +480,7 @@
                         display: inline-flex;
                         align-items: center;
                         gap: 8px;
-                        color: rgba(255,255,255,0.85);
+                        color: rgba(255,255,255,0.9);
                         text-decoration: none;
                         font-size: 13px;
                         padding: 4px 20px;
@@ -523,13 +493,17 @@
                         color: white;
                     }
                     
+                    .breadcrumb-back i {
+                        font-size: 12px;
+                    }
+                    
                     /* Adjust body for header */
                     body.has-general-header {
-                        padding-top: 97px !important;
+                        padding-top: 65px !important;
                     }
                     
                     body.has-general-header:has(.header-breadcrumb) {
-                        padding-top: 137px !important;
+                        padding-top: 105px !important;
                     }
                     
                     /* Hide Knack's default navigation but keep user info initially */
@@ -574,10 +548,6 @@
                             height: 56px;
                         }
                         
-                        .header-bottom-row {
-                            display: none; /* Hide user info on mobile */
-                        }
-                        
                         .header-brand span {
                             font-size: 16px;
                         }
@@ -592,7 +562,7 @@
                             right: -280px;
                             width: 280px;
                             height: calc(100vh - 56px);
-                            background-color: ${navConfig.accentColor};
+                            background-color: ${navConfig.color};
                             flex-direction: column;
                             justify-content: flex-start;
                             padding: 16px;
@@ -613,12 +583,19 @@
                             padding: 12px 16px;
                             font-size: 15px;
                             background: rgba(255,255,255,0.08);
+                            min-width: auto;
                         }
                         
                         .header-nav-button i {
                             font-size: 18px;
                             width: 24px;
                             text-align: center;
+                        }
+                        
+                        .header-settings-button,
+                        .header-logout-button {
+                            margin-left: 0;
+                            margin-top: auto;
                         }
                         
                         .mobile-menu-toggle {
@@ -648,6 +625,15 @@
                         body.has-general-header:has(.header-breadcrumb) {
                             padding-top: 96px !important;
                         }
+                        
+                        .header-breadcrumb {
+                            padding: 6px 0;
+                        }
+                        
+                        .breadcrumb-back {
+                            font-size: 12px;
+                            padding: 4px 16px;
+                        }
                     }
                     
                     @media (max-width: 480px) {
@@ -656,40 +642,22 @@
                         }
                     }
                     
-                    /* Specific adjustments for different user types */
+                    /* Specific background colors for different user types */
                     .vespa-general-header.student {
-                        background: linear-gradient(135deg, ${navigationConfig.student.color} 0%, ${navigationConfig.student.accentColor} 100%);
+                        background-color: ${navigationConfig.student.color};
                     }
                     
                     .vespa-general-header.staffResource {
-                        background: linear-gradient(135deg, ${navigationConfig.staffResource.color} 0%, ${navigationConfig.staffResource.accentColor} 100%);
+                        background-color: ${navigationConfig.staffResource.color};
                     }
                     
                     .vespa-general-header.staffCoaching {
-                        background: linear-gradient(135deg, ${navigationConfig.staffCoaching.color} 0%, ${navigationConfig.staffCoaching.accentColor} 100%);
+                        background-color: ${navigationConfig.staffCoaching.color};
                     }
                     
                     .vespa-general-header.staffAdminResource,
                     .vespa-general-header.staffAdminCoaching {
-                        background: linear-gradient(135deg, ${navigationConfig.staffAdminResource.color} 0%, ${navigationConfig.staffAdminResource.accentColor} 100%);
-                    }
-                    
-                    /* Subtle hover effects for each type */
-                    .vespa-general-header.student .header-nav-button:hover {
-                        box-shadow: 0 2px 8px rgba(7, 155, 170, 0.3);
-                    }
-                    
-                    .vespa-general-header.staffResource .header-nav-button:hover {
-                        box-shadow: 0 2px 8px rgba(114, 203, 68, 0.3);
-                    }
-                    
-                    .vespa-general-header.staffCoaching .header-nav-button:hover {
-                        box-shadow: 0 2px 8px rgba(255, 143, 0, 0.3);
-                    }
-                    
-                    .vespa-general-header.staffAdminResource .header-nav-button:hover,
-                    .vespa-general-header.staffAdminCoaching .header-nav-button:hover {
-                        box-shadow: 0 2px 8px rgba(127, 49, 164, 0.3);
+                        background-color: ${navigationConfig.staffAdminResource.color};
                     }
                     
                     /* Smooth transitions */
@@ -749,9 +717,6 @@
             
             log('Header injected successfully');
             
-            // Move the user info into our header
-            moveUserInfo();
-            
             // Setup event listeners
             setupEventListeners();
             
@@ -779,38 +744,6 @@
                     attributeFilter: ['style']
                 });
             });
-        }
-        
-        // New function to move user info into our header
-        function moveUserInfo() {
-            const userInfoElement = document.querySelector('.kn-current_user');
-            const targetContainer = document.querySelector('.user-info-container');
-            
-            if (userInfoElement && targetContainer) {
-                // Clone the user info element to preserve it
-                const userInfoClone = userInfoElement.cloneNode(true);
-                
-                // Clear any existing content
-                targetContainer.innerHTML = '';
-                
-                // Move it into our header
-                targetContainer.appendChild(userInfoClone);
-                
-                // Hide the original completely
-                userInfoElement.style.cssText = 'display: none !important; visibility: hidden !important; position: absolute !important; left: -9999px !important;';
-                
-                // Also hide any parent containers that might be showing
-                const userInfoParent = userInfoElement.parentElement;
-                if (userInfoParent && userInfoParent.classList.contains('kn-info')) {
-                    userInfoParent.style.cssText = 'display: none !important; visibility: hidden !important;';
-                }
-                
-                log('User info moved to custom header');
-            } else if (targetContainer && !userInfoElement) {
-                // If user info doesn't exist yet, retry after a delay
-                log('User info not found, retrying...');
-                setTimeout(() => moveUserInfo(), 500);
-            }
         }
         
         // Setup event listeners
@@ -854,6 +787,21 @@
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
+                    
+                    // Check if this is the logout button
+                    if (this.getAttribute('data-logout') === 'true') {
+                        // Trigger Knack logout
+                        const logoutLink = document.querySelector('.kn-log-out');
+                        if (logoutLink) {
+                            logoutLink.click();
+                        } else {
+                            // Fallback: try to find and click any logout link
+                            const altLogout = document.querySelector('a[href*="logout"]');
+                            if (altLogout) altLogout.click();
+                        }
+                        return;
+                    }
+                    
                     const href = this.getAttribute('href');
                     if (href && href.startsWith('#')) {
                         // Close mobile menu if open
@@ -916,9 +864,6 @@
                 // Longer delay for scene changes to ensure other apps load first
                 setTimeout(() => {
                     injectHeader(); // This will handle both injection and removal based on login state
-                    
-                    // Re-apply user info move after scene changes
-                    setTimeout(() => moveUserInfo(), 100);
                 }, 300);
             });
             
