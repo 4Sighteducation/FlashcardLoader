@@ -30,13 +30,13 @@
             cycle2Score: 'field_156',         // Cycle 2 score
             cycle3Score: 'field_157',         // Cycle 3 score
             connectedCustomer: 'field_133',   // Connected VESPA Customer
+            cycleUnlocked: 'field_1679',      // Boolean - override to unlock (Yes/No)
             
             // Object_66 (Cycle Dates) fields
             cycleCustomer: 'field_1585',      // Connected VESPA Customer
             cycleNumber: 'field_1579',        // Cycle number (1, 2, or 3)
             startDate: 'field_1678',          // Cycle start date
             endDate: 'field_1580',            // Cycle end date
-            cycleUnlocked: 'field_1679',      // Boolean - override to unlock
             
             // Object_1 (Accounts) fields
             accountCustomer: 'field_122'      // Connected VESPA Customer in account
@@ -175,6 +175,30 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
+            // Check if user has cycleUnlocked override (field_1679)
+            const cycleUnlocked = userRecord[CONFIG.fields.cycleUnlocked];
+            log('User cycleUnlocked value:', cycleUnlocked);
+            
+            if (cycleUnlocked === 'Yes') {
+                log('User has cycleUnlocked override - allowing questionnaire access');
+                // Determine which cycle they should take based on completion
+                let nextCycle = 1;
+                const hasCompletedCycle1 = userRecord[CONFIG.fields.cycle1Score] && userRecord[CONFIG.fields.cycle1Score] !== '';
+                const hasCompletedCycle2 = userRecord[CONFIG.fields.cycle2Score] && userRecord[CONFIG.fields.cycle2Score] !== '';
+                const hasCompletedCycle3 = userRecord[CONFIG.fields.cycle3Score] && userRecord[CONFIG.fields.cycle3Score] !== '';
+                
+                if (hasCompletedCycle1) nextCycle = 2;
+                if (hasCompletedCycle2) nextCycle = 3;
+                if (hasCompletedCycle3) nextCycle = 1; // If all completed, restart at cycle 1
+                
+                return {
+                    allowed: true,
+                    cycleNumber: nextCycle,
+                    userRecord: userRecord,
+                    reason: 'cycle_unlocked_override'
+                };
+            }
+            
             // Get user's current cycle (default to 1 if null or undefined)
             let currentCycle = userRecord[CONFIG.fields.currentCycle];
             if (!currentCycle || currentCycle < 1) {
@@ -218,17 +242,6 @@
                 
                 // Skip if this isn't the next cycle to complete
                 if (cycleNum !== nextCycle) continue;
-                
-                // Check if cycle is unlocked (override)
-                if (cycleDate[CONFIG.fields.cycleUnlocked] === true || 
-                    cycleDate[CONFIG.fields.cycleUnlocked] === 'Yes') {
-                    log(`Cycle ${cycleNum} is unlocked, allowing access`);
-                    return {
-                        allowed: true,
-                        cycleNumber: cycleNum,
-                        userRecord: userRecord
-                    };
-                }
                 
                 // Check date range
                 const startDate = new Date(cycleDate[CONFIG.fields.startDate]);
@@ -591,7 +604,30 @@
         // Home button
         $('.home-btn').on('click', function() {
             closePopup();
-            window.location.hash = '#landing-page/';
+            
+            // Check if we're already on the landing page
+            const currentHash = window.location.hash;
+            if (currentHash === '#landing-page/' || currentHash === '#landing-page') {
+                // We're already on the landing page, so we need to refresh it
+                // Option 1: Force navigation by clearing hash first
+                window.location.hash = '';
+                setTimeout(() => {
+                    window.location.hash = '#landing-page/';
+                }, 50);
+                
+                // Option 2: If Knack router is available, use it
+                if (window.Knack && Knack.router) {
+                    try {
+                        // This forces Knack to re-render the current scene
+                        Knack.router.navigate('landing-page/', { trigger: true, replace: false });
+                    } catch (e) {
+                        log('Error using Knack router:', e);
+                    }
+                }
+            } else {
+                // Navigate to landing page if we're elsewhere
+                window.location.hash = '#landing-page/';
+            }
         });
     }
     
