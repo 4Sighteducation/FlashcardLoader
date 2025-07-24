@@ -189,7 +189,7 @@
             student: {
                 brand: 'VESPA Student',
                 brandIcon: 'fa-graduation-cap',
-                color: '#079baa', // Using main teal color
+                color: '#079baa', // Main teal - bright and welcoming for students
                 accentColor: '#06206e', // Dark blue for accents
                 items: [
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
@@ -205,7 +205,7 @@
             staffResource: {
                 brand: 'VESPA Resources',
                 brandIcon: 'fa-book',
-                color: '#72cb44', // Green (VESPA color)
+                color: '#5899a8', // Muted blue-green - professional yet approachable
                 accentColor: '#06206e',
                 items: [
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
@@ -221,7 +221,7 @@
             staffCoaching: {
                 brand: 'VESPA Coaching',
                 brandIcon: 'fa-users',
-                color: '#ff8f00', // Orange (VESPA color)
+                color: '#2f8dcb', // Bright blue - energetic and engaging for coaching
                 accentColor: '#06206e',
                 items: [
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
@@ -237,7 +237,7 @@
             staffAdminResource: {
                 brand: 'VESPA Admin',
                 brandIcon: 'fa-shield',
-                color: '#7f31a4', // Purple (VESPA color)
+                color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 items: [
                     { label: 'Manage', icon: 'fa-cog', href: '#accounts', scene: 'scene_68' },
@@ -253,7 +253,7 @@
             staffAdminCoaching: {
                 brand: 'VESPA Admin',
                 brandIcon: 'fa-shield',
-                color: '#7f31a4', // Purple (VESPA color)
+                color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 items: [
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
