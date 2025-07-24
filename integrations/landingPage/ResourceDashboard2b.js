@@ -2852,6 +2852,38 @@
         log('initializeResourceDashboard function called!');
         log('Initializing Resource Dashboard...');
         
+        // Verify user type before proceeding
+        const user = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes() : null;
+        if (user) {
+            let accountType = null;
+            if (user.values && user.values.field_441) {
+                accountType = user.values.field_441;
+            } else if (user.field_441) {
+                accountType = user.field_441;
+            }
+            
+            // If user doesn't have RESOURCES account type, redirect them
+            if (accountType && !accountType.toString().toUpperCase().includes('RESOURCE')) {
+                log('Non-RESOURCE user detected on resources page, redirecting...');
+                errorLog('User account type:', accountType, '- redirecting to appropriate page');
+                
+                // Clear any partial initialization
+                const container = document.querySelector(SCRIPT_CONFIG.elementSelector);
+                if (container) {
+                    container.innerHTML = '<div style="padding: 20px; text-align: center;">Redirecting to your dashboard...</div>';
+                }
+                
+                // Redirect based on user type
+                if (accountType.toString().toUpperCase().includes('COACHING')) {
+                    window.location.hash = '#staff-landing-page/';
+                } else {
+                    // Default to home for unknown types
+                    window.location.hash = '#home/';
+                }
+                return;
+            }
+        }
+        
         // Extra debug info
         log('Config:', SCRIPT_CONFIG);
         log('Looking for container:', SCRIPT_CONFIG.elementSelector);
