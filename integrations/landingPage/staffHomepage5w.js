@@ -4786,7 +4786,7 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   styleElement.textContent = getStyleCSS();
   
   // Add scene-level CSS overrides if we're in scene-level mode
-  const isSceneLevel = container.id === 'scene-level-container' || 
+  const isSceneLevel = container.id.startsWith('scene-level-container') || 
                       container.classList.contains('scene-level-dashboard-container');
   
   if (isSceneLevel) {
