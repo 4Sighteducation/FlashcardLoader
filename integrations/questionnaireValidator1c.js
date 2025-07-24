@@ -690,7 +690,13 @@
     $(document).ready(function() {
         // Check if we're dealing with a student user
         const user = Knack.getUserAttributes();
-        if (user && user.profiles && user.profiles.includes('profile_6')) {
+        // Check both 'profiles' and 'roles' as Knack uses different properties
+        const isStudent = user && (
+            (user.profiles && user.profiles.includes('profile_6')) ||
+            (user.roles && user.roles.includes('profile_6'))
+        );
+        
+        if (isStudent) {
             log('Student user detected, checking if validator should initialize');
             
             // Wait a moment for config to be set by KnackAppLoader
