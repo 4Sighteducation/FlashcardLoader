@@ -36,6 +36,20 @@
         function getUserType() {
             log('User attributes:', userAttributes);
             
+            // SPECIAL CHECK: If we're in student emulator mode, always return 'student'
+            // Check URL parameter or special marker
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('student_emulator') === 'true' || 
+                window.location.hash.includes('student_emulator=true')) {
+                log('Student emulator mode detected via URL parameter - forcing student view');
+                // Store emulator mode in a variable we can check later
+                window._isStudentEmulatorMode = true;
+                return 'student';
+            }
+            
+            // Not in emulator mode
+            window._isStudentEmulatorMode = false;
+            
             // Check if user is logged in at all
             if (!userAttributes || (!userAttributes.email && !userAttributes.id)) {
                 log('No user attributes found - user might not be logged in');
@@ -275,6 +289,11 @@
                 if (item.isSettings) buttonClass += ' header-settings-button';
                 if (item.isLogout) buttonClass += ' header-logout-button';
                 if (isActive) buttonClass += ' active';
+                
+                // HIDE LOGOUT BUTTON IN EMULATOR MODE
+                if (item.isLogout && window._isStudentEmulatorMode) {
+                    return ''; // Return empty string to hide logout button
+                }
                 
                 // Add data attributes for special buttons
                 const dataAttrs = item.isLogout ? 'data-logout="true"' : '';
@@ -790,6 +809,11 @@
                     
                     // Check if this is the logout button
                     if (this.getAttribute('data-logout') === 'true') {
+                        log('Logout button clicked');
+                        
+                        // Set a flag to force redirect to home
+                        sessionStorage.setItem('vespa_force_home_redirect', 'true');
+                        
                         // Trigger Knack logout
                         const logoutLink = document.querySelector('.kn-log-out');
                         if (logoutLink) {
@@ -831,6 +855,23 @@
             
             const isLoginPage = loginScenes.includes(currentScene) || 
                                loginPages.some(page => currentUrl.includes(page));
+            
+            // Also check for home page redirect
+            $(document).on('knack-scene-render.scene_1', function() {
+                // If we're on the home/login page and we came from a logout
+                if (window.location.hash === '#home/' || window.location.hash === '#home' || 
+                    window.location.pathname.endsWith('/vespa-academy/') ||
+                    window.location.pathname.endsWith('/vespa-academy')) {
+                    log('On home page after potential logout');
+                    // Ensure header is removed
+                    const existingHeader = document.getElementById('vespaGeneralHeader');
+                    if (existingHeader) {
+                        existingHeader.remove();
+                        document.body.classList.remove('has-general-header');
+                        document.body.style.paddingTop = '';
+                    }
+                }
+            });
             
             if (isLoginPage) {
                 log('On login page, not showing header');
@@ -879,11 +920,15 @@
                 // Clear session storage flag
                 sessionStorage.removeItem('_generalHeaderLoadedSession');
                 
-                // Redirect to home page after logout
-                log('Redirecting to home page after logout');
-                setTimeout(() => {
-                    window.location.hash = '#home/';
-                }, 100); // Small delay to ensure logout completes
+                // Force redirect to home page after logout
+                const shouldRedirect = sessionStorage.getItem('vespa_force_home_redirect') === 'true';
+                sessionStorage.removeItem('vespa_force_home_redirect');
+                
+                if (shouldRedirect) {
+                    log('Forcing redirect to home page after logout');
+                    // Use direct assignment to ensure redirect happens
+                    window.location.href = 'https://vespaacademy.knack.com/vespa-academy#home/';
+                }
             });
         }
         
