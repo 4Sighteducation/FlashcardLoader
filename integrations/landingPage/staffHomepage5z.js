@@ -3400,6 +3400,15 @@ async function updateSchoolLogo(schoolId, logoUrl) {
 // Get CSS styles for the homepage with improved UI
 function getStyleCSS() {
     return `
+  /* Scene-level background for staff landing page */
+  body.knack-body,
+  #kn-scene_1215,
+  #kn-scene_1215 .kn-scene,
+  #kn-scene_1215 .kn-scene-content,
+  #kn-scene_1215 .kn-content {
+    background-color: #072769 !important;
+  }
+  
   /* Main Container - Staff Theme */
 #staff-homepage {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
