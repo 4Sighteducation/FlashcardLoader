@@ -298,11 +298,28 @@
                 // Add data attributes for special buttons
                 const dataAttrs = item.isLogout ? 'data-logout="true"' : '';
                 
+                // Check if this is the questionnaire button and if validator is enabled
+                let tooltipText = '';
+                if (item.scene === 'scene_358' && userType === 'student') {
+                    // Check if questionnaireValidator is enabled
+                    const validatorEnabled = window.QUESTIONNAIRE_VALIDATOR_CONFIG && 
+                                           window.QUESTIONNAIRE_VALIDATOR_CONFIG.enabled !== false;
+                    
+                    if (validatorEnabled) {
+                        tooltipText = 'title="Click to check questionnaire availability"';
+                        log('Questionnaire validator is enabled - button will be intercepted');
+                    } else {
+                        tooltipText = 'title="Click to go to questionnaire page"';
+                        log('Questionnaire validator is disabled - normal navigation to scene_358');
+                    }
+                }
+                
                 return `
                     <a href="${item.href}" 
                        class="${buttonClass}" 
                        data-scene="${item.scene}"
-                       ${dataAttrs}>
+                       ${dataAttrs}
+                       ${tooltipText}>
                         <i class="fa ${item.icon}"></i>
                         <span>${item.label}</span>
                     </a>
