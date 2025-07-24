@@ -360,11 +360,15 @@
       }));
       
       const response = await retryApiCall(() => {
-        return $.ajax({
-          url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
-          type: 'GET',
-          headers: getKnackHeaders(),
-          data: { format: 'raw' }
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+            type: 'GET',
+            headers: getKnackHeaders(),
+            data: { format: 'raw' },
+            success: resolve,
+            error: reject
+          });
         });
       });
       
@@ -378,14 +382,18 @@
         
         // Update user record with login information
         await retryApiCall(() => {
-          return $.ajax({
-            url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
-            type: 'PUT',
-            headers: getKnackHeaders(),
-            data: JSON.stringify({
-              field_3198: new Date().toISOString(), // Login Date
-              field_3208: newLoginCount // Number of Logins
-            })
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              url: `${KNACK_API_URL}/objects/object_3/records/${userRecord.id}`,
+              type: 'PUT',
+              headers: getKnackHeaders(),
+              data: JSON.stringify({
+                field_3198: new Date().toISOString(), // Login Date
+                field_3208: newLoginCount // Number of Logins
+              }),
+              success: resolve,
+              error: reject
+            });
           });
         });
         
@@ -1440,15 +1448,6 @@
         const overrideStyle = document.createElement('style');
         overrideStyle.id = overrideStyleId;
         overrideStyle.textContent = `
-          /* Scene-level background for student landing page */
-          body.knack-body,
-          #kn-scene_1210,
-          #kn-scene_1210 .kn-scene,
-          #kn-scene_1210 .kn-scene-content,
-          #kn-scene_1210 .kn-content {
-            background-color: #072769 !important;
-          }
-          
           /* Scene-level overrides for full-width display */
           #vespa-homepage {
             max-width: none !important;
