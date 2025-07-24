@@ -6,6 +6,9 @@ console.log('[Universal Redirect] Script loaded!');
 (function() {
     'use strict';
     
+    // Flag to prevent multiple redirects
+    let hasRedirected = false;
+    
     const REDIRECT_CONFIG = {
         debugMode: true, // TEMPORARILY ENABLED for debugging
         scenes: {
@@ -85,6 +88,12 @@ console.log('[Universal Redirect] Script loaded!');
     function redirectUser(userType) {
         console.log('[Universal Redirect] redirectUser called with userType:', userType);
         
+        // Prevent multiple redirects
+        if (hasRedirected) {
+            console.log('[Universal Redirect] Already redirected, skipping');
+            return;
+        }
+        
         if (!userType) {
             log('No redirect needed - staying on home page');
             console.log('[Universal Redirect] No user type, showing welcome page');
@@ -97,6 +106,7 @@ console.log('[Universal Redirect] Script loaded!');
         
         if (targetUrl) {
             log(`Redirecting ${userType} to ${targetUrl}`);
+            hasRedirected = true; // Set flag before redirecting
             
             // Add a small loading indicator
             const container = document.querySelector('.kn-scene-content') || document.querySelector('#kn-scene_1'); 
@@ -151,6 +161,13 @@ console.log('[Universal Redirect] Script loaded!');
     
     function initializeUniversalRedirect() {
         console.log('[Universal Redirect] initializeUniversalRedirect called!');
+        
+        // Don't run if we've already redirected
+        if (hasRedirected) {
+            console.log('[Universal Redirect] Already redirected, skipping initialization');
+            return;
+        }
+        
         log('Initializing Universal Redirect');
         
         // Multiple ways to check if we're on scene_1
