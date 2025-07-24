@@ -1828,6 +1828,9 @@
             if (user && user.email) {
                 userEmail = user.email; // Store email for error logging
             }
+            
+            log("Starting verification check for user:", userEmail);
+            
             if (!user || !user.email) {
                 errorLog("Cannot check verification status: No user data");
                 return true; // Allow access on error
@@ -1850,9 +1853,10 @@
             }
             
             // Extract the boolean field values (they can be either boolean true/false or "Yes"/"No" strings)
-            const isVerified = staffRecord.field_189 === "Yes" || staffRecord.field_189 === true;
+            // Handle null/undefined values gracefully
+            const isVerified = staffRecord.field_189 === "Yes" || staffRecord.field_189 === true || staffRecord.field_189 === null || staffRecord.field_189 === undefined;
             const hasAcceptedPrivacy = staffRecord.field_127 === "Yes" || staffRecord.field_127 === true;
-            const hasResetPassword = staffRecord.field_539 === "Yes" || staffRecord.field_539 === true;
+            const hasResetPassword = staffRecord.field_539 === "Yes" || staffRecord.field_539 === true || staffRecord.field_539 === null || staffRecord.field_539 === undefined;
             
             log(`User verification status:`, {
                 verified: isVerified,
@@ -1865,40 +1869,77 @@
                 }
             });
             
-            // Determine what needs to be shown based on the correct logic
+            // Check if this is a RESOURCE account (RESOURCE PORTAL, RESOURCES, RESOURCE ONLY, etc.) - they may have different requirements
+            const accountType = staffRecord.field_441;
+            const isResourcesAccount = accountType && accountType.toString().toUpperCase().includes('RESOURCE');
+            
+            // Log account type for debugging
+            log(`Account type detected: ${accountType} (isResourcesAccount: ${isResourcesAccount})`);
+            
+            // Determine what needs to be shown based on the verification logic
             let needsPrivacy = false;
             let needsPassword = false;
             
-            // First time user: field_189="No", field_539="No", field_127="No" - show both privacy and password
-            if (!isVerified && !hasAcceptedPrivacy && !hasResetPassword) {
-                needsPrivacy = true;
-                needsPassword = true;
-                log("First time user - showing both privacy and password modals");
+            // For RESOURCE accounts, handle null/undefined verification fields more gracefully
+            if (isResourcesAccount) {
+                log("RESOURCE account detected - checking verification status");
+                
+                // RESOURCE accounts might have null/undefined verification fields
+                // Only require privacy acceptance and password if explicitly needed
+                if (!hasAcceptedPrivacy) {
+                    needsPrivacy = true;
+                    log("RESOURCE user needs to accept privacy policy");
+                }
+                
+                // Only require password reset if field_539 is explicitly "No" (not null/undefined)
+                if (staffRecord.field_539 === "No" || staffRecord.field_539 === false) {
+                    needsPassword = true;
+                    log("RESOURCE user needs to reset password");
+                }
+                
+                // If neither is needed, allow access
+                if (!needsPrivacy && !needsPassword) {
+                    log("RESOURCE user verification complete - allowing access");
+                    return true;
+                }
             }
-            // User has reset password but needs to accept privacy: field_189="Yes", field_539="Yes", field_127="No"
-            else if (isVerified && hasResetPassword && !hasAcceptedPrivacy) {
-                needsPrivacy = true;
-                needsPassword = false;
-                log("User needs to accept privacy policy only");
-            }
-            // User accepted privacy but needs password reset: field_189="No", field_539="No", field_127="Yes"
-            else if (!isVerified && !hasResetPassword && hasAcceptedPrivacy) {
-                needsPrivacy = false;
-                needsPassword = true;
-                log("User needs to reset password only");
-            }
-            // All complete: field_189="Yes", field_539="Yes", field_127="Yes"
-            else if (isVerified && hasResetPassword && hasAcceptedPrivacy) {
-                log("User verification complete - allowing access");
-                return true;
-            }
+            // For non-RESOURCE accounts, use the original strict verification logic
             else {
-                // Edge case - log the state and default to showing what's missing
-                errorLog("Unexpected verification state", {
-                    isVerified, hasAcceptedPrivacy, hasResetPassword
-                });
-                needsPrivacy = !hasAcceptedPrivacy;
-                needsPassword = !hasResetPassword;
+                // First time user: field_189="No", field_539="No", field_127="No" - show both privacy and password
+                if (!isVerified && !hasAcceptedPrivacy && !hasResetPassword) {
+                    needsPrivacy = true;
+                    needsPassword = true;
+                    log("First time user - showing both privacy and password modals");
+                }
+                // User has reset password but needs to accept privacy: field_189="Yes", field_539="Yes", field_127="No"
+                else if (isVerified && hasResetPassword && !hasAcceptedPrivacy) {
+                    needsPrivacy = true;
+                    needsPassword = false;
+                    log("User needs to accept privacy policy only");
+                }
+                // User accepted privacy but needs password reset: field_189="No", field_539="No", field_127="Yes"
+                else if (!isVerified && !hasResetPassword && hasAcceptedPrivacy) {
+                    needsPrivacy = false;
+                    needsPassword = true;
+                    log("User needs to reset password only");
+                }
+                // All complete: field_189="Yes", field_539="Yes", field_127="Yes"
+                else if (isVerified && hasResetPassword && hasAcceptedPrivacy) {
+                    log("User verification complete - allowing access");
+                    return true;
+                }
+                else {
+                    // Edge case - for non-RESOURCE users, be strict
+                    log("Unexpected verification state", {
+                        isVerified, hasAcceptedPrivacy, hasResetPassword,
+                        accountType: staffRecord.field_441,
+                        email: user.email
+                    });
+                    
+                    // Show what's missing
+                    needsPrivacy = !hasAcceptedPrivacy;
+                    needsPassword = !hasResetPassword;
+                }
             }
             
             // Show appropriate modals if needed
@@ -1916,13 +1957,29 @@
                 userEmail: userEmail
             });
             
-            // Show error message to user
+            // Special handling for RESOURCE accounts - allow access on error
+            try {
+                if (user && user.email) {
+                    const staffRecord = await findStaffRecord(user.email);
+                    if (staffRecord && staffRecord.field_441) {
+                        const accountType = staffRecord.field_441;
+                        if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+                            log("RESOURCE account detected in error handler - allowing access");
+                            return true;
+                        }
+                    }
+                }
+            } catch (innerError) {
+                errorLog("Error checking account type in error handler:", innerError);
+            }
+            
+            // Show error message to user for non-RESOURCE accounts
             if (document.querySelector(SCRIPT_CONFIG.elementSelector)) {
                 document.querySelector(SCRIPT_CONFIG.elementSelector).innerHTML = 
                     '<div class="error-state">Could not verify user account. Please contact support if this issue persists.</div>';
             }
             
-            return false; // Don't allow access on error
+            return false; // Don't allow access on error for non-RESOURCE accounts
         }
     }
 
@@ -3095,4 +3152,5 @@
     }
 
 })();
+
 
