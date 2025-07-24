@@ -153,13 +153,34 @@ console.log('[Universal Redirect] Script loaded!');
         console.log('[Universal Redirect] initializeUniversalRedirect called!');
         log('Initializing Universal Redirect');
         
-        // Check if we're on the home scene (scene_1)
-        const currentScene = (typeof Knack !== 'undefined' && Knack.scene) ? Knack.scene.key : null;
-        console.log('[Universal Redirect] Current scene:', currentScene);
+        // Multiple ways to check if we're on scene_1
+        const currentScene = (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key) ? Knack.scene.key : null;
+        const urlHash = window.location.hash;
+        const isHomeUrl = urlHash === '#home' || urlHash === '#home/';
         
-        if (currentScene !== 'scene_1') {
+        // Also check the DOM for scene_1 elements
+        const hasScene1Element = document.getElementById('kn-scene_1') || 
+                                document.querySelector('[data-scene-key="scene_1"]');
+        
+        console.log('[Universal Redirect] Detection info:', {
+            currentScene: currentScene,
+            urlHash: urlHash,
+            isHomeUrl: isHomeUrl,
+            hasScene1Element: !!hasScene1Element
+        });
+        
+        // If we can't detect scene from Knack but we're on #home URL, proceed
+        if (!currentScene && !isHomeUrl && !hasScene1Element) {
             log('Not on home scene, skipping redirect logic');
             console.log('[Universal Redirect] Not on scene_1, exiting');
+            return;
+        }
+        
+        // If we detect we're on home by any method, proceed
+        if (currentScene === 'scene_1' || isHomeUrl || hasScene1Element) {
+            log('On home scene/page, proceeding with redirect check');
+        } else {
+            log('Not on home scene, skipping redirect logic');
             return;
         }
         
@@ -171,17 +192,21 @@ console.log('[Universal Redirect] Script loaded!');
             const userType = getUserType();
             console.log('[Universal Redirect] User type detected:', userType);
             redirectUser(userType);
-        }, 500); // Increased delay
+        }, 1000); // Increased delay to ensure user data is loaded
     }
     
     // Make function globally available BEFORE the IIFE closes
     window.initializeUniversalRedirect = initializeUniversalRedirect;
     
     // Auto-initialize on scene render
-    $(document).on('knack-scene-render.scene_1', function() {
-        console.log('[Universal Redirect] Scene 1 render event fired!');
+    $(document).on('knack-scene-render.scene_1', function(event, scene) {
+        console.log('[Universal Redirect] Scene 1 render event fired!', scene);
         log('Scene 1 rendered, checking for redirect...');
-        initializeUniversalRedirect();
+        
+        // Add a delay here too to ensure everything is ready
+        setTimeout(() => {
+            initializeUniversalRedirect();
+        }, 500);
     });
     
     console.log('[Universal Redirect] Event listeners attached, initializeUniversalRedirect is available:', typeof window.initializeUniversalRedirect);
