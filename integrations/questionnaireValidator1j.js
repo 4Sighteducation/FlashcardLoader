@@ -383,9 +383,15 @@
     
     // Track if popup is currently being shown
     let isShowingPopup = false;
+    let isNavigatingAway = false;
     
     // Create and show the popup
     function showPopup(validationResult) {
+        // Don't show popup if we're navigating away
+        if (isNavigatingAway) {
+            log('Skipping popup - navigating away from page');
+            return;
+        }
         log('showPopup called with:', {
             allowed: validationResult.allowed,
             reason: validationResult.reason,
@@ -680,6 +686,7 @@
         
         // Proceed to questionnaire button
         $('.proceed-btn').on('click', function() {
+            isNavigatingAway = true;
             closePopup();
             // Set flag to prevent re-validation
             window._questionnaireValidated = true;
@@ -695,33 +702,46 @@
         
         // View report button
         $('.view-report-btn').on('click', function() {
+            isNavigatingAway = true;
             closePopup();
             window.location.hash = '#vespa-results';
         });
         
         // Home button
         $('.home-btn').on('click', function() {
+            isNavigatingAway = true;
             closePopup();
             
             // Check if we're already on the landing page
             const currentHash = window.location.hash;
-            if (currentHash === '#landing-page/' || currentHash === '#landing-page') {
-                // We're already on the landing page, so we need to refresh it
-                // Option 1: Force navigation by clearing hash first
-                window.location.hash = '';
+            const isLandingPage = currentHash === '#landing-page/' || 
+                                 currentHash === '#landing-page' || 
+                                 currentHash.includes('landing-page');
+            
+            if (isLandingPage) {
+                log('Already on landing page, forcing refresh');
+                
+                // Try multiple methods to force a refresh
+                // Method 1: Use Knack's scene render if available
+                const currentScene = Knack.router.current_scene_key;
+                if (currentScene) {
+                    $(document).trigger('knack-scene-render.' + currentScene);
+                }
+                
+                // Method 2: Navigate to a dummy hash then back
+                window.location.hash = '#refresh-' + Date.now();
                 setTimeout(() => {
                     window.location.hash = '#landing-page/';
-                }, 50);
+                }, 100);
                 
-                // Option 2: If Knack router is available, use it
-                if (window.Knack && Knack.router) {
-                    try {
-                        // This forces Knack to re-render the current scene
-                        Knack.router.navigate('landing-page/', { trigger: true, replace: false });
-                    } catch (e) {
-                        log('Error using Knack router:', e);
+                // Method 3: As last resort, reload the page
+                setTimeout(() => {
+                    // Check if we're still stuck
+                    if ($('.kn-scene').length === 0 || $('.kn-loading').is(':visible')) {
+                        log('Page appears stuck, forcing full reload');
+                        window.location.reload();
                     }
-                }
+                }, 500);
             } else {
                 // Navigate to landing page if we're elsewhere
                 window.location.hash = '#landing-page/';
@@ -740,6 +760,7 @@
     
     // Track if validation is in progress
     let isValidating = false;
+    let validationTimeout = null;
     
     // Intercept questionnaire navigation
     function interceptQuestionnaireClick(e) {
@@ -765,8 +786,13 @@
             target.addClass('loading');
             target.find('span').text('Checking...');
             
-            // Small delay to ensure any recent DB changes have propagated
-            setTimeout(() => {
+            // Clear any pending validation
+            if (validationTimeout) {
+                clearTimeout(validationTimeout);
+            }
+            
+            // Small delay to ensure any recent DB changes have propagated and prevent double calls
+            validationTimeout = setTimeout(() => {
                 // Run validation
                 validateQuestionnaireAccess().then(result => {
                     log('Validation result:', result);
@@ -799,7 +825,7 @@
                         message: 'Unable to check questionnaire access. Please try again later.'
                     });
                 });
-            }, 300); // 300ms delay
+            }, 500); // 500ms delay to prevent multiple rapid calls
         }
     }
     
@@ -833,8 +859,10 @@
         // Remove any existing hashchange handlers first
         $(window).off('hashchange.questionnaireValidator');
         
-        // Also intercept any direct navigation attempts
+        // Reset navigation flag when scene changes
         $(window).on('hashchange.questionnaireValidator', function() {
+            isNavigatingAway = false;
+            
             if (window.location.hash === '#add-q' || window.location.hash.includes('#add-q/')) {
                 // If someone tries to navigate directly, redirect to home and show message
                 if (!window._questionnaireValidated) {
