@@ -1,22 +1,22 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 1.1 - Enhanced with modals and radical mobile layout
+ * Version 1.2 - Fixed URL detection for vespa-results hash
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v1.1] Script loaded');
+    console.log('[Student Report Mobile Fix v1.2] Script loaded');
     
     let stylesApplied = false;
     let modalsInitialized = false;
     
     function fixStudentReportMobile() {
-        // Check if we're on scene_43
+        // Check if we're on the student report page
         const currentScene = window.location.hash;
-        if (!currentScene.includes('scene_43') && !currentScene.includes('my-report')) {
-            console.log('[Student Report Mobile Fix] Not on scene_43, skipping');
+        if (!currentScene.includes('scene_43') && !currentScene.includes('my-report') && !currentScene.includes('vespa-results')) {
+            console.log('[Student Report Mobile Fix] Not on student report page, skipping');
             return;
         }
         
@@ -688,10 +688,10 @@
         }, 500);
     });
     
-    // Also watch for any view render in scene_43
+    // Also watch for any view render in scene_43 or vespa-results
     $(document).on('knack-view-render.any', function(event, view) {
-        if (window.location.hash.includes('scene_43') || window.location.hash.includes('my-report')) {
-            console.log(`[Student Report Mobile Fix] View ${view.key} rendered in scene_43`);
+        if (window.location.hash.includes('scene_43') || window.location.hash.includes('my-report') || window.location.hash.includes('vespa-results')) {
+            console.log(`[Student Report Mobile Fix] View ${view.key} rendered on report page`);
             setTimeout(() => {
                 fixStudentReportMobile();
             }, 300);
@@ -706,5 +706,5 @@
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v1.1] Initialization complete');
+    console.log('[Student Report Mobile Fix v1.2] Initialization complete');
 })();
