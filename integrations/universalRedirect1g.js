@@ -50,24 +50,31 @@ console.log('[Universal Redirect] Script loaded!');
         });
         
         // Check if user is a student
-        // Students typically have role 'object_4' in the roles array
+        // Check profile_keys first (most reliable)
+        if (user.values && user.values.profile_keys) {
+            const profileKeys = user.values.profile_keys;
+            // Check if they ONLY have student profile
+            if (profileKeys.length === 1 && profileKeys.includes('profile_6')) {
+                log('Detected as Student via profile_keys - has ONLY student profile');
+                return 'student';
+            }
+        }
+        
+        // Legacy check for old role system
         if (user.roles && (user.roles.includes('object_4') || user.roles.includes('profile_4'))) {
-            log('Detected as Student');
+            log('Detected as Student via legacy roles');
             return 'student';
         }
         
-        // Also check profile_keys for students
-        if (user.values && user.values.profile_keys && user.values.profile_keys.includes('profile_4')) {
-            log('Detected as Student via profile_keys');
-            return 'student';
-        }
-        
-        // Check if user is staff
+        // Check if user is staff first (they might have student role too)
         if (user.values && user.values.field_73) {
-            const staffRoles = ['profile_5', 'profile_7', 'profile_6'];
-            const userRole = Array.isArray(user.values.field_73) ? user.values.field_73[0] : user.values.field_73;
+            const userRoles = Array.isArray(user.values.field_73) ? user.values.field_73 : [user.values.field_73];
+            const staffRoles = ['profile_5', 'profile_7'];
             
-            if (staffRoles.includes(userRole)) {
+            // If user has ANY staff role, they are staff (even if they also have student role)
+            const hasStaffRole = userRoles.some(role => staffRoles.includes(role));
+            
+            if (hasStaffRole) {
                 // Check account type for staff
                 const accountType = user.values.field_441;
                 
@@ -78,6 +85,12 @@ console.log('[Universal Redirect] Script loaded!');
                     log('Detected as Staff (Coaching)');
                     return 'staffCoaching';
                 }
+            }
+            
+            // If no staff role found, check if they ONLY have student role
+            if (userRoles.length === 1 && userRoles[0] === 'profile_6') {
+                log('Detected as Student - has ONLY student role');
+                return 'student';
             }
         }
         
