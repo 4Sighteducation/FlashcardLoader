@@ -25,10 +25,11 @@
         
         fields: {
             // Object_10 (Users) fields
+            email: 'field_197',               // Email (unique identifier)
             currentCycle: 'field_146',        // Current cycle number
             cycle1Score: 'field_155',         // Cycle 1 score (to check completion)
-            cycle2Score: 'field_156',         // Cycle 2 score
-            cycle3Score: 'field_157',         // Cycle 3 score
+            cycle2Score: 'field_161',         // Cycle 2 score
+            cycle3Score: 'field_167',         // Cycle 3 score
             connectedCustomer: 'field_133',   // Connected VESPA Customer
             cycleUnlocked: 'field_1679',      // Boolean - override to unlock (Yes/No)
             
@@ -60,7 +61,7 @@
     }
     
     // Fetch user's Object_10 record
-    async function fetchUserRecord() {
+    async function fetchUserRecord(forceRefresh = false) {
         try {
             const user = Knack.getUserAttributes();
             if (!user || !user.id) {
@@ -68,17 +69,30 @@
             }
             
             log('Fetching user record for account ID:', user.id);
+            if (forceRefresh) {
+                log('Force refresh enabled - bypassing any cache');
+            }
             
             // Search Object_10 for records connected to this account
             const url = `${CONFIG.apiUrl}/objects/${CONFIG.objects.users}/records`;
-            const filters = {
+            // First, let's log what we're searching for
+            log('Searching for Object_10 records for user:', {
+                accountId: user.id,
+                email: user.email,
+                name: user.name
+            });
+            
+            // Search by email field (field_197) which is unique in Object_10
+            let filters = {
                 match: 'and',
                 rules: [{
-                    field: 'field_2', // Account connection field in Object_10
+                    field: 'field_197', // Email field in Object_10 (unique)
                     operator: 'is',
-                    value: user.id
+                    value: user.email
                 }]
             };
+            
+            log('Searching Object_10 by email (field_197):', user.email);
             
             const response = await $.ajax({
                 url: url,
@@ -97,11 +111,27 @@
             });
             
             if (response.records && response.records.length > 0) {
-                log('Found user record:', response.records[0]);
-                return response.records[0];
+                const userRecord = response.records[0];
+                log('Found Object_10 record:', {
+                    id: userRecord.id,
+                    email: userRecord.field_197,
+                    name: userRecord.field_120 || userRecord.field_125 || userRecord.field_124 || 'No name',
+                    cycleUnlocked: userRecord.field_1679,
+                    currentCycle: userRecord.field_146,
+                    cycle1Score: userRecord.field_155,
+                    cycle2Score: userRecord.field_156,
+                    cycle3Score: userRecord.field_157
+                });
+                
+                // Verify it's the correct record by email
+                if (userRecord.field_197 !== user.email) {
+                    log(`WARNING: Email mismatch! Expected ${user.email} but got ${userRecord.field_197}`);
+                }
+                
+                return userRecord;
             }
             
-            throw new Error('No Object_10 record found for user');
+            throw new Error(`No Object_10 record found with email: ${user.email}`);
             
         } catch (error) {
             log('Error fetching user record:', error);
@@ -157,8 +187,8 @@
     // Main validation logic
     async function validateQuestionnaireAccess() {
         try {
-            // Fetch user's Object_10 record
-            const userRecord = await fetchUserRecord();
+            // Fetch user's Object_10 record with force refresh
+            const userRecord = await fetchUserRecord(true);
             const userId = userRecord.id;
             
             // Get user's connected customer
@@ -190,6 +220,7 @@
                 raw_field_raw: userRecord['field_1679_raw'],
                 type: typeof cycleUnlocked
             });
+            log(`To edit this user's cycleUnlocked field, go to: https://builder.knack.com/apps/${CONFIG.appId}/records/object_10/view-object-10-details/${userRecord.id}/edit-record2`);
             
             // Check multiple possible values for Yes
             if (cycleUnlocked === 'Yes' || 
@@ -227,6 +258,12 @@
             const hasCompletedCycle1 = userRecord[CONFIG.fields.cycle1Score] && userRecord[CONFIG.fields.cycle1Score] !== '';
             const hasCompletedCycle2 = userRecord[CONFIG.fields.cycle2Score] && userRecord[CONFIG.fields.cycle2Score] !== '';
             const hasCompletedCycle3 = userRecord[CONFIG.fields.cycle3Score] && userRecord[CONFIG.fields.cycle3Score] !== '';
+            
+            log('Cycle completion status:', {
+                cycle1: { completed: hasCompletedCycle1, score: userRecord[CONFIG.fields.cycle1Score] },
+                cycle2: { completed: hasCompletedCycle2, score: userRecord[CONFIG.fields.cycle2Score] },
+                cycle3: { completed: hasCompletedCycle3, score: userRecord[CONFIG.fields.cycle3Score] }
+            });
             
             // Find next cycle to complete
             let nextCycle = 1;
