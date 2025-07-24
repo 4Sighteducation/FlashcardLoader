@@ -707,7 +707,7 @@
             window.location.hash = '#vespa-results';
         });
         
-        // Home button
+        // Home button - Fixed implementation
         $('.home-btn').on('click', function() {
             isNavigatingAway = true;
             closePopup();
@@ -721,27 +721,22 @@
             if (isLandingPage) {
                 log('Already on landing page, forcing refresh');
                 
-                // Try multiple methods to force a refresh
-                // Method 1: Use Knack's scene render if available
-                const currentScene = Knack.router.current_scene_key;
-                if (currentScene) {
-                    $(document).trigger('knack-scene-render.' + currentScene);
+                // Use Knack's built-in scene render method
+                if (Knack && Knack.router && Knack.router.current_scene_key) {
+                    // First hide the content
+                    $('.kn-scene').fadeOut(200, function() {
+                        // Then trigger a scene render
+                        Knack.router.scene_view.render();
+                        // And show it again
+                        $('.kn-scene').fadeIn(200);
+                    });
+                } else {
+                    // Fallback: navigate to a temporary hash then back
+                    window.location.hash = '#temp-refresh-' + Date.now();
+                    setTimeout(() => {
+                        window.location.hash = '#landing-page/';
+                    }, 50);
                 }
-                
-                // Method 2: Navigate to a dummy hash then back
-                window.location.hash = '#refresh-' + Date.now();
-                setTimeout(() => {
-                    window.location.hash = '#landing-page/';
-                }, 100);
-                
-                // Method 3: As last resort, reload the page
-                setTimeout(() => {
-                    // Check if we're still stuck
-                    if ($('.kn-scene').length === 0 || $('.kn-loading').is(':visible')) {
-                        log('Page appears stuck, forcing full reload');
-                        window.location.reload();
-                    }
-                }, 500);
             } else {
                 // Navigate to landing page if we're elsewhere
                 window.location.hash = '#landing-page/';
@@ -761,6 +756,7 @@
     // Track if validation is in progress
     let isValidating = false;
     let validationTimeout = null;
+    let isInterceptedClick = false; // Add this to track if click was intercepted
     
     // Intercept questionnaire navigation
     function interceptQuestionnaireClick(e) {
@@ -780,6 +776,7 @@
             }
             
             isValidating = true;
+            isInterceptedClick = true; // Set flag to indicate intercepted click
             log('Intercepted questionnaire navigation');
             
             // Show loading state
@@ -808,11 +805,17 @@
                     log('About to show popup with result:', result.allowed ? 'ALLOWED' : 'NOT ALLOWED');
                     showPopup(result);
                     
+                    // Reset intercepted flag after showing popup
+                    setTimeout(() => {
+                        isInterceptedClick = false;
+                    }, 1000);
+                    
                 }).catch(error => {
                     log('Validation error:', error);
                     
                     // Reset validation flag
                     isValidating = false;
+                    isInterceptedClick = false;
                     
                     // Restore button state
                     target.removeClass('loading');
@@ -825,7 +828,7 @@
                         message: 'Unable to check questionnaire access. Please try again later.'
                     });
                 });
-            }, 500); // 500ms delay to prevent multiple rapid calls
+            }, 300); // Reduced delay for better UX
         }
     }
     
@@ -863,7 +866,8 @@
         $(window).on('hashchange.questionnaireValidator', function() {
             isNavigatingAway = false;
             
-            if (window.location.hash === '#add-q' || window.location.hash.includes('#add-q/')) {
+            // Only show direct access popup if not from an intercepted click
+            if (!isInterceptedClick && !isValidating && (window.location.hash === '#add-q' || window.location.hash.includes('#add-q/'))) {
                 // If someone tries to navigate directly, redirect to home and show message
                 if (!window._questionnaireValidated) {
                     window.location.hash = '#landing-page/';
@@ -909,5 +913,7 @@
             }, 100);
         }
     });
+    
+})(); 
     
 })(); 
