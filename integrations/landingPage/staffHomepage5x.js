@@ -5677,6 +5677,30 @@ window.initializeStaffHomepage = function() {
    
    // Store current user ID for next time
    localStorage.setItem('staffhomepage_user_id', currentUser.id);
+   
+   // Verify user account type
+   let accountType = null;
+   if (currentUser.values && currentUser.values.field_441) {
+     accountType = currentUser.values.field_441;
+   } else if (currentUser.field_441) {
+     accountType = currentUser.field_441;
+   }
+   
+   // If user has RESOURCES account type, redirect them
+   if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+     console.log('[Staff Homepage] RESOURCE user detected on coaching page, redirecting...');
+     console.error('[Staff Homepage] User account type:', accountType, '- redirecting to resources page');
+     
+     // Show redirect message
+     const container = document.querySelector('#' + (window.STAFFHOMEPAGE_CONFIG?.elementSelector || 'view_3024').replace('#', ''));
+     if (container) {
+       container.innerHTML = '<div style="padding: 20px; text-align: center;">Redirecting to your dashboard...</div>';
+     }
+     
+     // Redirect to resources page
+     window.location.hash = '#resources-home';
+     return;
+   }
  }
 
   // First, explicitly check if we're on the login page by looking for login form elements
