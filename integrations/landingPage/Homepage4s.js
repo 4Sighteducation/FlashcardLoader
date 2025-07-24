@@ -1433,7 +1433,7 @@
     debugLog("Added Font Awesome 6.4.0 CDN link");
     
     // Add scene-level CSS overrides if we're in scene-level mode
-    const isSceneLevel = container.id === 'scene-level-container' || container.classList.contains('scene-level-dashboard-container');
+    const isSceneLevel = container.id.startsWith('scene-level-container') || container.classList.contains('scene-level-dashboard-container');
     if (isSceneLevel) {
       const overrideStyleId = 'homepage-scene-level-overrides';
       if (!document.getElementById(overrideStyleId)) {
@@ -3060,3 +3060,4 @@
     });
   }
 })(); // End of IIFE
+
