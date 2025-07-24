@@ -184,8 +184,18 @@
             // Check if user has cycleUnlocked override (field_1679)
             const cycleUnlocked = userRecord[CONFIG.fields.cycleUnlocked];
             log('User cycleUnlocked value:', cycleUnlocked);
+            log('Full field_1679 data:', {
+                raw: userRecord[CONFIG.fields.cycleUnlocked],
+                raw_field: userRecord['field_1679'],
+                raw_field_raw: userRecord['field_1679_raw'],
+                type: typeof cycleUnlocked
+            });
             
-            if (cycleUnlocked === 'Yes') {
+            // Check multiple possible values for Yes
+            if (cycleUnlocked === 'Yes' || 
+                cycleUnlocked === true || 
+                cycleUnlocked === 'true' ||
+                (Array.isArray(cycleUnlocked) && cycleUnlocked[0] === 'Yes')) {
                 log('User has cycleUnlocked override - allowing questionnaire access');
                 // Determine which cycle they should take based on completion
                 let nextCycle = 1;
@@ -316,8 +326,19 @@
         }
     }
     
+    // Track if popup is currently being shown
+    let isShowingPopup = false;
+    
     // Create and show the popup
     function showPopup(validationResult) {
+        // Prevent multiple popups
+        if (isShowingPopup) {
+            log('Popup already showing, skipping duplicate');
+            return;
+        }
+        
+        isShowingPopup = true;
+        
         // Remove any existing popup
         $('.vespa-questionnaire-popup').remove();
         
@@ -645,11 +666,15 @@
     
     // Close popup
     function closePopup() {
+        isShowingPopup = false;
         $('.vespa-questionnaire-popup-overlay, .vespa-questionnaire-popup').removeClass('show');
         setTimeout(() => {
             $('.vespa-questionnaire-popup-overlay, .vespa-questionnaire-popup').remove();
         }, 300);
     }
+    
+    // Track if validation is in progress
+    let isValidating = false;
     
     // Intercept questionnaire navigation
     function interceptQuestionnaireClick(e) {
@@ -662,6 +687,13 @@
             e.preventDefault();
             e.stopPropagation();
             
+            // Prevent multiple simultaneous validations
+            if (isValidating) {
+                log('Validation already in progress, ignoring click');
+                return;
+            }
+            
+            isValidating = true;
             log('Intercepted questionnaire navigation');
             
             // Show loading state
@@ -674,6 +706,9 @@
                 validateQuestionnaireAccess().then(result => {
                     log('Validation result:', result);
                     
+                    // Reset validation flag
+                    isValidating = false;
+                    
                     // Restore button state
                     target.removeClass('loading');
                     target.find('span').text('VESPA Questionnaire');
@@ -683,6 +718,9 @@
                     
                 }).catch(error => {
                     log('Validation error:', error);
+                    
+                    // Reset validation flag
+                    isValidating = false;
                     
                     // Restore button state
                     target.removeClass('loading');
