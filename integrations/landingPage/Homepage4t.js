@@ -1440,6 +1440,15 @@
         const overrideStyle = document.createElement('style');
         overrideStyle.id = overrideStyleId;
         overrideStyle.textContent = `
+          /* Scene-level background for student landing page */
+          body.knack-body,
+          #kn-scene_1210,
+          #kn-scene_1210 .kn-scene,
+          #kn-scene_1210 .kn-scene-content,
+          #kn-scene_1210 .kn-content {
+            background-color: #072769 !important;
+          }
+          
           /* Scene-level overrides for full-width display */
           #vespa-homepage {
             max-width: none !important;
