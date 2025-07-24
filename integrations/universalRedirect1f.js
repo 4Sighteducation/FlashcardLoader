@@ -20,7 +20,7 @@ console.log('[Universal Redirect] Script loaded!');
         urls: {
             scene_1210: '#landing-page/',
             scene_1215: '#staff-landing-page/',
-            scene_1252: '#resource-landing-page/' // You'll need to create this page
+            scene_1252: '#resources-home' // Correct URL for resources page
         }
     };
     
