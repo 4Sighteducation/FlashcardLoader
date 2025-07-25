@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.8 - Fixed VESPA tap to expand styling, removed MutationObserver for comments
+ * Version 3.5 - Removed info button handlers, hide info buttons, fixed text areas with mutation observer
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.8] Script loaded');
+    console.log('[Student Report Mobile Fix v3.5] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -39,7 +39,6 @@
             setTimeout(() => {
                 initializeVespaPopups();
                 initializeTextAreaFocus();
-                hideShowAnswersButton();
                 popupsInitialized = true;
             }, 500);
         }
@@ -186,119 +185,30 @@
         console.log(`[Student Report Mobile Fix] Initialized ${vespaReports.length} VESPA popups`);
     }
     
-    function hideShowAnswersButton() {
-        console.log('[Student Report Mobile Fix] Hiding SHOW ANSWERS button');
-        
-        // Find all possible variations of the show answers button
-        const buttons = document.querySelectorAll('#view_3041 button');
-        buttons.forEach(button => {
-            const buttonText = button.textContent.toUpperCase();
-            if (buttonText.includes('ANSWER') || buttonText.includes('QUESTIONNAIRE')) {
-                button.style.display = 'none';
-                // Also hide parent container if it becomes empty
-                const parent = button.parentElement;
-                if (parent && parent.children.length === 1) {
-                    parent.style.display = 'none';
-                }
-            }
-        });
-        
-        // Also try specific IDs and classes
-        const specificSelectors = [
-            '#answers-button',
-            '.answers-button',
-            '.questionnaire-button',
-            '[id*="answer"]',
-            '[class*="answer-btn"]'
-        ];
-        
-        specificSelectors.forEach(selector => {
-            const elements = document.querySelectorAll(`#view_3041 ${selector}`);
-            elements.forEach(el => {
-                el.style.display = 'none';
-            });
-        });
-    }
-    
-    function initializeModalCloseFunctionality() {
-        console.log('[Student Report Mobile Fix] Initializing modal close functionality');
-        
-        // Watch for modals to appear
-        const modalObserver = new MutationObserver(function(mutations) {
-            // Look for modal overlays
-            const modalOverlays = document.querySelectorAll('#view_3041 .modal-overlay, #view_3041 [class*="modal-overlay"]:not(.vespa-modal-overlay)');
-            
-            modalOverlays.forEach(overlay => {
-                if (!overlay.hasAttribute('data-close-initialized')) {
-                    overlay.setAttribute('data-close-initialized', 'true');
-                    
-                    // Add click handler to overlay
-                    overlay.addEventListener('click', function(e) {
-                        // Only close if clicking the overlay, not the content
-                        if (e.target === overlay) {
-                            console.log('[Student Report Mobile Fix] Closing modal via overlay click');
-                            // Try various methods to close the modal
-                            overlay.style.display = 'none';
-                            overlay.remove();
-                            // Also try to trigger any close buttons
-                            const closeBtn = overlay.querySelector('[class*="close"], .close-button, button[aria-label="Close"]');
-                            if (closeBtn) {
-                                closeBtn.click();
-                            }
-                        }
-                    });
-                    
-                    // Add click handler to pseudo close button
-                    const modalContent = overlay.querySelector('.modal-content, [class*="modal-content"]');
-                    if (modalContent) {
-                        modalContent.addEventListener('click', function(e) {
-                            // Check if clicked on the pseudo element area (top-right corner)
-                            const rect = modalContent.getBoundingClientRect();
-                            const clickX = e.clientX - rect.left;
-                            const clickY = e.clientY - rect.top;
-                            
-                            // If click is in top-right corner area (where the X is)
-                            if (clickX > rect.width - 50 && clickY < 50) {
-                                console.log('[Student Report Mobile Fix] Closing modal via X button');
-                                overlay.style.display = 'none';
-                                overlay.remove();
-                            }
-                        });
-                    }
-                }
-            });
-        });
-        
-        // Start observing for modals
-        modalObserver.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    }
-    
     function initializeTextAreaFocus() {
         console.log('[Student Report Mobile Fix] Initializing text area focus enhancements');
         
-        // Just enhance existing text areas without mutation observer to avoid Quill conflicts
-        function checkAndEnhanceTextAreas() {
-            const textAreas = document.querySelectorAll('#view_3041 textarea:not([data-focus-enhanced]), #view_3041 .ql-editor:not([data-focus-enhanced])');
-            if (textAreas.length > 0) {
-                enhanceTextAreas(textAreas);
-            }
+        // Set up a mutation observer to catch dynamically added text areas
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                // Check for new text areas or editors
+                const newTextAreas = mutation.target.querySelectorAll('textarea:not([data-focus-enhanced]), .ql-editor:not([data-focus-enhanced])');
+                enhanceTextAreas(newTextAreas);
+            });
+        });
+        
+        // Start observing
+        const reportContainer = document.querySelector('#view_3041');
+        if (reportContainer) {
+            observer.observe(reportContainer, {
+                childList: true,
+                subtree: true
+            });
         }
         
-        // Check initially
-        setTimeout(checkAndEnhanceTextAreas, 1000);
-        
-        // Check again after a delay for any late-loading editors
-        setTimeout(checkAndEnhanceTextAreas, 3000);
-        
-        // Also check when clicking on comment buttons
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('.comment-button, .add-comment, [class*="comment"]')) {
-                setTimeout(checkAndEnhanceTextAreas, 500);
-            }
-        });
+        // Enhance existing text areas
+        const existingTextAreas = document.querySelectorAll('#view_3041 textarea, #view_3041 .ql-editor');
+        enhanceTextAreas(existingTextAreas);
         
         function enhanceTextAreas(textAreas) {
             textAreas.forEach((textArea) => {
@@ -355,7 +265,7 @@
     }
     
     function applyMobileStyles() {
-        const styleId = 'student-report-mobile-fixes-v3-8';
+        const styleId = 'student-report-mobile-fixes-v3-5';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -368,9 +278,9 @@
         
         // Mobile-optimized styles - simplified
         style.textContent = `
-            /* Mobile-only styles for Student Report - v3.8 simplified */
+            /* Mobile-only styles for Student Report - v3.5 simplified */
             @media (max-width: 768px) {
-                /* Hide chart, introductory questions, logo, info buttons, and SHOW ANSWERS button */
+                /* Hide chart, introductory questions, logo, and info buttons */
                 #view_3041 #chart-container,
                 #view_3041 #bottom-report-header-container,
                 #view_3041 #introductory-questions-container,
@@ -381,12 +291,7 @@
                 #view_3041 [class*="logo"] img,
                 #view_3041 .info-icon,
                 #view_3041 .pi-info-circle,
-                #view_3041 i[class*="info"],
-                #view_3041 #answers-button,
-                #view_3041 button[class*="answer"],
-                #view_3041 button[class*="questionnaire"],
-                #view_3041 .answers-section,
-                #view_3041 .questionnaire-section {
+                #view_3041 i[class*="info"] {
                     display: none !important;
                 }
                 
@@ -457,43 +362,14 @@
                 
                 /* Gentle fix for EFFORT section consistency */
                 #view_3041 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"] {
-                    display: flex !important;
+                    display: block !important;
                     width: 100% !important;
                     box-sizing: border-box !important;
-                    float: none !important;
-                    margin: 0 !important;
                 }
                 
                 /* Make VESPA sections look clickable on mobile */
                 #view_3041 .vespa-report {
                     position: relative !important;
-                    cursor: pointer !important;
-                    transition: all 0.3s ease !important;
-                }
-                
-                #view_3041 .vespa-report:hover {
-                    transform: translateY(-2px) !important;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-                }
-                
-                /* Ensure VESPA report scores are properly styled */
-                #view_3041 .vespa-report-score {
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: space-between !important;
-                    padding: 15px !important;
-                    border-radius: 8px !important;
-                    margin-bottom: 10px !important;
-                    min-height: 60px !important;
-                }
-                
-                #view_3041 .vespa-report-score > p {
-                    margin: 0 !important;
-                    flex: 1 !important;
-                }
-                
-                #view_3041 .vespa-report-score > div {
-                    margin-left: 15px !important;
                 }
                 
                 /* Add a subtle tap indicator */
@@ -507,7 +383,6 @@
                     background: rgba(255,255,255,0.9);
                     padding: 4px 8px;
                     border-radius: 4px;
-                    pointer-events: none;
                 }
                 
                 /* Hide print button on very small screens */
@@ -653,78 +528,10 @@
                 background: #1976d2 !important;
                 color: white !important;
             }
-            
-            /* Fix for SHOW ANSWERS modal */
-            .questionnaire-modal,
-            .modal-overlay,
-            [class*="modal"]:not(.vespa-modal-overlay) {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                z-index: 9999 !important;
-                overflow: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-            }
-            
-            .questionnaire-modal .modal-content,
-            .modal-content,
-            [class*="modal-content"]:not(.vespa-modal-content) {
-                position: relative !important;
-                max-height: 80vh !important;
-                height: auto !important;
-                overflow-y: auto !important;
-                margin: 5vh auto !important;
-                width: 90% !important;
-                max-width: 600px !important;
-                background: white !important;
-                border-radius: 8px !important;
-                padding: 20px !important;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
-            }
-            
-            /* Add a close button to modals that don't have one */
-            #view_3041 .modal-content:not(:has(.close-button))::before,
-            #view_3041 [class*="modal-content"]:not(:has([class*="close"]))::before {
-                content: "✕" !important;
-                position: absolute !important;
-                top: 10px !important;
-                right: 10px !important;
-                font-size: 24px !important;
-                color: #666 !important;
-                cursor: pointer !important;
-                z-index: 10000 !important;
-                width: 30px !important;
-                height: 30px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                background: rgba(255, 255, 255, 0.9) !important;
-                border-radius: 50% !important;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-            }
-            
-            /* Make clicking the overlay close the modal */
-            #view_3041 .modal-overlay,
-            #view_3041 [class*="modal-overlay"] {
-                cursor: pointer !important;
-            }
-            
-            /* Ensure the modal content doesn't close when clicked */
-            #view_3041 .modal-content,
-            #view_3041 [class*="modal-content"] {
-                cursor: default !important;
-            }
         `;
         
         document.head.appendChild(style);
         stylesApplied = true;
-        
-        // Add functionality to close modals when clicking the X or overlay
-        setTimeout(() => {
-            initializeModalCloseFunctionality();
-        }, 1000);
         
         console.log('[Student Report Mobile Fix] Mobile styles applied successfully!');
     }
@@ -771,5 +578,7 @@
         }, 500);
     });
     
+    console.log('[Student Report Mobile Fix v3.5] Initialization complete');
+})();
     console.log('[Student Report Mobile Fix v3.8] Initialization complete');
 })();
