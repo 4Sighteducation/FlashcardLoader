@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.0 - Minimal approach: hide unnecessary elements, bigger text areas, hide rich text toolbar
+ * Version 3.1 - Minimal approach + consistent EFFORT rendering
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.0] Script loaded');
+    console.log('[Student Report Mobile Fix v3.1] Script loaded');
     
     let stylesApplied = false;
     
@@ -61,6 +61,7 @@
         // Minimal mobile-optimized styles
         style.textContent = `
             /* Mobile-only styles for Student Report - Minimal v3.0 */
+            /* Focus: Hide unnecessary elements, bigger text areas, no layout changes */
             @media (max-width: 768px) {
                 /* Hide chart, introductory questions, and logo */
                 #view_3041 #chart-container,
@@ -68,7 +69,9 @@
                 #view_3041 #introductory-questions-container,
                 #view_3041 .image-logo,
                 #view_3041 img[alt="Logo"],
-                #view_3041 img[src*="logo"] {
+                #view_3041 img[src*="logo"],
+                #view_3041 .logo,
+                #view_3041 [class*="logo"] img {
                     display: none !important;
                 }
                 
@@ -94,7 +97,9 @@
                 
                 /* Hide the rich text toolbar to maximize writing space */
                 #view_3041 .ql-toolbar,
-                #view_3041 .ql-snow .ql-toolbar {
+                #view_3041 .ql-snow .ql-toolbar,
+                #view_3041 .ql-toolbar.ql-snow,
+                #view_3041 .comment-section .ql-toolbar {
                     display: none !important;
                 }
                 
@@ -120,6 +125,18 @@
                 #view_3041 input[type="button"] {
                     min-height: 44px !important;
                     padding: 12px 20px !important;
+                }
+                
+                /* Ensure consistent VESPA section rendering */
+                #view_3041 .vespa-report-score {
+                    display: block !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                
+                #view_3041 .vespa-report-score p {
+                    display: block !important;
+                    width: 100% !important;
                 }
                 
                 /* Hide print button on very small screens */
@@ -183,5 +200,5 @@
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v3.0] Initialization complete');
+    console.log('[Student Report Mobile Fix v3.1] Initialization complete');
 })();
