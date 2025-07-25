@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.5 - Removed info button handlers, hide info buttons, fixed text areas with mutation observer
+ * Version 3.6 - Hide Show Answers button on mobile, enhanced text area centering
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.5] Script loaded');
+    console.log('[Student Report Mobile Fix v3.6] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -215,44 +215,81 @@
                 // Mark as enhanced
                 textArea.setAttribute('data-focus-enhanced', 'true');
                 
-                // On focus, expand and scroll into view
+                // Create an overlay backdrop for focus state
+                let backdrop = null;
+                
+                // On focus, expand and center on screen
                 textArea.addEventListener('focus', function() {
                     console.log('[Student Report Mobile Fix] Text area focused');
+                    
+                    // Create backdrop if it doesn't exist
+                    if (!backdrop) {
+                        backdrop = document.createElement('div');
+                        backdrop.className = 'textarea-focus-backdrop';
+                        document.body.appendChild(backdrop);
+                    }
+                    
+                    // Show backdrop
+                    backdrop.classList.add('active');
+                    
+                    // Get the comment section container
+                    const commentSection = textArea.closest('.comment-section') || textArea.closest('.ql-container')?.parentElement;
+                    if (commentSection) {
+                        commentSection.classList.add('focused-comment-section');
+                    }
+                    
                     // Expand the text area
                     if (textArea.tagName === 'TEXTAREA') {
-                        textArea.style.minHeight = '200px';
+                        textArea.style.minHeight = '300px';
                     } else {
-                        textArea.style.minHeight = '250px';
+                        textArea.style.minHeight = '350px';
                         // Also expand the container
                         const container = textArea.closest('.ql-container');
                         if (container) {
-                            container.style.minHeight = '250px';
+                            container.style.minHeight = '350px';
                         }
                     }
                     
-                    // Scroll the element into view with some padding
+                    // Center the element on screen
                     setTimeout(() => {
                         const rect = textArea.getBoundingClientRect();
                         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                        const targetY = rect.top + scrollTop - 100; // 100px padding from top
+                        const elementHeight = rect.height;
+                        const viewportHeight = window.innerHeight;
+                        
+                        // Calculate scroll position to center the element
+                        const targetY = rect.top + scrollTop - (viewportHeight - elementHeight) / 2;
                         
                         window.scrollTo({
-                            top: targetY,
+                            top: Math.max(0, targetY),
                             behavior: 'smooth'
                         });
                     }, 100);
                 });
                 
-                // On blur, return to normal size
+                // On blur, return to normal
                 textArea.addEventListener('blur', function() {
                     console.log('[Student Report Mobile Fix] Text area blurred');
+                    
+                    // Hide backdrop
+                    if (backdrop) {
+                        backdrop.classList.remove('active');
+                    }
+                    
+                    // Remove focused class
+                    const commentSection = textArea.closest('.comment-section') || textArea.closest('.ql-container')?.parentElement;
+                    if (commentSection) {
+                        commentSection.classList.remove('focused-comment-section');
+                    }
+                    
+                    // Return to normal size
                     if (textArea.tagName === 'TEXTAREA') {
-                        textArea.style.minHeight = '120px';
-                    } else {
                         textArea.style.minHeight = '150px';
+                    } else {
+                        textArea.style.minHeight = '200px';
                         const container = textArea.closest('.ql-container');
                         if (container) {
-                            container.style.minHeight = '150px';
+                            container.style.minHeight = '200px';
                         }
                     }
                 });
@@ -265,7 +302,7 @@
     }
     
     function applyMobileStyles() {
-        const styleId = 'student-report-mobile-fixes-v3-5';
+        const styleId = 'student-report-mobile-fixes-v3-6';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -276,11 +313,11 @@
         const style = document.createElement('style');
         style.id = styleId;
         
-        // Mobile-optimized styles - simplified
+        // Mobile-optimized styles - enhanced for text area centering
         style.textContent = `
-            /* Mobile-only styles for Student Report - v3.5 simplified */
+            /* Mobile-only styles for Student Report - v3.6 enhanced */
             @media (max-width: 768px) {
-                /* Hide chart, introductory questions, logo, and info buttons */
+                /* Hide chart, introductory questions, logo, info buttons, and Show Answers button */
                 #view_3041 #chart-container,
                 #view_3041 #bottom-report-header-container,
                 #view_3041 #introductory-questions-container,
@@ -291,33 +328,86 @@
                 #view_3041 [class*="logo"] img,
                 #view_3041 .info-icon,
                 #view_3041 .pi-info-circle,
-                #view_3041 i[class*="info"] {
+                #view_3041 i[class*="info"],
+                #view_3041 button:contains("Show Answers"),
+                #view_3041 button:has-text("Show Answers"),
+                #view_3041 button[class*="show-answers"],
+                #view_3041 .show-answers-button,
+                #view_3041 button[aria-label*="Show Answers"] {
                     display: none !important;
                 }
                 
-                /* Make text areas taller (not huge) */
+                /* Also hide any button that has the text "Show Answers" */
+                #view_3041 button {
+                    display: inline-block;
+                }
+                
+                #view_3041 button:nth-of-type(1)[style*="background-color"] {
+                    display: none !important;
+                }
+                
+                /* Make text areas larger by default */
                 #view_3041 textarea {
-                    min-height: 120px !important;
+                    min-height: 150px !important;
                     font-size: 16px !important; /* Prevent iOS zoom on focus */
+                    padding: 12px !important;
                 }
                 
                 #view_3041 .ql-editor,
                 #view_3041 .ql-container {
-                    min-height: 150px !important;
+                    min-height: 200px !important;
                 }
                 
                 #view_3041 .ql-editor {
-                    padding: 12px !important;
+                    padding: 15px !important;
+                    font-size: 16px !important;
                 }
                 
-                /* When focused, make text areas even bigger */
+                /* Backdrop for focused text areas */
+                .textarea-focus-backdrop {
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    background: rgba(0, 0, 0, 0.5) !important;
+                    z-index: 998 !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                    transition: opacity 0.3s ease !important;
+                }
+                
+                .textarea-focus-backdrop.active {
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                }
+                
+                /* Enhanced focused comment section */
+                .focused-comment-section {
+                    position: relative !important;
+                    z-index: 999 !important;
+                    background: white !important;
+                    border-radius: 8px !important;
+                    padding: 20px !important;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+                    margin: 10px !important;
+                }
+                
+                /* When focused, make text areas much bigger */
                 #view_3041 textarea:focus {
-                    min-height: 200px !important;
+                    min-height: 300px !important;
+                    background: white !important;
+                    border: 2px solid #1976d2 !important;
                 }
                 
                 #view_3041 .ql-editor:focus,
                 #view_3041 .ql-container:focus-within {
-                    min-height: 250px !important;
+                    min-height: 350px !important;
+                }
+                
+                #view_3041 .ql-container:focus-within {
+                    border: 2px solid #1976d2 !important;
+                    background: white !important;
                 }
                 
                 /* Hide the rich text toolbar to maximize writing space */
@@ -370,6 +460,11 @@
                 /* Make VESPA sections look clickable on mobile */
                 #view_3041 .vespa-report {
                     position: relative !important;
+                    transition: transform 0.2s ease !important;
+                }
+                
+                #view_3041 .vespa-report:active {
+                    transform: scale(0.98) !important;
                 }
                 
                 /* Add a subtle tap indicator */
@@ -528,6 +623,28 @@
                 background: #1976d2 !important;
                 color: white !important;
             }
+            
+            /* Additional CSS to target Show Answers button by content */
+            @media (max-width: 768px) {
+                #view_3041 button {
+                    /* First hide all buttons, then show specific ones */
+                }
+                
+                /* Re-show submit and other necessary buttons */
+                #view_3041 button[type="submit"],
+                #view_3041 .p-button-primary,
+                #view_3041 .comment-section button,
+                #view_3041 #print-button {
+                    display: inline-block !important;
+                }
+                
+                /* Specifically hide the Show Answers button using multiple selectors */
+                #view_3041 #bottom-report-header-container button,
+                #view_3041 .introductory-questions button,
+                #view_3041 button.p-button:first-of-type {
+                    display: none !important;
+                }
+            }
         `;
         
         document.head.appendChild(style);
@@ -578,5 +695,8 @@
         }, 500);
     });
     
+    console.log('[Student Report Mobile Fix v3.6] Initialization complete');
+})();
+
     console.log('[Student Report Mobile Fix v3.5] Initialization complete');
 })();
