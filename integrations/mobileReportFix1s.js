@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.6 - Fixed text area observer deprecation, added SHOW ANSWERS modal fixes
+ * Version 3.5 - Removed info button handlers, hide info buttons, fixed text areas with mutation observer
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.6] Script loaded');
+    console.log('[Student Report Mobile Fix v3.5] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -39,7 +39,6 @@
             setTimeout(() => {
                 initializeVespaPopups();
                 initializeTextAreaFocus();
-                hideShowAnswersButton();
                 popupsInitialized = true;
             }, 500);
         }
@@ -186,100 +185,30 @@
         console.log(`[Student Report Mobile Fix] Initialized ${vespaReports.length} VESPA popups`);
     }
     
-    function initializeModalCloseFunctionality() {
-        console.log('[Student Report Mobile Fix] Initializing modal close functionality');
-        
-        // Watch for modals to appear
-        const modalObserver = new MutationObserver(function(mutations) {
-            // Look for modal overlays
-            const modalOverlays = document.querySelectorAll('#view_3041 .modal-overlay, #view_3041 [class*="modal-overlay"]:not(.vespa-modal-overlay)');
-            
-            modalOverlays.forEach(overlay => {
-                if (!overlay.hasAttribute('data-close-initialized')) {
-                    overlay.setAttribute('data-close-initialized', 'true');
-                    
-                    // Add click handler to overlay
-                    overlay.addEventListener('click', function(e) {
-                        // Only close if clicking the overlay, not the content
-                        if (e.target === overlay) {
-                            console.log('[Student Report Mobile Fix] Closing modal via overlay click');
-                            // Try various methods to close the modal
-                            overlay.style.display = 'none';
-                            overlay.remove();
-                            // Also try to trigger any close buttons
-                            const closeBtn = overlay.querySelector('[class*="close"], .close-button, button[aria-label="Close"]');
-                            if (closeBtn) {
-                                closeBtn.click();
-                            }
-                        }
-                    });
-                    
-                    // Add click handler to pseudo close button
-                    const modalContent = overlay.querySelector('.modal-content, [class*="modal-content"]');
-                    if (modalContent) {
-                        modalContent.addEventListener('click', function(e) {
-                            // Check if clicked on the pseudo element area (top-right corner)
-                            const rect = modalContent.getBoundingClientRect();
-                            const clickX = e.clientX - rect.left;
-                            const clickY = e.clientY - rect.top;
-                            
-                            // If click is in top-right corner area (where the X is)
-                            if (clickX > rect.width - 50 && clickY < 50) {
-                                console.log('[Student Report Mobile Fix] Closing modal via X button');
-                                overlay.style.display = 'none';
-                                overlay.remove();
-                            }
-                        });
-                    }
-                }
-            });
-        });
-        
-        // Start observing for modals
-        modalObserver.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    }
-    
     function initializeTextAreaFocus() {
         console.log('[Student Report Mobile Fix] Initializing text area focus enhancements');
         
-        // Initial enhancement with delay to let Quill initialize
-        setTimeout(() => {
-            const existingTextAreas = document.querySelectorAll('#view_3041 textarea, #view_3041 .ql-editor');
-            enhanceTextAreas(existingTextAreas);
-        }, 1000);
-        
-        // Set up a mutation observer with debouncing to avoid Quill initialization issues
-        let observerTimeout;
+        // Set up a mutation observer to catch dynamically added text areas
         const observer = new MutationObserver(function(mutations) {
-            // Clear existing timeout
-            clearTimeout(observerTimeout);
-            
-            // Debounce to avoid triggering during Quill initialization
-            observerTimeout = setTimeout(() => {
-                // Check for new text areas or editors that haven't been enhanced
-                const newTextAreas = document.querySelectorAll('#view_3041 textarea:not([data-focus-enhanced]), #view_3041 .ql-editor:not([data-focus-enhanced])');
-                if (newTextAreas.length > 0) {
-                    enhanceTextAreas(newTextAreas);
-                }
-            }, 500);
+            mutations.forEach(function(mutation) {
+                // Check for new text areas or editors
+                const newTextAreas = mutation.target.querySelectorAll('textarea:not([data-focus-enhanced]), .ql-editor:not([data-focus-enhanced])');
+                enhanceTextAreas(newTextAreas);
+            });
         });
         
-        // Start observing after a delay to let initial content load
-        setTimeout(() => {
-            const reportContainer = document.querySelector('#view_3041');
-            if (reportContainer) {
-                observer.observe(reportContainer, {
-                    childList: true,
-                    subtree: true,
-                    // Don't observe attributes to reduce noise
-                    attributes: false,
-                    characterData: false
-                });
-            }
-        }, 2000);
+        // Start observing
+        const reportContainer = document.querySelector('#view_3041');
+        if (reportContainer) {
+            observer.observe(reportContainer, {
+                childList: true,
+                subtree: true
+            });
+        }
+        
+        // Enhance existing text areas
+        const existingTextAreas = document.querySelectorAll('#view_3041 textarea, #view_3041 .ql-editor');
+        enhanceTextAreas(existingTextAreas);
         
         function enhanceTextAreas(textAreas) {
             textAreas.forEach((textArea) => {
@@ -336,7 +265,7 @@
     }
     
     function applyMobileStyles() {
-        const styleId = 'student-report-mobile-fixes-v3-6';
+        const styleId = 'student-report-mobile-fixes-v3-5';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -349,9 +278,9 @@
         
         // Mobile-optimized styles - simplified
         style.textContent = `
-            /* Mobile-only styles for Student Report - v3.6 simplified */
+            /* Mobile-only styles for Student Report - v3.5 simplified */
             @media (max-width: 768px) {
-                /* Hide chart, introductory questions, logo, info buttons, and SHOW ANSWERS button */
+                /* Hide chart, introductory questions, logo, and info buttons */
                 #view_3041 #chart-container,
                 #view_3041 #bottom-report-header-container,
                 #view_3041 #introductory-questions-container,
@@ -362,12 +291,7 @@
                 #view_3041 [class*="logo"] img,
                 #view_3041 .info-icon,
                 #view_3041 .pi-info-circle,
-                #view_3041 i[class*="info"],
-                #view_3041 #answers-button,
-                #view_3041 button[class*="answer"],
-                #view_3041 button[class*="questionnaire"],
-                #view_3041 .answers-section,
-                #view_3041 .questionnaire-section {
+                #view_3041 i[class*="info"] {
                     display: none !important;
                 }
                 
@@ -604,78 +528,10 @@
                 background: #1976d2 !important;
                 color: white !important;
             }
-            
-            /* Fix for SHOW ANSWERS modal */
-            .questionnaire-modal,
-            .modal-overlay,
-            [class*="modal"]:not(.vespa-modal-overlay) {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                z-index: 9999 !important;
-                overflow: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-            }
-            
-            .questionnaire-modal .modal-content,
-            .modal-content,
-            [class*="modal-content"]:not(.vespa-modal-content) {
-                position: relative !important;
-                max-height: 80vh !important;
-                height: auto !important;
-                overflow-y: auto !important;
-                margin: 5vh auto !important;
-                width: 90% !important;
-                max-width: 600px !important;
-                background: white !important;
-                border-radius: 8px !important;
-                padding: 20px !important;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
-            }
-            
-            /* Add a close button to modals that don't have one */
-            #view_3041 .modal-content:not(:has(.close-button))::before,
-            #view_3041 [class*="modal-content"]:not(:has([class*="close"]))::before {
-                content: "✕" !important;
-                position: absolute !important;
-                top: 10px !important;
-                right: 10px !important;
-                font-size: 24px !important;
-                color: #666 !important;
-                cursor: pointer !important;
-                z-index: 10000 !important;
-                width: 30px !important;
-                height: 30px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                background: rgba(255, 255, 255, 0.9) !important;
-                border-radius: 50% !important;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-            }
-            
-            /* Make clicking the overlay close the modal */
-            #view_3041 .modal-overlay,
-            #view_3041 [class*="modal-overlay"] {
-                cursor: pointer !important;
-            }
-            
-            /* Ensure the modal content doesn't close when clicked */
-            #view_3041 .modal-content,
-            #view_3041 [class*="modal-content"] {
-                cursor: default !important;
-            }
         `;
         
         document.head.appendChild(style);
         stylesApplied = true;
-        
-        // Add functionality to close modals when clicking the X or overlay
-        setTimeout(() => {
-            initializeModalCloseFunctionality();
-        }, 1000);
         
         console.log('[Student Report Mobile Fix] Mobile styles applied successfully!');
     }
@@ -721,6 +577,9 @@
             fixStudentReportMobile();
         }, 500);
     });
+    
+    console.log('[Student Report Mobile Fix v3.5] Initialization complete');
+})();
     
     console.log('[Student Report Mobile Fix v3.6] Initialization complete');
 })();
