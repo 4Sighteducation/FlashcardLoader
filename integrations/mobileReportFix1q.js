@@ -751,5 +751,4 @@
     
     console.log('[Student Report Mobile Fix v3.4] Initialization complete');
 })();
-    console.log('[Student Report Mobile Fix v3.8] Initialization complete');
-})();
+
