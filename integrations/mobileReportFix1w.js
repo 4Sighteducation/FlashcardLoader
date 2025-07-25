@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.7 - Added "Coaching Questions" title to modal popup
+ * Version 3.8 - Fixed cycle buttons, comment box touch events, added intro questions modal
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.7] Script loaded');
+    console.log('[Student Report Mobile Fix v3.8] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -39,6 +39,7 @@
             setTimeout(() => {
                 initializeVespaPopups();
                 initializeTextAreaFocus();
+                initializeIntroQuestionsButton();
                 popupsInitialized = true;
             }, 500);
         }
@@ -54,6 +55,86 @@
             viewport.content = 'width=device-width, initial-scale=1.0';
             console.log('[Student Report Mobile Fix] Zoom enabled');
         }
+    }
+    
+    function initializeIntroQuestionsButton() {
+        console.log('[Student Report Mobile Fix] Initializing intro questions button');
+        
+        // Check if button already exists
+        if (document.getElementById('intro-questions-toggle-btn')) {
+            return;
+        }
+        
+        // Find the report header or suitable location
+        const reportHeader = document.querySelector('#view_3041 #report-header') || 
+                           document.querySelector('#view_3041 #report-container');
+        
+        if (!reportHeader) {
+            console.log('[Student Report Mobile Fix] No suitable location for intro questions button');
+            return;
+        }
+        
+        // Create the button
+        const introButton = document.createElement('button');
+        introButton.id = 'intro-questions-toggle-btn';
+        introButton.className = 'intro-questions-mobile-btn';
+        introButton.innerHTML = '<span>📋</span> View Intro Questions';
+        
+        // Insert the button
+        reportHeader.insertAdjacentElement('afterbegin', introButton);
+        
+        // Create intro questions modal if it doesn't exist
+        if (!document.getElementById('intro-questions-modal')) {
+            const modalHtml = `
+                <div id="intro-questions-modal" class="intro-modal-overlay">
+                    <div class="intro-modal-content">
+                        <div class="intro-modal-header">
+                            <h2>Introductory Questions</h2>
+                            <button class="intro-modal-close">&times;</button>
+                        </div>
+                        <div class="intro-modal-body">
+                            <div id="intro-questions-content"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Add close handlers
+            const modal = document.getElementById('intro-questions-modal');
+            const closeBtn = modal.querySelector('.intro-modal-close');
+            
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        }
+        
+        // Add click handler to button
+        introButton.addEventListener('click', function() {
+            const modal = document.getElementById('intro-questions-modal');
+            const contentDiv = document.getElementById('intro-questions-content');
+            
+            // Get the intro questions content
+            const introQuestionsEl = document.querySelector('#view_3041 #introductory-questions-container');
+            if (introQuestionsEl) {
+                contentDiv.innerHTML = introQuestionsEl.innerHTML;
+            } else {
+                contentDiv.innerHTML = '<p>No introductory questions available.</p>';
+            }
+            
+            // Show modal
+            modal.classList.add('active');
+            
+            console.log('[Student Report Mobile Fix] Opened intro questions modal');
+        });
+        
+        console.log('[Student Report Mobile Fix] Intro questions button initialized');
     }
     
     function initializeVespaPopups() {
@@ -111,10 +192,15 @@
             
             // Add click handler
             report.addEventListener('click', function(e) {
-                // Prevent clicking on links, buttons, or info icons within
-                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.tagName === 'I' ||
-                    e.target.classList.contains('info-icon') || e.target.classList.contains('pi-info-circle') ||
-                    e.target.closest('.info-icon') || e.target.closest('button')) {
+                // Prevent clicking on links, buttons, text areas, or input fields
+                if (e.target.tagName === 'A' || 
+                    e.target.tagName === 'BUTTON' || 
+                    e.target.tagName === 'TEXTAREA' ||
+                    e.target.tagName === 'INPUT' ||
+                    e.target.classList.contains('ql-editor') ||
+                    e.target.closest('button') ||
+                    e.target.closest('.comment-section') ||
+                    e.target.closest('.ql-container')) {
                     return;
                 }
                 
@@ -193,7 +279,9 @@
             mutations.forEach(function(mutation) {
                 // Check for new text areas or editors
                 const newTextAreas = mutation.target.querySelectorAll('textarea:not([data-focus-enhanced]), .ql-editor:not([data-focus-enhanced])');
-                enhanceTextAreas(newTextAreas);
+                if (newTextAreas.length > 0) {
+                    enhanceTextAreas(newTextAreas);
+                }
             });
         });
         
@@ -219,7 +307,7 @@
                 let backdrop = null;
                 
                 // On focus, expand and center on screen
-                textArea.addEventListener('focus', function() {
+                textArea.addEventListener('focus', function(e) {
                     console.log('[Student Report Mobile Fix] Text area focused');
                     
                     // Create backdrop if it doesn't exist
@@ -268,12 +356,19 @@
                 });
                 
                 // On blur, return to normal
-                textArea.addEventListener('blur', function() {
+                textArea.addEventListener('blur', function(e) {
                     console.log('[Student Report Mobile Fix] Text area blurred');
                     
                     // Hide backdrop
                     if (backdrop) {
                         backdrop.classList.remove('active');
+                        // Clean up backdrop after animation
+                        setTimeout(() => {
+                            if (backdrop && !backdrop.classList.contains('active')) {
+                                backdrop.remove();
+                                backdrop = null;
+                            }
+                        }, 300);
                     }
                     
                     // Remove focused class
@@ -293,6 +388,12 @@
                         }
                     }
                 });
+                
+                // Ensure touch events work properly
+                textArea.addEventListener('touchstart', function(e) {
+                    console.log('[Student Report Mobile Fix] Touch start on text area');
+                    // Don't prevent default - let the touch event through
+                }, { passive: true });
             });
             
             if (textAreas.length > 0) {
@@ -302,7 +403,7 @@
     }
     
     function applyMobileStyles() {
-        const styleId = 'student-report-mobile-fixes-v3-7';
+        const styleId = 'student-report-mobile-fixes-v3-8';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -315,11 +416,10 @@
         
         // Mobile-optimized styles - enhanced for text area centering
         style.textContent = `
-            /* Mobile-only styles for Student Report - v3.7 enhanced */
+            /* Mobile-only styles for Student Report - v3.8 enhanced */
             @media (max-width: 768px) {
-                /* Hide chart, introductory questions, logo, info buttons, and Show Answers button */
+                /* Hide chart, introductory questions container, logo, and info buttons */
                 #view_3041 #chart-container,
-                #view_3041 #bottom-report-header-container,
                 #view_3041 #introductory-questions-container,
                 #view_3041 .image-logo,
                 #view_3041 img[alt="Logo"],
@@ -328,22 +428,31 @@
                 #view_3041 [class*="logo"] img,
                 #view_3041 .info-icon,
                 #view_3041 .pi-info-circle,
-                #view_3041 i[class*="info"],
-                #view_3041 button:contains("Show Answers"),
-                #view_3041 button:has-text("Show Answers"),
-                #view_3041 button[class*="show-answers"],
-                #view_3041 .show-answers-button,
-                #view_3041 button[aria-label*="Show Answers"] {
+                #view_3041 i[class*="info"] {
                     display: none !important;
                 }
                 
-                /* Also hide any button that has the text "Show Answers" */
-                #view_3041 button {
-                    display: inline-block;
+                /* Specifically hide ONLY the Show Answers button by targeting its text content */
+                /* This is done via JavaScript now to be more precise */
+                
+                /* Intro questions button */
+                .intro-questions-mobile-btn {
+                    background: #1976d2 !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 8px !important;
+                    padding: 10px 20px !important;
+                    font-size: 16px !important;
+                    margin: 10px 0 !important;
+                    cursor: pointer !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 8px !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
                 }
                 
-                #view_3041 button:nth-of-type(1)[style*="background-color"] {
-                    display: none !important;
+                .intro-questions-mobile-btn:active {
+                    transform: scale(0.98) !important;
                 }
                 
                 /* Make text areas larger by default */
@@ -478,6 +587,12 @@
                     background: rgba(255,255,255,0.9);
                     padding: 4px 8px;
                     border-radius: 4px;
+                    pointer-events: none;
+                }
+                
+                /* Prevent tap indicator on comment sections */
+                #view_3041 .comment-section {
+                    position: relative !important;
                 }
                 
                 /* Hide print button on very small screens */
@@ -492,6 +607,83 @@
                     overflow-x: hidden !important;
                     -webkit-overflow-scrolling: touch !important;
                 }
+            }
+            
+            /* Intro questions modal styles */
+            .intro-modal-overlay {
+                display: none;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: rgba(0, 0, 0, 0.8) !important;
+                z-index: 99998 !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            
+            .intro-modal-overlay.active {
+                display: flex !important;
+                align-items: flex-start !important;
+                justify-content: center !important;
+                padding: 20px 0 !important;
+            }
+            
+            .intro-modal-content {
+                background: white !important;
+                width: 90% !important;
+                max-width: 600px !important;
+                margin: 20px auto !important;
+                border-radius: 10px !important;
+                position: relative !important;
+                max-height: 90vh !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            
+            .intro-modal-header {
+                background: #1976d2 !important;
+                color: white !important;
+                padding: 20px !important;
+                border-radius: 10px 10px 0 0 !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                flex-shrink: 0 !important;
+            }
+            
+            .intro-modal-header h2 {
+                margin: 0 !important;
+                font-size: 24px !important;
+                font-weight: 600 !important;
+            }
+            
+            .intro-modal-close {
+                background: none !important;
+                border: none !important;
+                color: white !important;
+                font-size: 30px !important;
+                cursor: pointer !important;
+                padding: 0 !important;
+                width: 40px !important;
+                height: 40px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 50% !important;
+                transition: background 0.3s ease !important;
+            }
+            
+            .intro-modal-close:hover {
+                background: rgba(255, 255, 255, 0.2) !important;
+            }
+            
+            .intro-modal-body {
+                padding: 20px !important;
+                overflow-y: auto !important;
+                flex: 1 !important;
             }
             
             /* Modal styles - always apply these */
@@ -631,34 +823,43 @@
                 background: #1976d2 !important;
                 color: white !important;
             }
-            
-            /* Additional CSS to target Show Answers button by content */
-            @media (max-width: 768px) {
-                #view_3041 button {
-                    /* First hide all buttons, then show specific ones */
-                }
-                
-                /* Re-show submit and other necessary buttons */
-                #view_3041 button[type="submit"],
-                #view_3041 .p-button-primary,
-                #view_3041 .comment-section button,
-                #view_3041 #print-button {
-                    display: inline-block !important;
-                }
-                
-                /* Specifically hide the Show Answers button using multiple selectors */
-                #view_3041 #bottom-report-header-container button,
-                #view_3041 .introductory-questions button,
-                #view_3041 button.p-button:first-of-type {
-                    display: none !important;
-                }
-            }
         `;
         
         document.head.appendChild(style);
         stylesApplied = true;
         
+        // After CSS is applied, use JavaScript to hide the Show Answers button more precisely
+        setTimeout(() => {
+            hideShowAnswersButton();
+        }, 100);
+        
         console.log('[Student Report Mobile Fix] Mobile styles applied successfully!');
+    }
+    
+    function hideShowAnswersButton() {
+        // Only run on mobile
+        if (window.innerWidth > 768) return;
+        
+        // Find and hide the Show Answers button by checking button text
+        const buttons = document.querySelectorAll('#view_3041 button');
+        buttons.forEach(button => {
+            const buttonText = button.textContent || button.innerText;
+            if (buttonText && buttonText.trim().toLowerCase() === 'show answers') {
+                button.style.display = 'none';
+                console.log('[Student Report Mobile Fix] Found and hid Show Answers button');
+            }
+        });
+        
+        // Also check for buttons in the bottom header that might be Show Answers
+        const bottomHeaderButtons = document.querySelectorAll('#view_3041 #bottom-report-header-container button');
+        if (bottomHeaderButtons.length > 0 && bottomHeaderButtons[0]) {
+            // Check if it's likely the Show Answers button (usually the first one)
+            const firstButton = bottomHeaderButtons[0];
+            const buttonText = firstButton.textContent || firstButton.innerText;
+            if (!buttonText || buttonText.trim().toLowerCase().includes('answer')) {
+                firstButton.style.display = 'none';
+            }
+        }
     }
     
     // Initialize with a delay to ensure Vue app is loaded
@@ -703,5 +904,6 @@
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v3.7] Initialization complete');
+    console.log('[Student Report Mobile Fix v3.8] Initialization complete');
 })();
+
