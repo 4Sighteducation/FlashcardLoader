@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.3 - Added theme colors, info modals, view answers fix, dynamic text areas
+ * Version 3.4 - Fixed event handler conflicts for tap to expand and info buttons
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.3] Script loaded');
+    console.log('[Student Report Mobile Fix v3.4] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -99,14 +99,23 @@
         // Find all VESPA report sections
         const vespaReports = document.querySelectorAll('#view_3041 .vespa-report');
         
-        vespaReports.forEach((report) => {
+        vespaReports.forEach((report, idx) => {
+            // Skip if already initialized
+            if (report.hasAttribute('data-vespa-initialized')) {
+                return;
+            }
+            
+            // Mark as initialized
+            report.setAttribute('data-vespa-initialized', 'true');
+            
             // Make the section clickable
             report.style.cursor = 'pointer';
             
             // Add click handler
             report.addEventListener('click', function(e) {
                 // Prevent clicking on links or buttons within
-                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
+                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || 
+                    e.target.classList.contains('info-icon') || e.target.classList.contains('pi-info-circle')) {
                     return;
                 }
                 
@@ -181,7 +190,8 @@
                               Array.from(document.querySelectorAll('#view_3041 button')).find(btn => 
                                   btn.textContent.includes('VIEW ANSWERS'));
         
-        if (viewAnswersBtn) {
+        if (viewAnswersBtn && !viewAnswersBtn.hasAttribute('data-mobile-initialized')) {
+            viewAnswersBtn.setAttribute('data-mobile-initialized', 'true');
             // Override click handler
             viewAnswersBtn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -230,11 +240,20 @@
         const infoButtons = document.querySelectorAll('#view_3041 .info-icon, #view_3041 .pi-info-circle');
         
         infoButtons.forEach((button, index) => {
+            // Skip if already initialized
+            if (button.hasAttribute('data-info-initialized')) {
+                return;
+            }
+            
+            // Mark as initialized
+            button.setAttribute('data-info-initialized', 'true');
             button.style.cursor = 'pointer';
             
-            button.addEventListener('click', function(e) {
+            // Override any existing click handlers
+            const clickHandler = function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
                 
                 // Get the parent element to find context
                 const parentElement = button.closest('.vespa-report') || button.closest('div');
@@ -284,7 +303,12 @@
                 });
                 
                 console.log(`[Student Report Mobile Fix] Info modal ${index} opened`);
-            });
+                
+                return false; // Prevent any further event handling
+            };
+            
+            // Add the click handler with capture phase to intercept before Vue handlers
+            button.addEventListener('click', clickHandler, true);
         });
         
         console.log(`[Student Report Mobile Fix] Initialized ${infoButtons.length} info modals`);
@@ -725,6 +749,6 @@
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v3.3] Initialization complete');
+    console.log('[Student Report Mobile Fix v3.4] Initialization complete');
 })();
 
