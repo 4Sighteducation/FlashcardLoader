@@ -580,6 +580,3 @@
     
     console.log('[Student Report Mobile Fix v3.5] Initialization complete');
 })();
-    
-    console.log('[Student Report Mobile Fix v3.6] Initialization complete');
-})();
