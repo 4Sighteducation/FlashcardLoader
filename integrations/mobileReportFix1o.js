@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.6 - Fixed text area observer deprecation, added SHOW ANSWERS modal fixes
+ * Version 3.8 - Fixed VESPA tap to expand styling, removed MutationObserver for comments
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.6] Script loaded');
+    console.log('[Student Report Mobile Fix v3.8] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -186,6 +186,40 @@
         console.log(`[Student Report Mobile Fix] Initialized ${vespaReports.length} VESPA popups`);
     }
     
+    function hideShowAnswersButton() {
+        console.log('[Student Report Mobile Fix] Hiding SHOW ANSWERS button');
+        
+        // Find all possible variations of the show answers button
+        const buttons = document.querySelectorAll('#view_3041 button');
+        buttons.forEach(button => {
+            const buttonText = button.textContent.toUpperCase();
+            if (buttonText.includes('ANSWER') || buttonText.includes('QUESTIONNAIRE')) {
+                button.style.display = 'none';
+                // Also hide parent container if it becomes empty
+                const parent = button.parentElement;
+                if (parent && parent.children.length === 1) {
+                    parent.style.display = 'none';
+                }
+            }
+        });
+        
+        // Also try specific IDs and classes
+        const specificSelectors = [
+            '#answers-button',
+            '.answers-button',
+            '.questionnaire-button',
+            '[id*="answer"]',
+            '[class*="answer-btn"]'
+        ];
+        
+        specificSelectors.forEach(selector => {
+            const elements = document.querySelectorAll(`#view_3041 ${selector}`);
+            elements.forEach(el => {
+                el.style.display = 'none';
+            });
+        });
+    }
+    
     function initializeModalCloseFunctionality() {
         console.log('[Student Report Mobile Fix] Initializing modal close functionality');
         
@@ -245,41 +279,26 @@
     function initializeTextAreaFocus() {
         console.log('[Student Report Mobile Fix] Initializing text area focus enhancements');
         
-        // Initial enhancement with delay to let Quill initialize
-        setTimeout(() => {
-            const existingTextAreas = document.querySelectorAll('#view_3041 textarea, #view_3041 .ql-editor');
-            enhanceTextAreas(existingTextAreas);
-        }, 1000);
-        
-        // Set up a mutation observer with debouncing to avoid Quill initialization issues
-        let observerTimeout;
-        const observer = new MutationObserver(function(mutations) {
-            // Clear existing timeout
-            clearTimeout(observerTimeout);
-            
-            // Debounce to avoid triggering during Quill initialization
-            observerTimeout = setTimeout(() => {
-                // Check for new text areas or editors that haven't been enhanced
-                const newTextAreas = document.querySelectorAll('#view_3041 textarea:not([data-focus-enhanced]), #view_3041 .ql-editor:not([data-focus-enhanced])');
-                if (newTextAreas.length > 0) {
-                    enhanceTextAreas(newTextAreas);
-                }
-            }, 500);
-        });
-        
-        // Start observing after a delay to let initial content load
-        setTimeout(() => {
-            const reportContainer = document.querySelector('#view_3041');
-            if (reportContainer) {
-                observer.observe(reportContainer, {
-                    childList: true,
-                    subtree: true,
-                    // Don't observe attributes to reduce noise
-                    attributes: false,
-                    characterData: false
-                });
+        // Just enhance existing text areas without mutation observer to avoid Quill conflicts
+        function checkAndEnhanceTextAreas() {
+            const textAreas = document.querySelectorAll('#view_3041 textarea:not([data-focus-enhanced]), #view_3041 .ql-editor:not([data-focus-enhanced])');
+            if (textAreas.length > 0) {
+                enhanceTextAreas(textAreas);
             }
-        }, 2000);
+        }
+        
+        // Check initially
+        setTimeout(checkAndEnhanceTextAreas, 1000);
+        
+        // Check again after a delay for any late-loading editors
+        setTimeout(checkAndEnhanceTextAreas, 3000);
+        
+        // Also check when clicking on comment buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.comment-button, .add-comment, [class*="comment"]')) {
+                setTimeout(checkAndEnhanceTextAreas, 500);
+            }
+        });
         
         function enhanceTextAreas(textAreas) {
             textAreas.forEach((textArea) => {
@@ -336,7 +355,7 @@
     }
     
     function applyMobileStyles() {
-        const styleId = 'student-report-mobile-fixes-v3-6';
+        const styleId = 'student-report-mobile-fixes-v3-8';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -349,7 +368,7 @@
         
         // Mobile-optimized styles - simplified
         style.textContent = `
-            /* Mobile-only styles for Student Report - v3.6 simplified */
+            /* Mobile-only styles for Student Report - v3.8 simplified */
             @media (max-width: 768px) {
                 /* Hide chart, introductory questions, logo, info buttons, and SHOW ANSWERS button */
                 #view_3041 #chart-container,
@@ -438,14 +457,43 @@
                 
                 /* Gentle fix for EFFORT section consistency */
                 #view_3041 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"] {
-                    display: block !important;
+                    display: flex !important;
                     width: 100% !important;
                     box-sizing: border-box !important;
+                    float: none !important;
+                    margin: 0 !important;
                 }
                 
                 /* Make VESPA sections look clickable on mobile */
                 #view_3041 .vespa-report {
                     position: relative !important;
+                    cursor: pointer !important;
+                    transition: all 0.3s ease !important;
+                }
+                
+                #view_3041 .vespa-report:hover {
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+                }
+                
+                /* Ensure VESPA report scores are properly styled */
+                #view_3041 .vespa-report-score {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    padding: 15px !important;
+                    border-radius: 8px !important;
+                    margin-bottom: 10px !important;
+                    min-height: 60px !important;
+                }
+                
+                #view_3041 .vespa-report-score > p {
+                    margin: 0 !important;
+                    flex: 1 !important;
+                }
+                
+                #view_3041 .vespa-report-score > div {
+                    margin-left: 15px !important;
                 }
                 
                 /* Add a subtle tap indicator */
@@ -459,6 +507,7 @@
                     background: rgba(255,255,255,0.9);
                     padding: 4px 8px;
                     border-radius: 4px;
+                    pointer-events: none;
                 }
                 
                 /* Hide print button on very small screens */
@@ -722,5 +771,5 @@
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v3.6] Initialization complete');
+    console.log('[Student Report Mobile Fix v3.8] Initialization complete');
 })();
