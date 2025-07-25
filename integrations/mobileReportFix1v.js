@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.6 - Hide Show Answers button on mobile, enhanced text area centering
+ * Version 3.7 - Added "Coaching Questions" title to modal popup
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.6] Script loaded');
+    console.log('[Student Report Mobile Fix v3.7] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -172,7 +172,7 @@
                 modal.querySelector('#vespa-modal-title').textContent = sectionName;
                 modal.querySelector('.vespa-modal-score').innerHTML = `<div class="modal-score-display" style="background: ${themeColor}; color: white;">${score}</div>`;
                 modal.querySelector('.vespa-modal-description').innerHTML = description;
-                modal.querySelector('.vespa-modal-questions').innerHTML = questions;
+                modal.querySelector('.vespa-modal-questions').innerHTML = questions ? `<h3>Coaching Questions:</h3>${questions}` : '';
                 modal.querySelector('.vespa-modal-activities').innerHTML = activities ? `<h3>Suggested Activities:</h3>${activities}` : '';
                 
                 // Show modal
@@ -302,7 +302,7 @@
     }
     
     function applyMobileStyles() {
-        const styleId = 'student-report-mobile-fixes-v3-6';
+        const styleId = 'student-report-mobile-fixes-v3-7';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -315,7 +315,7 @@
         
         // Mobile-optimized styles - enhanced for text area centering
         style.textContent = `
-            /* Mobile-only styles for Student Report - v3.6 enhanced */
+            /* Mobile-only styles for Student Report - v3.7 enhanced */
             @media (max-width: 768px) {
                 /* Hide chart, introductory questions, logo, info buttons, and Show Answers button */
                 #view_3041 #chart-container,
@@ -590,6 +590,13 @@
                 margin-bottom: 30px !important;
             }
             
+            .vespa-modal-questions h3 {
+                font-size: 20px !important;
+                margin-bottom: 15px !important;
+                color: #1a4d4d !important;
+                font-weight: 600 !important;
+            }
+            
             .vespa-modal-questions ol {
                 font-size: 18px !important;
                 line-height: 1.8 !important;
@@ -605,6 +612,7 @@
                 font-size: 20px !important;
                 margin-bottom: 15px !important;
                 color: #1a4d4d !important;
+                font-weight: 600 !important;
             }
             
             .vespa-modal-activities a {
@@ -695,5 +703,5 @@
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v3.6] Initialization complete');
+    console.log('[Student Report Mobile Fix v3.7] Initialization complete');
 })();
