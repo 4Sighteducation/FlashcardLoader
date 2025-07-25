@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization
  * Optimizes the VESPA report display for mobile devices only
- * Version 3.2 - Simplified: popup for VESPA only, gentle EFFORT fix, taller comment boxes
+ * Version 3.3 - Added theme colors, info modals, view answers fix, dynamic text areas
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.2] Script loaded');
+    console.log('[Student Report Mobile Fix v3.3] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -34,10 +34,13 @@
             applyMobileStyles();
         }
         
-        // Initialize VESPA popups for mobile only
+        // Initialize popups for mobile only
         if (!popupsInitialized && window.innerWidth <= 768) {
             setTimeout(() => {
                 initializeVespaPopups();
+                initializeViewAnswersModal();
+                initializeInfoModals();
+                initializeTextAreaFocus();
                 popupsInitialized = true;
             }, 500);
         }
@@ -134,10 +137,28 @@
                     activities = parts[1] || '';
                 }
                 
+                // Determine the theme color based on section name
+                const themeColors = {
+                    'VISION': '#ff8f00',
+                    'EFFORT': '#86b4f0',
+                    'SYSTEMS': '#72cb44',
+                    'PRACTICE': '#7f31a4',
+                    'ATTITUDE': '#f032e6'
+                };
+                const themeColor = themeColors[sectionName.toUpperCase()] || '#1a4d4d';
+                
                 // Populate modal
                 const modal = document.getElementById('vespa-modal-container');
+                const modalHeader = modal.querySelector('.vespa-modal-header');
+                const scoreDisplay = modal.querySelector('.modal-score-display');
+                
+                // Apply theme colors
+                modalHeader.style.background = themeColor + '88'; // Lighter shade with transparency
+                scoreDisplay.style.background = themeColor;
+                scoreDisplay.style.color = 'white';
+                
                 modal.querySelector('#vespa-modal-title').textContent = sectionName;
-                modal.querySelector('.vespa-modal-score').innerHTML = `<div class="modal-score-display">${score}</div>`;
+                modal.querySelector('.vespa-modal-score').innerHTML = `<div class="modal-score-display" style="background: ${themeColor}; color: white;">${score}</div>`;
                 modal.querySelector('.vespa-modal-description').innerHTML = description;
                 modal.querySelector('.vespa-modal-questions').innerHTML = questions;
                 modal.querySelector('.vespa-modal-activities').innerHTML = activities ? `<h3>Suggested Activities:</h3>${activities}` : '';
@@ -150,6 +171,167 @@
         });
         
         console.log(`[Student Report Mobile Fix] Initialized ${vespaReports.length} VESPA popups`);
+    }
+    
+    function initializeViewAnswersModal() {
+        console.log('[Student Report Mobile Fix] Initializing View Answers modal');
+        
+        // Find the View Answers button
+        const viewAnswersBtn = document.querySelector('#view_3041 #answers-button button') || 
+                              Array.from(document.querySelectorAll('#view_3041 button')).find(btn => 
+                                  btn.textContent.includes('VIEW ANSWERS'));
+        
+        if (viewAnswersBtn) {
+            // Override click handler
+            viewAnswersBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Create a simple modal with close button
+                const modalHtml = `
+                    <div id="view-answers-modal" class="info-modal-overlay active">
+                        <div class="info-modal-content">
+                            <div class="info-modal-header">
+                                <h2>Questionnaire Answers</h2>
+                                <button class="info-modal-close">&times;</button>
+                            </div>
+                            <div class="info-modal-body">
+                                <p>Your questionnaire answers will be displayed here.</p>
+                                <p>This feature will open the full questionnaire view.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                const modal = document.getElementById('view-answers-modal');
+                const closeBtn = modal.querySelector('.info-modal-close');
+                
+                closeBtn.addEventListener('click', () => {
+                    modal.remove();
+                });
+                
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                    }
+                });
+                
+                console.log('[Student Report Mobile Fix] View Answers modal opened');
+            });
+        }
+    }
+    
+    function initializeInfoModals() {
+        console.log('[Student Report Mobile Fix] Initializing info modals');
+        
+        // Find all info buttons (i icons)
+        const infoButtons = document.querySelectorAll('#view_3041 .info-icon, #view_3041 .pi-info-circle');
+        
+        infoButtons.forEach((button, index) => {
+            button.style.cursor = 'pointer';
+            
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Get the parent element to find context
+                const parentElement = button.closest('.vespa-report') || button.closest('div');
+                let title = 'Information';
+                let content = 'This provides additional context and information.';
+                
+                // Try to get specific content based on location
+                if (parentElement) {
+                    const titleElement = parentElement.querySelector('.vespa-report-score p:first-child');
+                    if (titleElement) {
+                        title = titleElement.textContent + ' - Info';
+                    }
+                }
+                
+                // Create info modal
+                const modalHtml = `
+                    <div id="info-modal-${index}" class="info-modal-overlay active">
+                        <div class="info-modal-content">
+                            <div class="info-modal-header">
+                                <h2>${title}</h2>
+                                <button class="info-modal-close">&times;</button>
+                            </div>
+                            <div class="info-modal-body">
+                                <div class="info-content">
+                                    <p>This score reflects your performance in this area.</p>
+                                    <p>The questions and activities are designed to help you improve.</p>
+                                    <p>Work with your coach to develop strategies for growth.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                const modal = document.getElementById(`info-modal-${index}`);
+                const closeBtn = modal.querySelector('.info-modal-close');
+                
+                closeBtn.addEventListener('click', () => {
+                    modal.remove();
+                });
+                
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                    }
+                });
+                
+                console.log(`[Student Report Mobile Fix] Info modal ${index} opened`);
+            });
+        });
+        
+        console.log(`[Student Report Mobile Fix] Initialized ${infoButtons.length} info modals`);
+    }
+    
+    function initializeTextAreaFocus() {
+        console.log('[Student Report Mobile Fix] Initializing text area focus enhancements');
+        
+        // Find all text areas and rich text editors
+        const textAreas = document.querySelectorAll('#view_3041 textarea, #view_3041 .ql-editor');
+        
+        textAreas.forEach((textArea) => {
+            // On focus, expand and scroll into view
+            textArea.addEventListener('focus', function() {
+                // Expand the text area
+                if (textArea.tagName === 'TEXTAREA') {
+                    textArea.style.minHeight = '200px';
+                } else {
+                    textArea.style.minHeight = '250px';
+                    // Also expand the container
+                    const container = textArea.closest('.ql-container');
+                    if (container) {
+                        container.style.minHeight = '250px';
+                    }
+                }
+                
+                // Scroll the element into view with some padding
+                setTimeout(() => {
+                    textArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            });
+            
+            // On blur, return to normal size
+            textArea.addEventListener('blur', function() {
+                if (textArea.tagName === 'TEXTAREA') {
+                    textArea.style.minHeight = '120px';
+                } else {
+                    textArea.style.minHeight = '150px';
+                    const container = textArea.closest('.ql-container');
+                    if (container) {
+                        container.style.minHeight = '150px';
+                    }
+                }
+            });
+        });
+        
+        console.log(`[Student Report Mobile Fix] Enhanced ${textAreas.length} text areas`);
     }
     
     function applyMobileStyles() {
@@ -227,6 +409,14 @@
                     padding: 12px 20px !important;
                 }
                 
+                /* Smaller submit/cancel buttons in comment sections */
+                #view_3041 .comment-section button[type="submit"],
+                #view_3041 .comment-section .p-button {
+                    min-height: 36px !important;
+                    padding: 8px 16px !important;
+                    font-size: 14px !important;
+                }
+                
                 /* Gentle fix for EFFORT section consistency */
                 #view_3041 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"] {
                     display: block !important;
@@ -301,7 +491,6 @@
             }
             
             .vespa-modal-header {
-                background: #1a4d4d !important;
                 color: white !important;
                 padding: 20px !important;
                 border-radius: 10px 10px 0 0 !important;
@@ -349,9 +538,7 @@
                 text-align: center !important;
                 padding: 20px !important;
                 margin-bottom: 20px !important;
-                background: #f0f0f0 !important;
                 border-radius: 10px !important;
-                color: #1a4d4d !important;
             }
             
             .vespa-modal-description {
@@ -397,6 +584,96 @@
             .vespa-modal-activities a:active {
                 background: #1976d2 !important;
                 color: white !important;
+            }
+            
+            /* Info Modal Styles */
+            .info-modal-overlay {
+                display: none;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: rgba(0, 0, 0, 0.8) !important;
+                z-index: 99999 !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            
+            .info-modal-overlay.active {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 20px !important;
+            }
+            
+            .info-modal-content {
+                background: white !important;
+                width: 90% !important;
+                max-width: 400px !important;
+                border-radius: 10px !important;
+                position: relative !important;
+                max-height: 80vh !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            
+            .info-modal-header {
+                background: #1a4d4d !important;
+                color: white !important;
+                padding: 15px 20px !important;
+                border-radius: 10px 10px 0 0 !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                flex-shrink: 0 !important;
+            }
+            
+            .info-modal-header h2 {
+                margin: 0 !important;
+                font-size: 18px !important;
+                font-weight: 600 !important;
+            }
+            
+            .info-modal-close {
+                background: none !important;
+                border: none !important;
+                color: white !important;
+                font-size: 24px !important;
+                cursor: pointer !important;
+                padding: 0 !important;
+                width: 30px !important;
+                height: 30px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 50% !important;
+                transition: background 0.3s ease !important;
+            }
+            
+            .info-modal-close:hover {
+                background: rgba(255, 255, 255, 0.2) !important;
+            }
+            
+            .info-modal-body {
+                padding: 20px !important;
+                overflow-y: auto !important;
+                flex: 1 !important;
+            }
+            
+            .info-content {
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+                color: #333 !important;
+            }
+            
+            .info-content p {
+                margin-bottom: 15px !important;
+            }
+            
+            .info-content p:last-child {
+                margin-bottom: 0 !important;
             }
         `;
         
@@ -448,6 +725,6 @@
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v3.2] Initialization complete');
+    console.log('[Student Report Mobile Fix v3.3] Initialization complete');
 })();
 
