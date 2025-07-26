@@ -1,7 +1,7 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 4.3 - Enhanced EFFORT section fixes with MutationObserver and aggressive styling
+ * Version 4.4 - Fixed EFFORT section layout preservation
  */
 
 (function() {
@@ -126,16 +126,15 @@
                 console.log('[DEBUG] EFFORT section computed styles:', {
                     width: window.getComputedStyle(vespaReport).width,
                     maxWidth: window.getComputedStyle(vespaReport).maxWidth,
+                    display: window.getComputedStyle(vespaReport).display,
                     marginLeft: window.getComputedStyle(vespaReport).marginLeft,
-                    marginRight: window.getComputedStyle(vespaReport).marginRight,
-                    paddingLeft: window.getComputedStyle(vespaReport).paddingLeft,
-                    paddingRight: window.getComputedStyle(vespaReport).paddingRight
+                    marginRight: window.getComputedStyle(vespaReport).marginRight
                 });
                 
                 // Get all parent elements up to the view container
                 let parent = vespaReport.parentElement;
                 while (parent && !parent.id?.includes('view_3041')) {
-                    // Fix any parent containers that might be constraining width
+                    // Fix width without changing display type
                     parent.style.width = '100%';
                     parent.style.maxWidth = '100%';
                     parent.style.marginLeft = '0';
@@ -143,61 +142,44 @@
                     parent = parent.parentElement;
                 }
                 
-                // Remove any inline width styles more aggressively
-                vespaReport.style.cssText = vespaReport.style.cssText.replace(/width[^;]+;?/gi, '');
-                vespaReport.style.cssText = vespaReport.style.cssText.replace(/max-width[^;]+;?/gi, '');
-                vespaReport.style.cssText = vespaReport.style.cssText.replace(/margin-left[^;]+;?/gi, '');
-                vespaReport.style.cssText = vespaReport.style.cssText.replace(/margin-right[^;]+;?/gi, '');
-                
-                // Now set the correct styles
+                // Fix the main container width without changing its display type
                 vespaReport.style.width = '100%';
                 vespaReport.style.maxWidth = '100%';
                 vespaReport.style.marginLeft = '0';
                 vespaReport.style.marginRight = '0';
-                vespaReport.style.display = 'block';
                 vespaReport.style.boxSizing = 'border-box';
                 
-                // Find all child elements and fix their widths more aggressively
-                const allChildren = vespaReport.querySelectorAll('*');
-                allChildren.forEach(child => {
-                    // Remove inline styles first
-                    if (child.style.width || child.style.maxWidth) {
-                        child.style.cssText = child.style.cssText.replace(/width[^;]+;?/gi, '');
-                        child.style.cssText = child.style.cssText.replace(/max-width[^;]+;?/gi, '');
-                        child.style.cssText = child.style.cssText.replace(/margin[^;]+;?/gi, '');
-                    }
-                    
-                    // Set correct styles
-                    child.style.width = '100%';
-                    child.style.maxWidth = '100%';
-                    child.style.marginLeft = '0';
-                    child.style.marginRight = '0';
-                    child.style.boxSizing = 'border-box';
-                });
-                
-                // Specifically target the three main sections within EFFORT
+                // Only fix width for specific sections, not all children
                 const scoreSection = vespaReport.querySelector('.vespa-report-score');
                 const commentsSection = vespaReport.querySelector('.vespa-report-comments');
                 const coachingSection = vespaReport.querySelector('.vespa-report-coaching-questions');
                 
-                [scoreSection, commentsSection, coachingSection].forEach(section => {
-                    if (section) {
-                        // Clear all inline styles
-                        section.removeAttribute('style');
-                        // Reapply the background color for the score section
-                        if (section === scoreSection) {
-                            section.style.backgroundColor = 'rgb(134, 180, 240)';
-                        }
-                        // Set width styles
-                        section.style.width = '100%';
-                        section.style.maxWidth = '100%';
-                        section.style.marginLeft = '0';
-                        section.style.marginRight = '0';
-                        section.style.padding = '15px';
-                        section.style.boxSizing = 'border-box';
-                        section.style.display = 'block';
+                // Fix score section
+                if (scoreSection) {
+                    // Preserve the background color
+                    const bgColor = scoreSection.style.backgroundColor;
+                    // Only adjust width-related properties
+                    scoreSection.style.width = '';  // Let it use its natural width
+                    scoreSection.style.maxWidth = '100%';
+                    scoreSection.style.boxSizing = 'border-box';
+                    if (bgColor) {
+                        scoreSection.style.backgroundColor = bgColor;
                     }
-                });
+                }
+                
+                // Fix comments section width
+                if (commentsSection) {
+                    commentsSection.style.maxWidth = '100%';
+                    commentsSection.style.boxSizing = 'border-box';
+                    // Don't force width or display changes
+                }
+                
+                // Fix coaching section width
+                if (coachingSection) {
+                    coachingSection.style.maxWidth = '100%';
+                    coachingSection.style.boxSizing = 'border-box';
+                    // Don't force width or display changes
+                }
                 
                 // Compare with other VESPA sections for consistency
                 const allVespaReports = document.querySelectorAll('#view_3041 .vespa-report');
@@ -208,41 +190,23 @@
                     );
                     
                     if (referenceSection) {
-                        // Copy the computed width from reference section
-                        const refWidth = window.getComputedStyle(referenceSection).width;
-                        console.log('[DEBUG] Reference section width:', refWidth);
-                        vespaReport.style.width = refWidth;
+                        // Copy display type from reference section
+                        const refDisplay = window.getComputedStyle(referenceSection).display;
+                        const refFlexDirection = window.getComputedStyle(referenceSection).flexDirection;
+                        console.log('[DEBUG] Reference section display:', refDisplay, 'flex-direction:', refFlexDirection);
+                        
+                        // Apply same display properties
+                        if (refDisplay) {
+                            vespaReport.style.display = refDisplay;
+                        }
+                        if (refFlexDirection && refDisplay === 'flex') {
+                            vespaReport.style.flexDirection = refFlexDirection;
+                        }
                     }
                 }
                 
-                console.log('[Student Report Enhancement] EFFORT section width fixed with aggressive approach');
+                console.log('[Student Report Enhancement] EFFORT section width fixed with preserved layout');
             }
-        }
-        
-        // Also try to fix by position (EFFORT is usually the 2nd section)
-        const allVespaReports = document.querySelectorAll('#view_3041 .vespa-report');
-        if (allVespaReports.length >= 2) {
-            const secondSection = allVespaReports[1];
-            // Apply same aggressive fixes
-            secondSection.style.width = '100%';
-            secondSection.style.maxWidth = '100%';
-            secondSection.style.marginLeft = '0';
-            secondSection.style.marginRight = '0';
-            secondSection.style.display = 'block';
-            secondSection.style.boxSizing = 'border-box';
-            
-            const childElements = secondSection.querySelectorAll('*');
-            childElements.forEach(child => {
-                if (child.style.width && child.style.width !== '100%') {
-                    child.style.width = '100%';
-                }
-                if (child.style.maxWidth && child.style.maxWidth !== '100%') {
-                    child.style.maxWidth = '100%';
-                }
-                child.style.marginLeft = '0';
-                child.style.marginRight = '0';
-                child.style.boxSizing = 'border-box';
-            });
         }
         
         // Set up a MutationObserver to fix EFFORT section if it gets modified
@@ -1150,37 +1114,27 @@
                     box-sizing: border-box !important;
                 }
                 
-                /* Fix EFFORT score section width */
+                /* Fix EFFORT score section width - preserve display type */
                 #view_3041 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"] {
-                    display: block !important;
-                    width: 100% !important;
                     max-width: 100% !important;
                     margin-left: 0 !important;
                     margin-right: 0 !important;
-                    padding-left: 15px !important;
-                    padding-right: 15px !important;
                     box-sizing: border-box !important;
                 }
                 
                 /* Fix EFFORT comments section */
                 #view_3041 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-comments {
-                    width: 100% !important;
                     max-width: 100% !important;
                     margin-left: 0 !important;
                     margin-right: 0 !important;
-                    padding-left: 15px !important;
-                    padding-right: 15px !important;
                     box-sizing: border-box !important;
                 }
                 
                 /* Fix EFFORT coaching questions section */
                 #view_3041 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-coaching-questions {
-                    width: 100% !important;
                     max-width: 100% !important;
                     margin-left: 0 !important;
                     margin-right: 0 !important;
-                    padding-left: 15px !important;
-                    padding-right: 15px !important;
                     box-sizing: border-box !important;
                 }
                 
@@ -1199,74 +1153,23 @@
                 #view_3041 .vespa-report:nth-child(2) .vespa-report-score,
                 #view_3041 .vespa-report:nth-child(2) .vespa-report-comments,
                 #view_3041 .vespa-report:nth-child(2) .vespa-report-coaching-questions {
-                    width: 100% !important;
                     max-width: 100% !important;
                     margin-left: 0 !important;
                     margin-right: 0 !important;
-                    padding-left: 15px !important;
-                    padding-right: 15px !important;
                     box-sizing: border-box !important;
                 }
                 
-                /* Force all VESPA sections to have consistent structure */
+                /* Ensure VESPA sections maintain their layout */
                 #view_3041 .vespa-report {
                     width: 100% !important;
                     max-width: 100% !important;
-                    display: block !important;
                     box-sizing: border-box !important;
                 }
                 
-                #view_3041 .vespa-report > * {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    box-sizing: border-box !important;
-                }
-                
-                /* Override any inline widths on EFFORT section elements */
+                /* Override any inline widths on EFFORT section elements WITHOUT forcing display changes */
                 #view_3041 [style*="background-color: rgb(134, 180, 240)"],
                 #view_3041 [style*="background-color: rgb(134, 180, 240)"] ~ * {
-                    width: 100% !important;
                     max-width: 100% !important;
-                }
-                
-                /* Target EFFORT section parent containers */
-                #view_3041 div:has(> .vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    margin: 0 !important;
-                    padding-left: 0 !important;
-                    padding-right: 0 !important;
-                    display: block !important;
-                    box-sizing: border-box !important;
-                }
-                
-                /* Target any element containing EFFORT section */
-                #view_3041 *:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                }
-                
-                /* Use attribute selectors for more specificity */
-                #view_3041 [style*="134"][style*="180"][style*="240"] {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    margin-left: 0 !important;
-                    margin-right: 0 !important;
-                    padding-left: 15px !important;
-                    padding-right: 15px !important;
-                    box-sizing: border-box !important;
-                    display: block !important;
-                }
-                
-                /* Target siblings of EFFORT score section */
-                #view_3041 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"] ~ .vespa-report-comments,
-                #view_3041 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"] ~ .vespa-report-coaching-questions {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    margin: 0 !important;
-                    padding: 15px !important;
-                    box-sizing: border-box !important;
-                    display: block !important;
                 }
                 
                 /* Make VESPA sections look clickable on mobile */
@@ -1596,5 +1499,5 @@
         }
     });
     
-    console.log('[Student Report Enhancement v4.3] Initialization complete');
+    console.log('[Student Report Enhancement v4.4] Initialization complete');
 })();
