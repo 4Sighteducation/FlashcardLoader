@@ -830,20 +830,25 @@
                 display: none !important;
             }
             
-            /* Center the radar chart */
+            /* Center the radar chart with nice background */
             #view_3041 #chart-container {
                 display: flex !important;
                 justify-content: center !important;
                 align-items: center !important;
-                margin: 0 auto !important;
+                margin: 20px auto !important;
                 text-align: center !important;
+                background: linear-gradient(135deg, #f5fafa 0%, #e8f4f6 100%) !important;
+                padding: 30px !important;
+                border-radius: 12px !important;
+                box-shadow: 0 4px 20px rgba(7, 155, 170, 0.1) !important;
+                border: 1px solid rgba(7, 155, 170, 0.08) !important;
             }
             
             #view_3041 #chart-container canvas {
                 margin: 0 auto !important;
             }
             
-            /* Help writing buttons - Universal across all screen sizes */
+            /* Help writing buttons - Responsive across all screen sizes */
             .help-writing-btn {
                 background: #079baa !important;
                 color: white !important;
@@ -858,10 +863,19 @@
                 gap: 8px !important;
                 box-shadow: 0 2px 8px rgba(7, 155, 170, 0.3) !important;
                 width: 100% !important;
-                max-width: 350px !important;
+                max-width: none !important;
                 justify-content: center !important;
                 transition: all 0.3s ease !important;
                 font-weight: 500 !important;
+            }
+            
+            /* Limit button width on very large screens */
+            @media (min-width: 1200px) {
+                .help-writing-btn {
+                    max-width: 600px !important;
+                    margin-left: auto !important;
+                    margin-right: auto !important;
+                }
             }
             
             .help-writing-btn:hover {
@@ -1076,8 +1090,17 @@
                 #view_3041 [class*="logo"] img,
                 #view_3041 .info-icon,
                 #view_3041 .pi-info-circle,
-                #view_3041 i[class*="info"] {
+                #view_3041 i[class*="info"],
+                #view_3041 .p-button-icon-only i.pi-info-circle,
+                #view_3041 button i.pi-info-circle,
+                #view_3041 button[aria-label*="info" i],
+                #view_3041 button[aria-label*="Info" i],
+                #view_3041 button[title*="info" i],
+                #view_3041 button[title*="Info" i],
+                #view_3041 .p-button-icon-only[aria-label*="info" i],
+                #view_3041 .p-button-rounded i.pi-info-circle {
                     display: none !important;
+                    visibility: hidden !important;
                 }
                 
                 /* Keep the chart visible but make it responsive */
@@ -1266,43 +1289,33 @@
                     max-width: 100% !important;
                 }
                 
-                /* Mobile section headings for VESPA sections */
+                /* Mobile section headings for VESPA sections - HIDDEN BY DEFAULT */
                 .mobile-section-heading,
+                .mobile-section-heading-comments,
+                .mobile-section-heading-coaching,
                 .mobile-theme-heading,
-                .mobile-score-display {
-                    display: none; /* Hidden by default */
+                .mobile-score-display,
+                #view_3041 .mobile-section-heading,
+                #view_3041 .mobile-theme-heading,
+                #view_3041 .mobile-score-display {
+                    display: none !important;
+                    visibility: hidden !important;
+                    height: 0 !important;
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
                 }
                 
                 .original-theme-content {
-                    display: block; /* Visible by default */
-                }
-                
-                /* Explicitly hide mobile elements on desktop */
-                @media (min-width: 769px) {
-                    .mobile-section-heading,
-                    .mobile-theme-heading,
-                    .mobile-score-display {
-                        display: none !important;
-                        visibility: hidden !important;
-                        height: 0 !important;
-                        overflow: hidden !important;
-                    }
-                    
-                    .original-theme-content {
-                        display: block !important;
-                        visibility: visible !important;
-                    }
-                    
-                    /* Ensure normal desktop layout for VESPA sections */
-                    #view_3041 .vespa-report {
-                        display: flex !important; /* or whatever the original display was */
-                    }
+                    display: block !important; /* Visible by default on desktop */
                 }
                 
                 @media (max-width: 768px) {
-                    /* Theme headings (VISION, EFFORT, etc.) */
-                    .mobile-theme-heading {
+                    /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
+                    #view_3041 .mobile-theme-heading {
                         display: block !important;
+                        visibility: visible !important;
+                        height: auto !important;
                         font-size: 16px !important;
                         font-weight: 600 !important;
                         color: white !important;
@@ -1314,9 +1327,11 @@
                         letter-spacing: 0.5px !important;
                     }
                     
-                    /* Mobile score display */
-                    .mobile-score-display {
+                    /* Mobile score display - ONLY SHOW ON MOBILE */
+                    #view_3041 .mobile-score-display {
                         display: block !important;
+                        visibility: visible !important;
+                        height: auto !important;
                         font-size: 48px !important;
                         font-weight: 700 !important;
                         color: white !important;
@@ -1326,13 +1341,18 @@
                     }
                     
                     /* Hide original theme content on mobile */
-                    .original-theme-content {
+                    #view_3041 .original-theme-content {
                         display: none !important;
+                        visibility: hidden !important;
                     }
                     
-                    /* Section headings (Comments, Coaching Questions) */
-                    .mobile-section-heading {
+                    /* Section headings (Comments, Coaching Questions) - ONLY SHOW ON MOBILE */
+                    #view_3041 .mobile-section-heading,
+                    #view_3041 .mobile-section-heading-comments,
+                    #view_3041 .mobile-section-heading-coaching {
                         display: block !important;
+                        visibility: visible !important;
+                        height: auto !important;
                         font-size: 14px !important;
                         font-weight: 600 !important;
                         color: #1a4d4d !important;
