@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 4.6 - Improved mobile headings with consistent sizing
+ * Version 4.8 - Fixed desktop display issues and centered radar chart
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v4.6] Script loaded at', new Date().toISOString());
+    console.log('[Student Report Enhancement v4.8] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -219,6 +219,14 @@
     }
     
     function addSectionHeadings() {
+        // Only add headings on mobile
+        if (!isMobileDevice()) {
+            console.log('[Student Report Enhancement] Skipping section headings on desktop');
+            return;
+        }
+        
+        console.log('[Student Report Enhancement] Adding section headings for mobile');
+        
         // Add headings to all VESPA sections on mobile
         const allVespaReports = document.querySelectorAll('#view_3041 .vespa-report');
         
@@ -527,7 +535,7 @@
         
         console.log('[Student Report Enhancement] Initializing VESPA popups for mobile');
         
-        // Add section headings to all VESPA sections
+        // Add section headings to all VESPA sections (only on mobile)
         addSectionHeadings();
         
         // Create modal container if it doesn't exist
@@ -820,6 +828,19 @@
             /* Hide introductory questions container on ALL screen sizes */
             #view_3041 #introductory-questions-container {
                 display: none !important;
+            }
+            
+            /* Center the radar chart */
+            #view_3041 #chart-container {
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                margin: 0 auto !important;
+                text-align: center !important;
+            }
+            
+            #view_3041 #chart-container canvas {
+                margin: 0 auto !important;
             }
             
             /* Help writing buttons - Universal across all screen sizes */
@@ -1256,6 +1277,28 @@
                     display: block; /* Visible by default */
                 }
                 
+                /* Explicitly hide mobile elements on desktop */
+                @media (min-width: 769px) {
+                    .mobile-section-heading,
+                    .mobile-theme-heading,
+                    .mobile-score-display {
+                        display: none !important;
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        overflow: hidden !important;
+                    }
+                    
+                    .original-theme-content {
+                        display: block !important;
+                        visibility: visible !important;
+                    }
+                    
+                    /* Ensure normal desktop layout for VESPA sections */
+                    #view_3041 .vespa-report {
+                        display: flex !important; /* or whatever the original display was */
+                    }
+                }
+                
                 @media (max-width: 768px) {
                     /* Theme headings (VISION, EFFORT, etc.) */
                     .mobile-theme-heading {
@@ -1351,6 +1394,37 @@
                 @media (max-width: 480px) {
                     #view_3041 #print-button {
                         display: none !important;
+                    }
+                }
+                
+                /* Reduce cycle button size on mobile */
+                @media (max-width: 768px) {
+                    #view_3041 .cycle-button,
+                    #view_3041 .p-button.p-button-rounded,
+                    #view_3041 button[class*="cycle"],
+                    #view_3041 #bottom-report-header-container button.p-button-rounded,
+                    #view_3041 #top-report-header-container button.p-button-rounded {
+                        width: 36px !important;
+                        height: 36px !important;
+                        min-width: 36px !important;
+                        min-height: 36px !important;
+                        font-size: 14px !important;
+                        padding: 0 !important;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        border-radius: 50% !important;
+                    }
+                    
+                    /* Ensure the cycle button container doesn't add extra space */
+                    #view_3041 .cycle-button-container,
+                    #view_3041 div[class*="cycle-button"],
+                    #view_3041 #bottom-report-header-container,
+                    #view_3041 #top-report-header-container {
+                        display: flex !important;
+                        gap: 8px !important;
+                        justify-content: center !important;
+                        margin: 10px 0 !important;
                     }
                 }
                 
@@ -1526,6 +1600,19 @@
         
         console.log('[Student Report Enhancement] Looking for Show Answers button...');
         
+        // Ensure radar chart is visible
+        const chartContainer = document.querySelector('#view_3041 #chart-container');
+        if (chartContainer) {
+            chartContainer.style.display = 'block';
+            chartContainer.style.visibility = 'visible';
+            const canvas = chartContainer.querySelector('canvas');
+            if (canvas) {
+                canvas.style.display = 'block';
+                canvas.style.visibility = 'visible';
+            }
+            console.log('[Student Report Enhancement] Ensured radar chart is visible');
+        }
+        
         // Find and hide the Show Answers button by checking button text
         const buttons = document.querySelectorAll('#view_3041 button');
         let hiddenCount = 0;
@@ -1533,9 +1620,10 @@
         buttons.forEach(button => {
             const buttonText = (button.textContent || button.innerText || '').trim();
             
+            // Only hide if it's specifically the Show Answers button
             if (buttonText.toLowerCase() === 'show answers' || 
-                buttonText.toLowerCase().includes('show answer') ||
-                buttonText.toLowerCase() === 'show') {
+                buttonText.toLowerCase() === 'show answer' ||
+                (buttonText.toLowerCase() === 'show' && button.id !== 'chart-button')) {
                 button.style.display = 'none';
                 button.style.visibility = 'hidden';
                 button.setAttribute('aria-hidden', 'true');
@@ -1645,5 +1733,5 @@
         }
     });
     
-    console.log('[Student Report Enhancement v4.6] Initialization complete');
+    console.log('[Student Report Enhancement v4.8] Initialization complete');
 })();
