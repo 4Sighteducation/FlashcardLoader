@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 4.4 - Fixed EFFORT section layout preservation
+ * Version 4.5 - Added section headings for mobile view
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v4.2] Script loaded at', new Date().toISOString());
+    console.log('[Student Report Enhancement v4.5] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -181,6 +181,11 @@
                     // Don't force width or display changes
                 }
                 
+                // Add section headings on mobile
+                if (isMobileDevice()) {
+                    addSectionHeadings();
+                }
+                
                 // Compare with other VESPA sections for consistency
                 const allVespaReports = document.querySelectorAll('#view_3041 .vespa-report');
                 if (allVespaReports.length > 0) {
@@ -211,6 +216,34 @@
         
         // Set up a MutationObserver to fix EFFORT section if it gets modified
         setupEffortSectionObserver();
+    }
+    
+    function addSectionHeadings() {
+        // Add headings to all VESPA sections on mobile
+        const allVespaReports = document.querySelectorAll('#view_3041 .vespa-report');
+        
+        allVespaReports.forEach(report => {
+            const commentsSection = report.querySelector('.vespa-report-comments');
+            const coachingSection = report.querySelector('.vespa-report-coaching-questions');
+            
+            // Add "Comments" heading if it doesn't exist
+            if (commentsSection && !commentsSection.querySelector('.mobile-section-heading-comments')) {
+                const commentsHeading = document.createElement('h3');
+                commentsHeading.className = 'mobile-section-heading mobile-section-heading-comments';
+                commentsHeading.textContent = 'Comments';
+                commentsSection.insertBefore(commentsHeading, commentsSection.firstChild);
+            }
+            
+            // Add "Coaching Questions" heading if it doesn't exist
+            if (coachingSection && !coachingSection.querySelector('.mobile-section-heading-coaching')) {
+                const coachingHeading = document.createElement('h3');
+                coachingHeading.className = 'mobile-section-heading mobile-section-heading-coaching';
+                coachingHeading.textContent = 'Coaching Questions';
+                coachingSection.insertBefore(coachingHeading, coachingSection.firstChild);
+            }
+        });
+        
+        console.log('[Student Report Enhancement] Added section headings for mobile view');
     }
     
     function setupEffortSectionObserver() {
@@ -456,6 +489,9 @@
         }
         
         console.log('[Student Report Enhancement] Initializing VESPA popups for mobile');
+        
+        // Add section headings to all VESPA sections
+        addSectionHeadings();
         
         // Create modal container if it doesn't exist
         if (!document.getElementById('vespa-modal-container')) {
@@ -1172,6 +1208,36 @@
                     max-width: 100% !important;
                 }
                 
+                /* Mobile section headings for VESPA sections */
+                .mobile-section-heading {
+                    display: none; /* Hidden by default */
+                }
+                
+                @media (max-width: 768px) {
+                    .mobile-section-heading {
+                        display: block !important;
+                        font-size: 18px !important;
+                        font-weight: 600 !important;
+                        color: #1a4d4d !important;
+                        margin: 15px 0 10px 0 !important;
+                        padding: 10px 15px !important;
+                        background: #f0f7f7 !important;
+                        border-left: 4px solid #079baa !important;
+                        border-radius: 4px !important;
+                    }
+                    
+                    /* Ensure vertical stacking on mobile for better readability */
+                    #view_3041 .vespa-report {
+                        display: block !important;
+                    }
+                    
+                    #view_3041 .vespa-report > * {
+                        display: block !important;
+                        width: 100% !important;
+                        margin-bottom: 15px !important;
+                    }
+                }
+                
                 /* Make VESPA sections look clickable on mobile */
                 #view_3041 .vespa-report {
                     position: relative !important;
@@ -1499,5 +1565,5 @@
         }
     });
     
-    console.log('[Student Report Enhancement v4.4] Initialization complete');
+    console.log('[Student Report Enhancement v4.5] Initialization complete');
 })();
