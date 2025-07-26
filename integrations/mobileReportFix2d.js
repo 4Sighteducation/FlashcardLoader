@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 4.5 - Added section headings for mobile view
+ * Version 4.6 - Improved mobile headings with consistent sizing
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v4.5] Script loaded at', new Date().toISOString());
+    console.log('[Student Report Enhancement v4.6] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -223,12 +223,49 @@
         const allVespaReports = document.querySelectorAll('#view_3041 .vespa-report');
         
         allVespaReports.forEach(report => {
+            const scoreSection = report.querySelector('.vespa-report-score');
             const commentsSection = report.querySelector('.vespa-report-comments');
             const coachingSection = report.querySelector('.vespa-report-coaching-questions');
             
+            // Extract theme name from score section
+            if (scoreSection && !scoreSection.querySelector('.mobile-theme-heading')) {
+                const scoreText = scoreSection.innerText || scoreSection.textContent;
+                const lines = scoreText.split('\n').filter(line => line.trim());
+                const themeName = lines[0]; // Should be VISION, EFFORT, etc.
+                
+                if (themeName && themeName.match(/^(VISION|EFFORT|SYSTEMS|PRACTICE|ATTITUDE)/i)) {
+                    // Create container for original content
+                    const originalContent = document.createElement('div');
+                    originalContent.className = 'original-theme-content';
+                    
+                    // Move all existing content to the container
+                    while (scoreSection.firstChild) {
+                        originalContent.appendChild(scoreSection.firstChild);
+                    }
+                    
+                    // Add new theme heading
+                    const themeHeading = document.createElement('h3');
+                    themeHeading.className = 'mobile-theme-heading';
+                    themeHeading.textContent = themeName;
+                    scoreSection.appendChild(themeHeading);
+                    
+                    // Add back the original content (hidden on mobile)
+                    scoreSection.appendChild(originalContent);
+                    
+                    // Find and display just the score number
+                    const scoreNumber = lines[lines.length - 1]; // Usually the last line is the score
+                    if (scoreNumber && /^\d+$/.test(scoreNumber)) {
+                        const scoreDisplay = document.createElement('div');
+                        scoreDisplay.className = 'mobile-score-display';
+                        scoreDisplay.textContent = scoreNumber;
+                        scoreSection.appendChild(scoreDisplay);
+                    }
+                }
+            }
+            
             // Add "Comments" heading if it doesn't exist
             if (commentsSection && !commentsSection.querySelector('.mobile-section-heading-comments')) {
-                const commentsHeading = document.createElement('h3');
+                const commentsHeading = document.createElement('h4');
                 commentsHeading.className = 'mobile-section-heading mobile-section-heading-comments';
                 commentsHeading.textContent = 'Comments';
                 commentsSection.insertBefore(commentsHeading, commentsSection.firstChild);
@@ -236,7 +273,7 @@
             
             // Add "Coaching Questions" heading if it doesn't exist
             if (coachingSection && !coachingSection.querySelector('.mobile-section-heading-coaching')) {
-                const coachingHeading = document.createElement('h3');
+                const coachingHeading = document.createElement('h4');
                 coachingHeading.className = 'mobile-section-heading mobile-section-heading-coaching';
                 coachingHeading.textContent = 'Coaching Questions';
                 coachingSection.insertBefore(coachingHeading, coachingSection.firstChild);
@@ -1209,21 +1246,64 @@
                 }
                 
                 /* Mobile section headings for VESPA sections */
-                .mobile-section-heading {
+                .mobile-section-heading,
+                .mobile-theme-heading,
+                .mobile-score-display {
                     display: none; /* Hidden by default */
                 }
                 
+                .original-theme-content {
+                    display: block; /* Visible by default */
+                }
+                
                 @media (max-width: 768px) {
+                    /* Theme headings (VISION, EFFORT, etc.) */
+                    .mobile-theme-heading {
+                        display: block !important;
+                        font-size: 16px !important;
+                        font-weight: 600 !important;
+                        color: white !important;
+                        margin: 0 !important;
+                        padding: 8px 12px !important;
+                        text-align: center !important;
+                        background: inherit !important; /* Use parent's background color */
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.5px !important;
+                    }
+                    
+                    /* Mobile score display */
+                    .mobile-score-display {
+                        display: block !important;
+                        font-size: 48px !important;
+                        font-weight: 700 !important;
+                        color: white !important;
+                        text-align: center !important;
+                        padding: 20px 0 !important;
+                        line-height: 1 !important;
+                    }
+                    
+                    /* Hide original theme content on mobile */
+                    .original-theme-content {
+                        display: none !important;
+                    }
+                    
+                    /* Section headings (Comments, Coaching Questions) */
                     .mobile-section-heading {
                         display: block !important;
-                        font-size: 18px !important;
+                        font-size: 14px !important;
                         font-weight: 600 !important;
                         color: #1a4d4d !important;
-                        margin: 15px 0 10px 0 !important;
-                        padding: 10px 15px !important;
-                        background: #f0f7f7 !important;
-                        border-left: 4px solid #079baa !important;
-                        border-radius: 4px !important;
+                        margin: 10px 0 8px 0 !important;
+                        padding: 6px 12px !important;
+                        background: #f5fafa !important;
+                        border-left: 3px solid #079baa !important;
+                        border-radius: 2px !important;
+                        text-transform: none !important;
+                    }
+                    
+                    /* Adjust spacing for score sections with theme headings */
+                    #view_3041 .vespa-report-score {
+                        padding-top: 0 !important;
                     }
                     
                     /* Ensure vertical stacking on mobile for better readability */
@@ -1565,5 +1645,5 @@
         }
     });
     
-    console.log('[Student Report Enhancement v4.5] Initialization complete');
+    console.log('[Student Report Enhancement v4.6] Initialization complete');
 })();
