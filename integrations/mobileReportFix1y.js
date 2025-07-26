@@ -1,56 +1,61 @@
 /**
- * Scene 43 Student Report Mobile Optimization
- * Optimizes the VESPA report display for mobile devices only
- * Version 3.9 - Moved help button to response sections, larger comment boxes, fixed Show Answers hiding
+ * Scene 43 Student Report Mobile Optimization & Help System
+ * Optimizes the VESPA report display and adds help buttons for all devices
+ * Version 4.1 - Hide intro questions on all screen sizes, universal help buttons
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Mobile Fix v3.9] Script loaded');
+    console.log('[Student Report Enhancement v4.1] Script loaded');
     
     let stylesApplied = false;
     let popupsInitialized = false;
     
-    function fixStudentReportMobile() {
+    function fixStudentReport() {
         // Check if we're on the student report page
         const currentScene = window.location.hash;
         if (!currentScene.includes('scene_43') && !currentScene.includes('my-report') && !currentScene.includes('vespa-results')) {
-            console.log('[Student Report Mobile Fix] Not on student report page, skipping');
+            console.log('[Student Report Enhancement] Not on student report page, skipping');
             return;
         }
         
         // Check if the report container exists
         const reportContainer = document.querySelector('#view_3041 #report-container');
         if (!reportContainer) {
-            console.log('[Student Report Mobile Fix] Report container not found, waiting...');
+            console.log('[Student Report Enhancement] Report container not found, waiting...');
             return;
         }
         
-        console.log('[Student Report Mobile Fix] Report container found! Applying mobile optimizations');
+        console.log('[Student Report Enhancement] Report container found! Applying enhancements');
         
         // Apply CSS fixes (only once)
         if (!stylesApplied) {
-            applyMobileStyles();
+            applyStyles();
         }
         
-        // Initialize popups for mobile only
-        if (!popupsInitialized && window.innerWidth <= 768) {
+        // Initialize features
+        if (!popupsInitialized) {
             setTimeout(() => {
+                // Initialize for all screen sizes
                 initializeVespaPopups();
                 initializeTextAreaFocus();
                 initializeHelpButtons();
                 popupsInitialized = true;
                 
-                // Hide Show Answers button after everything else is initialized
-                setTimeout(() => {
-                    hideShowAnswersButton();
-                }, 200);
+                // Hide Show Answers button on mobile
+                if (window.innerWidth <= 768) {
+                    setTimeout(() => {
+                        hideShowAnswersButton();
+                    }, 200);
+                }
             }, 500);
         }
         
-        // Enable pinch-to-zoom
-        enableZoom();
+        // Enable pinch-to-zoom on mobile
+        if (window.innerWidth <= 768) {
+            enableZoom();
+        }
     }
     
     function enableZoom() {
@@ -58,24 +63,24 @@
         const viewport = document.querySelector('meta[name="viewport"]');
         if (viewport) {
             viewport.content = 'width=device-width, initial-scale=1.0';
-            console.log('[Student Report Mobile Fix] Zoom enabled');
+            console.log('[Student Report Enhancement] Zoom enabled');
         }
     }
     
     function initializeHelpButtons() {
-        console.log('[Student Report Mobile Fix] Initializing help buttons in response sections');
+        console.log('[Student Report Enhancement] Initializing help buttons');
         
-        // Create intro questions modal if it doesn't exist
-        if (!document.getElementById('intro-questions-modal')) {
+        // Create response guide modal if it doesn't exist
+        if (!document.getElementById('response-guide-modal')) {
             const modalHtml = `
-                <div id="intro-questions-modal" class="intro-modal-overlay">
-                    <div class="intro-modal-content">
-                        <div class="intro-modal-header">
+                <div id="response-guide-modal" class="help-modal-overlay">
+                    <div class="help-modal-content">
+                        <div class="help-modal-header">
                             <h2>Response Guide</h2>
-                            <button class="intro-modal-close">&times;</button>
+                            <button class="help-modal-close">&times;</button>
                         </div>
-                        <div class="intro-modal-body">
-                            <div id="intro-questions-content"></div>
+                        <div class="help-modal-body">
+                            <div id="response-guide-content"></div>
                         </div>
                     </div>
                 </div>
@@ -83,8 +88,8 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
             // Add close handlers
-            const modal = document.getElementById('intro-questions-modal');
-            const closeBtn = modal.querySelector('.intro-modal-close');
+            const modal = document.getElementById('response-guide-modal');
+            const closeBtn = modal.querySelector('.help-modal-close');
             
             closeBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
@@ -93,6 +98,80 @@
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
+                }
+            });
+        }
+        
+        // Create goal-setting modal if it doesn't exist
+        if (!document.getElementById('goal-setting-modal')) {
+            const goalModalHtml = `
+                <div id="goal-setting-modal" class="help-modal-overlay">
+                    <div class="help-modal-content">
+                        <div class="help-modal-header">
+                            <h2>Setting Effective Study Goals</h2>
+                            <button class="help-modal-close">&times;</button>
+                        </div>
+                        <div class="help-modal-body">
+                            <div id="goal-setting-content">
+                                <div class="goal-tips">
+                                    <h3>Tips for Effective Study Goals</h3>
+                                    <ul>
+                                        <li><strong>Keep them specific and achievable</strong> - Instead of "study more", try "complete 2 practice papers this week"</li>
+                                        <li><strong>Focus on approach goals</strong> - Set targets you're working towards, not things you're trying to avoid</li>
+                                        <li><strong>Make them measurable</strong> - Include numbers or specific outcomes so you know when you've achieved them</li>
+                                        <li><strong>Set a timeframe</strong> - Give yourself a deadline to create urgency and track progress</li>
+                                    </ul>
+                                    
+                                    <h3>Types of Effective Approach Goals</h3>
+                                    <div class="goal-type">
+                                        <h4>🎯 Performance Goals</h4>
+                                        <p>"I want to achieve 75% or higher in my next test"</p>
+                                        <p class="goal-description">Focus on achieving a specific ranking or score</p>
+                                    </div>
+                                    
+                                    <div class="goal-type">
+                                        <h4>📈 Mastery Goals</h4>
+                                        <p>"I will improve my essay structure by practicing introductions daily"</p>
+                                        <p class="goal-description">Focus on developing specific skills</p>
+                                    </div>
+                                    
+                                    <div class="goal-type">
+                                        <h4>🏆 Personal Best Goals</h4>
+                                        <p>"I aim to beat my previous score of 68% by at least 5%"</p>
+                                        <p class="goal-description">Focus on improving your own previous performance</p>
+                                    </div>
+                                    
+                                    <div class="avoid-section">
+                                        <h4>❌ Avoid These Types of Goals</h4>
+                                        <ul>
+                                            <li>"I just don't want to fail" (avoidance goal)</li>
+                                            <li>"I hope I don't run out of time" (focuses on negative)</li>
+                                            <li>"As long as I pass" (lacks ambition)</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="goal-prompt">
+                                        <p><strong>Now write your study goals focusing on what you want to achieve, not what you want to avoid!</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', goalModalHtml);
+            
+            // Add close handlers
+            const goalModal = document.getElementById('goal-setting-modal');
+            const closeBtn = goalModal.querySelector('.help-modal-close');
+            
+            closeBtn.addEventListener('click', () => {
+                goalModal.classList.remove('active');
+            });
+            
+            goalModal.addEventListener('click', (e) => {
+                if (e.target === goalModal) {
+                    goalModal.classList.remove('active');
                 }
             });
         }
@@ -106,51 +185,82 @@
                 return;
             }
             
-            // Create the help button
-            const helpButton = document.createElement('button');
-            helpButton.className = 'help-writing-btn';
-            helpButton.innerHTML = '<span>💡</span> Need help writing a response?';
-            helpButton.setAttribute('data-section-index', index);
+            // Determine if this is the goals section (usually the second one)
+            const isGoalsSection = index === 1 || section.textContent.includes('goal') || section.textContent.includes('Goal');
             
-            // Insert the button at the top of the comment section
-            const firstChild = section.firstElementChild;
-            if (firstChild) {
-                section.insertBefore(helpButton, firstChild);
-            } else {
-                section.appendChild(helpButton);
-            }
-            
-            // Add click handler
-            helpButton.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const modal = document.getElementById('intro-questions-modal');
-                const contentDiv = document.getElementById('intro-questions-content');
+            if (index === 0) {
+                // First section - regular response help
+                const helpButton = document.createElement('button');
+                helpButton.className = 'help-writing-btn';
+                helpButton.innerHTML = '<span>💡</span> Need help writing a response?';
                 
-                // Get the intro questions content
-                const introQuestionsEl = document.querySelector('#view_3041 #introductory-questions-container');
-                if (introQuestionsEl) {
-                    contentDiv.innerHTML = `
-                        <div class="help-content">
-                            <p style="font-style: italic; margin-bottom: 20px;">Use these questions to help guide your response:</p>
-                            ${introQuestionsEl.innerHTML}
-                        </div>
-                    `;
+                // Insert the button at the top of the comment section
+                const firstChild = section.firstElementChild;
+                if (firstChild) {
+                    section.insertBefore(helpButton, firstChild);
                 } else {
-                    contentDiv.innerHTML = '<p>No introductory questions available.</p>';
+                    section.appendChild(helpButton);
                 }
                 
-                // Show modal
-                modal.classList.add('active');
+                // Add click handler
+                helpButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const modal = document.getElementById('response-guide-modal');
+                    const contentDiv = document.getElementById('response-guide-content');
+                    
+                    // Get the intro questions content
+                    const introQuestionsEl = document.querySelector('#view_3041 #introductory-questions-container');
+                    if (introQuestionsEl) {
+                        contentDiv.innerHTML = `
+                            <div class="help-content">
+                                <p style="font-style: italic; margin-bottom: 20px;">Use these questions to help guide your response:</p>
+                                ${introQuestionsEl.innerHTML}
+                            </div>
+                        `;
+                    } else {
+                        contentDiv.innerHTML = '<p>No introductory questions available.</p>';
+                    }
+                    
+                    // Show modal
+                    modal.classList.add('active');
+                    
+                    console.log('[Student Report Enhancement] Opened response guide modal');
+                });
+            } else if (isGoalsSection) {
+                // Goals section - goal-setting help
+                const goalButton = document.createElement('button');
+                goalButton.className = 'help-writing-btn goal-help-btn';
+                goalButton.innerHTML = '<span>🎯</span> Need help setting effective goals?';
                 
-                console.log('[Student Report Mobile Fix] Opened help modal from response section');
-            });
+                // Insert the button at the top of the comment section
+                const firstChild = section.firstElementChild;
+                if (firstChild) {
+                    section.insertBefore(goalButton, firstChild);
+                } else {
+                    section.appendChild(goalButton);
+                }
+                
+                // Add click handler
+                goalButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const modal = document.getElementById('goal-setting-modal');
+                    modal.classList.add('active');
+                    console.log('[Student Report Enhancement] Opened goal-setting modal');
+                });
+            }
         });
         
-        console.log(`[Student Report Mobile Fix] Added help buttons to ${commentSections.length} response sections`);
+        console.log(`[Student Report Enhancement] Added help buttons to comment sections`);
     }
     
     function initializeVespaPopups() {
-        console.log('[Student Report Mobile Fix] Initializing VESPA popups');
+        // Only initialize on mobile
+        if (window.innerWidth > 768) {
+            console.log('[Student Report Enhancement] Skipping VESPA popups on desktop');
+            return;
+        }
+        
+        console.log('[Student Report Enhancement] Initializing VESPA popups for mobile');
         
         // Create modal container if it doesn't exist
         if (!document.getElementById('vespa-modal-container')) {
@@ -276,15 +386,21 @@
                 // Show modal
                 modal.classList.add('active');
                 
-                console.log(`[Student Report Mobile Fix] Opened popup for ${sectionName}`);
+                console.log(`[Student Report Enhancement] Opened popup for ${sectionName}`);
             });
         });
         
-        console.log(`[Student Report Mobile Fix] Initialized ${vespaReports.length} VESPA popups`);
+        console.log(`[Student Report Enhancement] Initialized ${vespaReports.length} VESPA popups`);
     }
     
     function initializeTextAreaFocus() {
-        console.log('[Student Report Mobile Fix] Initializing text area focus enhancements');
+        // Only enhance on mobile
+        if (window.innerWidth > 768) {
+            console.log('[Student Report Enhancement] Skipping text area enhancements on desktop');
+            return;
+        }
+        
+        console.log('[Student Report Enhancement] Initializing text area focus enhancements for mobile');
         
         // Set up a mutation observer to catch dynamically added text areas
         const observer = new MutationObserver(function(mutations) {
@@ -320,7 +436,7 @@
                 
                 // On focus, expand and center on screen
                 textArea.addEventListener('focus', function(e) {
-                    console.log('[Student Report Mobile Fix] Text area focused');
+                    console.log('[Student Report Enhancement] Text area focused');
                     
                     // Create backdrop if it doesn't exist
                     if (!backdrop) {
@@ -369,7 +485,7 @@
                 
                 // On blur, return to normal
                 textArea.addEventListener('blur', function(e) {
-                    console.log('[Student Report Mobile Fix] Text area blurred');
+                    console.log('[Student Report Enhancement] Text area blurred');
                     
                     // Hide backdrop
                     if (backdrop) {
@@ -403,19 +519,19 @@
                 
                 // Ensure touch events work properly
                 textArea.addEventListener('touchstart', function(e) {
-                    console.log('[Student Report Mobile Fix] Touch start on text area');
+                    console.log('[Student Report Enhancement] Touch start on text area');
                     // Don't prevent default - let the touch event through
                 }, { passive: true });
             });
             
             if (textAreas.length > 0) {
-                console.log(`[Student Report Mobile Fix] Enhanced ${textAreas.length} text areas`);
+                console.log(`[Student Report Enhancement] Enhanced ${textAreas.length} text areas`);
             }
         }
     }
     
-    function applyMobileStyles() {
-        const styleId = 'student-report-mobile-fixes-v3-9';
+    function applyStyles() {
+        const styleId = 'student-report-enhancements-v4-1';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -426,13 +542,241 @@
         const style = document.createElement('style');
         style.id = styleId;
         
-        // Mobile-optimized styles
+        // Universal and mobile-optimized styles
         style.textContent = `
-            /* Mobile-only styles for Student Report - v3.9 enhanced */
+            /* Universal styles for Student Report - v4.1 */
+            
+            /* Hide introductory questions container on ALL screen sizes */
+            #view_3041 #introductory-questions-container {
+                display: none !important;
+            }
+            
+            /* Help writing buttons - Universal across all screen sizes */
+            .help-writing-btn {
+                background: #079baa !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 6px !important;
+                padding: 12px 20px !important;
+                font-size: 15px !important;
+                margin-bottom: 15px !important;
+                cursor: pointer !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+                box-shadow: 0 2px 8px rgba(7, 155, 170, 0.3) !important;
+                width: 100% !important;
+                max-width: 350px !important;
+                justify-content: center !important;
+                transition: all 0.3s ease !important;
+                font-weight: 500 !important;
+            }
+            
+            .help-writing-btn:hover {
+                background: #06879a !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 4px 12px rgba(7, 155, 170, 0.4) !important;
+            }
+            
+            .help-writing-btn:active {
+                transform: scale(0.98) !important;
+                box-shadow: 0 2px 4px rgba(7, 155, 170, 0.3) !important;
+            }
+            
+            .help-writing-btn.goal-help-btn {
+                background: #1976d2 !important;
+                box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3) !important;
+            }
+            
+            .help-writing-btn.goal-help-btn:hover {
+                background: #1565c0 !important;
+                box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4) !important;
+            }
+            
+            /* Help modal styles - Universal */
+            .help-modal-overlay {
+                display: none;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: rgba(0, 0, 0, 0.8) !important;
+                z-index: 99998 !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                padding: 20px !important;
+            }
+            
+            .help-modal-overlay.active {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            
+            .help-modal-content {
+                background: white !important;
+                width: 90% !important;
+                max-width: 700px !important;
+                margin: auto !important;
+                border-radius: 12px !important;
+                position: relative !important;
+                max-height: 90vh !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+            }
+            
+            .help-modal-header {
+                background: #079baa !important;
+                color: white !important;
+                padding: 24px !important;
+                border-radius: 12px 12px 0 0 !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                flex-shrink: 0 !important;
+            }
+            
+            #goal-setting-modal .help-modal-header {
+                background: #1976d2 !important;
+            }
+            
+            .help-modal-header h2 {
+                margin: 0 !important;
+                font-size: 24px !important;
+                font-weight: 600 !important;
+                line-height: 1.2 !important;
+            }
+            
+            .help-modal-close {
+                background: rgba(255, 255, 255, 0.2) !important;
+                border: none !important;
+                color: white !important;
+                font-size: 28px !important;
+                cursor: pointer !important;
+                padding: 0 !important;
+                width: 40px !important;
+                height: 40px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 50% !important;
+                transition: all 0.3s ease !important;
+                line-height: 1 !important;
+            }
+            
+            .help-modal-close:hover {
+                background: rgba(255, 255, 255, 0.3) !important;
+                transform: rotate(90deg) !important;
+            }
+            
+            .help-modal-body {
+                padding: 24px !important;
+                overflow-y: auto !important;
+                flex: 1 !important;
+            }
+            
+            .help-content {
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+                color: #333 !important;
+            }
+            
+            /* Goal setting specific styles */
+            .goal-tips h3 {
+                color: #1976d2 !important;
+                margin-top: 24px !important;
+                margin-bottom: 16px !important;
+                font-size: 20px !important;
+            }
+            
+            .goal-tips h3:first-child {
+                margin-top: 0 !important;
+            }
+            
+            .goal-tips ul {
+                margin: 16px 0 !important;
+                padding-left: 24px !important;
+            }
+            
+            .goal-tips li {
+                margin-bottom: 12px !important;
+                line-height: 1.6 !important;
+                color: #555 !important;
+            }
+            
+            .goal-tips li strong {
+                color: #333 !important;
+            }
+            
+            .goal-type {
+                background: #f8f9fa !important;
+                border-left: 4px solid #1976d2 !important;
+                padding: 16px !important;
+                margin: 16px 0 !important;
+                border-radius: 4px !important;
+            }
+            
+            .goal-type h4 {
+                color: #1976d2 !important;
+                margin: 0 0 8px 0 !important;
+                font-size: 18px !important;
+            }
+            
+            .goal-type p {
+                margin: 4px 0 !important;
+                color: #333 !important;
+            }
+            
+            .goal-type .goal-description {
+                font-size: 14px !important;
+                color: #666 !important;
+                font-style: italic !important;
+            }
+            
+            .avoid-section {
+                background: #fff3cd !important;
+                border-left: 4px solid #ffc107 !important;
+                padding: 16px !important;
+                margin: 20px 0 !important;
+                border-radius: 4px !important;
+            }
+            
+            .avoid-section h4 {
+                color: #856404 !important;
+                margin: 0 0 12px 0 !important;
+            }
+            
+            .avoid-section ul {
+                margin: 0 !important;
+                padding-left: 20px !important;
+            }
+            
+            .avoid-section li {
+                color: #856404 !important;
+                margin-bottom: 8px !important;
+            }
+            
+            .goal-prompt {
+                background: #e3f2fd !important;
+                padding: 20px !important;
+                border-radius: 8px !important;
+                margin-top: 24px !important;
+                text-align: center !important;
+            }
+            
+            .goal-prompt p {
+                margin: 0 !important;
+                font-size: 17px !important;
+                color: #1565c0 !important;
+                font-weight: 500 !important;
+            }
+            
+            /* Mobile-only styles */
             @media (max-width: 768px) {
-                /* Hide introductory questions container, logo, and info buttons */
-                /* NOTE: Chart is now kept visible, Show Answers hidden via JS */
-                #view_3041 #introductory-questions-container,
+                /* Hide logo and info buttons on mobile */
                 #view_3041 .image-logo,
                 #view_3041 img[alt="Logo"],
                 #view_3041 img[src*="logo"],
@@ -455,30 +799,7 @@
                     height: auto !important;
                 }
                 
-                /* Help writing button */
-                .help-writing-btn {
-                    background: #4CAF50 !important;
-                    color: white !important;
-                    border: none !important;
-                    border-radius: 8px !important;
-                    padding: 10px 16px !important;
-                    font-size: 14px !important;
-                    margin-bottom: 10px !important;
-                    cursor: pointer !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    gap: 6px !important;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-                    width: 100% !important;
-                    justify-content: center !important;
-                }
-                
-                .help-writing-btn:active {
-                    transform: scale(0.98) !important;
-                    background: #45a049 !important;
-                }
-                
-                /* Make text areas even larger by default */
+                /* Make text areas even larger by default on mobile */
                 #view_3041 textarea {
                     min-height: 200px !important;
                     font-size: 16px !important; /* Prevent iOS zoom on focus */
@@ -631,91 +952,23 @@
                     overflow-x: hidden !important;
                     -webkit-overflow-scrolling: touch !important;
                 }
+                
+                /* Mobile modal adjustments */
+                .help-modal-content {
+                    margin: 10px !important;
+                    width: calc(100% - 20px) !important;
+                }
+                
+                .help-modal-header {
+                    padding: 20px 16px !important;
+                }
+                
+                .help-modal-body {
+                    padding: 20px 16px !important;
+                }
             }
             
-            /* Intro questions modal styles */
-            .intro-modal-overlay {
-                display: none;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                background: rgba(0, 0, 0, 0.8) !important;
-                z-index: 99998 !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-            }
-            
-            .intro-modal-overlay.active {
-                display: flex !important;
-                align-items: flex-start !important;
-                justify-content: center !important;
-                padding: 20px 0 !important;
-            }
-            
-            .intro-modal-content {
-                background: white !important;
-                width: 90% !important;
-                max-width: 600px !important;
-                margin: 20px auto !important;
-                border-radius: 10px !important;
-                position: relative !important;
-                max-height: 90vh !important;
-                overflow: hidden !important;
-                display: flex !important;
-                flex-direction: column !important;
-            }
-            
-            .intro-modal-header {
-                background: #4CAF50 !important;
-                color: white !important;
-                padding: 20px !important;
-                border-radius: 10px 10px 0 0 !important;
-                display: flex !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                flex-shrink: 0 !important;
-            }
-            
-            .intro-modal-header h2 {
-                margin: 0 !important;
-                font-size: 24px !important;
-                font-weight: 600 !important;
-            }
-            
-            .intro-modal-close {
-                background: none !important;
-                border: none !important;
-                color: white !important;
-                font-size: 30px !important;
-                cursor: pointer !important;
-                padding: 0 !important;
-                width: 40px !important;
-                height: 40px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                border-radius: 50% !important;
-                transition: background 0.3s ease !important;
-            }
-            
-            .intro-modal-close:hover {
-                background: rgba(255, 255, 255, 0.2) !important;
-            }
-            
-            .intro-modal-body {
-                padding: 20px !important;
-                overflow-y: auto !important;
-                flex: 1 !important;
-            }
-            
-            .help-content {
-                font-size: 16px !important;
-                line-height: 1.6 !important;
-            }
-            
-            /* Modal styles - always apply these */
+            /* VESPA Modal styles - always apply these but only show on mobile */
             .vespa-modal-overlay {
                 display: none;
                 position: fixed !important;
@@ -857,14 +1110,14 @@
         document.head.appendChild(style);
         stylesApplied = true;
         
-        console.log('[Student Report Mobile Fix] Mobile styles applied successfully!');
+        console.log('[Student Report Enhancement] Styles applied successfully!');
     }
     
     function hideShowAnswersButton() {
         // Only run on mobile
         if (window.innerWidth > 768) return;
         
-        console.log('[Student Report Mobile Fix] Looking for Show Answers button...');
+        console.log('[Student Report Enhancement] Looking for Show Answers button...');
         
         // Find and hide the Show Answers button by checking button text
         const buttons = document.querySelectorAll('#view_3041 button');
@@ -872,7 +1125,7 @@
         
         buttons.forEach(button => {
             const buttonText = (button.textContent || button.innerText || '').trim();
-            console.log(`[Student Report Mobile Fix] Checking button with text: "${buttonText}"`);
+            console.log(`[Student Report Enhancement] Checking button with text: "${buttonText}"`);
             
             if (buttonText.toLowerCase() === 'show answers' || 
                 buttonText.toLowerCase().includes('show answer') ||
@@ -880,7 +1133,7 @@
                 button.style.display = 'none';
                 button.style.visibility = 'hidden';
                 hiddenCount++;
-                console.log(`[Student Report Mobile Fix] Hid button with text: "${buttonText}"`);
+                console.log(`[Student Report Enhancement] Hid button with text: "${buttonText}"`);
             }
         });
         
@@ -895,56 +1148,55 @@
                     button.style.display = 'none';
                     button.style.visibility = 'hidden';
                     hiddenCount++;
-                    console.log(`[Student Report Mobile Fix] Hid bottom header button: "${buttonText}"`);
+                    console.log(`[Student Report Enhancement] Hid bottom header button: "${buttonText}"`);
                 }
             });
         }
         
-        console.log(`[Student Report Mobile Fix] Total buttons hidden: ${hiddenCount}`);
+        console.log(`[Student Report Enhancement] Total buttons hidden: ${hiddenCount}`);
     }
     
     // Initialize with a delay to ensure Vue app is loaded
     setTimeout(() => {
-        console.log('[Student Report Mobile Fix] Initial check...');
-        fixStudentReportMobile();
+        console.log('[Student Report Enhancement] Initial check...');
+        fixStudentReport();
     }, 1000);
     
     // Re-apply on scene render
     $(document).on('knack-scene-render.scene_43', function() {
-        console.log('[Student Report Mobile Fix] Scene 43 rendered');
+        console.log('[Student Report Enhancement] Scene 43 rendered');
         popupsInitialized = false; // Reset to reinitialize popups
         setTimeout(() => {
-            fixStudentReportMobile();
+            fixStudentReport();
         }, 500);
     });
     
     // Re-apply on view render
     $(document).on('knack-view-render.view_3041', function() {
-        console.log('[Student Report Mobile Fix] View 3041 rendered');
+        console.log('[Student Report Enhancement] View 3041 rendered');
         popupsInitialized = false; // Reset to reinitialize popups
         setTimeout(() => {
-            fixStudentReportMobile();
+            fixStudentReport();
         }, 500);
     });
     
     // Also watch for any view render in scene_43 or vespa-results
     $(document).on('knack-view-render.any', function(event, view) {
         if (window.location.hash.includes('scene_43') || window.location.hash.includes('my-report') || window.location.hash.includes('vespa-results')) {
-            console.log(`[Student Report Mobile Fix] View ${view.key} rendered on report page`);
+            console.log(`[Student Report Enhancement] View ${view.key} rendered on report page`);
             setTimeout(() => {
-                fixStudentReportMobile();
+                fixStudentReport();
             }, 300);
         }
     });
     
     // Check on hash change
     window.addEventListener('hashchange', function() {
-        console.log('[Student Report Mobile Fix] Hash changed, checking...');
+        console.log('[Student Report Enhancement] Hash changed, checking...');
         setTimeout(() => {
-            fixStudentReportMobile();
+            fixStudentReport();
         }, 500);
     });
     
-    console.log('[Student Report Mobile Fix v3.9] Initialization complete');
+    console.log('[Student Report Enhancement v4.1] Initialization complete');
 })();
-
