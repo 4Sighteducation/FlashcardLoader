@@ -1755,5 +1755,3 @@
     
     console.log('[Student Report Enhancement v4.8] Initialization complete');
 })();
-    console.log('[Student Report Enhancement v4.9] Initialization complete');
-})();
