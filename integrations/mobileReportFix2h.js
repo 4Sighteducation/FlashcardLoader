@@ -623,11 +623,25 @@
                     
                     if (!scoreElement) return;
                     
-                    // Get the section name and score
-                    const scoreText = scoreElement.innerText || scoreElement.textContent;
+                    // Get the section name and score from original content
+                    const originalContent = scoreElement.querySelector('.original-theme-content');
+                    let scoreText, sectionName, score;
+                    
+                    if (originalContent) {
+                        // Use original content if available (mobile)
+                        scoreText = originalContent.innerText || originalContent.textContent;
+                    } else {
+                        // Use direct content (desktop)
+                        scoreText = scoreElement.innerText || scoreElement.textContent;
+                    }
+                    
                     const lines = scoreText.split('\n').filter(line => line.trim());
-                    const sectionName = lines[0] || 'VESPA Section';
-                    const score = lines[lines.length - 1] || '';
+                    
+                    // Extract section name - should be VISION, EFFORT, etc.
+                    sectionName = lines.find(line => /^(VISION|EFFORT|SYSTEMS|PRACTICE|ATTITUDE)$/i.test(line.trim())) || lines[0] || 'VESPA Section';
+                    
+                    // Extract score - should be a number
+                    score = lines.find(line => /^\d+$/.test(line.trim())) || lines[lines.length - 1] || '';
                     
                     // Get the description
                     const description = commentsElement ? commentsElement.innerHTML : '';
@@ -656,18 +670,14 @@
                     // Populate modal
                     const modal = document.getElementById('vespa-modal-container');
                     const modalHeader = modal.querySelector('.vespa-modal-header');
-                    const scoreDisplay = modal.querySelector('.modal-score-display');
                     
-                    // Apply theme colors
+                    // Apply theme colors to header
                     if (modalHeader) {
-                        modalHeader.style.background = themeColor + '88'; // Lighter shade with transparency
-                    }
-                    if (scoreDisplay) {
-                        scoreDisplay.style.background = themeColor;
-                        scoreDisplay.style.color = 'white';
+                        modalHeader.style.background = themeColor;
                     }
                     
-                    modal.querySelector('#vespa-modal-title').textContent = sectionName;
+                    // Update modal content
+                    modal.querySelector('#vespa-modal-title').textContent = sectionName.toUpperCase();
                     modal.querySelector('.vespa-modal-score').innerHTML = `<div class="modal-score-display" style="background: ${themeColor}; color: white;">${score}</div>`;
                     modal.querySelector('.vespa-modal-description').innerHTML = description;
                     modal.querySelector('.vespa-modal-questions').innerHTML = questions ? `<h3>Coaching Questions:</h3>${questions}` : '';
@@ -1102,7 +1112,7 @@
             
             /* Mobile-only styles */
             @media (max-width: 768px) {
-                /* Hide logo, info buttons, and Show Answers button on mobile */
+                /* Hide logo and info buttons on mobile */
                 #view_3041 .image-logo,
                 #view_3041 img[alt="Logo"],
                 #view_3041 img[src*="logo"],
@@ -1118,10 +1128,7 @@
                 #view_3041 button[title*="info" i],
                 #view_3041 button[title*="Info" i],
                 #view_3041 .p-button-icon-only[aria-label*="info" i],
-                #view_3041 .p-button-rounded i.pi-info-circle,
-                #view_3041 button:first-of-type.p-button-rounded,
-                #view_3041 #bottom-report-header-container button:first-child,
-                #view_3041 button.p-button-rounded.p-button-outlined {
+                #view_3041 .p-button-rounded i.pi-info-circle {
                     display: none !important;
                     visibility: hidden !important;
                 }
@@ -1343,31 +1350,13 @@
                     max-width: 100% !important;
                 }
                 
-                /* Mobile section headings for VESPA sections - COMPLETELY HIDDEN ON DESKTOP */
+                /* Mobile section headings for VESPA sections - HIDDEN ON DESKTOP */
                 .mobile-section-heading,
                 .mobile-section-heading-comments,
                 .mobile-section-heading-coaching,
                 .mobile-theme-heading,
-                .mobile-score-display,
-                #view_3041 .mobile-section-heading,
-                #view_3041 .mobile-theme-heading,
-                #view_3041 .mobile-score-display,
-                #view_3041 h3.mobile-theme-heading,
-                #view_3041 h4.mobile-section-heading,
-                #view_3041 h4.mobile-section-heading-comments,
-                #view_3041 h4.mobile-section-heading-coaching,
-                #view_3041 div.mobile-score-display {
+                .mobile-score-display {
                     display: none !important;
-                    visibility: hidden !important;
-                    height: 0 !important;
-                    width: 0 !important;
-                    overflow: hidden !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    font-size: 0 !important;
-                    line-height: 0 !important;
-                    position: absolute !important;
-                    left: -9999px !important;
                 }
                 
                 /* Original theme content always visible on desktop */
@@ -1377,44 +1366,12 @@
                     visibility: visible !important;
                 }
                 
-                /* Make existing VESPA theme headers bigger on desktop */
+                /* Ensure mobile elements stay hidden on desktop */
                 @media (min-width: 769px) {
-                    #view_3041 .vespa-report-score {
-                        font-size: 18px !important;
-                    }
-                    
-                    #view_3041 .vespa-report-score h2,
-                    #view_3041 .vespa-report-score h3,
-                    #view_3041 .vespa-report-score strong {
-                        font-size: 24px !important;
-                        font-weight: 700 !important;
-                    }
-                    
-                    /* Hide all mobile elements on desktop with extreme prejudice */
-                    .mobile-section-heading,
-                    .mobile-section-heading-comments,
-                    .mobile-section-heading-coaching,
-                    .mobile-theme-heading,
-                    .mobile-score-display,
-                    #view_3041 .mobile-section-heading,
-                    #view_3041 .mobile-theme-heading,
-                    #view_3041 .mobile-score-display,
-                    #view_3041 h3.mobile-theme-heading,
-                    #view_3041 h4.mobile-section-heading,
-                    #view_3041 h4.mobile-section-heading-comments,
-                    #view_3041 h4.mobile-section-heading-coaching,
-                    #view_3041 div.mobile-score-display {
-                        display: none !important;
-                        visibility: hidden !important;
-                        height: 0 !important;
-                        width: 0 !important;
-                        overflow: hidden !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        font-size: 0 !important;
-                        line-height: 0 !important;
-                        position: absolute !important;
-                        left: -9999px !important;
+                    /* Ensure original content is visible on desktop */
+                    #view_3041 .original-theme-content {
+                        display: block !important;
+                        visibility: visible !important;
                     }
                 }
                 
@@ -1761,9 +1718,11 @@
             const buttonText = (button.textContent || button.innerText || '').trim();
             
             // Only hide if it's specifically the Show Answers button
-            if (buttonText.toLowerCase() === 'show answers' || 
-                buttonText.toLowerCase() === 'show answer' ||
-                (buttonText.toLowerCase() === 'show' && button.id !== 'chart-button')) {
+            // Don't hide numbered buttons (like cycle buttons)
+            if ((buttonText.toLowerCase() === 'show answers' || 
+                 buttonText.toLowerCase() === 'show answer' ||
+                 buttonText.toLowerCase() === 'ans') && 
+                !button.textContent.match(/^\d+$/)) { // Don't hide if button only contains numbers
                 button.style.display = 'none';
                 button.style.visibility = 'hidden';
                 button.setAttribute('aria-hidden', 'true');
@@ -1772,14 +1731,15 @@
             }
         });
         
-        // Also check the bottom header area where Show Answers typically appears
+        // Also specifically target the Show Answers button by looking for it in the bottom header
         const bottomHeader = document.querySelector('#view_3041 #bottom-report-header-container');
         if (bottomHeader) {
             const bottomButtons = bottomHeader.querySelectorAll('button');
-            bottomButtons.forEach((button, index) => {
-                const buttonText = (button.textContent || button.innerText || '').trim();
-                // First button in bottom header is typically Show Answers
-                if (index === 0 || buttonText.toLowerCase().includes('answer')) {
+            bottomButtons.forEach((button) => {
+                const buttonText = (button.textContent || button.innerText || '').trim().toLowerCase();
+                // Only hide if it contains "ans" or "answer" but not if it's a number
+                if ((buttonText.includes('answer') || buttonText === 'ans') && 
+                    !button.textContent.match(/^\d+$/)) {
                     button.style.display = 'none';
                     button.style.visibility = 'hidden';
                     button.setAttribute('aria-hidden', 'true');
