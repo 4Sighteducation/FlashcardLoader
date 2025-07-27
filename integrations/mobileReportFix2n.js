@@ -68,6 +68,21 @@
                 }
             }
             
+            // FAILSAFE: Force hide mobile elements on desktop
+            if (!isMobileDevice()) {
+                console.log('[Student Report Enhancement] Desktop detected - force hiding mobile elements');
+                const mobileElements = document.querySelectorAll('.mobile-section-heading, .mobile-section-heading-comments, .mobile-section-heading-coaching, .mobile-theme-heading, .mobile-score-display');
+                mobileElements.forEach(el => {
+                    el.style.cssText = 'display: none !important; visibility: hidden !important; position: absolute !important; left: -9999px !important;';
+                });
+                
+                // Ensure original content is visible
+                const originalContent = document.querySelectorAll('.original-theme-content');
+                originalContent.forEach(el => {
+                    el.style.cssText = 'display: block !important; visibility: visible !important; position: static !important;';
+                });
+            }
+            
             // Initialize features
             if (!popupsInitialized) {
                 // Initialize for all screen sizes
@@ -181,9 +196,12 @@
                     // Don't force width or display changes
                 }
                 
-                // Add section headings on mobile
+                // Add section headings ONLY on mobile
                 if (isMobileDevice()) {
+                    console.log('[Student Report Enhancement] Adding section headings from fixEffortSection');
                     addSectionHeadings();
+                } else {
+                    console.log('[Student Report Enhancement] Desktop detected in fixEffortSection - skipping headings');
                 }
                 
                 // Compare with other VESPA sections for consistency
@@ -221,7 +239,14 @@
     function addSectionHeadings() {
         // Only add headings on mobile
         if (!isMobileDevice()) {
-            console.log('[Student Report Enhancement] Skipping section headings on desktop');
+            console.log('[Student Report Enhancement] Skipping section headings on desktop (width: ' + window.innerWidth + ')');
+            
+            // Extra safety: remove any mobile headings that might exist
+            const mobileHeadings = document.querySelectorAll('.mobile-theme-heading, .mobile-score-display, .mobile-section-heading, .mobile-section-heading-comments, .mobile-section-heading-coaching');
+            if (mobileHeadings.length > 0) {
+                console.log('[Student Report Enhancement] Found ' + mobileHeadings.length + ' mobile headings on desktop - removing them');
+                mobileHeadings.forEach(heading => heading.remove());
+            }
             return;
         }
         
@@ -852,6 +877,48 @@
                 /* Remove any size modifications to preserve original chart appearance */
             }
             
+            /* Mobile section headings - HIDDEN BY DEFAULT ON ALL SCREEN SIZES */
+            .mobile-section-heading,
+            .mobile-section-heading-comments,
+            .mobile-section-heading-coaching,
+            .mobile-theme-heading,
+            .mobile-score-display,
+            #view_3041 .mobile-section-heading,
+            #view_3041 .mobile-theme-heading,
+            #view_3041 .mobile-score-display,
+            #view_3041 .mobile-section-heading-comments,
+            #view_3041 .mobile-section-heading-coaching,
+            #view_3041 .field-field_1130 .mobile-theme-heading,
+            #view_3041 .field-field_1131 .mobile-theme-heading,
+            #view_3041 .field-field_1132 .mobile-theme-heading,
+            #view_3041 .field-field_1133 .mobile-theme-heading,
+            #view_3041 .field-field_1134 .mobile-theme-heading {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                position: absolute !important;
+                left: -9999px !important;
+                top: -9999px !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            
+            /* Original theme content - VISIBLE BY DEFAULT ON DESKTOP */
+            .original-theme-content,
+            #view_3041 .original-theme-content {
+                display: block !important;
+                visibility: visible !important;
+                height: auto !important;
+                position: static !important;
+                left: auto !important;
+                top: auto !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+            
             /* Help writing buttons - Responsive across all screen sizes */
             .help-writing-btn {
                 background: #079baa !important;
@@ -1293,67 +1360,17 @@
                 #view_3041 [style*="background-color: rgb(134, 180, 240)"] ~ * {
                     max-width: 100% !important;
                 }
-                
-                            /* Mobile section headings for VESPA sections - FORCEFULLY HIDDEN ON DESKTOP */
-            .mobile-section-heading,
-            .mobile-section-heading-comments,
-            .mobile-section-heading-coaching,
-            .mobile-theme-heading,
-            .mobile-score-display,
-            #view_3041 .mobile-section-heading,
-            #view_3041 .mobile-theme-heading,
-            #view_3041 .mobile-score-display,
-            #view_3041 .field-field_1130 .mobile-theme-heading,
-            #view_3041 .field-field_1131 .mobile-theme-heading,
-            #view_3041 .field-field_1132 .mobile-theme-heading,
-            #view_3041 .field-field_1133 .mobile-theme-heading,
-            #view_3041 .field-field_1134 .mobile-theme-heading {
-                display: none !important;
-                visibility: hidden !important;
-                height: 0 !important;
-                overflow: hidden !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                position: absolute !important;
-                left: -9999px !important;
-                top: -9999px !important;
-            }
-                
-                            .original-theme-content {
-                display: block !important; /* Visible by default on desktop */
-            }
-
-            /* Ensure mobile elements are hidden on desktop screens */
-            @media (min-width: 769px) {
-                .mobile-section-heading,
-                .mobile-section-heading-comments,
-                .mobile-section-heading-coaching,
-                .mobile-theme-heading,
-                .mobile-score-display,
-                #view_3041 .mobile-section-heading,
+                /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
                 #view_3041 .mobile-theme-heading,
-                #view_3041 .mobile-score-display {
-                    display: none !important;
-                    visibility: hidden !important;
-                    position: absolute !important;
-                    left: -9999px !important;
-                }
-                
-                /* Reduce font size for Coaching Comments title on desktop */
-                #view_3041 .mobile-section-heading-coaching {
-                    font-size: 14px !important;
-                }
-            }
-                
-                @media (max-width: 768px) {
-                                    /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
-                #view_3041 .mobile-theme-heading {
+                .mobile-theme-heading {
                     display: block !important;
                     visibility: visible !important;
                     height: auto !important;
                     position: static !important;
                     left: auto !important;
                     top: auto !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
                     font-size: 16px !important;
                     font-weight: 600 !important;
                     color: white !important;
@@ -1366,10 +1383,16 @@
                 }
                     
                     /* Mobile score display - ONLY SHOW ON MOBILE */
-                    #view_3041 .mobile-score-display {
+                    #view_3041 .mobile-score-display,
+                    .mobile-score-display {
                         display: block !important;
                         visibility: visible !important;
                         height: auto !important;
+                        position: static !important;
+                        left: auto !important;
+                        top: auto !important;
+                        opacity: 1 !important;
+                        pointer-events: auto !important;
                         font-size: 48px !important;
                         font-weight: 700 !important;
                         color: white !important;
@@ -1379,18 +1402,29 @@
                     }
                     
                     /* Hide original theme content on mobile */
-                    #view_3041 .original-theme-content {
+                    #view_3041 .original-theme-content,
+                    .original-theme-content {
                         display: none !important;
                         visibility: hidden !important;
+                        position: absolute !important;
+                        left: -9999px !important;
                     }
                     
                     /* Section headings (Comments, Coaching Questions) - ONLY SHOW ON MOBILE */
                     #view_3041 .mobile-section-heading,
                     #view_3041 .mobile-section-heading-comments,
-                    #view_3041 .mobile-section-heading-coaching {
+                    #view_3041 .mobile-section-heading-coaching,
+                    .mobile-section-heading,
+                    .mobile-section-heading-comments,
+                    .mobile-section-heading-coaching {
                         display: block !important;
                         visibility: visible !important;
                         height: auto !important;
+                        position: static !important;
+                        left: auto !important;
+                        top: auto !important;
+                        opacity: 1 !important;
+                        pointer-events: auto !important;
                         font-size: 14px !important;
                         font-weight: 600 !important;
                         color: #1a4d4d !important;
