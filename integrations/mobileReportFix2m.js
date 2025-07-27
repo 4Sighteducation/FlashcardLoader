@@ -835,6 +835,8 @@
                 display: flex !important;
                 justify-content: center !important;
                 align-items: center !important;
+                width: 90% !important;
+                max-width: 1200px !important;
                 margin: 20px auto !important;
                 text-align: center !important;
                 background: linear-gradient(135deg, #f5fafa 0%, #e8f4f6 100%) !important;
@@ -844,8 +846,10 @@
                 border: 1px solid rgba(7, 155, 170, 0.08) !important;
             }
             
+            /* Don't modify the canvas itself - let it retain its original appearance */
             #view_3041 #chart-container canvas {
                 margin: 0 auto !important;
+                /* Remove any size modifications to preserve original chart appearance */
             }
             
             /* Help writing buttons - Responsive across all screen sizes */
@@ -1105,13 +1109,14 @@
                 
                 /* Keep the chart visible but make it responsive */
                 #view_3041 #chart-container {
-                    max-width: 100% !important;
+                    width: 95% !important; /* Slightly wider on mobile for better use of space */
+                    padding: 20px !important; /* Reduced padding on mobile */
                     overflow-x: auto !important;
                 }
                 
+                /* Don't modify canvas dimensions on mobile - preserve original sizing */
                 #view_3041 #chart-container canvas {
-                    max-width: 100% !important;
-                    height: auto !important;
+                    /* Remove max-width and height auto to preserve original chart */
                 }
                 
                 /* Make text areas even larger by default on mobile */
@@ -1289,7 +1294,37 @@
                     max-width: 100% !important;
                 }
                 
-                /* Mobile section headings for VESPA sections - HIDDEN BY DEFAULT */
+                            /* Mobile section headings for VESPA sections - FORCEFULLY HIDDEN ON DESKTOP */
+            .mobile-section-heading,
+            .mobile-section-heading-comments,
+            .mobile-section-heading-coaching,
+            .mobile-theme-heading,
+            .mobile-score-display,
+            #view_3041 .mobile-section-heading,
+            #view_3041 .mobile-theme-heading,
+            #view_3041 .mobile-score-display,
+            #view_3041 .field-field_1130 .mobile-theme-heading,
+            #view_3041 .field-field_1131 .mobile-theme-heading,
+            #view_3041 .field-field_1132 .mobile-theme-heading,
+            #view_3041 .field-field_1133 .mobile-theme-heading,
+            #view_3041 .field-field_1134 .mobile-theme-heading {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                position: absolute !important;
+                left: -9999px !important;
+                top: -9999px !important;
+            }
+                
+                            .original-theme-content {
+                display: block !important; /* Visible by default on desktop */
+            }
+
+            /* Ensure mobile elements are hidden on desktop screens */
+            @media (min-width: 769px) {
                 .mobile-section-heading,
                 .mobile-section-heading-comments,
                 .mobile-section-heading-coaching,
@@ -1300,32 +1335,35 @@
                 #view_3041 .mobile-score-display {
                     display: none !important;
                     visibility: hidden !important;
-                    height: 0 !important;
-                    overflow: hidden !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
+                    position: absolute !important;
+                    left: -9999px !important;
                 }
                 
-                .original-theme-content {
-                    display: block !important; /* Visible by default on desktop */
+                /* Reduce font size for Coaching Comments title on desktop */
+                #view_3041 .mobile-section-heading-coaching {
+                    font-size: 14px !important;
                 }
+            }
                 
                 @media (max-width: 768px) {
-                    /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
-                    #view_3041 .mobile-theme-heading {
-                        display: block !important;
-                        visibility: visible !important;
-                        height: auto !important;
-                        font-size: 16px !important;
-                        font-weight: 600 !important;
-                        color: white !important;
-                        margin: 0 !important;
-                        padding: 8px 12px !important;
-                        text-align: center !important;
-                        background: inherit !important; /* Use parent's background color */
-                        text-transform: uppercase !important;
-                        letter-spacing: 0.5px !important;
-                    }
+                                    /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
+                #view_3041 .mobile-theme-heading {
+                    display: block !important;
+                    visibility: visible !important;
+                    height: auto !important;
+                    position: static !important;
+                    left: auto !important;
+                    top: auto !important;
+                    font-size: 16px !important;
+                    font-weight: 600 !important;
+                    color: white !important;
+                    margin: 0 !important;
+                    padding: 8px 12px !important;
+                    text-align: center !important;
+                    background: inherit !important; /* Use parent's background color */
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.5px !important;
+                }
                     
                     /* Mobile score display - ONLY SHOW ON MOBILE */
                     #view_3041 .mobile-score-display {
@@ -1618,58 +1656,236 @@
         // Only run on mobile
         if (!isMobileDevice()) return;
         
-        console.log('[Student Report Enhancement] Looking for Show Answers button...');
+        console.log('[Student Report Enhancement] Setting up Show Answers button hiding...');
         
-        // Ensure radar chart is visible
-        const chartContainer = document.querySelector('#view_3041 #chart-container');
-        if (chartContainer) {
-            chartContainer.style.display = 'block';
-            chartContainer.style.visibility = 'visible';
-            const canvas = chartContainer.querySelector('canvas');
-            if (canvas) {
-                canvas.style.display = 'block';
-                canvas.style.visibility = 'visible';
-            }
-            console.log('[Student Report Enhancement] Ensured radar chart is visible');
-        }
-        
-        // Find and hide the Show Answers button by checking button text
-        const buttons = document.querySelectorAll('#view_3041 button');
-        let hiddenCount = 0;
-        
-        buttons.forEach(button => {
-            const buttonText = (button.textContent || button.innerText || '').trim();
+        // Function to hide the button
+        const hideButton = () => {
+            // Target Show Answers button more specifically
+            const selectors = [
+                // Direct button selectors
+                '#view_3041 button:contains("Show Answer")',
+                '#view_3041 button[data-original-title*="answer" i]',
+                '#view_3041 .kn-button:contains("Show Answer")',
+                // Bottom header area
+                '#view_3041 #bottom-report-header-container button:first-child',
+                '#view_3041 #bottom-report-header-container .kn-button:first-child',
+                // Generic button search
+                '#view_3041 button'
+            ];
             
-            // Only hide if it's specifically the Show Answers button
-            if (buttonText.toLowerCase() === 'show answers' || 
-                buttonText.toLowerCase() === 'show answer' ||
-                (buttonText.toLowerCase() === 'show' && button.id !== 'chart-button')) {
-                button.style.display = 'none';
-                button.style.visibility = 'hidden';
-                button.setAttribute('aria-hidden', 'true');
-                hiddenCount++;
-                console.log(`[Student Report Enhancement] Hid button with text: "${buttonText}"`);
+            let hiddenCount = 0;
+            
+            // Try jQuery selector if available
+            if (typeof $ !== 'undefined') {
+                try {
+                    $('#view_3041 button:contains("Show Answer")').hide();
+                    hiddenCount++;
+                } catch (e) {
+                    console.log('[Student Report Enhancement] jQuery selector failed:', e);
+                }
+            }
+            
+            // Use standard DOM methods
+            const buttons = document.querySelectorAll('#view_3041 button');
+            buttons.forEach(button => {
+                const buttonText = (button.textContent || button.innerText || '').trim().toLowerCase();
+                
+                // Check if this is the Show Answers button
+                if ((buttonText === 'show answers' || 
+                     buttonText === 'show answer' ||
+                     buttonText === 'show questionnaire answers') &&
+                    button.style.display !== 'none') {
+                    
+                    // Hide the button
+                    button.style.cssText = 'display: none !important; visibility: hidden !important;';
+                    button.setAttribute('aria-hidden', 'true');
+                    button.disabled = true;
+                    
+                    // Also hide parent container if it only contains this button
+                    const parent = button.parentElement;
+                    if (parent && parent.children.length === 1) {
+                        parent.style.cssText = 'display: none !important; visibility: hidden !important;';
+                    }
+                    
+                    hiddenCount++;
+                    console.log(`[Student Report Enhancement] Hid Show Answers button: "${buttonText}"`);
+                }
+            });
+            
+            // Ensure radar chart remains visible
+            const chartContainer = document.querySelector('#view_3041 #chart-container');
+            if (chartContainer) {
+                chartContainer.style.removeProperty('display');
+                chartContainer.style.removeProperty('visibility');
+            }
+            
+            return hiddenCount;
+        };
+        
+        // Initial hide attempt
+        let count = hideButton();
+        console.log(`[Student Report Enhancement] Initial hide: ${count} buttons`);
+        
+        // Set up MutationObserver to catch dynamically added buttons
+        const observer = new MutationObserver((mutations) => {
+            let shouldCheck = false;
+            
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1 && (node.tagName === 'BUTTON' || node.querySelector?.('button'))) {
+                            shouldCheck = true;
+                        }
+                    });
+                }
+            });
+            
+            if (shouldCheck) {
+                setTimeout(() => {
+                    const hidden = hideButton();
+                    if (hidden > 0) {
+                        console.log(`[Student Report Enhancement] Hid ${hidden} dynamically added Show Answers button(s)`);
+                    }
+                }, 100);
             }
         });
         
-        // Also check the bottom header area where Show Answers typically appears
-        const bottomHeader = document.querySelector('#view_3041 #bottom-report-header-container');
-        if (bottomHeader) {
-            const bottomButtons = bottomHeader.querySelectorAll('button');
-            bottomButtons.forEach((button, index) => {
-                const buttonText = (button.textContent || button.innerText || '').trim();
-                // First button in bottom header is typically Show Answers
-                if (index === 0 || buttonText.toLowerCase().includes('answer')) {
-                    button.style.display = 'none';
-                    button.style.visibility = 'hidden';
-                    button.setAttribute('aria-hidden', 'true');
-                    hiddenCount++;
-                    console.log(`[Student Report Enhancement] Hid bottom header button: "${buttonText}"`);
-                }
+        // Start observing
+        const reportView = document.querySelector('#view_3041');
+        if (reportView) {
+            observer.observe(reportView, {
+                childList: true,
+                subtree: true
             });
+            
+            // Store observer for cleanup
+            if (!window.reportObservers) window.reportObservers = [];
+            window.reportObservers.push(observer);
         }
         
-        console.log(`[Student Report Enhancement] Total buttons hidden: ${hiddenCount}`);
+        // Also try to fix the modal if button can't be hidden
+        fixShowAnswersModal();
+    }
+    
+    // Function to fix the Show Answers modal on mobile
+    function fixShowAnswersModal() {
+        if (!isMobileDevice()) return;
+        
+        console.log('[Student Report Enhancement] Setting up Show Answers modal fixes...');
+        
+        // Function to fix modal when it appears
+        const fixModal = (modal) => {
+            if (!modal) return;
+            
+            console.log('[Student Report Enhancement] Fixing Show Answers modal...');
+            
+            // Apply mobile-friendly styles
+            modal.style.cssText = `
+                max-width: 90% !important;
+                max-height: 80vh !important;
+                width: auto !important;
+                height: auto !important;
+                overflow-y: auto !important;
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                z-index: 9999 !important;
+                padding: 20px !important;
+                border-radius: 8px !important;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+            `;
+            
+            // Ensure close button is visible and functional
+            const closeButton = modal.querySelector('.close, .modal-close, button[data-dismiss="modal"], .kn-modal-close');
+            if (!closeButton) {
+                // Create a close button if none exists
+                const newCloseButton = document.createElement('button');
+                newCloseButton.innerHTML = '×';
+                newCloseButton.style.cssText = `
+                    position: absolute !important;
+                    top: 10px !important;
+                    right: 10px !important;
+                    width: 30px !important;
+                    height: 30px !important;
+                    font-size: 24px !important;
+                    line-height: 1 !important;
+                    background: #079baa !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 50% !important;
+                    cursor: pointer !important;
+                    z-index: 10000 !important;
+                    padding: 0 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                `;
+                
+                newCloseButton.onclick = () => {
+                    modal.style.display = 'none';
+                    modal.remove();
+                    // Remove any modal backdrop
+                    const backdrop = document.querySelector('.modal-backdrop, .kn-modal-bg');
+                    if (backdrop) backdrop.remove();
+                };
+                
+                modal.appendChild(newCloseButton);
+                console.log('[Student Report Enhancement] Added close button to modal');
+            } else {
+                // Ensure existing close button is visible
+                closeButton.style.cssText = `
+                    display: block !important;
+                    visibility: visible !important;
+                    position: absolute !important;
+                    z-index: 10000 !important;
+                `;
+            }
+            
+            // Fix modal content if it exists
+            const modalContent = modal.querySelector('.modal-content, .kn-modal-content');
+            if (modalContent) {
+                modalContent.style.cssText = `
+                    max-height: 70vh !important;
+                    overflow-y: auto !important;
+                    padding: 20px !important;
+                `;
+            }
+        };
+        
+        // Watch for modal appearance
+        const modalObserver = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) {
+                            // Check if this is a modal
+                            if (node.classList?.contains('modal') || 
+                                node.classList?.contains('kn-modal') ||
+                                node.querySelector?.('.modal-content')) {
+                                
+                                // Check if it's the Show Answers modal
+                                const modalText = node.textContent || '';
+                                if (modalText.toLowerCase().includes('answer') || 
+                                    modalText.toLowerCase().includes('questionnaire')) {
+                                    setTimeout(() => fixModal(node), 100);
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing for modals
+        modalObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Store observer for cleanup
+        if (!window.reportObservers) window.reportObservers = [];
+        window.reportObservers.push(modalObserver);
     }
     
     // Multiple initialization attempts with increasing delays
