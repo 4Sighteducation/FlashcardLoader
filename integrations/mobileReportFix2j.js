@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 4.9 - Fixed modal display issues, desktop styling, and Show Answers button
+ * Version 4.8 - Fixed desktop display issues and centered radar chart
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v4.9] Script loaded at', new Date().toISOString());
+    console.log('[Student Report Enhancement v4.8] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -68,30 +68,21 @@
                 }
             }
             
-            // Add wrapper around chart container if needed (for all screen sizes)
-            const chartContainer = document.querySelector('#view_3041 #chart-container');
-            if (chartContainer && !chartContainer.parentElement.classList.contains('chart-wrapper') && 
-                !chartContainer.parentElement.id.includes('chart-wrapper')) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'chart-wrapper';
-                wrapper.id = 'chart-wrapper';
-                chartContainer.parentNode.insertBefore(wrapper, chartContainer);
-                wrapper.appendChild(chartContainer);
-                console.log('[Student Report Enhancement] Added chart wrapper during initialization');
-            }
-            
             // Initialize features
             if (!popupsInitialized) {
                 // Initialize for all screen sizes
                 initializeVespaPopups();
                 initializeTextAreaFocus();
                 initializeHelpButtons();
-                setupShowAnswersModalFix(); // Setup modal fix for all devices
                 popupsInitialized = true;
                 
-                // Ensure chart wrapper is added on mobile
+                // Hide Show Answers button on mobile
                 if (isMobileDevice()) {
-                    hideShowAnswersButton(); // This now just ensures chart is visible
+                    // Try multiple times to ensure button is hidden
+                    hideShowAnswersButton();
+                    setTimeout(hideShowAnswersButton, 500);
+                    setTimeout(hideShowAnswersButton, 1000);
+                    setTimeout(hideShowAnswersButton, 2000);
                 }
             }
             
@@ -251,14 +242,9 @@
                 const themeName = lines[0]; // Should be VISION, EFFORT, etc.
                 
                 if (themeName && themeName.match(/^(VISION|EFFORT|SYSTEMS|PRACTICE|ATTITUDE)/i)) {
-                    // Store original background color
-                    const originalBgColor = window.getComputedStyle(scoreSection).backgroundColor;
-                    
                     // Create container for original content
                     const originalContent = document.createElement('div');
                     originalContent.className = 'original-theme-content';
-                    originalContent.setAttribute('data-theme-name', themeName);
-                    originalContent.setAttribute('data-theme-score', lines[lines.length - 1]);
                     
                     // Move all existing content to the container
                     while (scoreSection.firstChild) {
@@ -282,9 +268,6 @@
                         scoreDisplay.textContent = scoreNumber;
                         scoreSection.appendChild(scoreDisplay);
                     }
-                    
-                    // Ensure background color is preserved
-                    scoreSection.style.backgroundColor = originalBgColor;
                 }
             }
             
@@ -628,53 +611,21 @@
                     
                     if (!scoreElement) return;
                     
-                    // Get the section name and score from original content or data attributes
-                    const originalContent = scoreElement.querySelector('.original-theme-content');
-                    let sectionName, score;
+                    // Get the section name and score
+                    const scoreText = scoreElement.innerText || scoreElement.textContent;
+                    const lines = scoreText.split('\n').filter(line => line.trim());
+                    const sectionName = lines[0] || 'VESPA Section';
+                    const score = lines[lines.length - 1] || '';
                     
-                    if (originalContent) {
-                        // Use data attributes if available (more reliable)
-                        sectionName = originalContent.getAttribute('data-theme-name') || '';
-                        score = originalContent.getAttribute('data-theme-score') || '';
-                        
-                        // Fallback to parsing text if attributes not set
-                        if (!sectionName || !score) {
-                            const scoreText = originalContent.innerText || originalContent.textContent;
-                            const lines = scoreText.split('\n').filter(line => line.trim());
-                            sectionName = lines.find(line => /^(VISION|EFFORT|SYSTEMS|PRACTICE|ATTITUDE)$/i.test(line.trim())) || lines[0] || 'VESPA Section';
-                            score = lines.find(line => /^\d+$/.test(line.trim())) || lines[lines.length - 1] || '';
-                        }
-                    } else {
-                        // Use direct content (desktop fallback)
-                        const scoreText = scoreElement.innerText || scoreElement.textContent;
-                        const lines = scoreText.split('\n').filter(line => line.trim());
-                        sectionName = lines.find(line => /^(VISION|EFFORT|SYSTEMS|PRACTICE|ATTITUDE)$/i.test(line.trim())) || lines[0] || 'VESPA Section';
-                        score = lines.find(line => /^\d+$/.test(line.trim())) || lines[lines.length - 1] || '';
-                    }
-                    
-                    // Get the description (remove mobile headings from the content)
-                    let description = '';
-                    if (commentsElement) {
-                        // Clone the element to avoid modifying the original
-                        const tempComments = commentsElement.cloneNode(true);
-                        // Remove mobile headings from the clone
-                        const mobileHeadings = tempComments.querySelectorAll('.mobile-section-heading, .mobile-section-heading-comments');
-                        mobileHeadings.forEach(h => h.remove());
-                        description = tempComments.innerHTML;
-                    }
+                    // Get the description
+                    const description = commentsElement ? commentsElement.innerHTML : '';
                     
                     // Get the coaching questions and activities
                     let questions = '';
                     let activities = '';
                     
                     if (questionsElement) {
-                        // Clone and clean the coaching questions
-                        const tempQuestions = questionsElement.cloneNode(true);
-                        // Remove mobile headings
-                        const mobileHeadings = tempQuestions.querySelectorAll('.mobile-section-heading, .mobile-section-heading-coaching');
-                        mobileHeadings.forEach(h => h.remove());
-                        
-                        const questionsHtml = tempQuestions.innerHTML;
+                        const questionsHtml = questionsElement.innerHTML;
                         const parts = questionsHtml.split(/Suggested Activities:/i);
                         questions = parts[0] || '';
                         activities = parts[1] || '';
@@ -693,14 +644,18 @@
                     // Populate modal
                     const modal = document.getElementById('vespa-modal-container');
                     const modalHeader = modal.querySelector('.vespa-modal-header');
+                    const scoreDisplay = modal.querySelector('.modal-score-display');
                     
-                    // Apply theme colors to header
+                    // Apply theme colors
                     if (modalHeader) {
-                        modalHeader.style.background = themeColor;
+                        modalHeader.style.background = themeColor + '88'; // Lighter shade with transparency
+                    }
+                    if (scoreDisplay) {
+                        scoreDisplay.style.background = themeColor;
+                        scoreDisplay.style.color = 'white';
                     }
                     
-                    // Update modal content
-                    modal.querySelector('#vespa-modal-title').textContent = sectionName.toUpperCase();
+                    modal.querySelector('#vespa-modal-title').textContent = sectionName;
                     modal.querySelector('.vespa-modal-score').innerHTML = `<div class="modal-score-display" style="background: ${themeColor}; color: white;">${score}</div>`;
                     modal.querySelector('.vespa-modal-description').innerHTML = description;
                     modal.querySelector('.vespa-modal-questions').innerHTML = questions ? `<h3>Coaching Questions:</h3>${questions}` : '';
@@ -855,7 +810,7 @@
     }
     
     function applyStyles() {
-        const styleId = 'student-report-enhancements-v4-9';
+        const styleId = 'student-report-enhancements-v4-2';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -868,33 +823,25 @@
         
         // Universal and mobile-optimized styles
         style.textContent = `
-            /* Universal styles for Student Report - v4.9 */
+            /* Universal styles for Student Report - v4.2 */
             
             /* Hide introductory questions container on ALL screen sizes */
             #view_3041 #introductory-questions-container {
                 display: none !important;
             }
             
-            /* Wrapper for radar chart background */
-            #view_3041 .chart-wrapper,
-            #view_3041 #chart-wrapper {
-                background: linear-gradient(135deg, #f5fafa 0%, #e8f4f6 100%) !important;
-                padding: 30px 15px !important;
-                margin: 20px 0 !important;
-                border-radius: 12px !important;
-                box-shadow: 0 4px 20px rgba(7, 155, 170, 0.1) !important;
-                border: 1px solid rgba(7, 155, 170, 0.08) !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
-            }
-            
-            /* Keep chart container centered but without styling */
+            /* Center the radar chart with nice background */
             #view_3041 #chart-container {
                 display: flex !important;
                 justify-content: center !important;
                 align-items: center !important;
-                margin: 0 auto !important;
+                margin: 20px auto !important;
                 text-align: center !important;
+                background: linear-gradient(135deg, #f5fafa 0%, #e8f4f6 100%) !important;
+                padding: 30px !important;
+                border-radius: 12px !important;
+                box-shadow: 0 4px 20px rgba(7, 155, 170, 0.1) !important;
+                border: 1px solid rgba(7, 155, 170, 0.08) !important;
             }
             
             #view_3041 #chart-container canvas {
@@ -1133,31 +1080,6 @@
                 font-weight: 500 !important;
             }
             
-            /* Mobile section headings for VESPA sections - HIDDEN BY DEFAULT */
-            #view_3041 .mobile-section-heading,
-            #view_3041 .mobile-section-heading-comments,
-            #view_3041 .mobile-section-heading-coaching,
-            #view_3041 .mobile-theme-heading,
-            #view_3041 .mobile-score-display {
-                display: none !important;
-                visibility: hidden !important;
-                height: 0 !important;
-                overflow: hidden !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            
-            /* Original theme content always visible by default */
-            #view_3041 .original-theme-content {
-                display: block !important;
-                visibility: visible !important;
-            }
-            
-            /* Tap to expand indicator - hidden by default */
-            #view_3041 .vespa-report::after {
-                display: none !important;
-            }
-            
             /* Mobile-only styles */
             @media (max-width: 768px) {
                 /* Hide logo and info buttons on mobile */
@@ -1190,37 +1112,6 @@
                 #view_3041 #chart-container canvas {
                     max-width: 100% !important;
                     height: auto !important;
-                }
-                
-                /* Fix mobile report header layout */
-                #view_3041 #top-report-header-container {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    align-items: center !important;
-                    gap: 10px !important;
-                    padding: 15px !important;
-                }
-                
-                #view_3041 #top-report-header-container > * {
-                    width: 100% !important;
-                    text-align: center !important;
-                }
-                
-                /* Ensure proper order: Title, Name fields, Cycle buttons */
-                #view_3041 .report-title {
-                    order: 1 !important;
-                }
-                
-                #view_3041 .student-info,
-                #view_3041 .student-name,
-                #view_3041 [id*="student"],
-                #view_3041 [id*="name"] {
-                    order: 2 !important;
-                }
-                
-                #view_3041 .cycle-buttons,
-                #view_3041 [id*="cycle"] {
-                    order: 3 !important;
                 }
                 
                 /* Make text areas even larger by default on mobile */
@@ -1398,60 +1289,80 @@
                     max-width: 100% !important;
                 }
                 
-                /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
-                #view_3041 .mobile-theme-heading {
-                    display: block !important;
-                    visibility: visible !important;
-                    height: auto !important;
-                    font-size: 16px !important;
-                    font-weight: 600 !important;
-                    color: white !important;
-                    margin: 0 !important;
-                    padding: 8px 12px !important;
-                    text-align: center !important;
-                    background: inherit !important; /* Use parent's background color */
-                    text-transform: uppercase !important;
-                    letter-spacing: 0.5px !important;
-                }
-                
-                /* Mobile score display - ONLY SHOW ON MOBILE */
+                /* Mobile section headings for VESPA sections - HIDDEN BY DEFAULT */
+                .mobile-section-heading,
+                .mobile-section-heading-comments,
+                .mobile-section-heading-coaching,
+                .mobile-theme-heading,
+                .mobile-score-display,
+                #view_3041 .mobile-section-heading,
+                #view_3041 .mobile-theme-heading,
                 #view_3041 .mobile-score-display {
-                    display: block !important;
-                    visibility: visible !important;
-                    height: auto !important;
-                    font-size: 48px !important;
-                    font-weight: 700 !important;
-                    color: white !important;
-                    text-align: center !important;
-                    padding: 20px 0 !important;
-                    line-height: 1 !important;
-                }
-                
-                /* Hide original theme content on mobile */
-                #view_3041 .original-theme-content {
                     display: none !important;
                     visibility: hidden !important;
+                    height: 0 !important;
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
                 }
                 
-                /* Section headings (Comments, Coaching Questions) - ONLY SHOW ON MOBILE */
-                #view_3041 .mobile-section-heading,
-                #view_3041 .mobile-section-heading-comments,
-                #view_3041 .mobile-section-heading-coaching {
-                    display: block !important;
-                    visibility: visible !important;
-                    height: auto !important;
-                    font-size: 14px !important;
-                    font-weight: 600 !important;
-                    color: #1a4d4d !important;
-                    margin: 10px 0 8px 0 !important;
-                    padding: 6px 12px !important;
-                    background: #f5fafa !important;
-                    border-left: 3px solid #079baa !important;
-                    border-radius: 2px !important;
-                    text-transform: none !important;
+                .original-theme-content {
+                    display: block !important; /* Visible by default on desktop */
                 }
                 
-
+                @media (max-width: 768px) {
+                    /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
+                    #view_3041 .mobile-theme-heading {
+                        display: block !important;
+                        visibility: visible !important;
+                        height: auto !important;
+                        font-size: 16px !important;
+                        font-weight: 600 !important;
+                        color: white !important;
+                        margin: 0 !important;
+                        padding: 8px 12px !important;
+                        text-align: center !important;
+                        background: inherit !important; /* Use parent's background color */
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.5px !important;
+                    }
+                    
+                    /* Mobile score display - ONLY SHOW ON MOBILE */
+                    #view_3041 .mobile-score-display {
+                        display: block !important;
+                        visibility: visible !important;
+                        height: auto !important;
+                        font-size: 48px !important;
+                        font-weight: 700 !important;
+                        color: white !important;
+                        text-align: center !important;
+                        padding: 20px 0 !important;
+                        line-height: 1 !important;
+                    }
+                    
+                    /* Hide original theme content on mobile */
+                    #view_3041 .original-theme-content {
+                        display: none !important;
+                        visibility: hidden !important;
+                    }
+                    
+                    /* Section headings (Comments, Coaching Questions) - ONLY SHOW ON MOBILE */
+                    #view_3041 .mobile-section-heading,
+                    #view_3041 .mobile-section-heading-comments,
+                    #view_3041 .mobile-section-heading-coaching {
+                        display: block !important;
+                        visibility: visible !important;
+                        height: auto !important;
+                        font-size: 14px !important;
+                        font-weight: 600 !important;
+                        color: #1a4d4d !important;
+                        margin: 10px 0 8px 0 !important;
+                        padding: 6px 12px !important;
+                        background: #f5fafa !important;
+                        border-left: 3px solid #079baa !important;
+                        border-radius: 2px !important;
+                        text-transform: none !important;
+                    }
                     
                     /* Adjust spacing for score sections with theme headings */
                     #view_3041 .vespa-report-score {
@@ -1468,31 +1379,30 @@
                         width: 100% !important;
                         margin-bottom: 15px !important;
                     }
-                    
-                    /* Make VESPA sections look clickable on mobile */
-                    #view_3041 .vespa-report {
-                        position: relative !important;
-                        transition: transform 0.2s ease !important;
-                    }
-                    
-                    #view_3041 .vespa-report:active {
-                        transform: scale(0.98) !important;
-                    }
-                    
-                    /* Add a subtle tap indicator on mobile */
-                    #view_3041 .vespa-report::after {
-                        content: "Tap to expand >";
-                        display: block !important;
-                        position: absolute;
-                        top: 10px;
-                        right: 10px;
-                        font-size: 12px;
-                        color: #666;
-                        background: rgba(255,255,255,0.9);
-                        padding: 4px 8px;
-                        border-radius: 4px;
-                        pointer-events: none;
-                    }
+                }
+                
+                /* Make VESPA sections look clickable on mobile */
+                #view_3041 .vespa-report {
+                    position: relative !important;
+                    transition: transform 0.2s ease !important;
+                }
+                
+                #view_3041 .vespa-report:active {
+                    transform: scale(0.98) !important;
+                }
+                
+                /* Add a subtle tap indicator */
+                #view_3041 .vespa-report::after {
+                    content: "Tap to expand >";
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    font-size: 12px;
+                    color: #666;
+                    background: rgba(255,255,255,0.9);
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    pointer-events: none;
                 }
                 
                 /* Prevent tap indicator on comment sections */
@@ -1696,56 +1606,6 @@
                 background: #1976d2 !important;
                 color: white !important;
             }
-            
-            /* Desktop-only styles - ENSURE MOBILE ELEMENTS STAY HIDDEN */
-            @media (min-width: 769px) {
-                /* Force hide all mobile-specific elements on desktop with maximum specificity */
-                #view_3041 .mobile-section-heading,
-                #view_3041 .mobile-section-heading-comments,
-                #view_3041 .mobile-section-heading-coaching,
-                #view_3041 .mobile-theme-heading,
-                #view_3041 .mobile-score-display,
-                #view_3041 .vespa-report .mobile-section-heading,
-                #view_3041 .vespa-report .mobile-section-heading-comments,
-                #view_3041 .vespa-report .mobile-section-heading-coaching,
-                #view_3041 .vespa-report .mobile-theme-heading,
-                #view_3041 .vespa-report .mobile-score-display,
-                #view_3041 .vespa-report-score .mobile-theme-heading,
-                #view_3041 .vespa-report-score .mobile-score-display,
-                #view_3041 .vespa-report-comments .mobile-section-heading,
-                #view_3041 .vespa-report-coaching-questions .mobile-section-heading {
-                    display: none !important;
-                    visibility: hidden !important;
-                    height: 0 !important;
-                    overflow: hidden !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    position: absolute !important;
-                    left: -9999px !important;
-                }
-                
-                /* Ensure original content is visible on desktop */
-                #view_3041 .original-theme-content,
-                #view_3041 .vespa-report .original-theme-content,
-                #view_3041 .vespa-report-score .original-theme-content {
-                    display: block !important;
-                    visibility: visible !important;
-                    height: auto !important;
-                    position: static !important;
-                    left: auto !important;
-                }
-                
-                /* Remove tap to expand indicator on desktop */
-                #view_3041 .vespa-report::after {
-                    display: none !important;
-                    content: none !important;
-                }
-                
-                /* Ensure VESPA sections are not clickable on desktop */
-                #view_3041 .vespa-report {
-                    cursor: default !important;
-                }
-            }
         `;
         
         document.head.appendChild(style);
@@ -1754,228 +1614,13 @@
         console.log('[Student Report Enhancement] Styles applied successfully!');
     }
     
-    function fixShowAnswersModal() {
-        console.log('[Student Report Enhancement] Attempting to fix Show Answers modal for mobile');
-        
-        // Find the Show Answers modal/dialog - check for various modal implementations
-        const possibleModals = document.querySelectorAll('.p-dialog, .modal, [role="dialog"], .show-answers-modal, .p-component-overlay');
-        
-        possibleModals.forEach(modal => {
-            // Check if this is likely the Show Answers modal
-            const modalText = modal.textContent || modal.innerText || '';
-            const hasAnswerContent = modalText.toLowerCase().includes('answer') || 
-                                   modalText.toLowerCase().includes('introduction') ||
-                                   modalText.toLowerCase().includes('question');
-            
-            // Also check if it's a dialog that just appeared
-            const isVisible = window.getComputedStyle(modal).display !== 'none';
-            
-            if ((hasAnswerContent || isVisible) && !modal.hasAttribute('data-mobile-fixed')) {
-                console.log('[Student Report Enhancement] Found Show Answers modal, applying mobile fixes');
-                modal.setAttribute('data-mobile-fixed', 'true');
-                
-                // For mobile devices, apply special styling
-                if (isMobileDevice()) {
-                    // Make modal full screen on mobile for better usability
-                    modal.style.position = 'fixed';
-                    modal.style.top = '10px';
-                    modal.style.left = '10px';
-                    modal.style.right = '10px';
-                    modal.style.bottom = '10px';
-                    modal.style.width = 'calc(100% - 20px)';
-                    modal.style.height = 'calc(100% - 20px)';
-                    modal.style.maxWidth = 'none';
-                    modal.style.maxHeight = 'none';
-                    modal.style.transform = 'none';
-                    modal.style.margin = '0';
-                    modal.style.zIndex = '99999';
-                    modal.style.overflow = 'hidden';
-                    modal.style.display = 'flex';
-                    modal.style.flexDirection = 'column';
-                    
-                    // Find the modal content area and make it scrollable
-                    const contentAreas = modal.querySelectorAll('.p-dialog-content, .modal-body, [class*="content"]');
-                    contentAreas.forEach(content => {
-                        content.style.overflow = 'auto';
-                        content.style.flex = '1';
-                        content.style.webkitOverflowScrolling = 'touch';
-                        content.style.maxHeight = 'calc(100vh - 120px)';
-                    });
-                    
-                    // Fix the header to stay at top
-                    const headers = modal.querySelectorAll('.p-dialog-header, .modal-header, [class*="header"]');
-                    headers.forEach(header => {
-                        header.style.flexShrink = '0';
-                        header.style.position = 'sticky';
-                        header.style.top = '0';
-                        header.style.zIndex = '1';
-                        header.style.background = 'white';
-                    });
-                } else {
-                    // Desktop styling
-                    modal.style.maxWidth = '90vw';
-                    modal.style.maxHeight = '90vh';
-                    modal.style.overflow = 'auto';
-                    if (!modal.style.position || modal.style.position === 'static') {
-                        modal.style.position = 'fixed';
-                        modal.style.top = '50%';
-                        modal.style.left = '50%';
-                        modal.style.transform = 'translate(-50%, -50%)';
-                    }
-                    modal.style.zIndex = '99999';
-                }
-                
-                // Find and enhance close button for better mobile tapping
-                const closeButtons = modal.querySelectorAll(
-                    'button.p-dialog-header-close, .p-dialog-header-icon, button[aria-label*="Close"], ' +
-                    'button[aria-label*="close"], .close, [class*="close"]'
-                );
-                
-                closeButtons.forEach(btn => {
-                    if (isMobileDevice()) {
-                        btn.style.minWidth = '44px';
-                        btn.style.minHeight = '44px';
-                        btn.style.width = '44px';
-                        btn.style.height = '44px';
-                        btn.style.fontSize = '20px';
-                        btn.style.padding = '10px';
-                        btn.style.display = 'flex';
-                        btn.style.alignItems = 'center';
-                        btn.style.justifyContent = 'center';
-                        btn.style.position = 'absolute';
-                        btn.style.top = '10px';
-                        btn.style.right = '10px';
-                        btn.style.zIndex = '2';
-                        
-                        // Add a more visible close icon if needed
-                        if (!btn.textContent.trim() && !btn.querySelector('i')) {
-                            btn.innerHTML = '✕';
-                        }
-                    }
-                    
-                    // Ensure close button actually closes the modal
-                    btn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        console.log('[Student Report Enhancement] Close button clicked');
-                        
-                        // Try various methods to close the modal
-                        modal.style.display = 'none';
-                        modal.classList.remove('show', 'active', 'open');
-                        
-                        // Remove any backdrop/overlay
-                        const backdrops = document.querySelectorAll('.modal-backdrop, .p-component-overlay, [class*="overlay"]');
-                        backdrops.forEach(backdrop => {
-                            backdrop.style.display = 'none';
-                            backdrop.classList.remove('show', 'active');
-                        });
-                        
-                        // If modal has a parent wrapper, hide that too
-                        if (modal.parentElement && modal.parentElement.classList.contains('p-dialog-wrapper')) {
-                            modal.parentElement.style.display = 'none';
-                        }
-                    });
-                });
-                
-                // Add backdrop click to close on mobile
-                if (isMobileDevice()) {
-                    const existingBackdrops = document.querySelectorAll('.modal-backdrop, .p-component-overlay');
-                    existingBackdrops.forEach(backdrop => {
-                        backdrop.style.cursor = 'pointer';
-                        backdrop.addEventListener('click', () => {
-                            console.log('[Student Report Enhancement] Backdrop clicked');
-                            modal.style.display = 'none';
-                            backdrop.style.display = 'none';
-                        });
-                    });
-                    
-                    // If no backdrop exists, create one
-                    if (existingBackdrops.length === 0) {
-                        const backdrop = document.createElement('div');
-                        backdrop.className = 'show-answers-backdrop';
-                        backdrop.style.position = 'fixed';
-                        backdrop.style.top = '0';
-                        backdrop.style.left = '0';
-                        backdrop.style.width = '100%';
-                        backdrop.style.height = '100%';
-                        backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-                        backdrop.style.zIndex = '99998';
-                        backdrop.style.cursor = 'pointer';
-                        backdrop.addEventListener('click', () => {
-                            modal.style.display = 'none';
-                            backdrop.remove();
-                        });
-                        document.body.appendChild(backdrop);
-                    }
-                }
-            }
-        });
-    }
-    
-    function setupShowAnswersModalFix() {
-        // Setup for both mobile and desktop to fix the modal
-        console.log('[Student Report Enhancement] Setting up Show Answers modal fix');
-        
-        // Find buttons that might be the Show Answers button
-        const buttons = document.querySelectorAll('#view_3041 button');
-        let showAnswersButton = null;
-        
-        buttons.forEach(button => {
-            const buttonText = (button.textContent || button.innerText || '').trim();
-            
-            // Find Show Answers button without hiding it initially
-            if ((buttonText.toLowerCase() === 'show answers' || 
-                 buttonText.toLowerCase() === 'show answer' ||
-                 buttonText.toLowerCase() === 'ans') && 
-                !button.textContent.match(/^\d+$/) &&
-                !button.className.toLowerCase().includes('cycle') && 
-                !button.getAttribute('aria-label')?.toLowerCase().includes('cycle')) {
-                
-                showAnswersButton = button;
-                console.log(`[Student Report Enhancement] Found Show Answers button: "${buttonText}"`);
-                
-                // Add click handler to fix modal when it opens
-                button.addEventListener('click', function(e) {
-                    console.log('[Student Report Enhancement] Show Answers button clicked');
-                    // Use MutationObserver to detect when modal appears
-                    const observer = new MutationObserver((mutations) => {
-                        mutations.forEach(() => {
-                            fixShowAnswersModal();
-                        });
-                    });
-                    
-                    // Observe body for new elements
-                    observer.observe(document.body, {
-                        childList: true,
-                        subtree: true
-                    });
-                    
-                    // Stop observing after 5 seconds
-                    setTimeout(() => observer.disconnect(), 5000);
-                    
-                    // Also try fixing immediately and with delays
-                    setTimeout(fixShowAnswersModal, 100);
-                    setTimeout(fixShowAnswersModal, 300);
-                    setTimeout(fixShowAnswersModal, 500);
-                });
-            }
-        });
-        
-        // Only hide the button on mobile if we can't fix the modal
-        if (showAnswersButton && isMobileDevice()) {
-            // Test if modal fix works by temporarily showing the button
-            console.log('[Student Report Enhancement] Testing Show Answers modal fix on mobile');
-            // If modal fix doesn't work after testing, hide the button
-            // For now, let's keep the button visible and rely on the modal fix
-        }
-    }
-    
     function hideShowAnswersButton() {
         // Only run on mobile
         if (!isMobileDevice()) return;
         
         console.log('[Student Report Enhancement] Looking for Show Answers button...');
         
-        // Ensure radar chart is visible and add wrapper if needed
+        // Ensure radar chart is visible
         const chartContainer = document.querySelector('#view_3041 #chart-container');
         if (chartContainer) {
             chartContainer.style.display = 'block';
@@ -1985,30 +1630,36 @@
                 canvas.style.display = 'block';
                 canvas.style.visibility = 'visible';
             }
-            
-            // Add wrapper div around chart container if it doesn't exist
-            if (!chartContainer.parentElement.classList.contains('chart-wrapper') && 
-                !chartContainer.parentElement.id.includes('chart-wrapper')) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'chart-wrapper';
-                wrapper.id = 'chart-wrapper';
-                chartContainer.parentNode.insertBefore(wrapper, chartContainer);
-                wrapper.appendChild(chartContainer);
-                console.log('[Student Report Enhancement] Added chart wrapper');
-            }
-            
             console.log('[Student Report Enhancement] Ensured radar chart is visible');
         }
         
-        // Also specifically target the Show Answers button by looking for it in the bottom header
+        // Find and hide the Show Answers button by checking button text
+        const buttons = document.querySelectorAll('#view_3041 button');
+        let hiddenCount = 0;
+        
+        buttons.forEach(button => {
+            const buttonText = (button.textContent || button.innerText || '').trim();
+            
+            // Only hide if it's specifically the Show Answers button
+            if (buttonText.toLowerCase() === 'show answers' || 
+                buttonText.toLowerCase() === 'show answer' ||
+                (buttonText.toLowerCase() === 'show' && button.id !== 'chart-button')) {
+                button.style.display = 'none';
+                button.style.visibility = 'hidden';
+                button.setAttribute('aria-hidden', 'true');
+                hiddenCount++;
+                console.log(`[Student Report Enhancement] Hid button with text: "${buttonText}"`);
+            }
+        });
+        
+        // Also check the bottom header area where Show Answers typically appears
         const bottomHeader = document.querySelector('#view_3041 #bottom-report-header-container');
         if (bottomHeader) {
             const bottomButtons = bottomHeader.querySelectorAll('button');
-            bottomButtons.forEach((button) => {
-                const buttonText = (button.textContent || button.innerText || '').trim().toLowerCase();
-                // Only hide if it contains "ans" or "answer" but not if it's a number
-                if ((buttonText.includes('answer') || buttonText === 'ans') && 
-                    !button.textContent.match(/^\d+$/)) {
+            bottomButtons.forEach((button, index) => {
+                const buttonText = (button.textContent || button.innerText || '').trim();
+                // First button in bottom header is typically Show Answers
+                if (index === 0 || buttonText.toLowerCase().includes('answer')) {
                     button.style.display = 'none';
                     button.style.visibility = 'hidden';
                     button.setAttribute('aria-hidden', 'true');
@@ -2102,5 +1753,7 @@
         }
     });
     
+    console.log('[Student Report Enhancement v4.8] Initialization complete');
+})();
     console.log('[Student Report Enhancement v4.9] Initialization complete');
 })();
