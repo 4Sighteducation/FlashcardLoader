@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 4.8 - Fixed desktop display issues and centered radar chart
+ * Version 5.0 - Improved info button content with better formatting and tone (universal)
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v4.8] Script loaded at', new Date().toISOString());
+    console.log('[Student Report Enhancement v5.0] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -89,16 +89,23 @@
                 initializeVespaPopups();
                 initializeTextAreaFocus();
                 initializeHelpButtons();
+                improveInfoButtonContent(); // Universal info button improvements
                 popupsInitialized = true;
                 
-                // Hide Show Answers button on mobile
+                // Mobile-specific initializations
                 if (isMobileDevice()) {
                     // Try multiple times to ensure button is hidden
                     hideShowAnswersButton();
                     setTimeout(hideShowAnswersButton, 500);
                     setTimeout(hideShowAnswersButton, 1000);
                     setTimeout(hideShowAnswersButton, 2000);
+                    
+                    // Fix all modal types on mobile
+                    fixAllModalsForMobile();
                 }
+                
+                // Fix info button modals on all screen sizes
+                fixInfoButtonModals();
             }
             
             // Enable pinch-to-zoom on mobile
@@ -1209,27 +1216,71 @@
                 z-index: 9998 !important; /* Below our modals */
             }
             
+            /* PrimeVue Dialog fixes for mobile */
+            @media (max-width: 768px) {
+                /* Fix PrimeVue dialog overlay */
+                .p-dialog-mask {
+                    padding: 20px !important;
+                }
+                
+                /* Fix PrimeVue dialog sizing */
+                .p-dialog {
+                    width: 85vw !important;
+                    max-width: 400px !important;
+                    max-height: 70vh !important;
+                    margin: 0 auto !important;
+                }
+                
+                /* Fix dialog content */
+                .p-dialog-content {
+                    max-height: 50vh !important;
+                    overflow-y: auto !important;
+                    padding: 20px !important;
+                    font-size: 16px !important;
+                    line-height: 1.6 !important;
+                }
+                
+                /* Fix dialog header */
+                .p-dialog-header {
+                    padding: 15px 20px !important;
+                    flex-shrink: 0 !important;
+                }
+                
+                /* Make close button touch-friendly */
+                .p-dialog-header-close {
+                    width: 44px !important;
+                    height: 44px !important;
+                    min-width: 44px !important;
+                    min-height: 44px !important;
+                }
+                
+                /* Ensure proper modal display on small screens */
+                .p-dialog[style*="width: 95vw"] {
+                    width: 85vw !important;
+                    max-width: 400px !important;
+                }
+            }
+            
             /* Mobile-only styles */
             @media (max-width: 768px) {
-                /* Hide logo and info buttons on mobile */
+                /* Hide only logo on mobile, keep info buttons visible */
                 #view_3041 .image-logo,
                 #view_3041 img[alt="Logo"],
                 #view_3041 img[src*="logo"],
                 #view_3041 .logo,
-                #view_3041 [class*="logo"] img,
-                #view_3041 .info-icon,
-                #view_3041 .pi-info-circle,
-                #view_3041 i[class*="info"],
-                #view_3041 .p-button-icon-only i.pi-info-circle,
-                #view_3041 button i.pi-info-circle,
-                #view_3041 button[aria-label*="info" i],
-                #view_3041 button[aria-label*="Info" i],
-                #view_3041 button[title*="info" i],
-                #view_3041 button[title*="Info" i],
-                #view_3041 .p-button-icon-only[aria-label*="info" i],
-                #view_3041 .p-button-rounded i.pi-info-circle {
+                #view_3041 [class*="logo"] img {
                     display: none !important;
                     visibility: hidden !important;
+                }
+                
+                /* Make info buttons touch-friendly on mobile */
+                #view_3041 .p-button-icon-only[aria-label*="info" i],
+                #view_3041 button i.pi-info-circle,
+                #view_3041 button[aria-label*="info" i],
+                #view_3041 button[title*="info" i] {
+                    min-width: 44px !important;
+                    min-height: 44px !important;
+                    padding: 8px !important;
                 }
                 
                 /* Keep the chart visible but make it responsive */
@@ -1873,6 +1924,139 @@
         fixShowAnswersModal();
     }
     
+    // Add this new function to fix ALL modal types
+    function fixAllModalsForMobile() {
+        if (!isMobileDevice()) return;
+        
+        console.log('[Student Report Enhancement] Setting up universal modal fixes for mobile...');
+        
+        // Function to fix any modal type
+        const fixModalUniversal = (modal, modalType = 'unknown') => {
+            if (!modal) return;
+            
+            console.log(`[Student Report Enhancement] Fixing ${modalType} modal...`);
+            
+            // For PrimeVue dialogs
+            if (modal.classList?.contains('p-dialog')) {
+                modal.style.cssText = `
+                    width: 85vw !important;
+                    max-width: 400px !important;
+                    max-height: 70vh !important;
+                    margin: 0 auto !important;
+                `;
+                
+                // Fix the content area
+                const content = modal.querySelector('.p-dialog-content');
+                if (content) {
+                    content.style.cssText = `
+                        max-height: 50vh !important;
+                        overflow-y: auto !important;
+                        padding: 20px !important;
+                        font-size: 16px !important;
+                        line-height: 1.6 !important;
+                    `;
+                }
+                
+                // Ensure header is properly sized
+                const header = modal.querySelector('.p-dialog-header');
+                if (header) {
+                    header.style.cssText = `
+                        padding: 15px 20px !important;
+                        flex-shrink: 0 !important;
+                    `;
+                }
+                
+                // Make close button touch-friendly
+                const closeBtn = modal.querySelector('.p-dialog-header-close');
+                if (closeBtn) {
+                    closeBtn.style.cssText = `
+                        width: 44px !important;
+                        height: 44px !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                    `;
+                }
+            }
+            // For Knack modals (Show Answers)
+            else if (modal.classList?.contains('modal') || modal.classList?.contains('kn-modal')) {
+                // Apply the existing fix
+                modal.style.cssText = `
+                    max-width: 85vw !important;
+                    max-height: 70vh !important;
+                    width: auto !important;
+                    height: auto !important;
+                    overflow-y: auto !important;
+                    position: fixed !important;
+                    top: 50% !important;
+                    left: 50% !important;
+                    transform: translate(-50%, -50%) !important;
+                    z-index: 9999 !important;
+                    padding: 20px !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+                `;
+                
+                // Fix modal content if it exists
+                const modalContent = modal.querySelector('.modal-content, .kn-modal-content');
+                if (modalContent) {
+                    modalContent.style.cssText = `
+                        max-height: 60vh !important;
+                        overflow-y: auto !important;
+                        padding: 20px !important;
+                    `;
+                }
+            }
+        };
+        
+        // Watch for any modal appearance
+        const universalModalObserver = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) {
+                            // Check for PrimeVue dialog
+                            if (node.classList?.contains('p-dialog-mask')) {
+                                const dialog = node.querySelector('.p-dialog');
+                                if (dialog) {
+                                    setTimeout(() => fixModalUniversal(dialog, 'PrimeVue'), 10);
+                                }
+                            }
+                            // Check for regular modals
+                            else if (node.classList?.contains('modal') || 
+                                     node.classList?.contains('kn-modal') ||
+                                     node.querySelector?.('.modal-content')) {
+                                setTimeout(() => fixModalUniversal(node, 'Knack'), 10);
+                            }
+                        }
+                    });
+                }
+                
+                // Also check for style changes on PrimeVue dialogs
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    if (mutation.target.classList?.contains('p-dialog') && 
+                        mutation.target.style.width === '95vw') {
+                        fixModalUniversal(mutation.target, 'PrimeVue-resize');
+                    }
+                }
+            });
+        });
+        
+        // Start observing
+        universalModalObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style']
+        });
+        
+        // Store observer
+        if (!window.reportObservers) window.reportObservers = [];
+        window.reportObservers.push(universalModalObserver);
+        
+        console.log('[Student Report Enhancement] Universal modal observer set up');
+    }
+    
     // Function to fix the Show Answers modal on mobile
     function fixShowAnswersModal() {
         if (!isMobileDevice()) return;
@@ -1994,6 +2178,205 @@
         window.reportObservers.push(modalObserver);
     }
     
+    // Function to improve info button content (works on all screen sizes)
+    function improveInfoButtonContent() {
+        console.log('[Student Report Enhancement] Setting up info button content improvements...');
+        
+        // Define the improved content for each button
+        const improvedContent = {
+            // Left button - Score explanation
+            scoreExplanation: `
+                <div style="line-height: 1.8; font-size: 16px; color: #333;">
+                    <h3 style="color: #079baa; margin-bottom: 20px; text-align: center;">
+                        🎯 Understanding Your VESPA Scores
+                    </h3>
+                    
+                    <div style="background: #e8f4f6; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <p style="margin: 0 0 15px 0; font-weight: 500;">
+                            📊 Your questionnaire responses have been analyzed to create your unique academic profile:
+                        </p>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            <li style="margin: 8px 0; padding-left: 25px; position: relative;">
+                                <span style="position: absolute; left: 0;">👁️</span>
+                                <strong style="color: #ff8f00;">VISION</strong> - Future Mindedness
+                            </li>
+                            <li style="margin: 8px 0; padding-left: 25px; position: relative;">
+                                <span style="position: absolute; left: 0;">💪</span>
+                                <strong style="color: #86b4f0;">EFFORT</strong> - Work Ethic
+                            </li>
+                            <li style="margin: 8px 0; padding-left: 25px; position: relative;">
+                                <span style="position: absolute; left: 0;">📁</span>
+                                <strong style="color: #72cb44;">SYSTEMS</strong> - Organisation
+                            </li>
+                            <li style="margin: 8px 0; padding-left: 25px; position: relative;">
+                                <span style="position: absolute; left: 0;">📚</span>
+                                <strong style="color: #7f31a4;">PRACTICE</strong> - Study Techniques
+                            </li>
+                            <li style="margin: 8px 0; padding-left: 25px; position: relative;">
+                                <span style="position: absolute; left: 0;">🧠</span>
+                                <strong style="color: #f032e6;">ATTITUDE</strong> - Approach to Study
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <p style="margin: 0 0 15px 0; font-weight: 500;">
+                            🌍 How are your scores calculated?
+                        </p>
+                        <p style="margin: 0; color: #666;">
+                            Your scores are benchmarked against thousands of students worldwide, giving you a clear picture of where you stand.
+                        </p>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #f5fafa 0%, #e8f4f6 100%); padding: 20px; border-radius: 12px;">
+                        <h4 style="color: #079baa; margin: 0 0 15px 0;">📈 Score Guide:</h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; align-items: center;">
+                                <span style="font-size: 20px; margin-right: 10px;">🎯</span>
+                                <div>
+                                    <strong style="color: #e74c3c;">1-3 Low</strong>
+                                    <span style="color: #666; margin-left: 8px;">Key priorities to focus on</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="font-size: 20px; margin-right: 10px;">🔧</span>
+                                <div>
+                                    <strong style="color: #f39c12;">4-6 Average</strong>
+                                    <span style="color: #666; margin-left: 8px;">Areas for improvement</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="font-size: 20px; margin-right: 10px;">💪</span>
+                                <div>
+                                    <strong style="color: #27ae60;">7-8 High</strong>
+                                    <span style="color: #666; margin-left: 8px;">Strengths to maintain</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="font-size: 20px; margin-right: 10px;">🌟</span>
+                                <div>
+                                    <strong style="color: #079baa;">9-10 Very High</strong>
+                                    <span style="color: #666; margin-left: 8px;">Excellence to celebrate!</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 20px; font-style: italic; text-align: center; color: #666;">
+                        💡 Tip: Your personalized comments below each score provide insights and questions to help you reflect and grow!
+                    </p>
+                </div>
+            `,
+            
+            // Right button - Coaching explanation
+            coachingExplanation: `
+                <div style="line-height: 1.8; font-size: 16px; color: #333;">
+                    <h3 style="color: #079baa; margin-bottom: 20px; text-align: center;">
+                        🚀 Your Personal Development Toolkit
+                    </h3>
+                    
+                    <div style="background: #e8f4f6; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <h4 style="color: #079baa; margin: 0 0 10px 0; display: flex; align-items: center;">
+                            <span style="font-size: 24px; margin-right: 10px;">💬</span>
+                            Coaching Questions
+                        </h4>
+                        <p style="margin: 0; padding-left: 34px;">
+                            Thoughtful questions designed for your 1-1 meetings with your tutor or mentor. 
+                            <strong>Pro tip:</strong> Reflecting on these beforehand will make your sessions super productive! 
+                        </p>
+                    </div>
+                    
+                    <div style="background: #f5fafa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <h4 style="color: #079baa; margin: 0 0 10px 0; display: flex; align-items: center;">
+                            <span style="font-size: 24px; margin-right: 10px;">🎯</span>
+                            Suggested Activities
+                        </h4>
+                        <p style="margin: 0 0 10px 0; padding-left: 34px;">
+                            Personalized activities tailored to your profile to help you level up your academic game!
+                        </p>
+                        <p style="margin: 0; padding-left: 34px; color: #666;">
+                            <strong>📍 Where to find them:</strong> All activities are conveniently located in your 
+                            <span style="background: #079baa; color: white; padding: 2px 8px; border-radius: 4px; font-weight: 500;">MYVESPA</span> 
+                            tab for easy access anytime.
+                        </p>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); padding: 20px; border-radius: 12px; text-align: center;">
+                        <p style="margin: 0; font-weight: 500; color: #856404;">
+                            💪 Remember: Small steps lead to big changes!
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #856404;">
+                            Each activity is designed to be manageable and impactful.
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+        
+        // Function to determine which button based on content
+        const getButtonType = (content) => {
+            if (!content) return null;
+            const lowerContent = content.toLowerCase();
+            
+            if (lowerContent.includes('questionnaire responses') && lowerContent.includes('score key')) {
+                return 'scoreExplanation';
+            } else if (lowerContent.includes('coaching questions') && lowerContent.includes('myvespa')) {
+                return 'coachingExplanation';
+            }
+            return null;
+        };
+        
+        // Watch for PrimeVue dialog content changes
+        const contentObserver = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                // Look for dialog content areas
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) {
+                            // Check if it's a dialog content area
+                            const dialogContent = node.querySelector?.('.p-dialog-content') || 
+                                                (node.classList?.contains('p-dialog-content') ? node : null);
+                            
+                            if (dialogContent) {
+                                const currentContent = dialogContent.textContent || '';
+                                const buttonType = getButtonType(currentContent);
+                                
+                                if (buttonType && improvedContent[buttonType]) {
+                                    console.log(`[Student Report Enhancement] Improving ${buttonType} content`);
+                                    
+                                    // Replace the content
+                                    dialogContent.innerHTML = improvedContent[buttonType];
+                                    
+                                    // Ensure dialog is properly sized
+                                    const dialog = dialogContent.closest('.p-dialog');
+                                    if (dialog) {
+                                        dialog.style.maxWidth = '600px';
+                                        if (window.innerWidth <= 768) {
+                                            dialog.style.width = '90vw';
+                                            dialog.style.maxWidth = '500px';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing
+        contentObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Store observer
+        if (!window.reportObservers) window.reportObservers = [];
+        window.reportObservers.push(contentObserver);
+        
+        console.log('[Student Report Enhancement] Info button content observer set up');
+    }
+    
     // Multiple initialization attempts with increasing delays
     async function attemptInitialization() {
         console.log(`[Student Report Enhancement] Initialization attempt ${initAttempts + 1}/${MAX_INIT_ATTEMPTS}`);
@@ -2075,5 +2458,68 @@
         }
     });
     
-    console.log('[Student Report Enhancement v4.8] Initialization complete');
+    // Function to fix info button modals on all screen sizes
+    function fixInfoButtonModals() {
+        console.log('[Student Report Enhancement] Setting up info button modal fixes for all screen sizes...');
+        
+        // Watch for PrimeVue dialog appearance
+        const infoModalObserver = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) {
+                            // Check for PrimeVue dialog
+                            if (node.classList?.contains('p-dialog-mask')) {
+                                const dialog = node.querySelector('.p-dialog');
+                                if (dialog) {
+                                    // Apply appropriate sizing based on screen size
+                                    setTimeout(() => {
+                                        if (window.innerWidth <= 768) {
+                                            // Mobile sizing
+                                            dialog.style.cssText = `
+                                                width: 90vw !important;
+                                                max-width: 500px !important;
+                                                max-height: 80vh !important;
+                                                margin: 0 auto !important;
+                                            `;
+                                        } else {
+                                            // Desktop sizing
+                                            dialog.style.cssText = `
+                                                width: auto !important;
+                                                min-width: 500px !important;
+                                                max-width: 700px !important;
+                                                max-height: 85vh !important;
+                                            `;
+                                        }
+                                        
+                                        // Fix content area for all sizes
+                                        const content = dialog.querySelector('.p-dialog-content');
+                                        if (content) {
+                                            content.style.cssText = `
+                                                max-height: calc(80vh - 100px) !important;
+                                                overflow-y: auto !important;
+                                                padding: 24px !important;
+                                            `;
+                                        }
+                                    }, 10);
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing
+        infoModalObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Store observer
+        if (!window.reportObservers) window.reportObservers = [];
+        window.reportObservers.push(infoModalObserver);
+    }
+    
+    console.log('[Student Report Enhancement v5.0] Initialization complete');
 })();
