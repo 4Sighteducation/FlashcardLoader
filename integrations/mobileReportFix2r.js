@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 5.2 - Restored tap-to-expand with dynamic modal creation to prevent persistence
+ * Version 5.0 - Improved info button content with better formatting and tone (universal)
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v5.2] Script loaded at', new Date().toISOString());
+    console.log('[Student Report Enhancement v5.0] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -570,11 +570,79 @@
         // Add section headings to all VESPA sections (only on mobile)
         addSectionHeadings();
         
-        // Remove any existing vespa-modal-container from previous runs
-        const existingModal = document.getElementById('vespa-modal-container');
-        if (existingModal) {
-            existingModal.remove();
-            console.log('[Student Report Enhancement] Removed existing vespa-modal-container');
+        // Create modal container if it doesn't exist
+        if (!document.getElementById('vespa-modal-container')) {
+            const modalHtml = `
+                <div id="vespa-modal-container" class="vespa-modal-overlay">
+                    <div class="vespa-modal-content">
+                        <div class="vespa-modal-header">
+                            <h2 id="vespa-modal-title"></h2>
+                            <button class="vespa-modal-close" aria-label="Close modal">&times;</button>
+                        </div>
+                        <div class="vespa-modal-body">
+                            <div class="vespa-modal-score"></div>
+                            <div class="vespa-modal-description"></div>
+                            <div class="vespa-modal-questions"></div>
+                            <div class="vespa-modal-activities"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Ensure modal is added to body, not inside any container
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Double-check modal is at body level
+            const modalCheck = document.getElementById('vespa-modal-container');
+            if (modalCheck && modalCheck.parentElement !== document.body) {
+                console.warn('[Student Report Enhancement] Modal not at body level, moving it');
+                document.body.appendChild(modalCheck);
+            }
+            
+            // Add close handlers
+            const modal = document.getElementById('vespa-modal-container');
+            const closeBtn = modal.querySelector('.vespa-modal-close');
+            
+            // Close button handler
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Student Report Enhancement] Close button clicked');
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+                // Also try to reset body scroll
+                document.body.style.overflow = '';
+            });
+            
+            // Backdrop click handler
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    console.log('[Student Report Enhancement] Backdrop clicked');
+                    modal.classList.remove('active');
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // Add touch event for mobile
+            closeBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Student Report Enhancement] Close button touched');
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            });
+            
+            // Add escape key handler
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('active')) {
+                    console.log('[Student Report Enhancement] Escape key pressed');
+                    modal.classList.remove('active');
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+            });
         }
         
         // Use setTimeout to ensure DOM is ready
@@ -645,64 +713,8 @@
                     };
                     const themeColor = themeColors[sectionName.toUpperCase()] || '#1a4d4d';
                     
-                    // Create modal dynamically
-                    let modal = document.getElementById('vespa-modal-container');
-                    if (!modal) {
-                        const modalHtml = `
-                            <div id="vespa-modal-container" class="vespa-modal-overlay">
-                                <div class="vespa-modal-content">
-                                    <div class="vespa-modal-header">
-                                        <h2 id="vespa-modal-title"></h2>
-                                        <button class="vespa-modal-close" aria-label="Close modal">&times;</button>
-                                    </div>
-                                    <div class="vespa-modal-body">
-                                        <div class="vespa-modal-score"></div>
-                                        <div class="vespa-modal-description"></div>
-                                        <div class="vespa-modal-questions"></div>
-                                        <div class="vespa-modal-activities"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        document.body.insertAdjacentHTML('beforeend', modalHtml);
-                        modal = document.getElementById('vespa-modal-container');
-                        
-                        // Add close handlers
-                        const closeBtn = modal.querySelector('.vespa-modal-close');
-                        
-                        const closeModal = () => {
-                            modal.classList.remove('active');
-                            modal.style.display = 'none';
-                            document.body.style.overflow = '';
-                            // Remove the modal after closing to prevent persistence
-                            setTimeout(() => {
-                                if (modal && !modal.classList.contains('active')) {
-                                    modal.remove();
-                                }
-                            }, 300);
-                        };
-                        
-                        closeBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            closeModal();
-                        });
-                        
-                        modal.addEventListener('click', (e) => {
-                            if (e.target === modal) {
-                                closeModal();
-                            }
-                        });
-                        
-                        // Add escape key handler
-                        document.addEventListener('keydown', (e) => {
-                            if (e.key === 'Escape' && modal.classList.contains('active')) {
-                                closeModal();
-                            }
-                        });
-                    }
-                    
                     // Populate modal
+                    const modal = document.getElementById('vespa-modal-container');
                     const modalHeader = modal.querySelector('.vespa-modal-header');
                     const scoreDisplay = modal.querySelector('.modal-score-display');
                     
@@ -1271,26 +1283,6 @@
                     padding: 8px !important;
                 }
                 
-                /* Fix VIEW ANSWERS button on mobile */
-                #answers-button button.p-button-rounded,
-                #answers-button .p-button,
-                #student-info #answers-button button {
-                    width: auto !important;
-                    min-width: 140px !important;
-                    height: 44px !important;
-                    padding: 10px 20px !important;
-                    border-radius: 22px !important;
-                    font-size: 16px !important;
-                    white-space: nowrap !important;
-                }
-                
-                /* Ensure the button label is visible */
-                #answers-button .p-button-label {
-                    display: inline !important;
-                    visibility: visible !important;
-                    font-weight: 600 !important;
-                }
-                
                 /* Keep the chart visible but make it responsive */
                 #view_3041 #chart-container {
                     width: 95% !important; /* Slightly wider on mobile for better use of space */
@@ -1658,152 +1650,157 @@
                 }
             }
             
-            /* VESPA Modal styles - only show on mobile */
-            @media (max-width: 768px) {
-                .vespa-modal-overlay {
-                    display: none;
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    right: 0 !important;
-                    bottom: 0 !important;
-                    background: rgba(0, 0, 0, 0.8) !important;
-                    z-index: 2147483647 !important;
-                    overflow-y: auto !important;
-                    -webkit-overflow-scrolling: touch !important;
-                }
-                
-                .vespa-modal-overlay.active {
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    padding: 20px !important;
-                }
-                
-                .vespa-modal-content {
-                    background: white !important;
-                    width: 90% !important;
-                    max-width: 500px !important;
-                    margin: 20px auto !important;
-                    border-radius: 10px !important;
-                    position: relative !important;
-                    max-height: 90vh !important;
-                    overflow: hidden !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5) !important;
-                }
-                
-                .vespa-modal-header {
-                    color: white !important;
-                    padding: 20px !important;
-                    border-radius: 10px 10px 0 0 !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    flex-shrink: 0 !important;
-                }
-                
-                .vespa-modal-header h2 {
-                    margin: 0 !important;
-                    font-size: 24px !important;
-                    font-weight: 600 !important;
-                }
-                
-                .vespa-modal-close {
-                    background: rgba(255, 255, 255, 0.2) !important;
-                    border: 2px solid white !important;
-                    color: white !important;
-                    font-size: 30px !important;
-                    cursor: pointer !important;
-                    padding: 0 !important;
-                    width: 40px !important;
-                    height: 40px !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    border-radius: 50% !important;
-                    transition: all 0.3s ease !important;
-                    line-height: 1 !important;
-                    font-weight: bold !important;
-                    -webkit-tap-highlight-color: transparent !important;
-                }
-                
-                .vespa-modal-close:hover,
-                .vespa-modal-close:active {
-                    background: rgba(255, 255, 255, 0.4) !important;
-                    transform: scale(1.1) !important;
-                }
-                
-                .vespa-modal-body {
-                    padding: 20px !important;
-                    overflow-y: auto !important;
-                    flex: 1 !important;
-                }
-                
-                .modal-score-display {
-                    font-size: 48px !important;
-                    font-weight: 700 !important;
-                    text-align: center !important;
-                    padding: 20px !important;
-                    margin-bottom: 20px !important;
-                    border-radius: 10px !important;
-                }
-                
-                .vespa-modal-description {
-                    font-size: 18px !important;
-                    line-height: 1.8 !important;
-                    margin-bottom: 30px !important;
-                    color: #333 !important;
-                }
-                
-                .vespa-modal-questions {
-                    margin-bottom: 30px !important;
-                }
-                
-                .vespa-modal-questions h3 {
-                    font-size: 20px !important;
-                    margin-bottom: 15px !important;
-                    color: #1a4d4d !important;
-                    font-weight: 600 !important;
-                }
-                
-                .vespa-modal-questions ol {
-                    font-size: 18px !important;
-                    line-height: 1.8 !important;
-                    padding-left: 20px !important;
-                }
-                
-                .vespa-modal-questions li {
-                    margin-bottom: 15px !important;
-                    color: #333 !important;
-                }
-                
-                .vespa-modal-activities h3 {
-                    font-size: 20px !important;
-                    margin-bottom: 15px !important;
-                    color: #1a4d4d !important;
-                    font-weight: 600 !important;
-                }
-                
-                .vespa-modal-activities a {
-                    display: inline-block !important;
-                    margin: 5px !important;
-                    padding: 10px 20px !important;
-                    background: #e3f2fd !important;
-                    color: #1976d2 !important;
-                    text-decoration: none !important;
-                    border-radius: 20px !important;
-                    font-size: 16px !important;
-                    transition: all 0.3s ease !important;
-                }
-                
-                .vespa-modal-activities a:active {
-                    background: #1976d2 !important;
-                    color: white !important;
-                }
+            /* VESPA Modal styles - always apply these but only show on mobile */
+            .vespa-modal-overlay {
+                display: none;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: rgba(0, 0, 0, 0.8) !important;
+                z-index: 2147483647 !important; /* Maximum z-index value */
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
             }
-
+            
+            .vespa-modal-overlay.active {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 20px !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+            }
+            
+            .vespa-modal-content {
+                background: white !important;
+                width: 90% !important;
+                max-width: 500px !important;
+                margin: 20px auto !important;
+                border-radius: 10px !important;
+                position: relative !important;
+                max-height: 90vh !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+                z-index: 2147483647 !important;
+                box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5) !important;
+            }
+            
+            .vespa-modal-header {
+                color: white !important;
+                padding: 20px !important;
+                border-radius: 10px 10px 0 0 !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                flex-shrink: 0 !important;
+            }
+            
+            .vespa-modal-header h2 {
+                margin: 0 !important;
+                font-size: 24px !important;
+                font-weight: 600 !important;
+            }
+            
+            .vespa-modal-close {
+                background: rgba(255, 255, 255, 0.2) !important;
+                border: 2px solid white !important;
+                color: white !important;
+                font-size: 30px !important;
+                cursor: pointer !important;
+                padding: 0 !important;
+                width: 40px !important;
+                height: 40px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 50% !important;
+                transition: all 0.3s ease !important;
+                position: relative !important;
+                z-index: 2147483647 !important;
+                line-height: 1 !important;
+                font-weight: bold !important;
+                -webkit-tap-highlight-color: transparent !important;
+            }
+            
+            .vespa-modal-close:hover,
+            .vespa-modal-close:active {
+                background: rgba(255, 255, 255, 0.4) !important;
+                transform: scale(1.1) !important;
+            }
+            
+            .vespa-modal-body {
+                padding: 20px !important;
+                overflow-y: auto !important;
+                flex: 1 !important;
+            }
+            
+            .modal-score-display {
+                font-size: 48px !important;
+                font-weight: 700 !important;
+                text-align: center !important;
+                padding: 20px !important;
+                margin-bottom: 20px !important;
+                border-radius: 10px !important;
+            }
+            
+            .vespa-modal-description {
+                font-size: 18px !important;
+                line-height: 1.8 !important;
+                margin-bottom: 30px !important;
+                color: #333 !important;
+            }
+            
+            .vespa-modal-questions {
+                margin-bottom: 30px !important;
+            }
+            
+            .vespa-modal-questions h3 {
+                font-size: 20px !important;
+                margin-bottom: 15px !important;
+                color: #1a4d4d !important;
+                font-weight: 600 !important;
+            }
+            
+            .vespa-modal-questions ol {
+                font-size: 18px !important;
+                line-height: 1.8 !important;
+                padding-left: 20px !important;
+            }
+            
+            .vespa-modal-questions li {
+                margin-bottom: 15px !important;
+                color: #333 !important;
+            }
+            
+            .vespa-modal-activities h3 {
+                font-size: 20px !important;
+                margin-bottom: 15px !important;
+                color: #1a4d4d !important;
+                font-weight: 600 !important;
+            }
+            
+            .vespa-modal-activities a {
+                display: inline-block !important;
+                margin: 5px !important;
+                padding: 10px 20px !important;
+                background: #e3f2fd !important;
+                color: #1976d2 !important;
+                text-decoration: none !important;
+                border-radius: 20px !important;
+                font-size: 16px !important;
+                transition: all 0.3s ease !important;
+            }
+            
+            .vespa-modal-activities a:active {
+                background: #1976d2 !important;
+                color: white !important;
+            }
         `;
         
         document.head.appendChild(style);
@@ -2524,5 +2521,5 @@
         window.reportObservers.push(infoModalObserver);
     }
     
-    console.log('[Student Report Enhancement v5.2] Initialization complete');
+    console.log('[Student Report Enhancement v5.0] Initialization complete');
 })();
