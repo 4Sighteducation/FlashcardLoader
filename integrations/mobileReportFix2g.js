@@ -68,6 +68,18 @@
                 }
             }
             
+            // Add wrapper around chart container if needed (for all screen sizes)
+            const chartContainer = document.querySelector('#view_3041 #chart-container');
+            if (chartContainer && !chartContainer.parentElement.classList.contains('chart-wrapper') && 
+                !chartContainer.parentElement.id.includes('chart-wrapper')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'chart-wrapper';
+                wrapper.id = 'chart-wrapper';
+                chartContainer.parentNode.insertBefore(wrapper, chartContainer);
+                wrapper.appendChild(chartContainer);
+                console.log('[Student Report Enhancement] Added chart wrapper during initialization');
+            }
+            
             // Initialize features
             if (!popupsInitialized) {
                 // Initialize for all screen sizes
@@ -830,18 +842,26 @@
                 display: none !important;
             }
             
-            /* Center the radar chart with nice background */
+            /* Wrapper for radar chart background */
+            #view_3041 .chart-wrapper,
+            #view_3041 #chart-wrapper {
+                background: linear-gradient(135deg, #f5fafa 0%, #e8f4f6 100%) !important;
+                padding: 30px 15px !important;
+                margin: 20px 0 !important;
+                border-radius: 12px !important;
+                box-shadow: 0 4px 20px rgba(7, 155, 170, 0.1) !important;
+                border: 1px solid rgba(7, 155, 170, 0.08) !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            
+            /* Keep chart container centered but without styling */
             #view_3041 #chart-container {
                 display: flex !important;
                 justify-content: center !important;
                 align-items: center !important;
-                margin: 20px auto !important;
+                margin: 0 auto !important;
                 text-align: center !important;
-                background: linear-gradient(135deg, #f5fafa 0%, #e8f4f6 100%) !important;
-                padding: 30px !important;
-                border-radius: 12px !important;
-                box-shadow: 0 4px 20px rgba(7, 155, 170, 0.1) !important;
-                border: 1px solid rgba(7, 155, 170, 0.08) !important;
             }
             
             #view_3041 #chart-container canvas {
@@ -1082,7 +1102,7 @@
             
             /* Mobile-only styles */
             @media (max-width: 768px) {
-                /* Hide logo and info buttons on mobile */
+                /* Hide logo, info buttons, and Show Answers button on mobile */
                 #view_3041 .image-logo,
                 #view_3041 img[alt="Logo"],
                 #view_3041 img[src*="logo"],
@@ -1098,7 +1118,10 @@
                 #view_3041 button[title*="info" i],
                 #view_3041 button[title*="Info" i],
                 #view_3041 .p-button-icon-only[aria-label*="info" i],
-                #view_3041 .p-button-rounded i.pi-info-circle {
+                #view_3041 .p-button-rounded i.pi-info-circle,
+                #view_3041 button:first-of-type.p-button-rounded,
+                #view_3041 #bottom-report-header-container button:first-child,
+                #view_3041 button.p-button-rounded.p-button-outlined {
                     display: none !important;
                     visibility: hidden !important;
                 }
@@ -1112,6 +1135,37 @@
                 #view_3041 #chart-container canvas {
                     max-width: 100% !important;
                     height: auto !important;
+                }
+                
+                /* Fix mobile report header layout */
+                #view_3041 #top-report-header-container {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
+                    gap: 10px !important;
+                    padding: 15px !important;
+                }
+                
+                #view_3041 #top-report-header-container > * {
+                    width: 100% !important;
+                    text-align: center !important;
+                }
+                
+                /* Ensure proper order: Title, Name fields, Cycle buttons */
+                #view_3041 .report-title {
+                    order: 1 !important;
+                }
+                
+                #view_3041 .student-info,
+                #view_3041 .student-name,
+                #view_3041 [id*="student"],
+                #view_3041 [id*="name"] {
+                    order: 2 !important;
+                }
+                
+                #view_3041 .cycle-buttons,
+                #view_3041 [id*="cycle"] {
+                    order: 3 !important;
                 }
                 
                 /* Make text areas even larger by default on mobile */
@@ -1289,7 +1343,7 @@
                     max-width: 100% !important;
                 }
                 
-                /* Mobile section headings for VESPA sections - HIDDEN BY DEFAULT */
+                /* Mobile section headings for VESPA sections - COMPLETELY HIDDEN ON DESKTOP */
                 .mobile-section-heading,
                 .mobile-section-heading-comments,
                 .mobile-section-heading-coaching,
@@ -1297,17 +1351,71 @@
                 .mobile-score-display,
                 #view_3041 .mobile-section-heading,
                 #view_3041 .mobile-theme-heading,
-                #view_3041 .mobile-score-display {
+                #view_3041 .mobile-score-display,
+                #view_3041 h3.mobile-theme-heading,
+                #view_3041 h4.mobile-section-heading,
+                #view_3041 h4.mobile-section-heading-comments,
+                #view_3041 h4.mobile-section-heading-coaching,
+                #view_3041 div.mobile-score-display {
                     display: none !important;
                     visibility: hidden !important;
                     height: 0 !important;
+                    width: 0 !important;
                     overflow: hidden !important;
                     margin: 0 !important;
                     padding: 0 !important;
+                    font-size: 0 !important;
+                    line-height: 0 !important;
+                    position: absolute !important;
+                    left: -9999px !important;
                 }
                 
-                .original-theme-content {
-                    display: block !important; /* Visible by default on desktop */
+                /* Original theme content always visible on desktop */
+                .original-theme-content,
+                #view_3041 .original-theme-content {
+                    display: block !important;
+                    visibility: visible !important;
+                }
+                
+                /* Make existing VESPA theme headers bigger on desktop */
+                @media (min-width: 769px) {
+                    #view_3041 .vespa-report-score {
+                        font-size: 18px !important;
+                    }
+                    
+                    #view_3041 .vespa-report-score h2,
+                    #view_3041 .vespa-report-score h3,
+                    #view_3041 .vespa-report-score strong {
+                        font-size: 24px !important;
+                        font-weight: 700 !important;
+                    }
+                    
+                    /* Hide all mobile elements on desktop with extreme prejudice */
+                    .mobile-section-heading,
+                    .mobile-section-heading-comments,
+                    .mobile-section-heading-coaching,
+                    .mobile-theme-heading,
+                    .mobile-score-display,
+                    #view_3041 .mobile-section-heading,
+                    #view_3041 .mobile-theme-heading,
+                    #view_3041 .mobile-score-display,
+                    #view_3041 h3.mobile-theme-heading,
+                    #view_3041 h4.mobile-section-heading,
+                    #view_3041 h4.mobile-section-heading-comments,
+                    #view_3041 h4.mobile-section-heading-coaching,
+                    #view_3041 div.mobile-score-display {
+                        display: none !important;
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        width: 0 !important;
+                        overflow: hidden !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        font-size: 0 !important;
+                        line-height: 0 !important;
+                        position: absolute !important;
+                        left: -9999px !important;
+                    }
                 }
                 
                 @media (max-width: 768px) {
@@ -1620,7 +1728,7 @@
         
         console.log('[Student Report Enhancement] Looking for Show Answers button...');
         
-        // Ensure radar chart is visible
+        // Ensure radar chart is visible and add wrapper if needed
         const chartContainer = document.querySelector('#view_3041 #chart-container');
         if (chartContainer) {
             chartContainer.style.display = 'block';
@@ -1630,6 +1738,18 @@
                 canvas.style.display = 'block';
                 canvas.style.visibility = 'visible';
             }
+            
+            // Add wrapper div around chart container if it doesn't exist
+            if (!chartContainer.parentElement.classList.contains('chart-wrapper') && 
+                !chartContainer.parentElement.id.includes('chart-wrapper')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'chart-wrapper';
+                wrapper.id = 'chart-wrapper';
+                chartContainer.parentNode.insertBefore(wrapper, chartContainer);
+                wrapper.appendChild(chartContainer);
+                console.log('[Student Report Enhancement] Added chart wrapper');
+            }
+            
             console.log('[Student Report Enhancement] Ensured radar chart is visible');
         }
         
