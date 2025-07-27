@@ -570,7 +570,7 @@
                     <div class="vespa-modal-content">
                         <div class="vespa-modal-header">
                             <h2 id="vespa-modal-title"></h2>
-                            <button class="vespa-modal-close">&times;</button>
+                            <button class="vespa-modal-close" aria-label="Close modal">&times;</button>
                         </div>
                         <div class="vespa-modal-body">
                             <div class="vespa-modal-score"></div>
@@ -581,19 +581,59 @@
                     </div>
                 </div>
             `;
+            
+            // Ensure modal is added to body, not inside any container
             document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Double-check modal is at body level
+            const modalCheck = document.getElementById('vespa-modal-container');
+            if (modalCheck && modalCheck.parentElement !== document.body) {
+                console.warn('[Student Report Enhancement] Modal not at body level, moving it');
+                document.body.appendChild(modalCheck);
+            }
             
             // Add close handlers
             const modal = document.getElementById('vespa-modal-container');
             const closeBtn = modal.querySelector('.vespa-modal-close');
             
-            closeBtn.addEventListener('click', () => {
+            // Close button handler
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Student Report Enhancement] Close button clicked');
                 modal.classList.remove('active');
+                modal.style.display = 'none';
+                // Also try to reset body scroll
+                document.body.style.overflow = '';
             });
             
+            // Backdrop click handler
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
+                    console.log('[Student Report Enhancement] Backdrop clicked');
                     modal.classList.remove('active');
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // Add touch event for mobile
+            closeBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Student Report Enhancement] Close button touched');
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            });
+            
+            // Add escape key handler
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('active')) {
+                    console.log('[Student Report Enhancement] Escape key pressed');
+                    modal.classList.remove('active');
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
                 }
             });
         }
@@ -687,7 +727,14 @@
                     modal.querySelector('.vespa-modal-activities').innerHTML = activities ? `<h3>Suggested Activities:</h3>${activities}` : '';
                     
                     // Show modal
+                    modal.style.display = 'flex';
                     modal.classList.add('active');
+                    
+                    // Lock body scroll on mobile
+                    document.body.style.overflow = 'hidden';
+                    
+                    // Ensure modal is on top
+                    modal.style.zIndex = '2147483647';
                     
                     console.log(`[Student Report Enhancement] Opened popup for ${sectionName}`);
                 });
@@ -1151,6 +1198,17 @@
                 font-weight: 500 !important;
             }
             
+            /* Ensure VESPA modals are always on top of everything */
+            .vespa-modal-overlay.active {
+                z-index: 2147483647 !important;
+            }
+            
+            /* Fix any potential Knack modal conflicts */
+            .kn-modal-bg,
+            .modal-backdrop {
+                z-index: 9998 !important; /* Below our modals */
+            }
+            
             /* Mobile-only styles */
             @media (max-width: 768px) {
                 /* Hide logo and info buttons on mobile */
@@ -1550,16 +1608,21 @@
                 right: 0 !important;
                 bottom: 0 !important;
                 background: rgba(0, 0, 0, 0.8) !important;
-                z-index: 99999 !important;
+                z-index: 2147483647 !important; /* Maximum z-index value */
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
             }
             
             .vespa-modal-overlay.active {
                 display: flex !important;
-                align-items: flex-start !important;
+                align-items: center !important;
                 justify-content: center !important;
-                padding: 20px 0 !important;
+                padding: 20px !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
             }
             
             .vespa-modal-content {
@@ -1573,6 +1636,8 @@
                 overflow: hidden !important;
                 display: flex !important;
                 flex-direction: column !important;
+                z-index: 2147483647 !important;
+                box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5) !important;
             }
             
             .vespa-modal-header {
@@ -1592,8 +1657,8 @@
             }
             
             .vespa-modal-close {
-                background: none !important;
-                border: none !important;
+                background: rgba(255, 255, 255, 0.2) !important;
+                border: 2px solid white !important;
                 color: white !important;
                 font-size: 30px !important;
                 cursor: pointer !important;
@@ -1604,11 +1669,18 @@
                 align-items: center !important;
                 justify-content: center !important;
                 border-radius: 50% !important;
-                transition: background 0.3s ease !important;
+                transition: all 0.3s ease !important;
+                position: relative !important;
+                z-index: 2147483647 !important;
+                line-height: 1 !important;
+                font-weight: bold !important;
+                -webkit-tap-highlight-color: transparent !important;
             }
             
-            .vespa-modal-close:hover {
-                background: rgba(255, 255, 255, 0.2) !important;
+            .vespa-modal-close:hover,
+            .vespa-modal-close:active {
+                background: rgba(255, 255, 255, 0.4) !important;
+                transform: scale(1.1) !important;
             }
             
             .vespa-modal-body {
