@@ -7,7 +7,8 @@
 (function() {
     'use strict';
     
-    console.log('[VESPA Activities Enhancement v1.0] Script loaded at', new Date().toISOString());
+    try {
+        console.log('[VESPA Activities Enhancement v1.0] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let initAttempts = 0;
@@ -535,4 +536,8 @@
     });
     
     console.log('[VESPA Activities Enhancement v1.0] Initialization complete');
+    } catch (error) {
+        console.error('[VESPA Activities Enhancement] Error during script execution:', error);
+        console.error('[VESPA Activities Enhancement] Stack trace:', error.stack);
+    }
 })();
