@@ -1,543 +1,318 @@
-/**
- * VESPA Activities Section Enhancement
- * Improves the activities display, making it responsive and mobile-friendly
- * Version 1.0
- */
+// VESPA Activities Enhancement Script - Simple UI Enhancement v1.0
+// Works WITH existing external code to enhance UI and mobile experience
 
 (function() {
     'use strict';
     
-    try {
-        console.log('[VESPA Activities Enhancement v1.0] Script loaded at', new Date().toISOString());
+    const VERSION = '1.0';
+    const DEBUG = true;
     
-    let stylesApplied = false;
-    let initAttempts = 0;
-    const MAX_INIT_ATTEMPTS = 10;
+    // VESPA theme colors
+    const VESPA_COLORS = {
+        vision: '#ff8f00',
+        effort: '#86b4f0', 
+        systems: '#72cb44',
+        practice: '#7f31a4',
+        attitude: '#f032e6'
+    };
     
-    // Mobile detection
-    function isMobileDevice() {
-        const isMobile = window.innerWidth <= 768 || 
-                        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                        ('ontouchstart' in window) ||
-                        (navigator.maxTouchPoints > 0);
-        console.log('[VESPA Activities Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth);
-        return isMobile;
+    function log(message, data) {
+        if (DEBUG) console.log(`[VESPA Activities Enhancement v${VERSION}] ${message}`, data || '');
     }
     
-    // Wait for element helper
-    function waitForElement(selector, timeout = 10000) {
-        return new Promise((resolve, reject) => {
-            const startTime = Date.now();
+    function isMobileDevice() {
+        return window.innerWidth <= 768 || 
+               /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+    
+    // Wait for the external code to populate view_2959
+    function waitForActivities() {
+        log('Waiting for activities to load...');
+        
+        const observer = new MutationObserver(function(mutations, obs) {
+            const container = document.querySelector('#view_2959');
             
-            function checkElement() {
-                const element = document.querySelector(selector);
-                if (element) {
-                    console.log(`[VESPA Activities Enhancement] Found element: ${selector}`);
-                    resolve(element);
-                } else if (Date.now() - startTime > timeout) {
-                    console.warn(`[VESPA Activities Enhancement] Timeout waiting for element: ${selector}`);
-                    reject(new Error(`Element ${selector} not found after ${timeout}ms`));
-                } else {
-                    setTimeout(checkElement, 100);
-                }
+            // Check if activities have been loaded by external code
+            if (container && container.innerHTML.trim().length > 100) {
+                log('Activities detected, enhancing...');
+                obs.disconnect();
+                enhanceActivities();
+            }
+        });
+        
+        // Start observing
+        const targetNode = document.querySelector('#view_2959') || document.body;
+        observer.observe(targetNode, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+        
+        // Also check periodically in case mutation observer misses it
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+            const container = document.querySelector('#view_2959');
+            if (container && container.innerHTML.trim().length > 100) {
+                clearInterval(checkInterval);
+                observer.disconnect();
+                enhanceActivities();
             }
             
-            checkElement();
-        });
+            checkCount++;
+            if (checkCount > 30) { // Stop after 15 seconds
+                clearInterval(checkInterval);
+                log('Timeout waiting for activities');
+            }
+        }, 500);
     }
     
-    async function enhanceActivitiesSection() {
-        // Check if we're on the activities page
-        const currentScene = window.location.hash;
-        if (!currentScene.includes('scene_437') && !currentScene.includes('my-vespa')) {
-            console.log('[VESPA Activities Enhancement] Not on activities page, skipping');
-            return false;
-        }
+    // Main enhancement function
+    function enhanceActivities() {
+        log('Enhancing activities display...');
         
         try {
-            // Wait for the activities container
-            const activitiesContainer = await waitForElement('#view_2959 #activityCardsContainer', 5000);
+            // Hide the data views that should be hidden
+            hideDataViews();
             
-            console.log('[VESPA Activities Enhancement] Activities container found! Applying enhancements');
-            
-            // Apply CSS fixes (only once)
-            if (!stylesApplied) {
-                applyStyles();
+            // Enhance the existing activities display
+            const container = document.querySelector('#view_2959');
+            if (!container) {
+                log('Activities container not found');
+                return;
             }
             
-            // Enhance activity cards
-            enhanceActivityCards();
+            // Add a wrapper class for styling
+            container.classList.add('vespa-activities-enhanced');
             
-            // Enhance progress bar
-            enhanceProgressBar();
+            // Find and enhance activity sections
+            enhanceActivitySections();
             
-            // Add mobile-specific enhancements
+            // Add mobile enhancements
             if (isMobileDevice()) {
                 addMobileEnhancements();
             }
             
-            return true;
+            // Apply styles
+            applyEnhancementStyles();
+            
+            log('Enhancement complete!');
+            
         } catch (error) {
-            console.error('[VESPA Activities Enhancement] Error during initialization:', error);
-            return false;
+            log('Error during enhancement:', error);
         }
     }
     
-    function enhanceActivityCards() {
-        console.log('[VESPA Activities Enhancement] Enhancing activity cards');
+    // Hide the data views
+    function hideDataViews() {
+        const viewsToHide = ['#view_1089', '#view_1090', '#view_1505'];
         
-        // Add animation to cards
-        const cards = document.querySelectorAll('._activityItem');
-        cards.forEach((card, index) => {
-            // Add staggered animation
-            card.style.animationDelay = `${index * 0.05}s`;
-            card.classList.add('activity-card-enhanced');
-            
-            // Add touch feedback for mobile
-            if (isMobileDevice()) {
-                card.addEventListener('touchstart', function() {
-                    this.classList.add('touch-active');
-                });
-                card.addEventListener('touchend', function() {
-                    setTimeout(() => this.classList.remove('touch-active'), 200);
-                });
-            }
-        });
-        
-        // Enhance category containers
-        const categories = document.querySelectorAll('.activityCategory, .activityCategoryComplete');
-        categories.forEach(category => {
-            if (category.children.length === 0) {
-                category.style.display = 'none'; // Hide empty categories
+        viewsToHide.forEach(selector => {
+            const view = document.querySelector(selector);
+            if (view) {
+                view.style.display = 'none';
+                log(`Hidden data view: ${selector}`);
             }
         });
     }
     
-    function enhanceProgressBar() {
-        console.log('[VESPA Activities Enhancement] Enhancing progress bar');
+    // Enhance activity sections
+    function enhanceActivitySections() {
+        // Look for activity containers - adjust selectors based on actual HTML
+        const activityContainers = document.querySelectorAll('#view_2959 .kn-list-item-container, #view_2959 .activity-item, #view_2959 [class*="activity"]');
         
-        const progressContainer = document.getElementById('activityProgressBarContainer');
-        if (progressContainer) {
-            progressContainer.classList.add('progress-enhanced');
+        activityContainers.forEach((container, index) => {
+            // Add enhanced class
+            container.classList.add('vespa-activity-item');
             
-            // Get the progress value
-            const progressBar = document.getElementById('completedActivityPercentage');
-            if (progressBar) {
-                const value = progressBar.value;
-                const label = progressContainer.querySelector('label');
-                
-                // Update label styling based on progress
-                if (label) {
-                    label.classList.add('progress-label');
-                    if (value >= 75) {
-                        label.classList.add('high-progress');
-                    } else if (value >= 50) {
-                        label.classList.add('medium-progress');
-                    } else {
-                        label.classList.add('low-progress');
-                    }
-                }
-                
-                // Add completion celebration
-                if (value === 100) {
-                    progressContainer.classList.add('complete');
-                    label.innerHTML = '100% 🎉';
-                }
+            // Try to identify VESPA category and add color coding
+            const text = container.textContent.toLowerCase();
+            let category = null;
+            
+            if (text.includes('vision')) category = 'vision';
+            else if (text.includes('effort')) category = 'effort';
+            else if (text.includes('system')) category = 'systems';
+            else if (text.includes('practice')) category = 'practice';
+            else if (text.includes('attitude')) category = 'attitude';
+            
+            if (category) {
+                container.classList.add(`vespa-category-${category}`);
+                container.style.borderLeftColor = VESPA_COLORS[category];
             }
-        }
+            
+            // Add animation delay
+            container.style.animationDelay = `${index * 0.1}s`;
+        });
+        
+        // Enhance any progress indicators
+        const progressBars = document.querySelectorAll('#view_2959 .progress-bar, #view_2959 [class*="progress"]');
+        progressBars.forEach(bar => {
+            bar.classList.add('vespa-progress-enhanced');
+        });
     }
     
+    // Add mobile-specific enhancements
     function addMobileEnhancements() {
-        console.log('[VESPA Activities Enhancement] Adding mobile enhancements');
+        log('Adding mobile enhancements...');
         
-        // Add swipe indicators for scrollable areas
-        const activityContainers = document.querySelectorAll('#activityCards, #activityCardsComplete');
-        activityContainers.forEach(container => {
-            if (container.scrollWidth > container.clientWidth) {
-                container.classList.add('scrollable');
-                
-                // Add swipe hint
-                const hint = document.createElement('div');
-                hint.className = 'swipe-hint';
-                hint.innerHTML = '<span>← Swipe for more →</span>';
-                container.appendChild(hint);
-                
-                // Hide hint after first scroll
-                container.addEventListener('scroll', function() {
-                    const hint = this.querySelector('.swipe-hint');
-                    if (hint) {
-                        hint.style.opacity = '0';
-                        setTimeout(() => hint.remove(), 300);
-                    }
-                }, { once: true });
-            }
+        const container = document.querySelector('#view_2959');
+        if (!container) return;
+        
+        // Add mobile class
+        container.classList.add('vespa-mobile');
+        
+        // Make activity items more touch-friendly
+        const items = container.querySelectorAll('.vespa-activity-item');
+        items.forEach(item => {
+            item.style.minHeight = '80px';
+            item.style.padding = '15px';
         });
     }
     
-    function applyStyles() {
-        const styleId = 'vespa-activities-enhancements-v1';
-        
-        // Remove any existing style to force refresh
-        const existingStyle = document.getElementById(styleId);
-        if (existingStyle) {
-            existingStyle.remove();
+    // Apply enhancement styles
+    function applyEnhancementStyles() {
+        // Remove any existing style tag to avoid duplicates
+        const existingStyles = document.getElementById('vespa-activities-enhancement-styles');
+        if (existingStyles) {
+            existingStyles.remove();
         }
         
-        const style = document.createElement('style');
-        style.id = styleId;
-        
-        // Define VESPA colors if not already defined
-        style.textContent = `
-            /* VESPA Activities Enhancement Styles v1.0 */
-            
-            /* Define VESPA color variables */
-            :root {
-                --visionColor: #ff8f00;
-                --effortColor: #86b4f0;
-                --systemColor: #72cb44;
-                --practiceColor: #7f31a4;
-                --attitudeColor: #f032e6;
-                --primaryBlue: #079baa;
-                --lightBlue: #7bd8d0;
-                --darkBlue: #23356f;
-            }
-            
-            /* Container styling */
-            #view_2959 {
-                padding: 20px;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-            
-            #activityCardsContainer {
-                margin-top: 20px;
-            }
-            
-            /* Category title styling */
-            .activityCategoryTitle {
-                margin-bottom: 30px;
-            }
-            
-            .activityCategoryTitle h2 {
-                color: #23356f;
-                font-size: 24px;
-                font-weight: 600;
-                margin-bottom: 20px;
-                padding-bottom: 10px;
-                border-bottom: 2px solid #e0e0e0;
-                position: relative;
-            }
-            
-            .activityCategoryTitle h2:after {
-                content: '';
-                position: absolute;
-                bottom: -2px;
-                left: 0;
-                width: 60px;
-                height: 2px;
-                background: #079baa;
-            }
-            
-            /* Activity cards container */
-            #activityCards,
-            #activityCardsComplete {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                gap: 15px;
-                margin-bottom: 30px;
-            }
-            
-            /* Individual activity card styling */
-            ._activityItem {
-                display: block;
-                padding: 20px;
-                border-radius: 12px;
-                color: white !important;
-                text-decoration: none !important;
-                font-weight: 500;
-                font-size: 16px;
-                transition: all 0.3s ease;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                position: relative;
-                overflow: hidden;
-                min-height: 80px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-            
-            /* Enhanced card animation */
-            .activity-card-enhanced {
-                animation: fadeInUp 0.5s ease-out both;
-            }
-            
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-            
-            /* Hover effects */
-            ._activityItem:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-            }
-            
-            /* Touch feedback */
-            ._activityItem.touch-active {
-                transform: scale(0.98);
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
-            
-            /* Completed activities styling */
-            #activityCardsComplete ._activityItem {
-                background-color: #bcbcbc !important;
-                position: relative;
-            }
-            
-            #activityCardsComplete ._activityItem span {
-                font-size: 24px;
-                margin-left: 10px;
-            }
-            
-            /* Progress bar container */
-            #activityProgressBarContainer {
-                margin-top: 40px;
-                padding: 30px;
-                background: #f8f9fa;
-                border-radius: 12px;
-                text-align: center;
-            }
-            
-            #activityProgressBarContainer.progress-enhanced {
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            }
-            
-            /* Progress label */
-            .progress-label {
-                display: block;
-                font-size: 32px;
-                font-weight: 700;
-                margin-bottom: 20px;
-                transition: color 0.3s ease;
-            }
-            
-            .progress-label.low-progress {
-                color: #e74c3c;
-            }
-            
-            .progress-label.medium-progress {
-                color: #f39c12;
-            }
-            
-            .progress-label.high-progress {
-                color: #27ae60;
-            }
-            
-            /* Progress bar styling */
-            progress#completedActivityPercentage {
-                width: 100%;
-                height: 30px;
-                border-radius: 15px;
-                overflow: hidden;
-                -webkit-appearance: none;
-                appearance: none;
-            }
-            
-            progress#completedActivityPercentage::-webkit-progress-bar {
-                background-color: #e0e0e0;
-                border-radius: 15px;
-            }
-            
-            progress#completedActivityPercentage::-webkit-progress-value {
-                background: linear-gradient(135deg, #079baa 0%, #7bd8d0 100%);
-                border-radius: 15px;
-                transition: width 0.5s ease;
-            }
-            
-            progress#completedActivityPercentage::-moz-progress-bar {
-                background: linear-gradient(135deg, #079baa 0%, #7bd8d0 100%);
-                border-radius: 15px;
-            }
-            
-            /* Completion celebration */
-            #activityProgressBarContainer.complete {
-                background: linear-gradient(135deg, #e8f8f5 0%, #d5f4e6 100%);
-            }
-            
-            #activityProgressBarContainer.complete .progress-label {
-                color: #27ae60;
-                animation: pulse 1s ease-in-out infinite;
-            }
-            
-            @keyframes pulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-            }
-            
-            /* Mobile-specific styles */
-            @media (max-width: 768px) {
-                #view_2959 {
-                    padding: 15px;
-                }
-                
-                .activityCategoryTitle h2 {
-                    font-size: 20px;
-                }
-                
-                /* Horizontal scroll for mobile */
-                #activityCards,
-                #activityCardsComplete {
-                    display: flex;
-                    flex-wrap: nowrap;
-                    overflow-x: auto;
-                    gap: 12px;
-                    padding-bottom: 10px;
-                    -webkit-overflow-scrolling: touch;
-                    scrollbar-width: none;
-                    -ms-overflow-style: none;
-                }
-                
-                #activityCards::-webkit-scrollbar,
-                #activityCardsComplete::-webkit-scrollbar {
-                    display: none;
-                }
-                
-                ._activityItem {
-                    flex: 0 0 250px;
-                    font-size: 15px;
-                    padding: 18px;
-                    min-height: 100px;
-                }
-                
-                /* Swipe hint */
-                .swipe-hint {
-                    position: absolute;
-                    bottom: -25px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    font-size: 12px;
-                    color: #999;
-                    opacity: 0.8;
-                    transition: opacity 0.3s ease;
-                    white-space: nowrap;
-                }
-                
-                .scrollable {
-                    position: relative;
-                    padding-bottom: 30px;
-                }
-                
-                /* Mobile progress bar */
-                #activityProgressBarContainer {
-                    padding: 20px;
-                    margin-top: 30px;
-                }
-                
-                .progress-label {
-                    font-size: 28px;
-                }
-                
-                progress#completedActivityPercentage {
-                    height: 25px;
-                }
-            }
-            
-            /* Small mobile adjustments */
-            @media (max-width: 480px) {
-                ._activityItem {
-                    flex: 0 0 220px;
-                    font-size: 14px;
-                    padding: 16px;
-                }
-            }
-            
-            /* Hide empty categories */
-            .activityCategory:empty,
-            .activityCategoryComplete:empty {
+        const styles = `
+            /* Hide data views */
+            #view_1089, #view_1090, #view_1505 {
                 display: none !important;
             }
             
-            /* Error message styling */
-            #view_2959 h4[style*="color:red"] {
-                background: #fee;
-                border: 1px solid #fcc;
+            /* Enhanced container */
+            .vespa-activities-enhanced {
+                animation: fadeIn 0.5s ease;
+            }
+            
+            /* Activity items */
+            .vespa-activity-item {
+                margin-bottom: 15px;
+                padding: 15px;
+                background: white;
                 border-radius: 8px;
-                padding: 12px;
-                margin-bottom: 20px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                border-left: 4px solid #ddd;
+                transition: all 0.3s ease;
+                animation: slideIn 0.5s ease forwards;
+                opacity: 0;
+            }
+            
+            .vespa-activity-item:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            }
+            
+            /* Category colors */
+            .vespa-category-vision { border-left-color: ${VESPA_COLORS.vision} !important; }
+            .vespa-category-effort { border-left-color: ${VESPA_COLORS.effort} !important; }
+            .vespa-category-systems { border-left-color: ${VESPA_COLORS.systems} !important; }
+            .vespa-category-practice { border-left-color: ${VESPA_COLORS.practice} !important; }
+            .vespa-category-attitude { border-left-color: ${VESPA_COLORS.attitude} !important; }
+            
+            /* Progress bars */
+            .vespa-progress-enhanced {
+                height: 20px;
+                border-radius: 10px;
+                overflow: hidden;
+                background: #f0f0f0;
+            }
+            
+            /* Mobile enhancements */
+            .vespa-mobile .vespa-activity-item {
+                font-size: 16px;
+                line-height: 1.5;
+            }
+            
+            .vespa-mobile button,
+            .vespa-mobile .kn-button {
+                min-height: 44px;
+                font-size: 16px;
+            }
+            
+            /* Animations */
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            
+            /* Improve readability */
+            #view_2959 {
                 font-size: 14px;
-                font-weight: normal;
+                line-height: 1.6;
+            }
+            
+            #view_2959 h1, #view_2959 h2, #view_2959 h3 {
+                color: #2a3c7a;
+                margin-bottom: 15px;
+            }
+            
+            /* Better spacing */
+            #view_2959 > * {
+                margin-bottom: 20px;
+            }
+            
+            /* Responsive */
+            @media (max-width: 768px) {
+                .vespa-activity-item {
+                    margin-bottom: 10px;
+                    padding: 12px;
+                }
+                
+                #view_2959 {
+                    padding: 10px;
+                }
             }
         `;
         
-        document.head.appendChild(style);
-        stylesApplied = true;
-        
-        console.log('[VESPA Activities Enhancement] Styles applied successfully!');
+        const styleEl = document.createElement('style');
+        styleEl.id = 'vespa-activities-enhancement-styles';
+        styleEl.textContent = styles;
+        document.head.appendChild(styleEl);
     }
     
-    // Multiple initialization attempts with increasing delays
-    async function attemptInitialization() {
-        console.log(`[VESPA Activities Enhancement] Initialization attempt ${initAttempts + 1}/${MAX_INIT_ATTEMPTS}`);
+    // Initialize when DOM is ready
+    function init() {
+        log('Initializing VESPA Activities Enhancement...');
         
-        const success = await enhanceActivitiesSection();
+        // Check if we're on the activities page
+        if (window.location.href.includes('scene_437') || document.querySelector('#view_2959')) {
+            // Wait a bit for external code to run first
+            setTimeout(() => {
+                waitForActivities();
+            }, 1000);
+        }
         
-        if (!success && initAttempts < MAX_INIT_ATTEMPTS) {
-            initAttempts++;
-            const delay = Math.min(500 * initAttempts, 2000);
-            console.log(`[VESPA Activities Enhancement] Retrying in ${delay}ms...`);
-            setTimeout(attemptInitialization, delay);
-        } else if (success) {
-            console.log('[VESPA Activities Enhancement] Successfully initialized!');
-        } else {
-            console.warn('[VESPA Activities Enhancement] Failed to initialize after maximum attempts');
+        // Also listen for Knack view render events
+        if (window.$ && window.$(document)) {
+            $(document).on('knack-view-render.view_2959', function() {
+                log('View 2959 rendered, waiting for content...');
+                setTimeout(() => {
+                    waitForActivities();
+                }, 500);
+            });
         }
     }
     
-    // Initialize on load
-    if (typeof $ !== 'undefined') {
-        $(function() {
-            console.log('[VESPA Activities Enhancement] jQuery ready, attempting initialization');
-            attemptInitialization();
-        });
+    // Start when document is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('[VESPA Activities Enhancement] DOM ready, attempting initialization');
-            attemptInitialization();
-        });
+        init();
     }
     
-    // Re-apply on scene render
-    if (typeof $ !== 'undefined') {
-        $(document).on('knack-scene-render.scene_437', function() {
-            console.log('[VESPA Activities Enhancement] Scene 437 rendered');
-            initAttempts = 0;
-            attemptInitialization();
-        });
-        
-        // Re-apply on view render
-        $(document).on('knack-view-render.view_2959', function() {
-            console.log('[VESPA Activities Enhancement] View 2959 rendered');
-            initAttempts = 0;
-            attemptInitialization();
-        });
-    }
-    
-    // Check on hash change
-    window.addEventListener('hashchange', function() {
-        console.log('[VESPA Activities Enhancement] Hash changed, checking...');
-        initAttempts = 0;
-        attemptInitialization();
-    });
-    
-    console.log('[VESPA Activities Enhancement v1.0] Initialization complete');
-    } catch (error) {
-        console.error('[VESPA Activities Enhancement] Error during script execution:', error);
-        console.error('[VESPA Activities Enhancement] Stack trace:', error.stack);
-    }
 })();
+
