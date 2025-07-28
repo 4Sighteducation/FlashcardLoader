@@ -1,10 +1,10 @@
-// VESPA Activities Enhancement Script - Radical UI Redesign v1.3
+// VESPA Activities Enhancement Script - Radical UI Redesign v1.4
 // Beautiful, modern interface that works WITH existing external code
 
 (function() {
     'use strict';
     
-    const VERSION = '1.3';
+    const VERSION = '1.4';
     const DEBUG = true;
     
     // VESPA theme colors with enhanced palette
@@ -64,29 +64,166 @@
             completed: []
         };
         
-        // Look for activity containers in the existing structure
-        const incompleteSection = document.querySelector('#view_2959 .incomplete-activities, #view_2959 [class*="incomplete"]');
-        const completedSection = document.querySelector('#view_2959 .completed-activities, #view_2959 [class*="completed"]');
+        const container = document.querySelector('#view_2959');
+        if (!container) {
+            log('No container found for parsing');
+            return activities;
+        }
         
-        // Parse incomplete activities
-        if (incompleteSection) {
-            const items = incompleteSection.querySelectorAll('[class*="activity"], .kn-list-item, div[data-activity]');
-            items.forEach(item => {
-                const name = item.textContent.trim();
-                const category = detectCategory(name, item);
-                activities.incomplete.push({ name, category, element: item });
+        // Log the container content for debugging
+        log('Container HTML length:', container.innerHTML.length);
+        log('Container text preview:', container.textContent.substring(0, 200));
+        
+        // First, try to identify the structure the external code creates
+        // Look for any divs, tables, or lists that might contain activities
+        const allElements = container.querySelectorAll('div, table, ul, ol, .kn-list-item, [class*="activity"], a, button');
+        log('Found elements:', allElements.length);
+        
+        // Common patterns for activities:
+        // 1. Links or buttons with activity names
+        // 2. List items
+        // 3. Divs with specific classes
+        // 4. Table rows
+        
+        // Try multiple strategies to find activities
+        
+        // Strategy 1: Look for clickable elements (links, buttons)
+        const clickables = container.querySelectorAll('a:not([href="#"]), button:not([type="submit"])');
+        clickables.forEach(element => {
+            const text = element.textContent.trim();
+            if (text && text.length > 5 && !text.includes('Click here')) {
+                const category = detectCategory(text, element);
+                const isCompleted = element.classList.contains('completed') || 
+                                  element.closest('.completed') || 
+                                  element.style.textDecoration === 'line-through';
+                
+                const activity = { name: text, category, element };
+                if (isCompleted) {
+                    activities.completed.push(activity);
+                } else {
+                    activities.incomplete.push(activity);
+                }
+            }
+        });
+        
+        // Strategy 2: Look for divs with substantial text content
+        if (activities.incomplete.length === 0 && activities.completed.length === 0) {
+            const contentDivs = container.querySelectorAll('div');
+            contentDivs.forEach(div => {
+                // Skip if it has child divs (likely a container)
+                if (div.querySelector('div')) return;
+                
+                const text = div.textContent.trim();
+                // Activity names are usually between 10-100 characters
+                if (text && text.length > 10 && text.length < 100) {
+                    const hasClickHandler = div.onclick || div.querySelector('a, button');
+                    if (hasClickHandler) {
+                        const category = detectCategory(text, div);
+                        const activity = { name: text, category, element: div };
+                        activities.incomplete.push(activity);
+                    }
+                }
             });
         }
         
-        // Parse completed activities
-        if (completedSection) {
-            const items = completedSection.querySelectorAll('[class*="activity"], .kn-list-item, div[data-activity]');
-            items.forEach(item => {
-                const name = item.textContent.trim();
-                const category = detectCategory(name, item);
-                activities.completed.push({ name, category, element: item });
+        // Strategy 3: Look for list items
+        if (activities.incomplete.length === 0 && activities.completed.length === 0) {
+            const listItems = container.querySelectorAll('li, .kn-list-item');
+            listItems.forEach(item => {
+                const text = item.textContent.trim();
+                if (text && text.length > 5) {
+                    const category = detectCategory(text, item);
+                    const activity = { name: text, category, element: item };
+                    activities.incomplete.push(activity);
+                }
             });
         }
+        
+        // If still no activities found, look for any text that looks like an activity
+        if (activities.incomplete.length === 0 && activities.completed.length === 0) {
+            // Get all text nodes and look for activity patterns
+            const walker = document.createTreeWalker(
+                container,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            let node;
+            const activityPatterns = [];
+            while (node = walker.nextNode()) {
+                const text = node.textContent.trim();
+                if (text.length > 10 && text.length < 100) {
+                    // Check if this looks like an activity name
+                    if (!text.includes('click') && !text.includes('select') && !text.includes('below')) {
+                        const parentEl = node.parentElement;
+                        if (parentEl && parentEl.tagName !== 'SCRIPT' && parentEl.tagName !== 'STYLE') {
+                            activityPatterns.push({ text, element: parentEl });
+                        }
+                    }
+                }
+            }
+            
+            // Add unique activity patterns
+            const seen = new Set();
+            activityPatterns.forEach(({ text, element }) => {
+                if (!seen.has(text)) {
+                    seen.add(text);
+                    const category = detectCategory(text, element);
+                    activities.incomplete.push({ name: text, category, element });
+                }
+            });
+        }
+        
+        // Strategy 4: Look for activities after the header content
+        if (activities.incomplete.length === 0 && activities.completed.length === 0) {
+            // Check if there's a header followed by activities
+            const headerElement = container.querySelector('[style*="background-color:#112f62"]');
+            if (headerElement) {
+                log('Found existing header, looking for activities after it');
+                
+                // Get all elements after the header
+                let nextElement = headerElement.nextElementSibling;
+                while (nextElement) {
+                    // Look for activity-like elements
+                    const links = nextElement.querySelectorAll('a');
+                    const buttons = nextElement.querySelectorAll('button');
+                    const divs = nextElement.querySelectorAll('div[onclick], div[style*="cursor:pointer"]');
+                    
+                    [...links, ...buttons, ...divs].forEach(element => {
+                        const text = element.textContent.trim();
+                        if (text && text.length > 5 && text.length < 100) {
+                            const category = detectCategory(text, element);
+                            const activity = { name: text, category, element };
+                            activities.incomplete.push(activity);
+                        }
+                    });
+                    
+                    // Also check if the element itself is an activity
+                    const text = nextElement.textContent.trim();
+                    if (text && text.length > 10 && text.length < 100 && 
+                        (nextElement.onclick || nextElement.querySelector('a, button'))) {
+                        const category = detectCategory(text, nextElement);
+                        activities.incomplete.push({ name: text, category, element: nextElement });
+                    }
+                    
+                    nextElement = nextElement.nextElementSibling;
+                }
+            }
+            
+            // Remove duplicates
+            const uniqueActivities = [];
+            const seenNames = new Set();
+            activities.incomplete.forEach(activity => {
+                if (!seenNames.has(activity.name)) {
+                    seenNames.add(activity.name);
+                    uniqueActivities.push(activity);
+                }
+            });
+            activities.incomplete = uniqueActivities;
+        }
+        
+        log('Parsed activities - Incomplete:', activities.incomplete.length, 'Completed:', activities.completed.length);
         
         return activities;
     }
@@ -116,14 +253,78 @@
     function waitForActivities() {
         log('Waiting for activities to load...');
         
+        let attemptCount = 0;
+        const maxAttempts = 20;
+        
+        function checkForContent() {
+            const container = document.querySelector('#view_2959');
+            
+            if (!container) {
+                log('Container not found yet, waiting...');
+                attemptCount++;
+                if (attemptCount < maxAttempts) {
+                    setTimeout(checkForContent, 500);
+                }
+                return;
+            }
+            
+            // Check for signs that content has loaded
+            const hasSubstantialContent = container.innerHTML.length > 500;
+            const hasLinks = container.querySelectorAll('a').length > 0;
+            const hasButtons = container.querySelectorAll('button').length > 0;
+            const hasDivs = container.querySelectorAll('div').length > 3;
+            const hasText = container.textContent.trim().length > 100;
+            
+            // Look for common activity keywords
+            const containerText = container.textContent.toLowerCase();
+            const hasActivityKeywords = 
+                containerText.includes('activity') ||
+                containerText.includes('complete') ||
+                containerText.includes('vision') ||
+                containerText.includes('effort') ||
+                containerText.includes('system') ||
+                containerText.includes('practice') ||
+                containerText.includes('attitude') ||
+                containerText.includes('mind') ||
+                containerText.includes('goal') ||
+                containerText.includes('study');
+            
+            const isLoaded = (hasSubstantialContent && (hasLinks || hasButtons || hasDivs)) || 
+                           (hasText && hasActivityKeywords);
+            
+            log(`Content check - HTML length: ${container.innerHTML.length}, Links: ${container.querySelectorAll('a').length}, Buttons: ${container.querySelectorAll('button').length}, Has keywords: ${hasActivityKeywords}`);
+            
+            if (isLoaded) {
+                log('Content appears to be loaded, enhancing...');
+                // Give it a bit more time to ensure everything is rendered
+                setTimeout(() => enhanceActivities(), 1000);
+            } else {
+                attemptCount++;
+                if (attemptCount < maxAttempts) {
+                    log(`Content not ready yet, attempt ${attemptCount}/${maxAttempts}`);
+                    setTimeout(checkForContent, 500);
+                } else {
+                    log('Max attempts reached, trying to enhance anyway...');
+                    enhanceActivities();
+                }
+            }
+        }
+        
+        // Also use MutationObserver as backup
         const observer = new MutationObserver(function(mutations, obs) {
             const container = document.querySelector('#view_2959');
             
-            // Check if activities have been loaded
-            if (container && container.innerHTML.trim().length > 100) {
-                log('Activities detected, enhancing...');
-                obs.disconnect();
-                setTimeout(() => enhanceActivities(), 500); // Small delay to ensure DOM is stable
+            if (container && container.innerHTML.length > 500) {
+                const hasActivityContent = 
+                    container.querySelectorAll('a, button').length > 0 ||
+                    container.textContent.toLowerCase().includes('activity');
+                
+                if (hasActivityContent) {
+                    log('MutationObserver: Activities detected');
+                    obs.disconnect();
+                    clearTimeout(checkTimer);
+                    setTimeout(() => enhanceActivities(), 1000);
+                }
             }
         });
         
@@ -135,22 +336,8 @@
             characterData: true
         });
         
-        // Also check periodically
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-            const container = document.querySelector('#view_2959');
-            if (container && container.innerHTML.trim().length > 100) {
-                clearInterval(checkInterval);
-                observer.disconnect();
-                setTimeout(() => enhanceActivities(), 500);
-            }
-            
-            checkCount++;
-            if (checkCount > 30) {
-                clearInterval(checkInterval);
-                log('Timeout waiting for activities');
-            }
-        }, 500);
+        // Start checking
+        const checkTimer = setTimeout(checkForContent, 500);
     }
     
     // Main enhancement function
@@ -210,10 +397,26 @@
         // Build the new UI
         const newUI = `
             <div class="vespa-activities-container">
-                <!-- Header Section -->
-                <div class="vespa-header-section">
-                    <h1 class="vespa-main-title">My Learning Journey</h1>
-                    <p class="vespa-subtitle">Transform your potential into achievement</p>
+                <!-- New Lighthearted Header -->
+                <div class="vespa-new-header">
+                    <div class="header-content">
+                        <div class="header-icon-row">
+                            <span class="header-emoji">🚀</span>
+                            <h1 class="header-title">Your VESPA Journey</h1>
+                            <span class="header-emoji">✨</span>
+                        </div>
+                        <p class="header-subtitle">
+                            Ready to level up? We've picked some awesome activities just for you! 
+                            <span class="emoji-accent">🎯</span>
+                        </p>
+                        <div class="header-chips">
+                            <span class="chip vision">👁️ Vision</span>
+                            <span class="chip effort">💪 Effort</span>
+                            <span class="chip systems">⚙️ Systems</span>
+                            <span class="chip practice">🎯 Practice</span>
+                            <span class="chip attitude">🧠 Attitude</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Progress Overview -->
@@ -257,31 +460,39 @@
                 
                 <!-- Activities Grid -->
                 <div class="vespa-activities-grid">
-                    <!-- Incomplete Activities -->
-                    <div class="activities-section" data-section="incomplete">
-                        ${activities.incomplete.length > 0 ? `
-                            <h2 class="section-title">
-                                <span class="title-icon">🚀</span>
-                                Ready to Start
-                            </h2>
-                            <div class="activities-list">
-                                ${activities.incomplete.map((activity, index) => createActivityCard(activity, false, index)).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <!-- Completed Activities -->
-                    <div class="activities-section" data-section="completed">
-                        ${activities.completed.length > 0 ? `
-                            <h2 class="section-title">
-                                <span class="title-icon">🏆</span>
-                                Achievements
-                            </h2>
-                            <div class="activities-list completed-list">
-                                ${activities.completed.map((activity, index) => createActivityCard(activity, true, index)).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
+                    ${total === 0 ? `
+                        <div class="no-activities-message">
+                            <span class="message-icon">🔍</span>
+                            <h3>Loading your activities...</h3>
+                            <p>If activities don't appear, try refreshing the page.</p>
+                        </div>
+                    ` : `
+                        <!-- Incomplete Activities -->
+                        <div class="activities-section" data-section="incomplete">
+                            ${activities.incomplete.length > 0 ? `
+                                <h2 class="section-title">
+                                    <span class="title-icon">🚀</span>
+                                    Ready to Start
+                                </h2>
+                                <div class="activities-list">
+                                    ${activities.incomplete.map((activity, index) => createActivityCard(activity, false, index)).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Completed Activities -->
+                        <div class="activities-section" data-section="completed">
+                            ${activities.completed.length > 0 ? `
+                                <h2 class="section-title">
+                                    <span class="title-icon">🏆</span>
+                                    Achievements
+                                </h2>
+                                <div class="activities-list completed-list">
+                                    ${activities.completed.map((activity, index) => createActivityCard(activity, true, index)).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `}
                 </div>
                 
                 <!-- Motivational Footer -->
@@ -297,7 +508,9 @@
         container.innerHTML = newUI;
         
         // Preserve original functionality by reattaching event listeners
-        preserveOriginalFunctionality(container, activities);
+        if (total > 0) {
+            preserveOriginalFunctionality(container, activities);
+        }
     }
     
     // Create an activity card
@@ -447,6 +660,150 @@
                 max-width: 1200px;
                 margin: 0 auto;
                 animation: fadeIn 0.5s ease;
+            }
+            
+            /* New Lighthearted Header */
+            .vespa-new-header {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);
+                border-radius: 20px;
+                padding: 30px;
+                margin-bottom: 30px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+                animation: slideDown 0.6s ease;
+            }
+            
+            .header-content {
+                text-align: center;
+            }
+            
+            .header-icon-row {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .header-emoji {
+                font-size: 32px;
+                animation: bounce 2s infinite;
+            }
+            
+            .header-emoji:nth-child(3) {
+                animation-delay: 0.5s;
+            }
+            
+            .header-title {
+                font-size: 32px;
+                font-weight: 800;
+                margin: 0;
+                background: linear-gradient(135deg, #079baa 0%, #00e5db 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            
+            .header-subtitle {
+                font-size: 18px;
+                color: #5899a8;
+                margin: 0 0 20px 0;
+                font-weight: 500;
+            }
+            
+            .emoji-accent {
+                display: inline-block;
+                animation: pulse 2s infinite;
+            }
+            
+            .header-chips {
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .chip {
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 600;
+                color: white;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                transition: transform 0.3s ease;
+            }
+            
+            .chip:hover {
+                transform: translateY(-2px) scale(1.05);
+            }
+            
+            .chip.vision { background: #ff8f00; }
+            .chip.effort { background: #86b4f0; }
+            .chip.systems { background: #72cb44; }
+            .chip.practice { background: #7f31a4; }
+            .chip.attitude { background: #f032e6; }
+            
+            /* No activities message */
+            .no-activities-message {
+                text-align: center;
+                padding: 60px 20px;
+                color: #6c757d;
+            }
+            
+            .message-icon {
+                font-size: 48px;
+                display: block;
+                margin-bottom: 20px;
+                opacity: 0.5;
+            }
+            
+            .no-activities-message h3 {
+                font-size: 24px;
+                margin: 0 0 10px 0;
+                color: #2a3c7a;
+            }
+            
+            .no-activities-message p {
+                font-size: 16px;
+                margin: 0;
+            }
+            
+            /* Bounce animation */
+            @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+            }
+            
+            /* Pulse animation */
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+                100% { transform: scale(1); }
+            }
+            
+            /* Mobile adjustments for header */
+            @media (max-width: 768px) {
+                .vespa-new-header {
+                    padding: 20px;
+                }
+                
+                .header-emoji {
+                    font-size: 24px;
+                }
+                
+                .header-title {
+                    font-size: 24px;
+                }
+                
+                .header-subtitle {
+                    font-size: 16px;
+                }
+                
+                .chip {
+                    font-size: 12px;
+                    padding: 6px 12px;
+                }
             }
             
             /* Header Section */
