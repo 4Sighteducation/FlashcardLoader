@@ -1,2367 +1,1617 @@
-/// Student Coach Launcher Script (vespa-student-coach.js)
-
-// Guard to prevent re-initialization
-if (window.studentCoachLauncherInitialized) {
-    console.warn("[StudentCoachLauncher] Attempted to re-initialize. Skipping.");
-} else {
-    window.studentCoachLauncherInitialized = true;
-
-    let STUDENT_COACH_LAUNCHER_CONFIG = null;
-    let coachObserver = null;
-    let coachUIInitialized = false;
-    let debouncedObserverCallback = null; 
-    let eventListenersAttached = false; 
-    let currentFetchAbortController = null; 
-    let lastFetchedStudentKnackId = null; // For student's own Knack user ID or related unique ID
-    let observerLastProcessedStudentKnackId = null;
-    let currentlyFetchingStudentKnackId = null;
-    let vespaChartInstance = null; 
-    let currentLLMInsightsForChat = null; 
-    let fullStudentDataForChat = null; // <<< ADDED THIS LINE
-    let loadingMessageIntervalId = null; 
-    let questionnairePieChartInstance = null; // Added for questionnaire chart
-    let uiCurrentlyInitializing = false; // Flag to prevent re-entrant UI initialization
-    let coachDataCurrentlyRefreshing = false; // Flag to prevent re-entrant data refresh
-
-    // --- Configuration ---
-    const STUDENT_COACH_API_BASE_URL = 'https://vespa-student-coach-8116bb380fbd.herokuapp.com/api/v1'; // Corrected to the deployed Heroku app URL
-    const COACHING_DATA_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/student_coaching_data`; 
-    const CHAT_TURN_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_turn`; 
-    const CHAT_HISTORY_ENDPOINT = `${STUDENT_COACH_API_BASE_URL}/chat_history`; // Added for student chat history
-
-    function logStudentCoach(message, data) {
-        if (STUDENT_COACH_LAUNCHER_CONFIG && STUDENT_COACH_LAUNCHER_CONFIG.debugMode) {
-             console.log(`[StudentCoachLauncher] ${message}`, data === undefined ? '' : data);
-        }
-    }
-
-    function ensureChartJsLoaded(callback) {
-        if (typeof Chart !== 'undefined') {
-            logStudentCoach("Chart.js already loaded.");
-            if (callback) callback();
-            return;
-        }
-        logStudentCoach("Chart.js not found, attempting to load from CDN...");
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
-        script.onload = () => {
-            logStudentCoach("Chart.js loaded successfully from CDN.");
-            if (callback) callback();
-        };
-        script.onerror = () => {
-            console.error("[StudentCoachLauncher] Failed to load Chart.js from CDN.");
-            const chartContainer = document.getElementById('vespaComparisonChartContainer'); // Changed ID
-            if(chartContainer) chartContainer.innerHTML = '<p style="color:red; text-align:center;">Chart library failed to load.</p>';
-        };
-        document.head.appendChild(script);
-    }
-
-    // Function to check if we are on the correct student coach page
-    // Function to check if AI Coach is enabled for this student
-    async function isAICoachEnabledForStudent() {
-        try {
-            const user = Knack.getUserAttributes();
-            if (!user || !user.id) {
-                logStudentCoach("Cannot check AI Coach status - user not logged in");
-                return false;
-            }
-            
-            // Check if we have the field_3577 value in user attributes
-            // This is a Yes/No field in Object_10 (Student record)
-            // Field name is "Show AI Coach" - Yes means show, No means hide
-            
-            // First check if it's directly available in user attributes
-            if (user.field_3577 !== undefined && user.field_3577 !== null) {
-                // For Yes/No fields, Knack typically returns "Yes" or "No" as strings
-                const fieldValue = user.field_3577;
-                // "Yes" means SHOW the AI Coach (enabled)
-                // "No" means HIDE the AI Coach (disabled)
-                const isEnabled = fieldValue === 'Yes' || fieldValue === 'yes' || fieldValue === true;
-                logStudentCoach(`AI Coach enabled check - field_3577 ("Show AI Coach") value: "${fieldValue}" (type: ${typeof fieldValue}), isEnabled: ${isEnabled}`);
-                return isEnabled; // Return true if "Yes" (show), false if "No" (hide)
-            }
-            
-            // If not directly available, default to enabled
-            logStudentCoach("field_3577 not found in user attributes, defaulting to enabled");
-            return true;
-        } catch (error) {
-            logStudentCoach("Error checking AI Coach enabled status:", error);
-            return true; // Default to enabled on error
-        }
-    }
-
-    function isAllowedUrl() {
-        // Check if current URL is allowed for AI Coach
-        const currentUrl = window.location.href;
-        const currentPath = window.location.pathname;
-        const currentHash = window.location.hash;
-        
-        // Keep AI Coach on the #vespa-results page
-        if (currentHash && currentHash.includes('vespa-results')) {
-            logStudentCoach(`URL check: Allowed - on #vespa-results page (${currentUrl})`);
-            return true;
-        }
-        
-        // Clear AI Coach if navigating to other path-based pages
-        // Check if we're on a path that starts with /vespa-academy/ (excluding the base page)
-        if (currentPath && currentPath !== '/vespa-academy' && currentPath.startsWith('/vespa-academy/')) {
-            logStudentCoach(`URL check: Not allowed - navigated to path-based page (${currentUrl})`);
-            return false;
-        }
-        
-        // Default to true for the base page without specific paths
-        logStudentCoach(`URL check: Default allowed (${currentUrl})`);
-        return true;
-    }
-
-    function isStudentCoachPageView() {
-        if (!STUDENT_COACH_LAUNCHER_CONFIG || !STUDENT_COACH_LAUNCHER_CONFIG.sceneKey || !STUDENT_COACH_LAUNCHER_CONFIG.elementSelector) {
-            logStudentCoach("isStudentCoachPageView: Config not fully available.");
-            return false;
-        }
-
-        // First check URL-based restrictions
-        if (!isAllowedUrl()) {
-            logStudentCoach("isStudentCoachPageView: Current URL not allowed for AI Coach.");
-            return false;
-        }
-
-        // WorkingBridge.js has already determined this script should run for the scene specified 
-        // in STUDENT_COACH_LAUNCHER_CONFIG.sceneKey.
-        // So, we primarily check if the target element (where the button should go) exists.
-        const targetViewElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
-
-        if (targetViewElement) {
-            // For robustness, we can log Knack's current scene if available, but the presence
-            // of targetViewElement is the key indicator since WorkingBridge made the call to load this script.
-            if (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key) {
-                if (Knack.scene.key === STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
-                    logStudentCoach(`Student Coach page view confirmed: Config Scene '${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}', Knack Scene '${Knack.scene.key}', Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found.`);
-                } else {
-                    // This is an edge case: element found, but Knack.scene.key reports a different scene.
-                    // This might happen during very rapid Knack view/scene transitions.
-                    // We'll trust that WorkingBridge loaded us for the correct configured scene.
-                    logStudentCoach(`Student Coach page view: Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found. Knack.scene.key ('${Knack.scene.key}') currently differs from config scene ('${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}'). Proceeding based on element presence.`);
-                }
-            } else {
-                // Knack.scene not fully available yet, but the target element exists.
-                logStudentCoach(`Student Coach page view confirmed: Element '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' found (Knack.scene not checked/fully ready).`);
-            }
-            return true; // Element found, proceed.
-        }
-        
-        // logStudentCoach("isStudentCoachPageView: Target element for button not found.");
-        return false;
-    }
-
-    async function initializeCoachUI() {
-        logStudentCoach("StudentCoachLauncher: initializeCoachUI START");
-        if (coachUIInitialized && document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId)) {
-            logStudentCoach("Student Coach UI appears to be already initialized. Skipping.");
-            return;
-        }
-        if (uiCurrentlyInitializing) {
-            logStudentCoach("Student Coach UI is already in the process of initializing. Skipping.");
-            return;
-        }
-        uiCurrentlyInitializing = true;
-
-        // Check if AI Coach is enabled for this student
-        const isEnabled = await isAICoachEnabledForStudent();
-        if (!isEnabled) {
-            logStudentCoach("AI Coach is disabled for this student (field_3577 is true/Yes). Not initializing UI.");
-            uiCurrentlyInitializing = false;
-            return;
-        }
-
-        logStudentCoach("Conditions met. Initializing Student Coach UI (button and panel).");
-        
-        // Set initial theme body class
-        const initialTheme = getCurrentTheme();
-        document.body.classList.add(`theme-${initialTheme}`);
-        
-        loadExternalStyles(); 
-        createAICoachPanel(); 
-        addPanelResizeHandler(); // ADDED from tutor coach
-        addLauncherButton(); 
-        setupEventListeners(); 
-        coachUIInitialized = true;
-        logStudentCoach("StudentCoachLauncher UI initialization complete.");
-        uiCurrentlyInitializing = false;
-    }
-    
-    function clearCoachUI() {
-        if (!coachUIInitialized) return;
-        logStudentCoach("Clearing Student Coach UI.");
-        const launcherButtonContainer = document.getElementById('aiCoachLauncherButtonContainer'); // Fixed ID to match what's created
-        if (launcherButtonContainer) {
-            launcherButtonContainer.remove(); // Remove the entire container from DOM
-        }
-        const panel = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
-        if (panel) {
-            panel.remove(); // Remove the panel from DOM
-        }
-        // Also remove any info or activity modals that might be open
-        const infoModal = document.getElementById('aiCoachInfoModal');
-        if (infoModal) infoModal.remove();
-        const activityModal = document.getElementById('aiCoachActivityModal');
-        if (activityModal) activityModal.remove();
-        const problemModal = document.getElementById('aiCoachProblemModal');
-        if (problemModal) problemModal.remove();
-        
-        toggleAICoachPanel(false); 
-        coachUIInitialized = false; 
-        lastFetchedStudentKnackId = null; 
-        observerLastProcessedStudentKnackId = null; 
-        currentlyFetchingStudentKnackId = null;
-        if (currentFetchAbortController) { 
-            currentFetchAbortController.abort();
-            currentFetchAbortController = null;
-            logStudentCoach("Aborted ongoing fetch as UI was cleared.");
-        }
-    }
-
-    function initializeStudentCoachLauncher() {
-        logStudentCoach("StudentCoachLauncher: initializeStudentCoachLauncher START");
-
-        if (typeof window.STUDENT_COACH_LAUNCHER_CONFIG === 'undefined') {
-            console.error("[StudentCoachLauncher] STUDENT_COACH_LAUNCHER_CONFIG is not defined. Cannot initialize.");
-            return;
-        }
-        STUDENT_COACH_LAUNCHER_CONFIG = window.STUDENT_COACH_LAUNCHER_CONFIG;
-        logStudentCoach("Student Coach Config loaded:", STUDENT_COACH_LAUNCHER_CONFIG);
-
-        if (!STUDENT_COACH_LAUNCHER_CONFIG.elementSelector || 
-            !STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId ||
-            !STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId ||
-            !STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector) {
-            console.error("[StudentCoachLauncher] Essential configuration properties missing.");
-            return;
-        }
-
-        // Observe document.body for better navigation detection
-        const targetNode = document.body;
-
-        if (!targetNode) {
-            console.error("[StudentCoachLauncher] Document body not available for MutationObserver.");
-            return;
-        }
-
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                const context = this;
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(context, args), wait);
-            };
-        }
-
-        const observerCallback = function(mutationsList, observer) {
-            // logStudentCoach("MutationObserver detected DOM change (raw event)."); // Can be noisy
-            
-            // First check URL-based restrictions
-            if (!isAllowedUrl()) {
-                if (coachUIInitialized) {
-                    logStudentCoach("Observer: Current URL not allowed. Clearing UI.");
-                    clearCoachUI();
-                    observerLastProcessedStudentKnackId = null;
-                }
-                return; // Exit early if URL not allowed
-            }
-            
-            // Check if the target element for scene_43 still exists
-            const sceneElement = document.querySelector('#kn-scene_43');
-            const targetViewElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
-            
-            // Check if we're still on the correct scene
-            if (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key) {
-                if (Knack.scene.key !== STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
-                    // We've navigated away from the student coach scene
-                    if (coachUIInitialized) {
-                        logStudentCoach(`Observer: Navigated away from scene (current: ${Knack.scene.key}, expected: ${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}). Clearing UI.`);
-                        clearCoachUI();
-                        observerLastProcessedStudentKnackId = null;
-                    }
-                    return; // Exit early
-                }
-            }
-            
-            // Also check if the scene element or target view element is missing
-            if (!sceneElement || !targetViewElement) {
-                if (coachUIInitialized) {
-                    logStudentCoach("Observer: Scene or target element no longer exists. Clearing UI.");
-                    clearCoachUI();
-                    observerLastProcessedStudentKnackId = null;
-                }
-                return;
-            }
-            
-            if (isStudentCoachPageView()) { // Check if we are on the correct page (includes URL check)
-                if (!coachUIInitialized && !uiCurrentlyInitializing) { // Only initialize UI if not already done and not in process
-                    initializeCoachUI();
-                }
-                const panelIsActive = document.body.classList.contains('ai-coach-active'); 
-                if (coachUIInitialized && panelIsActive) {
-                    const currentStudentUser = Knack.getUserAttributes();
-                    const studentKnackId = currentStudentUser ? currentStudentUser.id : null;
-                    if (studentKnackId && studentKnackId !== observerLastProcessedStudentKnackId) {
-                        logStudentCoach(`Observer: Student Knack ID changed or identified: ${studentKnackId}. Triggering refresh.`);
-                        observerLastProcessedStudentKnackId = studentKnackId; // Update last processed ID *before* refresh call
-                        refreshAICoachData(); 
-                    } else if (studentKnackId && studentKnackId === observerLastProcessedStudentKnackId){
-                        // logStudentCoach(`Observer: Student Knack ID ${studentKnackId} is same as observerLastProcessedStudentKnackId. No refresh needed from observer.`);
-                    }
-                }
-            } else { // Not on the student coach page (or Knack.scene not ready)
-                if (coachUIInitialized) { // If UI was initialized, clear it
-                    logStudentCoach("Observer: Not on Student Coach page view or Knack.scene not ready. Clearing UI if initialized.");
-                    clearCoachUI();
-                    observerLastProcessedStudentKnackId = null; 
-                }
-            }
-        };
-        
-        debouncedObserverCallback = debounce(observerCallback, 500); // Increased debounce slightly to 500ms
-
-        coachObserver = new MutationObserver(debouncedObserverCallback);
-        coachObserver.observe(targetNode, { childList: true, subtree: true });
-
-        // Add explicit scene change listener for better navigation detection
-        if (typeof Knack !== 'undefined' && Knack.router) {
-            $(document).on('knack-scene-render.any', function(event, scene) {
-                logStudentCoach(`Scene render event detected: ${scene.key}`);
-                if (scene.key !== STUDENT_COACH_LAUNCHER_CONFIG.sceneKey && coachUIInitialized) {
-                    logStudentCoach(`Scene changed to ${scene.key}, clearing AI Coach UI`);
-                    clearCoachUI();
-                    observerLastProcessedStudentKnackId = null;
-                }
-            });
-        }
-        
-        // Add URL change listeners for hash and popstate events
-        window.addEventListener('hashchange', function(event) {
-            logStudentCoach(`Hash change detected: ${window.location.hash}`);
-            if (!isAllowedUrl() && coachUIInitialized) {
-                logStudentCoach('URL changed to non-allowed page, clearing AI Coach UI');
-                clearCoachUI();
-                observerLastProcessedStudentKnackId = null;
-            } else if (isAllowedUrl() && !coachUIInitialized && isStudentCoachPageView()) {
-                logStudentCoach('URL changed to allowed page, initializing AI Coach UI');
-                initializeCoachUI();
-            }
-        });
-        
-        window.addEventListener('popstate', function(event) {
-            logStudentCoach(`Popstate event detected: ${window.location.href}`);
-            if (!isAllowedUrl() && coachUIInitialized) {
-                logStudentCoach('Navigation to non-allowed page, clearing AI Coach UI');
-                clearCoachUI();
-                observerLastProcessedStudentKnackId = null;
-            }
-        });
-
-        // REMOVED: Initial direct call to initializeCoachUI via isStudentCoachPageView()
-        // We now rely on the MutationObserver to make the first call when ready.
-        // if (isStudentCoachPageView()) {
-        //     initializeCoachUI();
-        // }
-        logStudentCoach("StudentCoachLauncher: Initializer setup complete. Observer is active.");
-    }
-
-    function getCurrentTheme() {
-        // Get saved theme from localStorage, default to 'cyberpunk' for students
-        return localStorage.getItem('studentCoachTheme') || 'cyberpunk';
-    }
-
-    function loadExternalStyles(theme = null) {
-        // If no theme specified, get from localStorage or default
-        if (!theme) {
-            theme = getCurrentTheme();
-        }
-        
-        const styleId = 'student-coach-external-styles'; // Unique ID
-        const existingLink = document.getElementById(styleId);
-        
-        // URLs for both themes
-        const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1y.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1y.css'
-        };
-        
-        const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
-        
-        // If link exists and href is different, update it
-        if (existingLink) {
-            if (existingLink.href !== newHref) {
-                // Force a reload of the CSS by removing and re-adding the link
-                existingLink.remove();
-                const newLink = document.createElement('link');
-                newLink.id = styleId;
-                newLink.rel = 'stylesheet';
-                newLink.type = 'text/css';
-                newLink.href = newHref;
-                document.head.appendChild(newLink);
-                logStudentCoach(`Switching theme to: ${theme}`);
-                localStorage.setItem('studentCoachTheme', theme);
-            }
-            return;
-        }
-
-        // Create new link element
-        const link = document.createElement('link');
-        link.id = styleId;
-        link.rel = 'stylesheet';
-        link.type = 'text/css';
-        link.href = newHref;
-        logStudentCoach(`Loading ${theme} theme CSS from: ${link.href}`);
-        
-        // Dynamic CSS for config-specific IDs - minimal styles to not override theme CSS
-        const dynamicCss = `
-            body.ai-coach-active ${STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector} {
-                /* Adjust main content if panel is on the side */
-            }
-            
-            /* Minimal panel structure - let theme CSS handle appearance */
-            /* IMPORTANT: Background color comes from theme CSS, not set here */
-            #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: 0; opacity: 0; visibility: hidden;
-                position: fixed; top: 0; right: 0; height: 100vh;
-                z-index: 1050; 
-                transition: width var(--ai-coach-transition-duration, 0.3s), opacity var(--ai-coach-transition-duration, 0.3s), visibility var(--ai-coach-transition-duration, 0.3s);
-                display: flex; flex-direction: column;
-            }
-            
-            body.ai-coach-active #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} {
-                width: var(--ai-coach-panel-width, 400px);
-                opacity: 1; visibility: visible;
-            }
-            
-            #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-header {
-                display: flex; justify-content: space-between; align-items: center;
-                flex-shrink: 0;
-            }
-            
-            #${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content {
-                flex: 1; display: flex; flex-direction: column;
-                overflow-y: auto; min-height: 0;
-            }
-            
-            /* Ensure launcher button container is recognized by CSS files */
-            #studentCoachLauncherButtonContainer {
-                /* This ID is expected by CSS but we create aiCoachLauncherButtonContainer */
-                /* This rule ensures CSS still applies */
-            }
-        `;
-        
-        const styleElement = document.createElement('style');
-        styleElement.textContent = dynamicCss;
-        
-        document.documentElement.style.setProperty('--ai-coach-panel-width', '450px'); // Match tutor panel width
-        document.documentElement.style.setProperty('--ai-coach-panel-min-width', '350px');
-        document.documentElement.style.setProperty('--ai-coach-panel-max-width', '1200px');
-        document.documentElement.style.setProperty('--ai-coach-transition-duration', '0.3s');
-        
-        // Append external CSS first, then dynamic CSS so theme takes precedence
-        document.head.appendChild(link);
-        // Wait a bit for external CSS to start loading before adding dynamic CSS
-        setTimeout(() => {
-            document.head.appendChild(styleElement);
-        }, 10);
-        
-        logStudentCoach("Student Coach external styles loading...");
-        link.onload = () => logStudentCoach("Student Coach external styles loaded successfully.");
-        link.onerror = () => console.error("[StudentCoachLauncher] Failed to load external styles for student coach.");
-    }
-
-    function addPanelResizeHandler() {
-        const panel = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
-        if (!panel) return;
-
-        let isResizing = false;
-        let startX = 0;
-        let startWidth = 0;
-        // Use student-specific CSS variable or default
-        let currentWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-width'), 10) || 450; 
-
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'ai-coach-resize-handle'; // Generic class for styling
-        resizeHandle.style.cssText = `
-            position: absolute; left: 0; top: 0; bottom: 0; width: 10px;
-            cursor: ew-resize; background: transparent; z-index: 1051;
-            transition: background-color 0.2s;
-        `; // Basic styles for functionality
-        panel.appendChild(resizeHandle);
-
-        resizeHandle.addEventListener('mouseenter', () => { resizeHandle.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'; });
-        resizeHandle.addEventListener('mouseleave', () => { if (!isResizing) resizeHandle.style.backgroundColor = 'transparent'; });
-
-        const startResize = (e) => {
-            e.preventDefault();
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = panel.offsetWidth;
-            document.body.classList.add('ai-coach-resizing'); // Class for global cursor/selection style
-            resizeHandle.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
-            currentWidth = startWidth;
-            logStudentCoach(`Starting student panel resize from width: ${startWidth}px`);
-        };
-
-        const doResize = (e) => {
-            if (!isResizing) return;
-            const diff = startX - e.clientX;
-            // Use student-specific min/max width CSS variables
-            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-min-width'), 10) || 350;
-            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-max-width'), 10) || 1200;
-            const newWidth = Math.max(minW, Math.min(maxW, startWidth + diff));
-            
-            document.documentElement.style.setProperty('--ai-coach-panel-width', newWidth + 'px');
-            panel.style.width = newWidth + 'px';
-            
-            const mainContent = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.mainContentSelector);
-            if (mainContent && document.body.classList.contains('ai-coach-active')) {
-                mainContent.style.width = `calc(100% - ${newWidth}px)`
-                mainContent.style.marginRight = `${newWidth}px`;
-            }
-            currentWidth = newWidth;
-        };
-
-        const stopResize = () => {
-            if (!isResizing) return;
-            isResizing = false;
-            document.body.classList.remove('ai-coach-resizing');
-            resizeHandle.style.backgroundColor = 'transparent';
-            if (window.localStorage) {
-                localStorage.setItem('studentCoachPanelWidth', currentWidth); // Student specific key
-                logStudentCoach(`Saved student panel width: ${currentWidth}px`);
-            }
-        };
-
-        resizeHandle.addEventListener('mousedown', startResize);
-        document.addEventListener('mousemove', doResize);
-        document.addEventListener('mouseup', stopResize);
-        resizeHandle.addEventListener('touchstart', (e) => { startResize({ preventDefault: () => e.preventDefault(), clientX: e.touches[0].clientX }); });
-        document.addEventListener('touchmove', (e) => { if (isResizing) doResize({ clientX: e.touches[0].clientX }); });
-        document.addEventListener('touchend', stopResize);
-
-        const savedWidth = localStorage.getItem('studentCoachPanelWidth');
-        if (savedWidth) {
-            const width = parseInt(savedWidth, 10);
-            const minW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-min-width'), 10) || 350;
-            const maxW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ai-coach-panel-max-width'), 10) || 1200;
-            if (!isNaN(width) && width >= minW && width <= maxW) {
-                document.documentElement.style.setProperty('--ai-coach-panel-width', width + 'px');
-                panel.style.width = width + 'px';
-                currentWidth = width;
-            }
-        }
-        logStudentCoach("Student panel resize handler added.");
-    }
-
-    function createAICoachPanel() {
-        const panelId = STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId;
-        if (document.getElementById(panelId)) {
-            logStudentCoach("Student Coach panel already exists.");
-            return;
-        }
-        const panel = document.createElement('div');
-        panel.id = panelId;
-        panel.className = 'ai-coach-panel'; // Generic class that theme CSS targets
-        // Also ensure the panel element is recognized by any wildcard selectors in CSS
-        panel.setAttribute('data-coach-panel', 'student');
-        
-        const currentTheme = getCurrentTheme();
-        const themeToggleText = currentTheme === 'cyberpunk' ? '🎨 Original Theme' : '🌆 Cyberpunk Theme';
-        
-        panel.innerHTML = `
-            <div class="ai-coach-panel-header">
-                <h3>My VESPA AI Coach</h3>
-                <div class="ai-coach-header-controls" style="display: flex; gap: 15px; align-items: center;">
-                    <button class="ai-coach-theme-toggle-btn" id="themeToggleBtn" 
-                            title="Switch between themes">
-                        ${themeToggleText}
-                    </button>
-                    <div class="ai-coach-text-controls">
-                        <button class="ai-coach-text-control-btn" data-action="decrease" title="Decrease text size">A-</button>
-                        <span class="ai-coach-text-size-indicator">100%</span>
-                        <button class="ai-coach-text-control-btn" data-action="increase" title="Increase text size">A+</button>
-                    </div>
-                </div>
-                <button class="ai-coach-close-btn" aria-label="Close My AI Coach Panel">&times;</button>
-            </div>
-            <div class="ai-coach-panel-content">
-                <p>Activate My AI Coach to get personalized insights!</p>
-            </div>
-        `;
-        document.body.appendChild(panel);
-        logStudentCoach("Student Coach panel created.");
-        setupTextSizeControls(panelId); // Pass panelId
-        setupThemeToggle(); // New function to handle theme toggle
-    }
-    
-    function setupTextSizeControls(panelIdToQuery) { // Accept panelId
-        const panel = document.getElementById(panelIdToQuery);
-        if (!panel) return;
-        
-        let currentZoom = 100;
-        const zoomStep = 10;
-        const minZoom = 70;
-        const maxZoom = 150;
-        
-        const savedZoom = localStorage.getItem('studentCoachTextZoom'); // Use unique storage key
-        if (savedZoom) {
-            currentZoom = parseInt(savedZoom, 10);
-            applyTextZoom(currentZoom);
-        }
-        
-        panel.addEventListener('click', (e) => {
-            if (e.target.classList.contains('ai-coach-text-control-btn')) {
-                const action = e.target.getAttribute('data-action');
-                if (action === 'increase' && currentZoom < maxZoom) currentZoom += zoomStep;
-                else if (action === 'decrease' && currentZoom > minZoom) currentZoom -= zoomStep;
-                applyTextZoom(currentZoom);
-            }
-        });
-        
-        function applyTextZoom(zoom) {
-            panel.style.fontSize = `${zoom * 14 / 100}px`;
-            const indicator = panel.querySelector('.ai-coach-text-size-indicator');
-            if (indicator) indicator.textContent = `${zoom}%`;
-            // Also apply to modals if they exist for student coach
-            // const modals = document.querySelectorAll('.student-coach-modal-content'); // Use specific class
-            // modals.forEach(modal => modal.style.fontSize = `${zoom * 14 / 100}px`);
-            localStorage.setItem('studentCoachTextZoom', zoom);
-            logStudentCoach(`Text zoom set to ${zoom}%`);
-        }
-    }
-
-    function setupThemeToggle() {
-        const themeToggleBtn = document.getElementById('themeToggleBtn');
-        if (!themeToggleBtn) {
-            logStudentCoach("Theme toggle button not found");
-            return;
-        }
-
-        themeToggleBtn.addEventListener('click', () => {
-            const currentTheme = getCurrentTheme();
-            const newTheme = currentTheme === 'cyberpunk' ? 'original' : 'cyberpunk';
-            
-            logStudentCoach(`Switching theme from ${currentTheme} to ${newTheme}`);
-            
-            // Show loading state
-            themeToggleBtn.disabled = true;
-            themeToggleBtn.textContent = '⏳ Switching...';
-            
-            // Update body class for theme-specific styling
-            document.body.classList.remove(`theme-${currentTheme}`);
-            document.body.classList.add(`theme-${newTheme}`);
-            
-            // Update the CSS link
-            loadExternalStyles(newTheme);
-            
-            // Update button text after a short delay to allow CSS to load
-            setTimeout(() => {
-                const updatedTheme = getCurrentTheme();
-                themeToggleBtn.textContent = updatedTheme === 'cyberpunk' ? '🎨 Original Theme' : '🌆 Cyberpunk Theme';
-                themeToggleBtn.disabled = false;
-                
-                // Add a subtle animation to indicate the theme has changed
-                themeToggleBtn.style.transform = 'scale(1.1)';
-                setTimeout(() => {
-                    themeToggleBtn.style.transform = 'scale(1)';
-                }, 200);
-            }, 500);
-        });
-        
-        // Set initial body class based on current theme
-        const initialTheme = getCurrentTheme();
-        document.body.classList.add(`theme-${initialTheme}`);
-        
-        logStudentCoach("Theme toggle setup complete");
-    }
-
-    function addLauncherButton() {
-        // const targetElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
-        // if (!targetElement) {
-        //     console.error(`[StudentCoachLauncher] Launcher button target '${STUDENT_COACH_LAUNCHER_CONFIG.elementSelector}' not found.`);
-        //     return;
-        // }
-
-        let buttonContainer = document.getElementById('aiCoachLauncherButtonContainer'); 
-        if (!buttonContainer) {
-            buttonContainer = document.createElement('div');
-            buttonContainer.id = 'aiCoachLauncherButtonContainer';
-            document.body.appendChild(buttonContainer); 
-            logStudentCoach("Launcher button container DIV created and appended to document.body.");
-        }
-
-        // Ensure the paragraph is not re-added if only button is missing
-        if (!buttonContainer.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}`)) {
-            // New structure with a flex container for main button and info button
-            buttonContainer.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
-                    <button id="${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId}" 
-                            data-button-id="activateAICoachBtn" 
-                            class="p-button p-component p-button-raised" 
-                            style="font-size: 1.1em; padding: 15px 30px;">
-                        <span class="p-button-icon p-button-icon-left" style="font-size: 1.2em; margin-right: 8px;">🚀</span>
-                        <span class="p-button-label" style="font-weight: 600; letter-spacing: 0.5px;">Activate My AI Coach</span>
-                    </button>
-                    <button id="aiCoachInfoBtn" class="p-button p-component p-button-rounded p-button-info p-button-outlined" title="About My AI Coach" aria-label="Information about the AI Coach" style="width: 42px; height: 42px; padding: 0; font-weight: 700; font-size: 20px; font-family: Georgia, serif;">
-                        i
-                    </button>
-                </div>
-            `;
-        }
-        
-        // Add event listeners for both buttons
-        setTimeout(() => {
-            const toggleButton = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId);
-            if (toggleButton) {
-                toggleButton.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const isActive = document.body.classList.contains('ai-coach-active');
-                    toggleAICoachPanel(!isActive);
-                    logStudentCoach("Direct toggle button click handler - panel active: " + !isActive);
-                });
-                logStudentCoach("Direct click handler attached to toggle button");
-            }
-            
-            const infoButton = document.getElementById('aiCoachInfoBtn');
-            if (infoButton) {
-                infoButton.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    logStudentCoach("Info button clicked");
-                    showInfoModal();
-                });
-                logStudentCoach("Direct click handler attached to info button");
-            }
-        }, 100); // Small delay to ensure DOM is ready
-    }
-
-    function createInfoModalHTML() {
-        // Content for the info modal
-        // Adjust title and content as needed
-        const title = "About My VESPA AI Coach";
-        const content = `
-            <p>Hello! I'm your VESPA AI Coach, here to help you understand your VESPA profile and make the most of your learning journey.</p>
-            <h4>What can I help with?</h4>
-            <ul>
-                <li><strong>Understanding Your Scores:</strong> I can help you interpret your VESPA (Vision, Effort, Systems, Practice, Attitude) scores.</li>
-                <li><strong>Academic Insights:</strong> Explore your academic performance in relation to benchmarks like your Minimum Expected Grades (MEGs).</li>
-                <li><strong>Questionnaire Analysis:</strong> Reflect on your questionnaire responses and what they suggest about your learning habits and mindset.</li>
-                <li><strong>Setting Goals:</strong> I can help you think about S.M.A.R.T. goals based on your profile.</li>
-                <li><strong>Finding Strategies:</strong> If you're facing a challenge (e.g., motivation, organization), I can suggest relevant VESPA activities and resources.</li>
-            </ul>
-            <h4>How does it work?</h4>
-            <p>I use the data from your VESPA profile, academic results, and questionnaire responses (if available) to provide personalized insights and suggestions. Our conversation is designed to help you take ownership of your learning.</p>
-            <h4>Tips for chatting:</h4>
-            <ul>
-                <li>Be specific! The more details you give me about a challenge, the better I can help.</li>
-                <li>Ask questions about any part of your VESPA report or your learning.</li>
-                <li>Use the "What area to focus on?" button if you're unsure where to start.</li>
-            </ul>
-            <p>Let's work together to help you succeed!</p>
-        `;
-
-        return {
-            title: title,
-            bodyHtml: content
-        };
-    }
-
-    function showInfoModal() {
-        logStudentCoach("Showing AI Coach Info Modal");
-        const modalId = 'aiCoachInfoModal'; // Specific ID for this modal
-        const existingModal = document.getElementById(modalId);
-        if (existingModal) existingModal.remove(); // Remove if already exists
-
-        const modalData = createInfoModalHTML();
-
-        const modal = document.createElement('div');
-        modal.id = modalId;
-        modal.className = 'ai-coach-modal-overlay'; // Use a generic class for overlay styling
-
-        const modalContent = document.createElement('div');
-        modalContent.className = 'ai-coach-modal-content'; // Generic class for content box styling
-
-        const savedZoom = localStorage.getItem('studentCoachTextZoom'); // Reuse student zoom preference
-        if (savedZoom) {
-            modalContent.style.fontSize = `${parseInt(savedZoom, 10) * 14 / 100}px`;
-        }
-
-        modalContent.innerHTML = `
-            <div class="ai-coach-modal-header" style="background-color: #f0f8ff; border-bottom: 1px solid #cfe2f3;"> 
-                <h3 style="color: #0056b3;">${modalData.title}</h3>
-                <button class="ai-coach-modal-close" aria-label="Close information modal">&times;</button>
-            </div>
-            <div class="ai-coach-modal-body" style="padding: 20px 25px;">
-                ${modalData.bodyHtml}
-            </div>
-        `;
-
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-
-        // Trigger CSS animations for entry
-        setTimeout(() => {
-            modal.style.opacity = '1';
-            modalContent.style.transform = 'scale(1) translateY(0)';
-        }, 10);
-
-        // Close handlers
-        const closeModal = () => {
-            modal.style.opacity = '0';
-            modalContent.style.transform = 'scale(0.95) translateY(10px)';
-            setTimeout(() => {
-                if (modal.parentNode) {
-                    modal.remove();
-                }
-            }, 300); // Match CSS transition duration
-            document.removeEventListener('keydown', escKeyHandler);
-        };
-
-        modalContent.querySelector('.ai-coach-modal-close').addEventListener('click', closeModal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal(); // Close if overlay is clicked
-        });
-
-        const escKeyHandler = (e) => {
-            if (e.key === 'Escape') closeModal();
-        };
-        document.addEventListener('keydown', escKeyHandler);
-    }
-
-    async function getLoggedInStudentDataForCoach() {
-        logStudentCoach("Attempting to get logged-in student data for coach...");
-        const user = Knack.getUserAttributes();
-        if (user && user.id) { 
-            logStudentCoach("Logged-in Knack User (Object_3) ID:", user.id);
-            // This user.id is the student's Object_3 record ID.
-            // The backend will take this, find the email, then find the Object_10 record if needed.
-            return user.id; 
-        } else {
-            logStudentCoach("Knack user attributes (Object_3 ID) not available.");
-            const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
-            if (panelContent) {
-                 panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not identify you. Please ensure you are logged in correctly.</p></div>';
-            }
-            stopLoadingMessageRotator(); // Stop rotator if user ID can't be found
-            return null;
-        }
-    }
-
-    async function fetchAICoachingData(studentObject3Id) { // Parameter is student's Object_3 ID
-        const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
-        if (!panelContent) return;
-
-        if (!studentObject3Id) { 
-             logStudentCoach("fetchAICoachingData called with no studentObject3Id. Aborting.");
-             if(panelContent && !panelContent.innerHTML.includes("color:red")) { // Avoid overwriting existing error
-                panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Your user ID is missing, cannot fetch AI coaching data.</p></div>';
-             }
-             stopLoadingMessageRotator();
-             return;
-        }
-
-        // ***** Start Critical Section for preventing duplicate fetches *****
-        if (currentlyFetchingStudentKnackId === studentObject3Id) {
-            logStudentCoach(`fetchAICoachingData: Already fetching data for student Object_3 ID ${studentObject3Id}. Aborting duplicate.`);
-            return; // Already fetching for this ID, so exit.
-        }
-        // If there's an ongoing fetch for a *different* student, abort it.
-        if (currentFetchAbortController) {
-            logStudentCoach("fetchAICoachingData: Aborting previous fetch call for a different student.");
-            currentFetchAbortController.abort();
-        }
-        currentFetchAbortController = new AbortController(); 
-        const signal = currentFetchAbortController.signal;
-        currentlyFetchingStudentKnackId = studentObject3Id; // Set the ID we are now fetching for
-        // ***** End Critical Section *****
-
-        startLoadingMessageRotator(panelContent, "student"); 
-
-        try {
-            logStudentCoach("Fetching Student AI Coaching Data for student_object3_id: " + studentObject3Id);
-            const response = await fetch(COACHING_DATA_ENDPOINT, { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ student_object3_id: studentObject3Id }), // Send Object_3 ID
-                signal: signal 
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: "An unknown error occurred."}));
-                throw new Error(`API Error (${response.status}): ${errorData.error || errorData.message || response.statusText}`);
-            }
-
-            const data = await response.json();
-            logStudentCoach("Student AI Coaching data received:", data);
-            lastFetchedStudentKnackId = studentObject3Id; // Store the Object_3 ID
-            fullStudentDataForChat = data; // Ensure this line assigns the fetched data
-            renderAICoachData(data); 
-            if (data && data.llm_generated_insights) { 
-                currentLLMInsightsForChat = data.llm_generated_insights;
-            } else {
-                currentLLMInsightsForChat = null;
-            }
-
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                logStudentCoach('Fetch aborted for student Object_3 ID: ' + studentObject3Id);
-            } else {
-                logStudentCoach("Error fetching Student AI Coaching data:", error);
-                if (currentlyFetchingStudentKnackId === studentObject3Id && panelContent) { 
-                    panelContent.innerHTML = `<div class="ai-coach-section"><p style="color:red;">Error loading your AI Coach insights: ${error.message}</p></div>`;
-                }
-            }
-        } finally {
-            stopLoadingMessageRotator();
-            if (currentlyFetchingStudentKnackId === studentObject3Id) {
-                currentlyFetchingStudentKnackId = null;
-            }
-            if (currentFetchAbortController && currentFetchAbortController.signal === signal) {
-                currentFetchAbortController = null;
-            }
-        }
-    }
-
-    function renderAICoachData(data) {
-        logStudentCoach("renderAICoachData (Student) CALLED. Input data:", data ? JSON.parse(JSON.stringify(data)) : 'No data (fetch likely failed)');
-        const panelContent = document.querySelector(`#${STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId} .ai-coach-panel-content`);
-        
-        if (!panelContent) {
-            logStudentCoach("CRITICAL ERROR in renderAICoachData: panelContent element not found. Cannot render UI.");
-            return;
-        }
-        logStudentCoach("renderAICoachData: panelContent found. Clearing existing content.");
-        panelContent.innerHTML = ''; // Clear previous content
-        stopLoadingMessageRotator();
-
-        let htmlShell = '';
-
-        // --- AI Student Snapshot section --- 
-        htmlShell += '<div class="ai-coach-section" id="studentCoachSnapshotSection">'; // Added ID for debugging
-        htmlShell += '<div class="ai-snapshot-header">';
-        htmlShell += '<h4>My AI Snapshot</h4>';
-        htmlShell += '<button id="toggleSnapshotBtn" class="ai-snapshot-toggle-btn" aria-expanded="true" aria-controls="snapshotContent">Hide</button>';
-        htmlShell += '</div>';
-        htmlShell += '<div id="snapshotContent">';
-        if (data && data.llm_generated_insights && data.llm_generated_insights.student_overview_summary) {
-            htmlShell += `<p>${data.llm_generated_insights.student_overview_summary}</p>`;
-            
-            // Add suggested goals if available
-            if (data.llm_generated_insights.suggested_student_goals && data.llm_generated_insights.suggested_student_goals.length > 0) {
-                htmlShell += '<h5 style="margin-top: 15px;">My Suggested Goals:</h5>';
-                htmlShell += '<ul>';
-                data.llm_generated_insights.suggested_student_goals.forEach(goal => {
-                    htmlShell += `<li>${goal}</li>`;
-                });
-                htmlShell += '</ul>';
-            }
-        } else if (data && data.student_name && data.student_name !== "N/A") {
-            htmlShell += '<p>Your AI summary is being prepared. Please check back shortly!</p>';
-        } else if (!data) { 
-            htmlShell += '<p style="color:red;">Error loading your AI Coach insights: Failed to fetch</p>';
-        } else {
-            htmlShell += '<p>Welcome! Activate the coach to see your insights. (Content will load once backend is ready)</p>';
-        }
-        htmlShell += '</div>'; // End snapshotContent
-        htmlShell += '</div>';
-        logStudentCoach("renderAICoachData: HTML for snapshot built.", htmlShell);
-
-        // --- Toggle Buttons for different insight sections --- 
-        htmlShell += `
-            <div class="student-coach-section-toggles ai-coach-section-toggles"> 
-                <button id="aiCoachToggleVespaButton" class="p-button" aria-expanded="false" aria-controls="aiCoachVespaProfileContainer">VESPA</button> 
-                <button id="aiCoachToggleAcademicButton" class="p-button" aria-expanded="false" aria-controls="aiCoachAcademicProfileContainer">Academic</button>
-                <button id="aiCoachToggleQuestionButton" class="p-button" aria-expanded="false" aria-controls="aiCoachQuestionAnalysisContainer">Questionnaire</button>
-            </div>
-        `;
-        logStudentCoach("renderAICoachData: HTML for toggle buttons appended.", htmlShell);
-
-        // --- Content Divs for each toggle button - initially hidden --- 
-        htmlShell += '<div id="aiCoachVespaProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your VESPA profile insights will appear here when available.</p></div></div>';
-        htmlShell += '<div id="aiCoachAcademicProfileContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your academic insights will appear here when available.</p></div></div>';
-        htmlShell += '<div id="aiCoachQuestionAnalysisContainer" class="student-coach-details-section ai-coach-details-section" style="display: none;"><div class="ai-coach-section"><p>Your questionnaire analysis will appear here when available.</p></div></div>';
-        logStudentCoach("renderAICoachData: HTML for content divs appended.", htmlShell);
-        
-        // --- Set the combined HTML to the panel content --- 
-        logStudentCoach("renderAICoachData: About to set panelContent.innerHTML. Current panelContent outerHTML:", panelContent.outerHTML);
-        panelContent.innerHTML = htmlShell;
-        logStudentCoach("renderAICoachData: panelContent.innerHTML has been set. Checking for buttons in DOM...");
-        
-        // Verify buttons are in DOM immediately after setting innerHTML
-        if (!document.getElementById('aiCoachToggleVespaButton')) {
-            logStudentCoach("CRITICAL CHECK FAILED: aiCoachToggleVespaButton NOT in DOM after setting innerHTML.");
-        } else {
-            logStudentCoach("CHECK PASSED: aiCoachToggleVespaButton IS in DOM after setting innerHTML.");
-        }
-
-        // --- Add Chat Interface --- 
-        // addChatInterface expects panelContent to already exist and be the parent.
-        logStudentCoach("renderAICoachData: Calling addChatInterface.");
-        addChatInterface(panelContent, (data && data.student_name) ? data.student_name : "My AI Coach"); // panelContent is the direct parent for chat.
-        logStudentCoach("renderAICoachData: Returned from addChatInterface.");
-
-        // --- Add event listeners for the new toggle buttons --- 
-        const toggleButtonsConfig = [
-            { buttonId: 'aiCoachToggleVespaButton',          containerId: 'aiCoachVespaProfileContainer',       defaultText: 'VESPA' },
-            { buttonId: 'aiCoachToggleAcademicButton',       containerId: 'aiCoachAcademicProfileContainer',    defaultText: 'Academic' },
-            { buttonId: 'aiCoachToggleQuestionButton',       containerId: 'aiCoachQuestionAnalysisContainer', defaultText: 'Questionnaire' }
-        ];
-
-        toggleButtonsConfig.forEach(config => {
-            const button = document.getElementById(config.buttonId);
-            const container = document.getElementById(config.containerId);
-
-            if (button && container) {
-                logStudentCoach(`Setting up toggle for: ${config.buttonId}`);
-                button.addEventListener('click', () => {
-                    logStudentCoach(`Toggle button clicked: ${config.buttonId}`);
-                    const isVisible = container.style.display === 'block';
-                    
-                    document.querySelectorAll('.student-coach-details-section').forEach(section => {
-                        section.style.display = 'none';
-                    });
-                    
-                    toggleButtonsConfig.forEach(btnConf => {
-                        const btn = document.getElementById(btnConf.buttonId);
-                        if (btn && btn.id !== config.buttonId) { 
-                            btn.textContent = btnConf.defaultText;
-                            btn.setAttribute('aria-expanded', 'false');
-                        }
-                    });
-
-                    if (isVisible) {
-                        button.textContent = config.defaultText;
-                        button.setAttribute('aria-expanded', 'false');
-                    } else {
-                        container.style.display = 'block';
-                        button.textContent = `Hide ${config.defaultText}`;
-                        button.setAttribute('aria-expanded', 'true');
-                    }
-                });
-            } else {
-                logStudentCoach(`Error setting up toggle: Button '${config.buttonId}' or Container '${config.containerId}' not found after UI setup.`);
-            }
-        });
-        logStudentCoach("Student AI Coach UI rendered and event listeners attached (or attempted). Final panelContent innerHTML length: ", panelContent.innerHTML.length);
-
-        // Add event listener for snapshot toggle button
-        const toggleSnapshotBtn = document.getElementById('toggleSnapshotBtn');
-        const snapshotContent = document.getElementById('snapshotContent');
-        if (toggleSnapshotBtn && snapshotContent) {
-            toggleSnapshotBtn.addEventListener('click', () => {
-                const isHidden = snapshotContent.style.display === 'none';
-                if (isHidden) {
-                    snapshotContent.style.display = 'block';
-                    toggleSnapshotBtn.textContent = 'Hide';
-                    toggleSnapshotBtn.setAttribute('aria-expanded', 'true');
-                } else {
-                    snapshotContent.style.display = 'none';
-                    toggleSnapshotBtn.textContent = 'Show';
-                    toggleSnapshotBtn.setAttribute('aria-expanded', 'false');
-                    // Scroll chat into better view when snapshot is hidden
-                    const chatContainer = document.getElementById('aiCoachChatContainer');
-                    if (chatContainer) {
-                        chatContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }
-                }
-                // Save preference
-                localStorage.setItem('studentCoachSnapshotHidden', !isHidden);
-            });
-            
-            // Restore previous state
-            const wasHidden = localStorage.getItem('studentCoachSnapshotHidden') === 'true';
-            if (wasHidden) {
-                snapshotContent.style.display = 'none';
-                toggleSnapshotBtn.textContent = 'Show';
-                toggleSnapshotBtn.setAttribute('aria-expanded', 'false');
-            }
-        }
-
-        // Populate dynamic content sections if data is available
-        if (data && data.student_name && data.student_name !== "N/A") {
-            // Ensure parent containers for charts and other content exist and are prepared
-            const vespaSection = document.getElementById('aiCoachVespaProfileContainer'); // Changed ID
-            if (vespaSection) {
-                vespaSection.innerHTML = ''; // Clear previous content
-                // VESPA Insights - Chart and Text
-                const vespaChartDiv = document.createElement('div');
-                vespaChartDiv.id = 'vespaComparisonChartContainer'; // Changed ID, Matches CSS
-                vespaChartDiv.style.height = '250px';
-                vespaChartDiv.style.marginBottom = '15px';
-                vespaChartDiv.innerHTML = '<p style="text-align:center;">VESPA Chart Area</p>'; 
-                vespaSection.appendChild(vespaChartDiv);
-
-                const vespaTextDiv = document.createElement('div');
-                vespaTextDiv.className = 'ai-coach-section'; 
-                vespaTextDiv.id = 'vespa-insights-text-content'; 
-                // Placeholder text will be replaced by LLM insights if available
-                vespaTextDiv.innerHTML = '<h5>Understanding My VESPA Scores</h5><p><em>Loading insights...</em></p>';
-                vespaSection.appendChild(vespaTextDiv);
-            } else {
-                logStudentCoach("Error: aiCoachVespaProfileContainer not found before preparing for VESPA content."); // Changed ID
-            }
-
-            const academicSection = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID
-            if (academicSection) {
-                // Populate Academic Insights
-                const academicContainer = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID, Re-fetch for safety
-                if (academicContainer) { // Check if academicContainer still exists
-                    let academicHtml = '';
-                    const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
-
-                    // --- NEW: AI Generated Quote --- 
-                    if (data.llm_generated_insights && data.llm_generated_insights.academic_quote) {
-                        academicHtml += `<div class="ai-coach-section quote-section" style="border-left-color: var(--accent-color); background-color: color-mix(in srgb, var(--accent-color) 8%, transparent);">
-                            <p style="font-style: italic; font-size: 1.1em; text-align: center; margin:0;">"${data.llm_generated_insights.academic_quote}"</p>
-                        </div>`;
-                    }
-
-                    // --- NEW: MEG Explainer Text --- 
-                    academicHtml += '<div class="ai-coach-section meg-explainer-section">';
-                    academicHtml += '<h5>Understanding Your Minimum Expected Grade (MEG)</h5>';
-                    academicHtml += `<p>
-                        Your MEG represents an aspirational grade based on how students with similar GCSE results have performed nationally. 
-                        Think of it as a starting point - it shows what's typically achievable for someone with your academic background. 
-                        Your school may set these targets at different levels of ambition - some schools choose highly aspirational targets to encourage you to aim high, 
-                        while others may set more moderate goals. Remember, this is just one indicator and doesn't account for your individual strengths, interests, 
-                        or the specific subjects you're studying. Many students exceed their MEG, while others may find it challenging to reach. 
-                        Your actual potential is influenced by many factors including your effort, teaching quality, and personal circumstances. 
-                        For a more personalized target, check your Subject Target Grade (STG) in the 'My Subject Benchmarks' section below, 
-                        which considers the specific subject you're studying and provides a more tailored expectation.
-                    </p>`;
-                    academicHtml += '</div>';
-                    
-                    // --- Subject Benchmarks Section (Remains) ---
-                    academicHtml += '<div class="ai-coach-section subject-benchmarks-display"><h5>My Subject Benchmarks</h5>'; // Added class for potential styling
-                    if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))){
-                        data.academic_profile_summary.forEach((subject, index) => {
-                            if (subject && subject.subject && !subject.subject.includes("not found")) {
-                                academicHtml += `<div class="subject-benchmark-item"><h5>${subject.subject}</h5>`;
-                                if (typeof subject.currentGradePoints === 'number' && typeof subject.standardMegPoints === 'number') {
-                                   academicHtml += createSubjectBenchmarkScale(subject, index, studentFirstName);
-                                } else {
-                                   academicHtml += '<p><em>Benchmark scale data not available for this subject.</em></p>';
-                                }
-                                academicHtml += '</div>';
-                            }
-                        });
-                    } else {
-                         academicHtml += '<p>My detailed academic subject benchmarks are not yet available.</p>';
-                    }
-                    academicHtml += '</div>'; // End subject benchmarks section
-                    
-                    // --- LLM Academic Benchmark Analysis (Existing - REMAINS for now, might be superseded or combined with new summary) ---
-                    if (data.llm_generated_insights && data.llm_generated_insights.academic_benchmark_analysis) {
-                        academicHtml += `<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5>
-                            <p>${data.llm_generated_insights.academic_benchmark_analysis}</p></div>`;
-                    } else {
-                         academicHtml += '<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5><p><em>AI analysis of your academic performance is currently unavailable.</em></p></div>';
-                    }
-
-                    // --- NEW: AI Generated Encouraging Summary & Recommendation ---
-                    if (data.llm_generated_insights && data.llm_generated_insights.academic_performance_ai_summary) {
-                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary" style="border-left-color: var(--secondary-color); background-color: color-mix(in srgb, var(--secondary-color) 8%, transparent);">
-                            <h5>Your AI Academic Mentor's Thoughts 💭</h5>
-                            <p>${data.llm_generated_insights.academic_performance_ai_summary}</p>
-                        </div>`;
-                    } else {
-                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary"><h5>Your AI Academic Mentor's Thoughts 💭</h5>
-                            <p><em>Your personalized academic summary is being prepared by your AI Mentor...</em></p>
-                        </div>`;
-                    }
-                    
-                    academicContainer.innerHTML = academicHtml; // Set all academic content
-                }
-            } else {
-                logStudentCoach("Error: aiCoachAcademicProfileContainer not found before preparing for Academic content."); // Changed ID
-            }
-
-            const questionnaireSection = document.getElementById('aiCoachQuestionAnalysisContainer'); // Changed ID
-            if (questionnaireSection) {
-                // Questionnaire Insights - Chart and Text
-                questionnaireSection.innerHTML = ''; // Clear previous content
-                const questionnaireChartDiv = document.createElement('div');
-                questionnaireChartDiv.id = 'questionnaireResponseDistributionChartContainer'; // Changed ID, Matches CSS
-                questionnaireChartDiv.style.height = '250px';
-                questionnaireChartDiv.style.marginBottom = '15px';
-                questionnaireChartDiv.innerHTML = '<p style="text-align:center;">Questionnaire Chart Area</p>';
-                questionnaireSection.appendChild(questionnaireChartDiv);
-
-                const questionnaireTextDiv = document.createElement('div');
-                questionnaireTextDiv.className = 'ai-coach-section';
-                questionnaireTextDiv.id = 'questionnaire-insights-text-content';
-                // Placeholder text will be replaced by LLM insights if available
-                questionnaireTextDiv.innerHTML = '<h5>Reflections on My Questionnaire</h5><p><em>Loading analysis...</em></p>';
-                questionnaireSection.appendChild(questionnaireTextDiv);
-            } else {
-                logStudentCoach("Error: aiCoachQuestionAnalysisContainer not found before preparing for Questionnaire content."); // Changed ID
-            }
-
-            ensureChartJsLoaded(() => { 
-                // Render VESPA Chart
-                if (data.vespa_profile) { 
-                    renderVespaComparisonChart(data.vespa_profile, data.school_vespa_averages); 
-                    const vespaTextDiv = document.getElementById('vespa-insights-text-content');
-                    if (vespaTextDiv && data.llm_generated_insights && data.llm_generated_insights.chart_comparative_insights) {
-                        vespaTextDiv.innerHTML = `<h5>Understanding My VESPA Scores</h5><p>${data.llm_generated_insights.chart_comparative_insights}</p>`;
-                    } else if (vespaTextDiv) {
-                        vespaTextDiv.innerHTML = '<h5>Understanding My VESPA Scores</h5><p><em>Detailed insights on your VESPA scores are not available at this moment.</em></p>';
-                    }
-                }
-                
-                // Populate Academic Insights
-                const academicContainer = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID, Re-fetch for safety
-                if (academicContainer) { // Check if academicContainer still exists
-                    let academicHtml = '';
-                    const studentFirstName = data.student_name ? data.student_name.split(' ')[0] : "My";
-
-                    // --- NEW: AI Generated Quote --- 
-                    if (data.llm_generated_insights && data.llm_generated_insights.academic_quote) {
-                        academicHtml += `<div class="ai-coach-section quote-section" style="border-left-color: var(--accent-color); background-color: color-mix(in srgb, var(--accent-color) 8%, transparent);">
-                            <p style="font-style: italic; font-size: 1.1em; text-align: center; margin:0;">"${data.llm_generated_insights.academic_quote}"</p>
-                        </div>`;
-                    }
-
-                    // --- NEW: MEG Explainer Text --- 
-                    academicHtml += '<div class="ai-coach-section meg-explainer-section">';
-                    academicHtml += '<h5>Understanding Your Minimum Expected Grade (MEG)</h5>';
-                    academicHtml += `<p>
-                        Your MEG represents an aspirational grade based on how students with similar GCSE results have performed nationally. 
-                        Think of it as a starting point - it shows what's typically achievable for someone with your academic background. 
-                        Your school may set these targets at different levels of ambition - some schools choose highly aspirational targets to encourage you to aim high, 
-                        while others may set more moderate goals. Remember, this is just one indicator and doesn't account for your individual strengths, interests, 
-                        or the specific subjects you're studying. Many students exceed their MEG, while others may find it challenging to reach. 
-                        Your actual potential is influenced by many factors including your effort, teaching quality, and personal circumstances. 
-                        For a more personalized target, check your Subject Target Grade (STG) in the 'My Subject Benchmarks' section below, 
-                        which considers the specific subject you're studying and provides a more tailored expectation.
-                    </p>`;
-                    academicHtml += '</div>';
-                    
-                    // --- Subject Benchmarks Section (Remains) ---
-                    academicHtml += '<div class="ai-coach-section subject-benchmarks-display"><h5>My Subject Benchmarks</h5>'; // Added class for potential styling
-                    if (data.academic_profile_summary && data.academic_profile_summary.length > 0 && !(data.academic_profile_summary.length === 1 && data.academic_profile_summary[0].subject.includes("not found"))){
-                        data.academic_profile_summary.forEach((subject, index) => {
-                            if (subject && subject.subject && !subject.subject.includes("not found")) {
-                                academicHtml += `<div class="subject-benchmark-item"><h5>${subject.subject}</h5>`;
-                                if (typeof subject.currentGradePoints === 'number' && typeof subject.standardMegPoints === 'number') {
-                                   academicHtml += createSubjectBenchmarkScale(subject, index, studentFirstName);
-                                } else {
-                                   academicHtml += '<p><em>Benchmark scale data not available for this subject.</em></p>';
-                                }
-                                academicHtml += '</div>';
-                            }
-                        });
-                    } else {
-                         academicHtml += '<p>My detailed academic subject benchmarks are not yet available.</p>';
-                    }
-                    academicHtml += '</div>'; // End subject benchmarks section
-                    
-                    // --- LLM Academic Benchmark Analysis (Existing - REMAINS for now, might be superseded or combined with new summary) ---
-                    if (data.llm_generated_insights && data.llm_generated_insights.academic_benchmark_analysis) {
-                        academicHtml += `<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5>
-                            <p>${data.llm_generated_insights.academic_benchmark_analysis}</p></div>`;
-                    } else {
-                         academicHtml += '<div class="ai-coach-section existing-ai-analysis"><h5>AI Analysis of My Academic Performance</h5><p><em>AI analysis of your academic performance is currently unavailable.</em></p></div>';
-                    }
-
-                    // --- NEW: AI Generated Encouraging Summary & Recommendation ---
-                    if (data.llm_generated_insights && data.llm_generated_insights.academic_performance_ai_summary) {
-                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary" style="border-left-color: var(--secondary-color); background-color: color-mix(in srgb, var(--secondary-color) 8%, transparent);">
-                            <h5>Your AI Academic Mentor's Thoughts 💭</h5>
-                            <p>${data.llm_generated_insights.academic_performance_ai_summary}</p>
-                        </div>`;
-                    } else {
-                        academicHtml += `<div class="ai-coach-section encouraging-ai-summary"><h5>Your AI Academic Mentor's Thoughts 💭</h5>
-                            <p><em>Your personalized academic summary is being prepared by your AI Mentor...</em></p>
-                        </div>`;
-                    }
-                    
-                    academicContainer.innerHTML = academicHtml; // Set all academic content
-                }
-
-
-                // Populate Questionnaire Insights
-                const questionnaireTextContentDiv = document.getElementById('questionnaire-insights-text-content');
-                if (questionnaireTextContentDiv) {
-                    let questionnaireHtml = '';
-                    // Highlights
-                    if (data.object29_question_highlights) {
-                        const highlights = data.object29_question_highlights;
-                        questionnaireHtml += '<div class="ai-coach-section"><h5>My Questionnaire Response Highlights</h5>';
-                        questionnaireHtml += '<p style="font-size:0.9em; margin-bottom:10px;"><em>(Response Scale: 1=Strongly Disagree, 5=Strongly Agree)</em></p>';
-                        if (highlights.top_3 && highlights.top_3.length > 0) {
-                            questionnaireHtml += '<h6>Strongest Agreement (Top 3):</h6><ul>';
-                            highlights.top_3.forEach(q => {
-                                questionnaireHtml += `<li>"${q.text}" <br><strong>Score: ${q.score}/5</strong> (${q.category})</li>`;
-                            });
-                            questionnaireHtml += '</ul>';
-                        }
-                        if (highlights.bottom_3 && highlights.bottom_3.length > 0) {
-                            questionnaireHtml += '<h6 style="margin-top:15px;">Areas for Growth (Bottom 3):</h6><ul>';
-                            highlights.bottom_3.forEach(q => {
-                                questionnaireHtml += `<li>"${q.text}" <br><strong>Score: ${q.score}/5</strong> (${q.category})</li>`;
-                            });
-                            questionnaireHtml += '</ul>';
-                        }
-                        questionnaireHtml += '</div>';
-                    }
-                    // LLM Reflections
-                    if (data.llm_generated_insights && data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary) {
-                        questionnaireHtml += `<div class="ai-coach-section"><h5>Reflections on My Questionnaire</h5><p>${data.llm_generated_insights.questionnaire_interpretation_and_reflection_summary}</p></div>`;
-                    } else {
-                        questionnaireHtml += '<div class="ai-coach-section"><h5>Reflections on My Questionnaire</h5><p><em>AI reflections on your questionnaire are currently unavailable.</em></p></div>';
-                    }
-                    questionnaireTextContentDiv.innerHTML = questionnaireHtml; // Set text content
-                }
-                // Render Questionnaire Chart
-                if (data.all_scored_questionnaire_statements) {
-                    renderQuestionnaireDistributionChart(data.all_scored_questionnaire_statements);
-                }
-            });
-        } 
-        else { 
-            // Data not fully available, ensure placeholders are in the content divs
-            const vespaContainer = document.getElementById('aiCoachVespaProfileContainer'); // Changed ID
-            if (vespaContainer && !vespaContainer.querySelector('#vespaComparisonChartContainer')) { // Changed ID
-                 vespaContainer.innerHTML = '<div class="ai-coach-section"><div id="vespaComparisonChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My VESPA Chart Area (No Data)</p></div><p>My VESPA profile insights will appear here.</p></div>'; // Changed ID
-            }
-            
-            const academicContainer = document.getElementById('aiCoachAcademicProfileContainer'); // Changed ID
-            if (academicContainer && academicContainer.innerHTML.trim() === '') { 
-                academicContainer.innerHTML = '<div class="ai-coach-section"><p>My academic insights and benchmarks will appear here.</p></div>';
-            }
-
-            const questionnaireContainer = document.getElementById('aiCoachQuestionAnalysisContainer'); // Changed ID
-            if (questionnaireContainer && !questionnaireContainer.querySelector('#questionnaireResponseDistributionChartContainer')) { // Changed ID
-                 questionnaireContainer.innerHTML = '<div class="ai-coach-section"><div id="questionnaireResponseDistributionChartContainer" style="height: 250px; margin-bottom: 15px; background: #eee; display:flex; align-items:center; justify-content:center;"><p>My Questionnaire Insights Area (No Data)</p></div><p>My questionnaire analysis will appear here.</p></div>'; // Changed ID
-            }
-        }
+/* AI Coach Launcher Styles */
+/* Version: 2.1 - Enhanced for dynamic IDs */
+
+/* Modern UI Enhancements */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* CSS Custom Properties for dynamic values */
+:root {
+    --ai-coach-panel-width: 450px;
+    --ai-coach-panel-min-width: 300px;
+    --ai-coach-panel-max-width: 1200px;
+    --ai-coach-transition-duration: 0.3s;
+    /* VESPA Theme Colors */
+    --vespa-vision-color: #ff8f00;
+    --vespa-effort-color: #86b4f0;
+    --vespa-systems-color: #72cb44;
+    --vespa-practice-color: #7f31a4;
+    --vespa-attitude-color: #f032e6;
+    /* Modern UI Colors */
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --ui-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Apply modern font globally to AI Coach elements */
+#aiCoachPanel,
+#aiCoachPanel *,
+[id*="CoachPanel"],
+[id*="CoachPanel"] *,
+.ai-coach-panel,
+.ai-coach-panel * {
+    font-family: var(--ui-font-family) !important;
+}
+
+/* Main content adjustment when coach is active */
+body.ai-coach-active #content,
+body.ai-coach-active #kn-scene_43 {
+    width: calc(100% - var(--ai-coach-panel-width));
+    margin-right: var(--ai-coach-panel-width);
+    transition: width var(--ai-coach-transition-duration) ease-in-out, 
+                margin-right var(--ai-coach-transition-duration) ease-in-out;
+}
+
+#content,
+#kn-scene_43 {
+    transition: width var(--ai-coach-transition-duration) ease-in-out, 
+                margin-right var(--ai-coach-transition-duration) ease-in-out;
+}
+
+/* Main AI Coach Panel - Modern Design */
+#aiCoachPanel,
+[id*="CoachPanel"],
+.ai-coach-panel {
+    width: 0;
+    opacity: 0;
+    visibility: hidden;
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    background-color: #ffffff;
+    background-image: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+    border-left: 2px solid #d6dee5;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    z-index: 1050;
+    transition: width var(--ai-coach-transition-duration) cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity var(--ai-coach-transition-duration) ease-in-out, 
+                visibility var(--ai-coach-transition-duration);
+    font-family: var(--ui-font-family);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+}
+
+body.ai-coach-active #aiCoachPanel,
+body.ai-coach-active [id*="CoachPanel"],
+body.ai-coach-active .ai-coach-panel {
+    width: var(--ai-coach-panel-width);
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Add subtle inner shadow for depth */
+#aiCoachPanel::before,
+[id*="CoachPanel"]::before,
+.ai-coach-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.02) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Smooth scrollbar styling */
+#aiCoachPanel::-webkit-scrollbar,
+[id*="CoachPanel"]::-webkit-scrollbar,
+.ai-coach-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-track,
+[id*="CoachPanel"]::-webkit-scrollbar-track,
+.ai-coach-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb,
+[id*="CoachPanel"]::-webkit-scrollbar-thumb,
+.ai-coach-panel::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#aiCoachPanel::-webkit-scrollbar-thumb:hover,
+[id*="CoachPanel"]::-webkit-scrollbar-thumb:hover,
+.ai-coach-panel::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Resize handle styles - use class selector for JavaScript-created element */
+.ai-coach-resize-handle {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 10px !important;
+    cursor: ew-resize !important;
+    background: transparent;
+    z-index: 1051 !important;
+    transition: background-color 0.2s;
+}
+
+.ai-coach-resize-handle:hover {
+    background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Panel header - Modern Gradient */
+.ai-coach-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    flex-shrink: 0;
+    position: relative;
+    border-bottom: 1px solid rgba(118, 75, 162, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+    margin: -20px -20px 20px -20px;
+}
+
+.ai-coach-panel-header h3 {
+    margin: 0;
+    font-size: 1.6em;
+    color: white;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.ai-coach-close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.ai-coach-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+/* Panel content - make it flexible to accommodate chat */
+#aiCoachPanel .ai-coach-panel-content,
+[id*="CoachPanel"] .ai-coach-panel-content,
+.ai-coach-panel .ai-coach-panel-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    margin: 0;
+    -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
+    position: relative; /* Ensure proper scroll context */
+}
+
+/* Launcher button container - Fixed to right side, more discreet */
+#aiCoachLauncherButtonContainer,
+#studentCoachLauncherButtonContainer {
+    position: fixed; 
+    bottom: 30px;    
+    right: 30px;       
+    z-index: 2200;   /* Higher than panel (1050) to stay on top */
+    text-align: center; 
+    padding: 0;
+    border-top: none; 
+    background-color: transparent;
+    pointer-events: auto; /* Ensure container can receive clicks */
+    transition: opacity 0.3s ease;
+}
+
+#aiCoachLauncherButtonContainer p,
+#studentCoachLauncherButtonContainer p {
+    display: none; 
+}
+
+/* Styling for the main Activate button - More Discreet Design */
+#aiCoachLauncherButtonContainer button#activateAICoachBtn,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"],
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
+button#activateAICoachBtn {
+    padding: 12px 24px !important;
+    font-size: 0.95em !important;
+    font-weight: 500 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    color: #667eea !important; 
+    border: 2px solid rgba(102, 126, 234, 0.3) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    cursor: pointer !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    letter-spacing: 0.3px;
+    position: relative;
+    overflow: hidden;
+    opacity: 0.8;
+    z-index: 1040; /* Reduced to be less dominant */
+    pointer-events: auto; /* Ensure button can receive clicks */
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn::before,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn::before,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]::before,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]::before,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]::before,
+button#activateAICoachBtn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover::before,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover::before,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:hover::before,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover::before,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover::before,
+button#activateAICoachBtn:hover::before {
+    transform: translateX(0);
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:hover,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:hover,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:hover,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover,
+button#activateAICoachBtn:hover {
+    opacity: 1 !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3) !important;
+    border-color: rgba(102, 126, 234, 0.5) !important;
+}
+
+#aiCoachLauncherButtonContainer button#activateAICoachBtn:active,
+#studentCoachLauncherButtonContainer button#activateAICoachBtn:active,
+#aiCoachLauncherButtonContainer button[id*="activateAICoach"]:active,
+#aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:active,
+#studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:active,
+button#activateAICoachBtn:active {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3), 0 1px 4px rgba(0, 0, 0, 0.15), inset 0 -1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Styling for the new Info Button - More Discreet Design */
+#aiCoachInfoBtn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important; 
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 2px solid rgba(102, 126, 234, 0.3) !important;
+    color: #667eea !important; 
+    font-size: 18px !important;
+    font-weight: bold !important;
+    font-family: 'Georgia', serif;
+    line-height: 1;
+    cursor: pointer !important;
+    display: inline-flex !important; 
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.3s ease !important;
+    vertical-align: middle;
+    position: relative;
+    opacity: 0.8;
+    z-index: 1040; /* Reduced to be less dominant */
+    pointer-events: auto; /* Ensure button can receive clicks */
+}
+
+#aiCoachInfoBtn:hover {
+    opacity: 1 !important;
+    background: #667eea !important;
+    color: white !important;
+    transform: scale(1.1);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3) !important;
+}
+
+#aiCoachInfoBtn:active {
+    transform: scale(1.0);
+}
+
+/* Ensure button child elements don't interfere with clicks */
+#aiCoachLauncherButtonContainer button span,
+#studentCoachLauncherButtonContainer button span {
+    pointer-events: none; /* Child elements should not capture clicks */
+}
+
+/* Section toggles - Modern Cards */
+.ai-coach-section-toggles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0 !important;
+    flex-shrink: 0;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e3e8ed;
+}
+
+.ai-coach-section-toggles .p-button {
+    flex-grow: 1;
+    padding: 16px 20px !important;
+    font-size: 15px !important;
+    border: 1px solid transparent !important;
+    color: white !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12), inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ai-coach-section-toggles .p-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.ai-coach-section-toggles .p-button:hover::before {
+    transform: translateX(0);
+}
+
+.ai-coach-section-toggles .p-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18), inset 0 -2px 4px rgba(0, 0, 0, 0.15) !important;
+    filter: brightness(1.05);
+}
+
+#aiCoachToggleVespaButton {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+#aiCoachToggleAcademicButton {
+    background: linear-gradient(135deg, #72cb44 0%, #4caf50 100%) !important;
+}
+
+#aiCoachToggleQuestionButton {
+    background: linear-gradient(135deg, #86b4f0 0%, #3a7bd5 100%) !important;
+}
+
+/* Content sections - Modern Cards */
+.ai-coach-section {
+    margin-bottom: 20px;
+    padding: 24px;
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.ai-coach-section:hover {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.05);
+    border-color: #d1d5db;
+}
+
+.ai-coach-section h4 {
+    font-size: 1.3em;
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+.ai-coach-section h5 {
+    font-size: 1.1em;
+    color: #333;
+    margin-top: 20px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+}
+
+.ai-coach-section p, 
+.ai-coach-section ul, 
+.ai-coach-section li {
+    font-size: 0.95em;
+    line-height: 1.8;
+    color: #495057;
+}
+
+.ai-coach-section ul {
+    padding-left: 24px;
+    margin-bottom: 0;
+}
+
+.ai-coach-section li {
+    margin-bottom: 8px;
+}
+
+/* Enhanced student snapshot section */
+#studentCoachSnapshotSection {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e3e9f2 100%);
+    border: 2px solid #d6dee5;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 2px rgba(0,0,0,0.02);
+}
+
+#studentCoachSnapshotSection::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+/* Modern loading spinner */
+.loader {
+    width: 48px;
+    height: 48px;
+    margin: 30px auto;
+    position: relative;
+}
+
+.loader::before,
+.loader::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #667eea;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.loader::after {
+    border-top-color: #764ba2;
+    animation-delay: -0.5s;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ENHANCED CHAT INTERFACE STYLES */
+#aiCoachChatContainer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    max-height: calc(100vh - 400px);
+    margin-top: 20px;
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #d6dee5;
+    padding: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+    position: relative;
+}
+
+#aiCoachChatContainer h4 {
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+#aiCoachChatDisplay {
+    flex: 1;
+    min-height: 300px;
+    max-height: 500px;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    overflow-y: auto;
+    padding: 20px;
+    margin-bottom: 15px;
+    background-color: #f4f6f8;
+    scroll-behavior: smooth;
+    /* Clean scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(155, 155, 155, 0.5) rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+}
+
+/* Custom scrollbar for chat display - Modern theme */
+#aiCoachChatDisplay::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+#aiCoachChatDisplay::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+#aiCoachChatDisplay::-webkit-scrollbar-thumb {
+    background: rgba(155, 155, 155, 0.5);
+    border-radius: 4px;
+}
+
+#aiCoachChatDisplay::-webkit-scrollbar-thumb:hover {
+    background: rgba(155, 155, 155, 0.7);
+}
+
+/* Chat messages styling - Modern Bubbles */
+.ai-chat-message {
+    margin-bottom: 16px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    word-wrap: break-word;
+    font-size: 0.95em;
+    line-height: 1.7;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    position: relative;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.ai-chat-message:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 16px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.ai-chat-message-user {
+    background: linear-gradient(135deg, #667eea 0%, #5563e1 100%);
+    color: white;
+    margin-left: 15%;
+    text-align: right;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    position: relative;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25), 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* Add subtle gradient overlay for depth */
+.ai-chat-message-user::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    border-radius: 16px;
+    pointer-events: none;
+}
+
+.ai-chat-message-bot {
+    background-color: white;
+    margin-right: 15%;
+    border: 2px solid #e3e8ed;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.ai-chat-message em {
+    font-weight: 600;
+    font-size: 0.9em;
+    opacity: 0.8;
+    font-style: normal;
+}
+
+.ai-chat-message-user em {
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+}
+
+.ai-chat-message-bot em {
+    color: #6c757d;
+}
+
+/* Activity links in chat */
+.ai-coach-activity-link {
+    color: #5563e1 !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+    padding: 0 2px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 2px;
+}
+
+.ai-coach-activity-link:hover {
+    color: #4450d8 !important;
+    border-bottom-color: #5563e1 !important;
+    background: rgba(102, 126, 234, 0.1);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.15);
+}
+
+/* Quick activity links section in chat */
+#aiCoachChatDisplay > div[style*="background: #f0f8ff"] {
+    margin-top: 12px !important;
+    padding: 14px !important;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e8f4fd 100%) !important;
+    border-radius: 10px !important;
+    border-left: 4px solid #3498db !important;
+    border-right: 1px solid #d6e9f5 !important;
+    border-top: 1px solid #d6e9f5 !important;
+    border-bottom: 1px solid #d6e9f5 !important;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.1) !important;
+}
+
+/* Chat input area - Modern Design */
+#aiCoachChatContainer > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 15px;
+    border-top: 1px solid #e3e8ed;
+}
+
+#aiCoachChatInput {
+    flex-grow: 1;
+    padding: 12px 18px;
+    border: 2px solid #d6dee5;
+    border-radius: 25px;
+    font-size: 1.05em;
+    background: white;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.02);
+}
+
+#aiCoachChatInput:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15), inset 0 1px 3px rgba(0,0,0,0.03);
+    background: #fefefe;
+}
+
+#aiCoachChatSendButton {
+    padding: 12px 24px !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border: 1px solid rgba(102, 126, 234, 0.3) !important;
+    border-radius: 25px !important;
+    cursor: pointer;
+    font-size: 1em !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 3px 12px rgba(102, 126, 234, 0.25), 0 1px 4px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+#aiCoachChatSendButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 18px rgba(102, 126, 234, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15), inset 0 -1px 2px rgba(0, 0, 0, 0.12) !important;
+    border-color: rgba(102, 126, 234, 0.5) !important;
+    filter: brightness(1.05);
+}
+
+#aiCoachChatSendButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ENHANCED: Animated thinking indicator */
+#aiCoachChatThinkingIndicator {
+    display: none;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+    border: 2px solid #e3e8ed;
+    border-radius: 12px;
+    padding: 12px 20px;
+    margin: 10px 20%;
+    text-align: center;
+    font-size: 1em;
+    color: #667eea;
+    font-weight: 600;
+    position: relative;
+    animation: fadeIn 0.3s ease-in;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+#aiCoachChatThinkingIndicator::before {
+    content: '🤔 ';
+    font-size: 1.2em;
+    margin-right: 5px;
+}
+
+/* Problem Selector Button - Modern Design */
+#aiCoachProblemButton {
+    width: 100% !important;
+    padding: 12px !important;
+    font-size: 1em !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f1f3f5 100%) !important;
+    color: #495057 !important;
+    border: 2px solid #dee2e6 !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 -1px 2px rgba(0,0,0,0.04) !important;
+}
+
+#aiCoachProblemButton:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+}
+
+/* Text control styling - Enhanced contrast */
+.ai-coach-text-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.ai-coach-text-control-btn {
+    background: #667eea;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    color: white;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.ai-coach-text-control-btn:hover {
+    background: #5a6fe8;
+    transform: scale(1.05);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.35), 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-color: #4d63e6;
+}
+
+.ai-coach-text-size-indicator {
+    font-size: 14px;
+    color: #333;
+    margin: 0 6px;
+    font-weight: 600;
+    min-width: 45px;
+    text-align: center;
+}
+
+/* Enhanced like button styling */
+.ai-chat-like-btn {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: white !important;
+    border: 1px solid #e9ecef !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.ai-chat-like-btn:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+.ai-chat-like-btn .like-icon {
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.ai-chat-like-btn .like-icon.liked {
+    animation: heartBeat 0.5s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+/* VESPA-colored problem categories - will be enhanced via JS for modal */
+.vespa-vision-category { color: var(--vespa-vision-color) !important; }
+.vespa-effort-category { color: var(--vespa-effort-color) !important; }
+.vespa-systems-category { color: var(--vespa-systems-color) !important; }
+.vespa-practice-category { color: var(--vespa-practice-color) !important; }
+.vespa-attitude-category { color: var(--vespa-attitude-color) !important; }
+
+/* Modal styles for problem selector */
+.ai-coach-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.ai-coach-modal-content {
+    background: white;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    border-radius: 12px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+/* Problem selector modal specific styles */
+.ai-coach-problem-modal-header {
+    padding: 24px;
+    border-bottom: 2px solid #eee;
+    background: #f8f9fa;
+}
+
+.ai-coach-problem-modal-header h3 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #333;
+}
+
+.ai-coach-problem-modal-header p {
+    margin: 8px 0 0 0;
+    color: #666;
+    font-size: 1.05em;
+}
+
+.ai-coach-problem-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.ai-coach-problem-category {
+    margin-bottom: 24px;
+}
+
+.ai-coach-problem-category h4 {
+    font-size: 1.3em;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 3px solid;
+    font-weight: 600;
+}
+
+.ai-coach-problem-item {
+    padding: 14px 18px;
+    margin: 8px 0;
+    background: white;
+    border: 2px solid;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.05em;
+    line-height: 1.5;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.ai-coach-problem-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.06);
+    background: rgba(250, 250, 250, 1);
+}
+
+/* Color-specific styles for each VESPA category */
+.ai-coach-problem-category.vespa-vision h4 {
+    color: var(--vespa-vision-color);
+    border-color: var(--vespa-vision-color);
+}
+
+.ai-coach-problem-category.vespa-vision .ai-coach-problem-item {
+    border-color: var(--vespa-vision-color);
+    background: rgba(255, 143, 0, 0.05);
+}
+
+.ai-coach-problem-category.vespa-vision .ai-coach-problem-item:hover {
+    background: rgba(255, 143, 0, 0.1);
+}
+
+.ai-coach-problem-category.vespa-effort h4 {
+    color: var(--vespa-effort-color);
+    border-color: var(--vespa-effort-color);
+}
+
+.ai-coach-problem-category.vespa-effort .ai-coach-problem-item {
+    border-color: var(--vespa-effort-color);
+    background: rgba(134, 180, 240, 0.05);
+}
+
+.ai-coach-problem-category.vespa-effort .ai-coach-problem-item:hover {
+    background: rgba(134, 180, 240, 0.1);
+}
+
+.ai-coach-problem-category.vespa-systems h4 {
+    color: var(--vespa-systems-color);
+    border-color: var(--vespa-systems-color);
+}
+
+.ai-coach-problem-category.vespa-systems .ai-coach-problem-item {
+    border-color: var(--vespa-systems-color);
+    background: rgba(114, 203, 68, 0.05);
+}
+
+.ai-coach-problem-category.vespa-systems .ai-coach-problem-item:hover {
+    background: rgba(114, 203, 68, 0.1);
+}
+
+.ai-coach-problem-category.vespa-practice h4 {
+    color: var(--vespa-practice-color);
+    border-color: var(--vespa-practice-color);
+}
+
+.ai-coach-problem-category.vespa-practice .ai-coach-problem-item {
+    border-color: var(--vespa-practice-color);
+    background: rgba(127, 49, 164, 0.05);
+}
+
+.ai-coach-problem-category.vespa-practice .ai-coach-problem-item:hover {
+    background: rgba(127, 49, 164, 0.1);
+}
+
+.ai-coach-problem-category.vespa-attitude h4 {
+    color: var(--vespa-attitude-color);
+    border-color: var(--vespa-attitude-color);
+}
+
+.ai-coach-problem-category.vespa-attitude .ai-coach-problem-item {
+    border-color: var(--vespa-attitude-color);
+    background: rgba(240, 50, 230, 0.05);
+}
+
+.ai-coach-problem-category.vespa-attitude .ai-coach-problem-item:hover {
+    background: rgba(240, 50, 230, 0.1);
+}
+
+/* Modal close button */
+.ai-coach-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    cursor: pointer;
+    padding: 5px 10px;
+    color: #666;
+    transition: color 0.2s;
+    z-index: 10;
+}
+
+.ai-coach-modal-close:hover {
+    color: #333;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+/* Responsive adjustments - Enhanced Mobile Modal */
+@media (max-width: 768px) {
+    :root {
+        --ai-coach-panel-width: 90%;
+        --ai-coach-panel-min-width: 90%;
+        --ai-coach-panel-max-width: 90%;
     }
     
-    // Note: renderVespaComparisonChart, createSubjectBenchmarkScale, renderQuestionnaireDistributionChart
-    // might be reused if students see similar charts, or adapted/removed if not.
-
-    async function refreshAICoachData() {
-        const panel = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
-        const panelContent = panel ? panel.querySelector('.ai-coach-panel-content') : null;
-        if (!panel || !panelContent) return;
-
-        if (coachDataCurrentlyRefreshing) {
-            logStudentCoach("refreshAICoachData: Already refreshing. Skipping duplicate call.");
-            return;
-        }
-
-        if (!document.body.classList.contains('ai-coach-active')) { // Ensure classname is consistent or namespaced
-            logStudentCoach("Student AI Coach panel is not active, refresh not needed.");
-            return;
-        }
-
-        logStudentCoach("refreshAICoachData (Student): Attempting to get student data...");
-        const studentObject3Id = await getLoggedInStudentDataForCoach(); 
-        
-        coachDataCurrentlyRefreshing = true; // Set flag
-
-        try {
-            if (studentObject3Id) {
-                if (studentObject3Id !== lastFetchedStudentKnackId || lastFetchedStudentKnackId === null) {
-                    logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id}. Last fetched: ${lastFetchedStudentKnackId}. Fetching data.`);
-                    // Only set loader here if not already fetching this specific ID and no existing loader/error message
-                    if (currentlyFetchingStudentKnackId !== studentObject3Id && 
-                        panelContent.innerHTML.indexOf('loader') === -1 && 
-                        !panelContent.innerHTML.includes("color:red") && 
-                        !panelContent.innerHTML.includes("color:orange")) {
-                        panelContent.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your AI Coach...</p>';
-                    }
-                    await fetchAICoachingData(studentObject3Id); // Await this call
-                } else {
-                    logStudentCoach(`refreshAICoachData (Student): ID ${studentObject3Id} is same as last fetched. Data likely current.`);
-                    if (panelContent && panelContent.querySelector('.loader') && !panelContent.querySelector('.ai-coach-section')) {
-                        panelContent.innerHTML = '<p>Activate My AI Coach to get personalized insights!</p>';
-                    }
-                }
-            } else {
-                logStudentCoach("refreshAICoachData (Student): Student Object_3 ID not available.");
-                lastFetchedStudentKnackId = null; 
-                observerLastProcessedStudentKnackId = null; 
-                // currentlyFetchingStudentKnackId should be cleared by fetchAICoachingData's finally block if a fetch was attempted
-                if (panelContent && panelContent.innerHTML.includes('loader') && !panelContent.innerHTML.includes('ai-coach-section')){
-                     panelContent.innerHTML = '<div class="ai-coach-section"><p style="color:orange;">Could not load your profile for the AI Coach. Please ensure you are logged in and on the correct page.</p></div>';
-                }
-            }
-        } finally {
-            coachDataCurrentlyRefreshing = false; // Clear flag
-        }
-    }
-
-    async function toggleAICoachPanel(show) { 
-        const panel = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
-        const toggleButton = document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId);
-        const panelContent = panel ? panel.querySelector('.ai-coach-panel-content') : null;
-
-        if (show) {
-            document.body.classList.add('ai-coach-active'); // Use a generic or namespaced class
-            if (toggleButton) {
-                const buttonLabel = toggleButton.querySelector('.p-button-label');
-                const buttonIcon = toggleButton.querySelector('.p-button-icon');
-                if (buttonLabel) buttonLabel.textContent = 'Hide My AI Coach';
-                if (buttonIcon) buttonIcon.textContent = '🙈';
-            }
-            logStudentCoach("Student AI Coach panel activated.");
-            await refreshAICoachData(); 
-        } else {
-            document.body.classList.remove('ai-coach-active');
-            if (toggleButton) {
-                const buttonLabel = toggleButton.querySelector('.p-button-label');
-                const buttonIcon = toggleButton.querySelector('.p-button-icon');
-                if (buttonLabel) buttonLabel.textContent = 'Activate My AI Coach';
-                if (buttonIcon) buttonIcon.textContent = '🚀';
-            }
-            if (panelContent) panelContent.innerHTML = '<p>Activate My AI Coach to get personalized insights!</p>';
-            logStudentCoach("Student AI Coach panel deactivated.");
-            stopLoadingMessageRotator();
-            lastFetchedStudentKnackId = null; 
-            observerLastProcessedStudentKnackId = null; 
-            currentlyFetchingStudentKnackId = null;
-            if (currentFetchAbortController) { 
-                currentFetchAbortController.abort();
-                currentFetchAbortController = null;
-            }
-        }
-    }
-
-    function setupEventListeners() {
-        logStudentCoach("StudentCoachLauncher: setupEventListeners START");
-        if (eventListenersAttached) {
-            logStudentCoach("Student Coach event listeners already attached. Skipping.");
-            return;
-        }
-        
-        document.body.addEventListener('click', function(event) {
-            if (!STUDENT_COACH_LAUNCHER_CONFIG) return; 
-
-            const toggleButtonId = STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId;
-            const panelId = STUDENT_COACH_LAUNCHER_CONFIG.aiCoachPanelId;
-            
-            // Check if the clicked element is the button or any of its children
-            const toggleButton = document.getElementById(toggleButtonId);
-            if (toggleButton && (event.target === toggleButton || toggleButton.contains(event.target))) {
-                event.preventDefault();
-                event.stopPropagation();
-                const isActive = document.body.classList.contains('ai-coach-active');
-                toggleAICoachPanel(!isActive);
-                logStudentCoach("Toggle button clicked - panel active: " + !isActive);
-            }
-            
-            const panel = document.getElementById(panelId);
-            if (panel && event.target && event.target.classList.contains('ai-coach-close-btn') && panel.contains(event.target)) {
-                toggleAICoachPanel(false);
-            }
-        }, true); // Use capture phase to ensure we get the event first
-        eventListenersAttached = true;
-        logStudentCoach("Student Coach event listeners set up.");
+    /* Don't hide main content on mobile */
+    body.ai-coach-active #content,
+    body.ai-coach-active #kn-scene_43 {
+        width: 100% !important;
+        margin-right: 0 !important;
     }
     
-    // --- CHAT INTERFACE (Adapted for Student) ---
-    function addChatInterface(panelContentElement, chatWithTitle) {
-        logStudentCoach("Adding student chat interface with title: " + chatWithTitle);
-        const oldChatContainer = document.getElementById('aiCoachChatContainer'); // Changed ID
-        if (oldChatContainer) oldChatContainer.remove();
-
-        const chatContainer = document.createElement('div');
-        chatContainer.id = 'aiCoachChatContainer'; // Changed ID, Matches CSS
-        chatContainer.className = 'ai-coach-section'; 
-        chatContainer.style.marginTop = '20px';
-        chatContainer.style.display = 'flex';
-        // Make chat container flexible to fill available space in the panel
-        chatContainer.style.flexDirection = 'column';
-        chatContainer.style.flexGrow = '1'; 
-        chatContainer.style.minHeight = '0'; // Important for flex children to not overflow
-
-
-        chatContainer.innerHTML = `
-            <h4>Chat with ${chatWithTitle}</h4>
-            <div id="aiCoachChatStats" style="font-size: 0.85em; color: #666; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <span id="aiCoachChatCount">Loading chat...</span>
-                <div style="display: flex; gap: 10px;">
-                    <span id="aiCoachLikedCount" style="color: #e74c3c; display: inline-flex; align-items:center;"> 
-                        <span class="like-icon">❤️</span> <span id="likedCountNumber">0</span> liked
-                    </span>
-                    <button id="aiCoachClearOldChatsBtn" class="p-button p-component p-button-sm p-button-text" style="display:none;">Clear Old Chats</button>
-                </div>
-            </div>
-            <div id="aiCoachChatDisplay" style="flex-grow:1; min-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom:10px; background:#fff;">
-                <p class="ai-chat-message ai-chat-message-bot" data-message-id="initial-bot-message"><em>${chatWithTitle}:</em> Hello! I'm here to help you explore your VESPA profile. What's on your mind?</p>
-            </div>
-            <div style="margin: 10px 0;">
-                 <button id="aiCoachProblemButton" class="p-button p-component" style="width:100%; font-size:0.9em;">🤔 What area to focus on?</button>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top:auto;"> 
-                <input type="text" id="aiCoachChatInput" placeholder="Ask me anything about VESPA..." style="flex-grow:1; padding:10px; border-radius:4px; border:1px solid #ccc;">
-                <button id="aiCoachChatSendButton" class="p-button p-component">Send</button>
-            </div>
-            <div id="aiCoachChatThinkingIndicator" class="thinking-pulse" style="display: none; text-align:center; margin-top:5px; color:#3498db;">${chatWithTitle} is thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>
-        `;
-        panelContentElement.appendChild(chatContainer);
-
-        const chatInput = document.getElementById('aiCoachChatInput'); // Changed ID
-        const chatSendButton = document.getElementById('aiCoachChatSendButton'); // Changed ID
-        const chatDisplay = document.getElementById('aiCoachChatDisplay'); // Changed ID
-        const thinkingIndicator = document.getElementById('aiCoachChatThinkingIndicator'); // Changed ID
-        const problemButton = document.getElementById('aiCoachProblemButton'); // Changed ID
-        const chatCountElement = document.getElementById('aiCoachChatCount'); // Changed ID
-        const likedCountNumberElement = document.getElementById('likedCountNumber'); // Changed ID 
-        // const clearOldChatsBtn = document.getElementById('aiCoachClearOldChatsBtn'); // Changed ID
-        
-        if (problemButton) {
-            problemButton.addEventListener('click', () => {
-                showProblemSelectorModal(studentCommonProblems, chatInput); // studentCommonProblems defined elsewhere
-            });
-        }
-        
-        // Function to create and add like button to a message element
-        function addLikeButtonToMessage(messageElement, messageId, isLikedInitially) {
-            if (!messageId || messageElement.querySelector('.ai-chat-like-btn')) return; // Don't add if no ID or button exists
-
-            const likeButton = document.createElement('button');
-            likeButton.className = 'ai-chat-like-btn';
-            likeButton.setAttribute('aria-label', isLikedInitially ? 'Unlike message' : 'Like message');
-            likeButton.innerHTML = `<span class="like-icon ${isLikedInitially ? 'liked' : 'unliked'}">❤️</span>`; // Heart emoji
-            
-            likeButton.addEventListener('click', () => handleLikeButtonClick(messageId, likeButton, messageElement));
-            messageElement.appendChild(likeButton);
-        }
-
-        // Add like button to the initial bot message (if it should be likeable)
-        const initialBotMsgElement = chatDisplay.querySelector('[data-message-id="initial-bot-message"]');
-        if (initialBotMsgElement) {
-            // For initial message, we don't have a Knack ID, so liking won't persist unless we create one for it.
-            // For now, let's assume initial messages are not likeable or handle differently.
-            // addLikeButtonToMessage(initialBotMsgElement, 'initial-bot-message', false);
-        }
-        
-        loadStudentChatHistory();
-
-        async function sendChatMessage() {
-            const messageText = chatInput.value.trim();
-            if (messageText === '' || !lastFetchedStudentKnackId) return; 
-
-            const userMessageElement = document.createElement('p');
-            userMessageElement.className = 'ai-chat-message ai-chat-message-user';
-            userMessageElement.textContent = `You: ${messageText}`;
-            chatDisplay.appendChild(userMessageElement);
-            const originalInput = chatInput.value;
-            chatInput.value = '';
-            chatDisplay.scrollTop = chatDisplay.scrollHeight;
-            
-            chatSendButton.disabled = true;
-            chatInput.disabled = true;
-            thinkingIndicator.style.display = 'block';
-
-            const chatHistory = Array.from(chatDisplay.querySelectorAll('.ai-chat-message'))
-                .filter(el => el !== userMessageElement && el.id !== 'aiCoachTempInlineThinkingMessage') // Exclude current input and any temporary thinking message
-                .map(el => ({
-                    role: el.classList.contains('ai-chat-message-bot') ? 'assistant' : 'user',
-                    content: el.textContent.replace(/^(My AI Coach:|You:|${chatWithTitle}:)\s*/, '') // Strip prefix for history
-                }));
-            
-            // Add inline thinking message (similar to tutor coach)
-            const inlineThinkingMessage = document.createElement('div');
-            inlineThinkingMessage.id = 'aiCoachTempInlineThinkingMessage'; // Changed ID
-            inlineThinkingMessage.className = 'ai-chat-message ai-chat-message-bot'; // Style like a bot message
-            inlineThinkingMessage.style.opacity = '0.7'; // Make it look less prominent
-            inlineThinkingMessage.innerHTML = `<em>${chatWithTitle}:</em> 🤔 Thinking...`;
-            chatDisplay.appendChild(inlineThinkingMessage);
-            chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to show it
-            
-            try {
-                // Ensure CHAT_TURN_ENDPOINT points to the student coach backend
-                const response = await fetch(CHAT_TURN_ENDPOINT, { // Uses STUDENT_COACH_API_BASE_URL implicitly
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        student_knack_id: lastFetchedStudentKnackId, // Send student's Object_3 ID (or other unique ID)
-                        chat_history: chatHistory,
-                        current_user_message: originalInput, 
-                        context_type: 'student', // Crucial for backend to use student-specific prompts
-                        initial_ai_context: fullStudentDataForChat // <<< CHANGED THIS LINE - Use the full data object
-                    }),
-                });
-
-                if (inlineThinkingMessage) inlineThinkingMessage.remove(); // Remove the temporary thinking message
-
-                if (!response.ok) throw new Error(`Chat API Error: ${response.statusText} (${response.status})`);
-                const data = await response.json();
-
-                const botMessageElement = document.createElement('p');
-                botMessageElement.className = 'ai-chat-message ai-chat-message-bot';
-                botMessageElement.setAttribute('data-message-id', data.ai_message_knack_id || `bot-${Date.now()}`); // Use Knack ID if available
-                
-                let processedResponse = data.ai_response;
-                const suggestedActivities = data.suggested_activities_in_chat || [];
-                
-                suggestedActivities.forEach(activity => {
-                    const activityPattern = new RegExp(activity.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); // Escape name for regex
-                    processedResponse = processedResponse.replace(activityPattern, 
-                        // Using student-coach-activity-link class for styling
-                        `<a href="#" class="student-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'>${activity.name}</a>`
-                    );
-                });
-                botMessageElement.innerHTML = `<em>${chatWithTitle}:</em> ${processedResponse}`;
-                chatDisplay.appendChild(botMessageElement);
-
-                if (data.ai_message_knack_id) {
-                    addLikeButtonToMessage(botMessageElement, data.ai_message_knack_id, false); // Add like button, initially unliked
-                }
-                
-                const activityLinks = botMessageElement.querySelectorAll('.student-coach-activity-link');
-                activityLinks.forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        try {
-                            const activityData = JSON.parse(link.getAttribute('data-activity'));
-                            showActivityModal(activityData); // Uses the newly added function
-                        } catch (error) { logStudentCoach("Error parsing activity data for modal:", error); }
-                    });
-                });
-                 // If there are suggested activities, also add a quick links section (like tutor coach)
-                 if (suggestedActivities.length > 0) {
-                    const quickLinksElement = document.createElement('div');
-                    quickLinksElement.style.cssText = `margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 5px; border-left: 3px solid #3498db;`;
-                    quickLinksElement.innerHTML = '<strong style="color: #2c3e50; font-size: 0.9em;">Explore these activities:</strong>';
-                    const linksList = document.createElement('ul');
-                    linksList.style.cssText = 'margin: 5px 0 0 0; padding-left: 20px;';
-                    suggestedActivities.forEach(activity => {
-                        const listItem = document.createElement('li');
-                        // Style link like other activity links
-                        listItem.innerHTML = `<a href="#" class="student-coach-activity-link" data-activity='${JSON.stringify(activity).replace(/'/g, '&apos;')}'>${activity.name} <span style="color:#666;">(${activity.vespa_element})</span></a>`;
-                        linksList.appendChild(listItem);
-                    });
-                    quickLinksElement.appendChild(linksList);
-                    chatDisplay.appendChild(quickLinksElement);
-                    // Re-attach listeners for these new links as they are added after initial scan
-                    quickLinksElement.querySelectorAll('.student-coach-activity-link').forEach(link => {
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            try {
-                                const activityData = JSON.parse(link.getAttribute('data-activity'));
-                                showActivityModal(activityData);
-                            } catch (err) { logStudentCoach("Error parsing activity from quicklink", err); }
-                        });
-                    });
-                }
-
-
-            } catch (error) {
-                logStudentCoach("Error sending student chat message:", error);
-                const errorMsgEl = document.createElement('p');
-                errorMsgEl.className = 'ai-chat-message ai-chat-message-bot';
-                errorMsgEl.innerHTML = `<em>${chatWithTitle}:</em> Sorry, I had trouble responding. ${error.message}`;
-                chatDisplay.appendChild(errorMsgEl);
-            } finally {
-                thinkingIndicator.style.display = 'none';
-                chatSendButton.disabled = false;
-                chatInput.disabled = false;
-                chatInput.focus();
-                chatDisplay.scrollTop = chatDisplay.scrollHeight;
-            }
-        }
-
-        if (chatSendButton) chatSendButton.addEventListener('click', sendChatMessage);
-        if (chatInput) chatInput.addEventListener('keypress', e => e.key === 'Enter' && sendChatMessage());
-        logStudentCoach("Student chat interface added.");
-    }
-
-    // --- NEW: Function to handle like button clicks ---
-    async function handleLikeButtonClick(messageKnackId, likeButtonElement, messageElement) {
-        if (!messageKnackId || messageKnackId.startsWith('initial-') || messageKnackId.startsWith('bot-')) {
-            logStudentCoach("Like button clicked for a message without a persistent Knack ID. Cannot save like.");
-            // Optionally, provide some visual feedback even if it can't be saved
-            const icon = likeButtonElement.querySelector('.like-icon');
-            if (icon) {
-                icon.classList.toggle('liked');
-                icon.classList.toggle('unliked');
-                likeButtonElement.setAttribute('aria-label', icon.classList.contains('liked') ? 'Unlike message' : 'Like message');
-            }
-            return;
-        }
-
-        const icon = likeButtonElement.querySelector('.like-icon');
-        const currentlyLiked = icon.classList.contains('liked');
-        const newLikeStatus = !currentlyLiked;
-
-        // Optimistically update UI
-        icon.classList.toggle('liked', newLikeStatus);
-        icon.classList.toggle('unliked', !newLikeStatus);
-        likeButtonElement.setAttribute('aria-label', newLikeStatus ? 'Unlike message' : 'Like message');
-        if (newLikeStatus) {
-            icon.style.transform = 'scale(1.2) rotate(5deg)'; setTimeout(() => icon.style.transform = 'scale(1.1)', 150);
-        } else {
-            icon.style.transform = 'scale(1)';
-        }
-        updateOverallLikedCount(newLikeStatus ? 1 : -1); // Adjust overall count
-
-        try {
-            logStudentCoach(`Toggling like for message ${messageKnackId} to ${newLikeStatus}`);
-            const response = await fetch(`${STUDENT_COACH_API_BASE_URL}/chat_message_like_toggle`, { // New endpoint
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message_knack_id: messageKnackId, 
-                    like_status: newLikeStatus
-                }),
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(`API Error (${response.status}): ${errorData.error || 'Failed to toggle like'}`);
-            }
-            const result = await response.json();
-            logStudentCoach("Like status updated successfully in backend:", result);
-            // Update data attribute on message element for persistence if needed for other logic
-            messageElement.setAttribute('data-is-liked', newLikeStatus.toString());
-
-        } catch (error) {
-            logStudentCoach("Error toggling like status:", error);
-            // Revert optimistic UI update on error
-            icon.classList.toggle('liked', !newLikeStatus); // Revert to original state
-            icon.classList.toggle('unliked', newLikeStatus);
-            likeButtonElement.setAttribute('aria-label', !newLikeStatus ? 'Unlike message' : 'Like message');
-            icon.style.transform = 'scale(1)';
-            updateOverallLikedCount(newLikeStatus ? -1 : 1); // Revert count adjustment
-            // Optionally, inform the user
-            // alert("Sorry, couldn't save your preference for this message.");
-        }
-    }
-
-    // --- NEW: Function to update the overall liked count in the UI ---
-    function updateOverallLikedCount(change) { // change is +1 or -1
-        const likedCountNumberElement = document.getElementById('likedCountNumber');
-        if (likedCountNumberElement) {
-            let currentCount = parseInt(likedCountNumberElement.textContent, 10) || 0;
-            currentCount += change;
-            if (currentCount < 0) currentCount = 0; // Ensure count doesn't go below zero
-            likedCountNumberElement.textContent = currentCount;
-            // Show/hide the liked count span if needed (e.g., hide if 0)
-            const likedCountSpan = document.getElementById('aiCoachLikedCount');
-            if(likedCountSpan) likedCountSpan.style.display = currentCount > 0 ? 'inline-flex' : 'inline-flex'; // Always show for now
-        }
-    }
-
-    // --- NEW: Function to load and display student chat history ---
-    async function loadStudentChatHistory() {
-        const chatDisplay = document.getElementById('aiCoachChatDisplay'); // Changed ID
-        const chatCountElement = document.getElementById('aiCoachChatCount'); // Changed ID
-        const likedCountNumberElement = document.getElementById('likedCountNumber'); // Changed ID
-        const likedCountSpan = document.getElementById('aiCoachLikedCount'); // Changed ID
-
-        // Derive chatWithTitle from available data, defaulting if necessary
-        const studentNameForTitle = (currentLLMInsightsForChat && currentLLMInsightsForChat.student_name && currentLLMInsightsForChat.student_name !== "N/A") 
-            ? currentLLMInsightsForChat.student_name 
-            : (STUDENT_COACH_LAUNCHER_CONFIG && STUDENT_COACH_LAUNCHER_CONFIG.studentNameForChat) 
-                ? STUDENT_COACH_LAUNCHER_CONFIG.studentNameForChat
-                : "My AI Coach";
-        const chatWithTitle = studentNameForTitle.split(' ')[0] || "My AI Coach";
-
-        logStudentCoach("loadStudentChatHistory: Called", { 
-            hasChatDisplay: !!chatDisplay, 
-            hasStudentId: !!lastFetchedStudentKnackId, 
-            chatWithTitle: chatWithTitle 
-        });
-
-        if (!chatDisplay || !lastFetchedStudentKnackId) {
-            logStudentCoach("loadStudentChatHistory: Aborting - chatDisplay or lastFetchedStudentKnackId missing.");
-            if (chatCountElement) chatCountElement.textContent = 'Chat context unavailable.';
-            if (likedCountNumberElement) likedCountNumberElement.textContent = '0';
-            if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Keep it visible but with 0
-            return;
-        }
-
-        chatDisplay.innerHTML = '<div class="loader"></div><p style="text-align:center;">Loading your chat history...</p>';
-        if (chatCountElement) chatCountElement.textContent = 'Loading history...';
-        if (likedCountNumberElement) likedCountNumberElement.textContent = '-';
-        if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Show loading state
-
-        try {
-            logStudentCoach(`loadStudentChatHistory: Fetching for student ID: ${lastFetchedStudentKnackId}`);
-            const response = await fetch(CHAT_HISTORY_ENDPOINT, { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    student_knack_id: lastFetchedStudentKnackId,
-                    max_messages: 50, 
-                    initial_ai_context: currentLLMInsightsForChat 
-                })
-            });
-
-            chatDisplay.innerHTML = ''; // Clear loader/previous messages
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                logStudentCoach("loadStudentChatHistory: API Error", { status: response.status, text: errorText });
-                throw new Error(`Chat History API Error (${response.status}): ${errorText || response.statusText}`);
-            }
-            const data = await response.json();
-            logStudentCoach("loadStudentChatHistory: Successfully loaded history", data);
-
-            let totalLikesInHistory = 0;
-
-            if (data.chat_history && data.chat_history.length > 0) {
-                data.chat_history.forEach(msg => {
-                    const messageElement = document.createElement('p');
-                    messageElement.className = `ai-chat-message ai-chat-message-${msg.role === 'assistant' ? 'bot' : 'user'}`;
-                    messageElement.setAttribute('data-message-id', msg.id || `${msg.role}-${Date.now()}-${Math.random()}`);
-                    messageElement.setAttribute('data-is-liked', msg.is_liked ? msg.is_liked.toString() : 'false');
-                    
-                    const authorPrefix = msg.role === 'assistant' ? (chatWithTitle) : "You";
-                    messageElement.innerHTML = `<em>${authorPrefix}:</em> ${msg.content}`;
-                    chatDisplay.appendChild(messageElement);
-
-                    if (msg.role === 'assistant' && msg.id) { 
-                        addLikeButtonToMessage(messageElement, msg.id, msg.is_liked || false);
-                        if (msg.is_liked) totalLikesInHistory++;
-                    }
-                });
-            } else {
-                logStudentCoach("loadStudentChatHistory: No chat history messages found in response data.");
-                const initialBotMsgElement = document.createElement('p');
-                initialBotMsgElement.className = 'ai-chat-message ai-chat-message-bot';
-                initialBotMsgElement.setAttribute('data-message-id', 'initial-bot-message');
-                initialBotMsgElement.innerHTML = `<em>${chatWithTitle}:</em> Hello! I'm here to help you explore your VESPA profile. What's on your mind?`;
-                chatDisplay.appendChild(initialBotMsgElement);
-            }
-            
-            if (chatCountElement) chatCountElement.textContent = `${data.total_count || 0} messages`;
-            const finalLikedCount = data.liked_count !== undefined ? data.liked_count : totalLikesInHistory;
-            if (likedCountNumberElement) likedCountNumberElement.textContent = finalLikedCount;
-            if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Always show after loading
-
-            chatDisplay.scrollTop = chatDisplay.scrollHeight;
-            logStudentCoach("loadStudentChatHistory: UI updated with history.");
-
-        } catch (error) {
-            logStudentCoach("loadStudentChatHistory: Error during fetch or processing", error);
-            chatDisplay.innerHTML = '<p style="color:red; text-align:center;">Could not load your chat history. Please try again later.</p>';
-            if (chatCountElement) chatCountElement.textContent = 'History unavailable';
-            if (likedCountNumberElement) likedCountNumberElement.textContent = '0';
-            if (likedCountSpan) likedCountSpan.style.display = 'inline-flex'; // Keep visible with 0
-        }
-    }
-
-    // Placeholder for student-specific loading messages if different from tutor's
-    function startLoadingMessageRotator(panelContentElement, context = "tutor") {
-        if (loadingMessageIntervalId) clearInterval(loadingMessageIntervalId);
-        if (!panelContentElement) return;
-
-        let messages;
-        if (context === "student") {
-            messages = [
-                "Getting your AI Coach ready...",
-                "Analyzing your VESPA profile for insights...",
-                "Just a moment, preparing your personalized coaching experience!"
-            ];
-        } else {
-            messages = [ // Tutor messages
-                "Please wait while I analyse the student data...",
-                "While I complete this please read through the report on the left.....",
-                "Once my chat field has opened please ask me any questions about the student or report...",
-                "Or add a 'specific Problem' and I can help you find a solution." // Changed to single quotes
-            ];
-        }
-        let messageIndex = 0;
-
-        const updateMessage = () => {
-            if (panelContentElement && panelContentElement.querySelector('.loader')) { // Only update if loader is still there
-                const pTag = panelContentElement.querySelector('p');
-                if (pTag) pTag.textContent = messages[messageIndex];
-                else panelContentElement.innerHTML = `<div class="loader"></div><p style="text-align:center; min-height: 40px;">${messages[messageIndex]}</p>`;
-                messageIndex = (messageIndex + 1) % messages.length;
-            } else {
-                stopLoadingMessageRotator(); // Stop if loader is gone (data rendered or error)
-            }
-        };
-        updateMessage(); // Initial message
-        loadingMessageIntervalId = setInterval(updateMessage, 3500);
-        logStudentCoach(`Started loading message rotator for ${context}.`);
-    }
-
-    function stopLoadingMessageRotator() {
-        if (loadingMessageIntervalId) {
-            clearInterval(loadingMessageIntervalId);
-            loadingMessageIntervalId = null;
-            logStudentCoach("Stopped loading message rotator.");
-        }
-    }
-
-    // Expose the initializer function to be called by the Knack Bridge
-    window.initializeStudentCoachLauncher = initializeStudentCoachLauncher;
-
-    // --- NEW: renderVespaComparisonChart (adapted from tutor) ---
-    function renderVespaComparisonChart(studentVespaProfile, schoolVespaAverages) {
-        const chartContainerId = 'vespaComparisonChartContainer'; // Changed ID
-        const chartCanvasId = 'vespaStudentVsSchoolChart'; // Changed ID
-        const chartContainer = document.getElementById(chartContainerId);
-
-        if (!chartContainer) {
-            logStudentCoach(`VESPA comparison chart container #${chartContainerId} not found.`);
-            return;
-        }
-        // Ensure Chart.js is loaded (can be called here or earlier via ensureChartJsLoaded)
-        if (typeof Chart === 'undefined') {
-            logStudentCoach("Chart.js is not loaded. Cannot render VESPA comparison chart.");
-            chartContainer.innerHTML = '<p style="color:red; text-align:center;">Chart library not loaded.</p>';
-            return;
-        }
-        // Destroy previous chart instance if it exists
-        if (vespaChartInstance) {
-            vespaChartInstance.destroy();
-            vespaChartInstance = null;
-        }
-        
-        // Ensure chartContainer is empty before creating a new canvas
-        chartContainer.innerHTML = `<canvas id="${chartCanvasId}"></canvas>`;
-        const ctx = document.getElementById(chartCanvasId).getContext('2d');
-
-        if (!studentVespaProfile) {
-            logStudentCoach("Student VESPA profile data is missing. Cannot render chart.");
-            chartContainer.innerHTML = '<p style="text-align:center;">Your VESPA data not available for chart.</p>';
-            return;
-        }
-
-        const labels = ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'];
-        const studentScores = labels.map(label => {
-            // Assuming studentVespaProfile structure matches tutor's data.llm_generated_insights.vespa_profile or data.vespa_profile
-            // For student, it might be data.vespa_profile directly from their own record.
-            const elementData = studentVespaProfile[label]; 
-            return elementData && elementData.score_1_to_10 !== undefined && elementData.score_1_to_10 !== "N/A" ? parseFloat(elementData.score_1_to_10) : 0;
-        });
-
-        const datasets = [
-            {
-                label: 'My Scores', // Student-facing label
-                data: studentScores,
-                backgroundColor: 'rgba(54, 162, 235, 0.6)', // Blue
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }
-        ];
-        let chartTitle = 'My VESPA Scores';
-
-        if (schoolVespaAverages) { // Students might also see school averages for context
-            const schoolScores = labels.map(label => {
-                return schoolVespaAverages[label] !== undefined && schoolVespaAverages[label] !== "N/A" ? parseFloat(schoolVespaAverages[label]) : 0;
-            });
-            datasets.push({
-                label: 'School Average',
-                data: schoolScores,
-                backgroundColor: 'rgba(255, 159, 64, 0.6)', // Orange
-                borderColor: 'rgba(255, 159, 64, 1)',
-                borderWidth: 1
-            });
-            chartTitle = 'My VESPA Scores vs. School Average';
-        }
-
-        try {
-            vespaChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: chartTitle,
-                            font: { size: 16, weight: 'bold' },
-                            padding: { top: 10, bottom: 20 }
-                        },
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 10,
-                            title: {
-                                display: true,
-                                text: 'Score (1-10)'
-                            }
-                        }
-                    }
-                }
-            });
-            logStudentCoach("Student VESPA comparison chart rendered successfully.");
-        } catch (error) {
-            console.error("[StudentCoachLauncher] Error rendering Chart.js chart:", error);
-            chartContainer.innerHTML = '<p style="color:red; text-align:center;">Error rendering chart.</p>';
-        }
-    }
-
-    // --- NEW: getMaxPointsForScale (from tutor) ---
-    // This function determines the maximum value for the y-axis of a benchmark scale.
-    // It needs to be adapted if student qualification types or point systems differ.
-    function getMaxPointsForScale(subject) {
-        // This function is mostly generic, but might need student-specific qualification types if they differ
-        const normalizedType = subject.normalized_qualification_type; // Assumes backend provides this
-        let maxPoints = 140; // Default for A-Level like scales
-
-        const allPoints = [
-            typeof subject.currentGradePoints === 'number' ? subject.currentGradePoints : 0,
-            typeof subject.standardMegPoints === 'number' ? subject.standardMegPoints : 0 // Assuming student data might have a standard MEG
-        ];
-
-        // Add points from different MEG percentiles if they exist (mainly for A-Level type benchmarks)
-        if (normalizedType === "A Level") { // Or whatever equivalent for students
-            if (typeof subject.megPoints60 === 'number') allPoints.push(subject.megPoints60);
-            if (typeof subject.megPoints90 === 'number') allPoints.push(subject.megPoints90);
-            if (typeof subject.megPoints100 === 'number') allPoints.push(subject.megPoints100);
-        }
-        // Example for other qualification types seen in tutor version
-        if (normalizedType === "AS Level") maxPoints = 70;
-        else if (normalizedType === "IB HL") maxPoints = 140; // Max points for IB HL is usually 7 per subject * 20 for UCAS tariff = 140 (example)
-        // ... other qualification types if applicable to students
-        
-        const highestSubjectPoint = Math.max(0, ...allPoints.filter(p => typeof p === 'number'));
-        if (highestSubjectPoint > maxPoints) {
-            // Adjust maxPoints dynamically if a subject score exceeds the default max for that type
-            return highestSubjectPoint + Math.max(20, Math.floor(highestSubjectPoint * 0.1)); 
-        }
-        return maxPoints;
-    }
-
-    // --- NEW: createSubjectBenchmarkScale (adapted from tutor) ---
-    // This function creates HTML for a subject's benchmark scale.
-    // The studentFirstName parameter is used for labeling the student's current grade.
-    function createSubjectBenchmarkScale(subject, subjectIndex, studentFirstName) {
-        if (!subject || typeof subject.currentGradePoints !== 'number' || typeof subject.standardMegPoints !== 'number') {
-            return '<p style="font-size:0.8em; color: #777;">My benchmark scale cannot be displayed due to missing point data.</p>';
-        }
-
-        const maxScalePoints = getMaxPointsForScale(subject);
-        if (maxScalePoints === 0) return '<p style="font-size:0.8em; color: #777;">Max scale points is zero, cannot render scale.</p>';
-
-        let scaleHtml = `<div class="subject-benchmark-scale-container" id="student-scale-container-${subjectIndex}">
-            <div class="scale-labels"><span>0 pts</span><span>${maxScalePoints} pts</span></div>
-            <div class="scale-bar-wrapper"><div class="scale-bar">`;
-
-        // Inner helper to create markers on the scale
-        const createMarker = (points, grade, type, label, percentile = null, specificClass = '') => {
-            if (typeof points !== 'number') return '';
-            const percentage = (points / maxScalePoints) * 100;
-            let titleText = `${type}: ${grade || 'N/A'} (${points} pts)`;
-            if (percentile) titleText += ` - ${percentile}`;
-            const leftPosition = Math.max(0, Math.min(percentage, 100));
-            const markerClass = type.toLowerCase().replace(/ /g, '-') + '-marker' + (specificClass ? ' ' + specificClass : '');
-            let displayLabel = label;
-            // Logic for A-Level percentile labels (Top40%, Top25%, etc.) copied from tutor
-            // This might need simplification or adjustment based on what benchmarks students see.
-            if (specificClass === 'p60') { displayLabel = 'Top40%';} // Example
-            else if (label === 'MEG' && subject.normalized_qualification_type === 'A Level') { displayLabel = 'Top25%';} // Example
-            else if (specificClass === 'p90') { displayLabel = 'Top10%';} // Example
-            else if (specificClass === 'p100') { displayLabel = 'Top1%';} // Example
-            else if (label === 'CG') { displayLabel = studentFirstName || "My Grade"; }
-
-            const isPercentileMarker = ['p60', 'p90', 'p100'].includes(specificClass) || (label === 'MEG' && subject.normalized_qualification_type === 'A Level');
-            const finalMarkerClass = `${markerClass} ${isPercentileMarker ? 'percentile-line-marker' : 'current-grade-dot-marker'}`;
-            
-            return `<div class="scale-marker ${finalMarkerClass}" style="left: ${leftPosition}%;\" title="${titleText}">
-                        <span class="marker-label">${displayLabel}</span>
-                    </div>`;
-        };
-        
-        // Add marker for student's current grade
-        scaleHtml += createMarker(subject.currentGradePoints, subject.currentGrade, "My Current Grade", "CG", null, 'cg-student'); 
-        // Add marker for standard MEG (if applicable to students)
-        scaleHtml += createMarker(subject.standardMegPoints, subject.standard_meg, "Standard Expected Grade", "MEG");
-
-        // Add other percentile markers if students see these (e.g., for A-Levels)
-        if (subject.normalized_qualification_type === "A Level") { // Assuming students might see A-Level benchmarks too
-            if (typeof subject.megPoints60 === 'number') scaleHtml += createMarker(subject.megPoints60, null, "A-Level MEG", "P60", "60th Percentile", "p60");
-            // Standard MEG (75th) for A-Level is already covered by the "MEG" marker above with displayLabel logic
-            if (typeof subject.megPoints90 === 'number') scaleHtml += createMarker(subject.megPoints90, null, "A-Level MEG", "P90", "90th Percentile", "p90");
-            if (typeof subject.megPoints100 === 'number') scaleHtml += createMarker(subject.megPoints100, null, "A-Level MEG", "P100", "100th Percentile", "p100");
-        }
-        scaleHtml += `</div></div></div>`;
-        return scaleHtml;
+    /* Convert panel to modal on mobile */
+    #aiCoachPanel,
+    [id*="CoachPanel"],
+    .ai-coach-panel {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translate(-50%, -50%) !important;
+        width: 90% !important;
+        max-width: 400px !important;
+        height: 85vh !important;
+        max-height: 600px !important;
+        border-radius: 16px !important;
+        border: 2px solid #d6dee5 !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+        font-size: 14px;
+        z-index: 2100 !important;
+        overflow: hidden !important; /* Prevent overflow on panel itself */
+        display: flex !important;
+        flex-direction: column !important;
     }
     
-    // --- NEW: renderQuestionnaireDistributionChart (adapted from tutor) ---
-    // This function renders a pie chart for questionnaire response distribution.
-    function renderQuestionnaireDistributionChart(allStatements) {
-        // Student-specific IDs for chart container and canvas
-        const chartContainerId = 'questionnaireResponseDistributionChartContainer'; // Changed ID
-        const chartCanvasId = 'questionnaireDistributionPieChartCanvas'; // Changed ID
-        const chartContainer = document.getElementById(chartContainerId);
-
-        if (!chartContainer) {
-            logStudentCoach(`Questionnaire chart container #${chartContainerId} not found.`);
-            return;
-        }
-        if (typeof Chart === 'undefined') { // Check if Chart.js is loaded
-            logStudentCoach("Chart.js is not loaded. Cannot render questionnaire chart.");
-            chartContainer.innerHTML = '<p style="color:red; text-align:center;">Chart library not loaded.</p>';
-            return;
-        }
-        if (questionnairePieChartInstance) { // Use the student-specific chart instance
-            questionnairePieChartInstance.destroy();
-            questionnairePieChartInstance = null;
-        }
-
-        chartContainer.innerHTML = `<canvas id="${chartCanvasId}"></canvas>`;
-        const ctx = document.getElementById(chartCanvasId).getContext('2d');
-
-        if (!allStatements || allStatements.length === 0) {
-            logStudentCoach("No statements data for questionnaire pie chart.");
-            chartContainer.innerHTML = '<p style="text-align:center;">Your questionnaire data not available for chart.</p>';
-            return;
-        }
-
-        // Process statements to count responses (1-5)
-        const responseCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        allStatements.forEach(stmt => { // Assuming 'stmt.score' is available from backend for student
-            const score = stmt.score;
-            if (score >= 1 && score <= 5) responseCounts[score]++;
-        });
-
-        const chartData = {
-            labels: ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'], // Standard labels
-            datasets: [{
-                label: 'My Questionnaire Responses', // Student-facing label
-                data: Object.values(responseCounts),
-                backgroundColor: [ // Standard colors, can be themed
-                    'rgba(255, 99, 132, 0.7)', 'rgba(255, 159, 64, 0.7)', 
-                    'rgba(255, 205, 86, 0.7)', 'rgba(75, 192, 192, 0.7)', 
-                    'rgba(54, 162, 235, 0.7)'
-                ],
-                borderColor: ['rgba(255, 99, 132, 1)', 'rgba(255, 159, 64, 1)', 'rgba(255, 205, 86, 1)', 'rgba(75, 192, 192, 1)', 'rgba(54, 162, 235, 1)'],
-                borderWidth: 1
-            }]
-        };
-        try {
-            questionnairePieChartInstance = new Chart(ctx, { // Use student-specific instance
-                type: 'pie', 
-                data: chartData,
-                options: { // Options can be adapted from tutor's or simplified
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Distribution of My Questionnaire Responses', font: { size: 14, weight: 'bold' }, padding: { top: 10, bottom: 15 } },
-                        legend: { position: 'bottom' },
-                        tooltip: { callbacks: { label: function(context) { return `${context.label}: ${context.parsed} statement(s)`; } } }
-                    }
-                }
-            });
-            logStudentCoach("Student questionnaire distribution chart rendered.");
-        } catch (error) {
-             console.error("[StudentCoachLauncher] Error rendering questionnaire chart:", error);
-            chartContainer.innerHTML = '<p style="color:red; text-align:center;">Error rendering chart.</p>';
-        }
+    /* Ensure panel header stays fixed at top on mobile */
+    #aiCoachPanel .ai-coach-panel-header,
+    [id*="CoachPanel"] .ai-coach-panel-header,
+    .ai-coach-panel .ai-coach-panel-header {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10 !important;
+        background: inherit !important;
+        flex-shrink: 0 !important;
     }
-
-    // --- NEW: showProblemSelectorModal (adapted from tutor) ---
-    // For students, the common problems and the modal's appearance might be different.
-    // Using a simplified version of tutor's problems for now.
-    const studentCommonProblems = {
-        "Vision": [
-          { id: "svision_1", text: "I'm unsure about my future goals" },
-          { id: "svision_2", text: "I'm not feeling motivated for my studies" },
-          { id: "svision_3", text: "I can't see how school connects to my future" },
-          { id: "svision_4", text: "I don't really know what success looks like for me" },
-          { id: "svision_5", text: "I haven't thought about what I want to achieve this year" },
-          { id: "svision_6", text: "I find it hard to picture myself doing well" },
-          { id: "svision_7", text: "I rarely think about where I'm heading or why I'm here" }
-        ],
-        "Effort": [
-          { id: "seffort_1", text: "I struggle to complete my homework on time" },
-          { id: "seffort_2", text: "I find it hard to keep trying when things get difficult" },
-          { id: "seffort_3", text: "I often give up if I don't get things right straight away" },
-          { id: "seffort_4", text: "I do the bare minimum just to get by" },
-          { id: "seffort_5", text: "I get distracted really easily when I try to study" },
-          { id: "seffort_6", text: "I avoid topics or tasks that feel too hard" },
-          { id: "seffort_7", text: "I put things off until I'm under pressure" }
-        ],
-        "Systems": [
-          { id: "ssystems_1", text: "I'm not very organized with my notes and deadlines" },
-          { id: "ssystems_2", text: "I don't have a good revision plan" },
-          { id: "ssystems_3", text: "I keep forgetting what homework I have" },
-          { id: "ssystems_4", text: "I leave everything to the last minute" },
-          { id: "ssystems_5", text: "I don't use a planner or calendar to track my work" },
-          { id: "ssystems_6", text: "My notes are all over the place and hard to follow" },
-          { id: "ssystems_7", text: "I struggle to prioritise what to do first" }
-        ],
-        "Practice": [
-          { id: "spractice_1", text: "I don't review my work regularly" },
-          { id: "spractice_2", text: "I tend to cram before tests" },
-          { id: "spractice_3", text: "I avoid practising topics I find hard" },
-          { id: "spractice_4", text: "I'm not sure how to revise effectively" },
-          { id: "spractice_5", text: "I don't practise exam-style questions enough" },
-          { id: "spractice_6", text: "I don't really learn from the mistakes I make" },
-          { id: "spractice_7", text: "I rarely check my understanding before moving on" }
-        ],
-        "Attitude": [
-          { id: "sattitude_1", text: "I worry I'm not smart enough" },
-          { id: "sattitude_2", text: "I get easily discouraged by setbacks" },
-          { id: "sattitude_3", text: "I often compare myself to others and feel behind" },
-          { id: "sattitude_4", text: "I don't believe my effort really makes a difference" },
-          { id: "sattitude_5", text: "I feel overwhelmed when I don't get something straight away" },
-          { id: "sattitude_6", text: "I tell myself I'm just not good at certain subjects" },
-          { id: "sattitude_7", text: "I find it hard to stay positive about school" }
-        ]
-      };
-      
-
-    function showProblemSelectorModal(commonProblems, chatInput) {
-        const modalId = 'aiCoachProblemModal'; // Changed ID
-        const existingModal = document.getElementById(modalId);
-        if (existingModal) existingModal.remove();
-        
-        const modal = document.createElement('div');
-        modal.id = modalId;
-        modal.className = 'ai-coach-modal-overlay'; // Changed Class
-        
-        const modalContent = document.createElement('div');
-        modalContent.className = 'ai-coach-modal-content'; // Changed Class
-        
-        const savedZoom = localStorage.getItem('studentCoachTextZoom'); // Use student-specific zoom key
-        if (savedZoom) modalContent.style.fontSize = `${parseInt(savedZoom, 10) * 14 / 100}px`;
-        
-        // Modal Header - simplified for student
-        modalContent.innerHTML = `
-            <div class="ai-coach-problem-modal-header"> <!-- Using generic class from tutor CSS, can be student-specific -->
-                <h3>What's on your mind?</h3>
-                <p>Select a challenge you're facing, or type your own question in the chat.</p>
-                <button class="ai-coach-modal-close">&times;</button>
-            </div>
-            <div class="ai-coach-problem-modal-body"></div> <!-- Generic class from tutor CSS -->
-        `;
-        const modalBody = modalContent.querySelector('.ai-coach-problem-modal-body');
-
-        // Populate with problems
-        Object.entries(commonProblems).forEach(([vespaElement, problems]) => {
-            const categoryDiv = document.createElement('div');
-            // Class for styling based on VESPA element (e.g., .vespa-vision)
-            categoryDiv.className = `ai-coach-problem-category vespa-${vespaElement.toLowerCase()}`;
-            categoryDiv.innerHTML = `<h4>${vespaElement}</h4>`; // Title for the category
-            problems.forEach(problem => {
-                const problemItem = document.createElement('div');
-                problemItem.className = 'ai-coach-problem-item'; // For styling individual problems
-                problemItem.textContent = problem.text;
-                problemItem.addEventListener('click', () => {
-                    if (chatInput) { // Ensure chatInput element exists
-                        chatInput.value = `I'd like to discuss: ${problem.text}`; // Pre-fill chat
-                        chatInput.focus();
-                    }
-                    closeModal(); // Close modal after selection
-                });
-                categoryDiv.appendChild(problemItem);
-            });
-            modalBody.appendChild(categoryDiv);
-        });
-        
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-        // Animation triggers (can be reused from tutor if CSS animations are similar)
-        setTimeout(() => { modal.style.opacity = '1'; modalContent.style.transform = 'scale(1)'; }, 10);
-
-        // Close handlers (can be reused)
-        const closeModal = () => {
-            modal.style.opacity = '0'; modalContent.style.transform = 'scale(0.9)';
-            setTimeout(() => modal.remove(), 300);
-            document.removeEventListener('keydown', escHandler); // Clean up listener
-        };
-        modalContent.querySelector('.ai-coach-modal-close').addEventListener('click', closeModal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-        const escHandler = (e) => { if (e.key === 'Escape') closeModal(); };
-        document.addEventListener('keydown', escHandler);
+    
+    body.ai-coach-active #aiCoachPanel,
+    body.ai-coach-active [id*="CoachPanel"],
+    body.ai-coach-active .ai-coach-panel {
+        transform: translate(-50%, -50%) scale(1) !important;
+        opacity: 1;
     }
+    
+    /* Add overlay background on mobile */
+    body.ai-coach-active::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 2050;
+        pointer-events: auto; /* Ensure overlay captures events */
+    }
+    
+    /* Prevent body scroll when modal is active on mobile */
+    body.ai-coach-active {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    /* Adjust panel content for mobile */
+    #aiCoachPanel .ai-coach-panel-content,
+    [id*="CoachPanel"] .ai-coach-panel-content,
+    .ai-coach-panel .ai-coach-panel-content {
+        max-height: calc(100% - 80px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 15px !important;
+    }
+    
+    /* Adjust chat container for mobile */
+    #aiCoachChatContainer {
+        max-height: calc(100vh - 350px);
+        margin-top: 15px;
+    }
+    
+    #aiCoachChatDisplay {
+        max-height: 250px !important;
+        min-height: 150px !important;
+    }
+    
+    /* Adjust header for mobile */
+    .ai-coach-panel-header {
+        padding: 15px !important;
+        margin: -15px -15px 15px -15px !important;
+    }
+    
+    .ai-coach-panel-header h3 {
+        font-size: 1.3em !important;
+    }
+    
+    /* Make buttons more touch-friendly */
+    .ai-coach-section-toggles {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+        padding: 10px !important;
+    }
+    
+    .ai-coach-section-toggles .p-button {
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+    }
+    
+    /* Adjust launcher button position for mobile */
+    #aiCoachLauncherButtonContainer,
+    #studentCoachLauncherButtonContainer {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    #aiCoachLauncherButtonContainer button#activateAICoachBtn,
+    #studentCoachLauncherButtonContainer button#activateAICoachBtn,
+    #aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
+    #studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"] {
+        padding: 10px 20px !important;
+        font-size: 0.9em !important;
+    }
+    
+    /* Modal content adjustments */
+    .ai-coach-modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    /* Hide resize handle on mobile */
+    .ai-coach-resize-handle {
+        display: none !important;
+    }
+    
+    /* Text controls mobile adjustment */
+    .ai-coach-text-controls {
+        flex-direction: row !important;
+        gap: 5px !important;
+    }
+    
+    .ai-coach-text-control-btn {
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+    }
+}
 
-    // --- NEW: showActivityModal (adapted from tutor) ---
-    // This function displays a modal for a VESPA activity, potentially with a PDF.
-    function showActivityModal(activity) { // Activity object is expected from backend
-        const modalId = 'aiCoachActivityModal'; // Changed ID
-        const existingModal = document.getElementById(modalId);
-        if (existingModal) existingModal.remove();
+/* Utility class for when panel is being resized */
+body.ai-coach-resizing {
+    user-select: none !important;
+    cursor: ew-resize !important;
+}
 
-        const modal = document.createElement('div');
-        modal.id = modalId;
-        modal.className = 'ai-coach-modal-overlay'; // Changed Class
-        // Basic styling for overlay - detailed styling in CSS
-        modal.style.cssText = ` 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 2000; display: flex;
-            align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;
-        `;
-        const modalContent = document.createElement('div');
-        modalContent.className = 'ai-coach-modal-content'; // Changed Class
-        // Basic styling for content - detailed styling in CSS
-        modalContent.style.cssText = `
-            background: white; width: 90%; max-width: 800px; height: 80vh; border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column;
-            position: relative; transform: scale(0.9); transition: transform 0.3s ease;
-        `;
-        const savedZoom = localStorage.getItem('studentCoachTextZoom'); // Student zoom key
-        if (savedZoom) modalContent.style.fontSize = `${parseInt(savedZoom, 10) * 14 / 100}px`;
-        
-        // Modal Header
-        modalContent.innerHTML = `
-            <div style="padding: 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-                <div>
-                    <h3 style="margin:0; color:#333;">${activity.name}</h3>
-                    <p style="margin:5px 0 0 0; color:#666; font-size:0.9em;">VESPA Element: <strong>${activity.vespa_element}</strong></p>
-                </div>
-                <button class="ai-coach-modal-close" style="background:none; border:none; font-size:1.5em; cursor:pointer;">&times;</button>
-            </div>
-            <div class="activity-modal-body" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:15px;">
-                ${activity.short_summary && activity.short_summary !== 'N/A' ? `<div style="background:#f8f9fa; padding:15px; border-radius:5px; border-left:4px solid #3498db;"><h4>Summary:</h4><p>${activity.short_summary}</p></div>` : ''}
-                <div class="pdf-section" style="flex:1; border:1px solid #ddd; border-radius:5px; overflow:hidden; min-height:300px; background:#f5f5f5; position:relative;">
-                    <!-- PDF will be loaded here -->
-                </div>
-            </div>
-        `;
-        const pdfSection = modalContent.querySelector('.pdf-section');
+body.ai-coach-resizing * {
+    cursor: ew-resize !important;
+}
 
-        if (activity.pdf_link && activity.pdf_link !== '#') {
-            const loadingDiv = document.createElement('div'); // Loading indicator
-            loadingDiv.innerHTML = '<div class="loader" style="margin: auto;"></div><p style="text-align:center;">Loading resource...</p>';
-            pdfSection.appendChild(loadingDiv);
+/* Ensure proper styling for details sections */
+.ai-coach-details-section {
+    display: none;
+}
 
-            const pdfEmbed = document.createElement('iframe');
-            pdfEmbed.src = activity.pdf_link; // Ensure this link allows embedding
-            pdfEmbed.style.cssText = "width:100%; height:100%; border:none;";
-            pdfEmbed.title = `Resource: ${activity.name}`;
-            pdfEmbed.onload = () => { loadingDiv.style.display = 'none'; };
-            pdfEmbed.onerror = () => { 
-                loadingDiv.remove(); // Remove loader on error
-                pdfSection.innerHTML = `<div style="text-align:center; padding:20px;"><p>Could not load the resource directly.</p><a href="${activity.pdf_link}" target="_blank" class="p-button">Open Resource in New Tab</a></div>`;
-            };
-            pdfSection.appendChild(pdfEmbed);
-        } else {
-            pdfSection.innerHTML = '<p style="text-align:center; padding:20px;">No viewable resource provided for this activity.</p>';
-        }
+/* Additional styles for proper layout */
+#vespaChartComparativeSection,
+#vespaCoachingQuestionsSection,
+#vespaStudentCommentsGoalsSection {
+    margin-bottom: 20px;
+}
 
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-        setTimeout(() => { modal.style.opacity = '1'; modalContent.style.transform = 'scale(1)'; }, 10); // Animation trigger
+/* Fix for p-button styling */
+.p-button {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 1em !important;
+}
 
-        // Close handlers (reused logic)
-        const closeModal = () => {
-            modal.style.opacity = '0'; modalContent.style.transform = 'scale(0.9)';
-            setTimeout(() => modal.remove(), 300);
-            document.removeEventListener('keydown', escHandler);
-        };
-        modalContent.querySelector('.ai-coach-modal-close').addEventListener('click', closeModal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-        const escHandler = (e) => { if (e.key === 'Escape') closeModal(); };
-        document.addEventListener('keydown', escHandler);
+/* Text size adjustment buttons (to be added via JS) */
+.ai-coach-text-controls {
+    position: absolute;
+    top: 15px;
+    right: 50px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.ai-coach-text-control-btn {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.ai-coach-text-control-btn:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
+}
+
+.ai-coach-text-size-indicator {
+    font-size: 12px;
+    color: #666;
+    margin: 0 5px;
+}
+
+/* Style for unliked heart icon on bot messages for better visibility */
+.ai-chat-message-bot .ai-chat-like-btn .ai-chat-like-icon.unliked-icon-visible {
+    color: #555 !important; /* Darker grey for the unliked heart */
+    /* opacity: 1 !important; */ /* Ensure full opacity for the icon itself if needed */
+}
+
+/* Styles for externally controlled Student Report Component */
+/* Note: These selectors target elements based on the provided HTML. */
+/* They may need adjustment and the use of !important might be necessary. */
+/* Relying on data-v- attributes can be brittle if the external component updates. */
+
+/* Style the main card of the student reports */
+/* Using the data-v attribute for specificity, though it might change */
+div.card[data-v-7afa4eb2] {
+    border: 1px solid #cccccc !important;
+    background-color: #f9f9f9 !important;
+    padding: 15px !important;
+}
+
+/* Style the header text "Student Reports" */
+/* Targeting by ID is generally more stable if the ID is unique */
+div.card[data-v-7afa4eb2] #header h1#header-text {
+    color: #005a9c !important; /* Example: a shade of blue */
+    font-size: 1.8em !important;
+    text-transform: uppercase !important;
+}
+
+/* Style the cycle filter buttons */
+div.card[data-v-7afa4eb2] #cycle-filter.p-selectbutton .p-button {
+    background-color: #e0e0e0 !important;
+    color: #333333 !important;
+    border-color: #c0c0c0 !important;
+}
+
+div.card[data-v-7afa4eb2] #cycle-filter.p-selectbutton .p-button.p-highlight {
+    background-color: var(--vespa-effort-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border-color: var(--vespa-effort-color) !important;
+}
+
+
+/* Style the datatable component */
+div.card[data-v-7afa4eb2] .p-datatable.p-component[data-v-b7d9c24a] {
+    margin-top: 15px !important;
+}
+
+/* Style column titles in the table */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th .p-column-title {
+    color: #333333 !important;
+    font-weight: 600 !important;
+    font-size: 0.95em !important;
+}
+
+/* Style the table cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td {
+    font-size: 0.9em !important;
+    color: #444444 !important;
+}
+
+/* Example: Style the 'Report' buttons in the table */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td .view-report-button {
+    background-color: var(--vespa-vision-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border: none !important;
+    padding: 6px 12px !important;
+    font-size: 0.85em !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td .view-report-button:hover {
+    opacity: 0.85 !important;
+}
+
+/* Style the search input in the filter row */
+div.card[data-v-7afa4eb2] .p-datatable .p-filter-column input.p-inputtext.p-column-filter {
+    border: 1px solid #ced4da !important;
+    padding: 8px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-filter-column input.p-inputtext.p-column-filter:focus {
+    border-color: #86b4f0 !important; /* Using effort color for focus */
+    box-shadow: 0 0 0 0.2rem rgba(134, 180, 240, 0.25) !important;
+}
+
+/* Style the paginator */
+div.card[data-v-7afa4eb2] .p-paginator-bottom .p-paginator {
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #dee2e6 !important;
+    padding: 10px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-paginator-bottom .p-paginator .p-paginator-page.p-highlight {
+    background-color: var(--vespa-systems-color) !important; /* Using one of your theme colors */
+    color: white !important;
+    border-color: var(--vespa-systems-color) !important;
+}
+
+/* Enhanced Styling for Student Report Table */
+
+/* Custom Scrollbars for Report Response and Action Plan text areas */
+/* Targeting the span within the 11th and 12th td elements */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a],
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a] {
+    scrollbar-width: thin !important; /* For Firefox */
+    scrollbar-color: #adb5bd #f1f3f5 !important; /* For Firefox - thumb and track */
+    padding-right: 5px !important; /* Add a little padding so text doesn't touch scrollbar */
+}
+
+/* WebKit (Chrome, Safari, Edge) scrollbar styles */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-track,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-track {
+    background: #f1f3f5 !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb {
+    background: #adb5bd !important;
+    border-radius: 4px !important;
+}
+
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover,
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) > span[data-v-b7d9c24a]::-webkit-scrollbar-thumb:hover {
+    background: #868e96 !important;
+}
+
+/* VESPA Column Styling (V, E, S, P, A, O) - 5th to 10th columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    text-align: center !important;
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(5),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(6),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(7),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(8),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(9),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(10) {
+    width: 40px !important; /* Reduced width */
+    font-size: 1.05em !important; /* Slightly larger font */
+    font-weight: bold !important; /* Bolder numbers */
+    text-align: center !important; /* Centered numbers */
+    padding: 8px 4px !important; /* Adjust padding */
+}
+
+/* Student Name and Group Column Styling - 1st and 2nd columns */
+/* Headers */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+}
+
+/* Data cells */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(1), /* Student Name */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(2) { /* Group */
+    width: 110px !important; /* Reduced width from 130px */
+    word-break: break-word; /* Helps prevent overly wide cells if names are long */
+}
+
+/* Optional: Adjust padding for all header cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th .p-column-header-content {
+    padding: 0.8rem 0.5rem !important; /* Reduced padding */
+}
+
+/* Optional: Adjust padding for all body cells for a tighter look */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td {
+    padding: 0.8rem 0.5rem !important; /* Consistent padding */
+}
+
+/* Ensure the Report Response and Action Plan columns still have enough space */
+/* Overriding the general td padding for these specific columns if needed */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(11),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(12) {
+    padding: 0.8rem 0.8rem !important; /* Give them a bit more horizontal padding */
+}
+
+/* Make the "Report" button column (3rd column) a bit more compact if desired */
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-thead th:nth-child(3),
+div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
+    width: 80px !important; /* Reduced from 100px */
+    padding: 8px 4px !important;
+    text-align: center !important;
+}
+
+/* Theme Toggle Button Styles - Original Theme */
+.ai-coach-theme-toggle-btn {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    border: 1px solid #d6dee5 !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    color: #495057 !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap;
+    min-width: 160px;
+    text-align: center;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08), inset 0 -1px 2px rgba(0,0,0,0.04);
+}
+
+.ai-coach-theme-toggle-btn:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-color: #adb5bd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12), inset 0 -1px 2px rgba(0,0,0,0.06);
+    color: #212529 !important;
+}
+
+.ai-coach-theme-toggle-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ai-coach-theme-toggle-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Header controls layout for theme toggle */
+.ai-coach-header-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex: 1;
+    justify-content: flex-end;
+    margin: 0 15px;
+}
+
+/* Ensure proper header layout */
+#aiCoachPanel .ai-coach-panel-header,
+[id*="CoachPanel"] .ai-coach-panel-header,
+.ai-coach-panel .ai-coach-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Animation for theme switch - subtle for original theme */
+@keyframes theme-switch-bounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.ai-coach-theme-toggle-btn.theme-switching {
+    animation: theme-switch-bounce 0.3s ease-out;
+}
+
+/* Responsive adjustments for theme toggle */
+@media (max-width: 768px) {
+    .ai-coach-theme-toggle-btn {
+        min-width: auto;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+    
+    .ai-coach-header-controls {
+        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #aiCoachPanel .ai-coach-panel-header,
+    [id*="CoachPanel"] .ai-coach-panel-header,
+    .ai-coach-panel .ai-coach-panel-header {
+        flex-wrap: wrap;
+    }
+}
+
+/* AI Snapshot Toggle Styles - Original Theme */
+#studentCoachSnapshotSection {
+    position: relative;
+}
+
+.ai-snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.ai-snapshot-header h4 {
+    margin: 0;
+    flex: 1;
+}
+
+#toggleSnapshotBtn {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+    border: 1px solid #d6dee5 !important;
+    border-radius: 6px !important;
+    padding: 6px 14px !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    color: #495057 !important;
+    transition: all 0.2s ease !important;
+    font-weight: 500;
+    min-width: 50px;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 -1px 2px rgba(0,0,0,0.03) !important;
+}
+
+#toggleSnapshotBtn:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-color: #adb5bd !important;
+    color: #212529 !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12), inset 0 -1px 2px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+}
+
+#toggleSnapshotBtn:active {
+    background: #dee2e6 !important;
+    transform: translateY(1px);
+}
+
+#snapshotContent {
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+    overflow: hidden;
+}
+
+#snapshotContent[style*="display: none"] {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Ensure proper spacing when snapshot is hidden */
+#studentCoachSnapshotSection:has(#snapshotContent[style*="display: none"]) {
+    margin-bottom: 10px;
+}
+
+/* Adjust chat container to take more space when snapshot is hidden */
+body.ai-coach-active #aiCoachChatContainer {
+    transition: max-height 0.3s ease;
+}
+
+/* Responsive adjustments for snapshot toggle */
+@media (max-width: 768px) {
+    #toggleSnapshotBtn {
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        min-width: 40px;
+    }
+    
+    .ai-snapshot-header {
+        gap: 10px;
     }
 }
