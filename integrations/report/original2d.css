@@ -65,7 +65,7 @@ body:not(.ai-coach-active) #kn-scene_43 {
     background-color: #ffffff;
     background-image: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
     border-left: 2px solid #d6dee5;
-    padding: 20px;
+    padding: 0; /* Remove padding - will be on content */
     box-sizing: border-box;
     overflow: hidden;  /* Panel itself shouldn't scroll, only content area */
     z-index: 1050;
@@ -154,13 +154,15 @@ body.ai-coach-active .ai-coach-panel {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 25px;
+    padding: 15px 20px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    flex-shrink: 0;
+    flex-shrink: 0; /* Prevent shrinking */
     position: relative;
     border-bottom: 1px solid rgba(118, 75, 162, 0.3);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.1);
-    margin: -20px -20px 20px -20px;
+    margin: 0; /* Remove negative margins */
+    min-height: 70px;
+    max-height: 90px;
 }
 
 .ai-coach-panel-header h3 {
@@ -195,15 +197,16 @@ body.ai-coach-active .ai-coach-panel {
 #aiCoachPanel .ai-coach-panel-content,
 [id*="CoachPanel"] .ai-coach-panel-content,
 .ai-coach-panel .ai-coach-panel-content {
-    flex: 1;
+    flex: 1; /* Take remaining space */
     display: flex;
     flex-direction: column;
     overflow-y: auto !important;  /* Force scrolling on content */
     overflow-x: hidden;
-    min-height: 0;
-    padding: 0 20px 20px 20px;
+    min-height: 0; /* Critical for flex scrolling */
+    padding: 20px;
     background: transparent;
     margin: 0;
+    max-height: calc(100vh - 90px); /* Ensure proper height */
     -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
     position: relative; /* Ensure proper scroll context */
 }
@@ -520,10 +523,10 @@ button#activateAICoachBtn:active {
 #aiCoachChatContainer {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    max-height: calc(100vh - 400px);
+    flex-shrink: 0; /* Prevent squashing */
+    min-height: 400px; /* Ensure minimum visibility */
     margin-top: 20px;
+    margin-bottom: 30px; /* Add bottom spacing */
     background: white;
     border-radius: 12px;
     border: 2px solid #d6dee5;
