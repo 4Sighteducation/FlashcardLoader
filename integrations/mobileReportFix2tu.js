@@ -1,13 +1,13 @@
 /**
  * Scene 43 Student Report Mobile Optimization & Help System
  * Optimizes the VESPA report display and adds help buttons for all devices
- * Version 5.4 - Mobile-only radar chart enhancements, original chart for desktop/tablets
+ * Version 5.3 - Fixed modal remnants and enhanced radar chart
  */
 
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v5.4] Script loaded at', new Date().toISOString());
+    console.log('[Student Report Enhancement v5.3] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -718,7 +718,7 @@
     // ... [keeping other functions as they were in the original code for brevity]
     
     function applyStyles() {
-        const styleId = 'student-report-enhancements-v5-4';
+        const styleId = 'student-report-enhancements-v5-3';
         
         // Remove any existing style to force refresh
         const existingStyle = document.getElementById(styleId);
@@ -729,83 +729,69 @@
         const style = document.createElement('style');
         style.id = styleId;
         
-        // Enhanced styles with mobile-only radar chart and modal fixes
+        // Enhanced styles with radar chart improvements and modal fixes
         style.textContent = `
-            /* Universal styles for Student Report - v5.4 */
+            /* Universal styles for Student Report - v5.3 */
             
             /* Hide introductory questions container on ALL screen sizes */
             #view_3041 #introductory-questions-container {
                 display: none !important;
             }
             
-            /* RADAR CHART - Only style on mobile, leave original for desktop/tablets */
-            /* Desktop and landscape tablets - minimal styling to ensure centering */
-            @media (min-width: 769px), (orientation: landscape) and (min-width: 600px) {
-                #view_3041 #chart-container {
-                    /* Minimal centering only - preserve original appearance */
-                    display: flex !important;
-                    justify-content: center !important;
-                    align-items: center !important;
-                    margin: 20px auto !important;
-                    /* No background, padding, or other modifications */
-                }
-                
-                #view_3041 #chart-container canvas {
-                    /* Keep original size - no scaling */
-                    margin: 0 auto !important;
-                }
+            /* ENHANCED RADAR CHART STYLING - Larger and more prominent */
+            #view_3041 #chart-container {
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                width: 95% !important;
+                max-width: 1400px !important; /* Increased from 1200px */
+                margin: 30px auto !important; /* More margin */
+                text-align: center !important;
+                /* Enhanced gradient background with animation */
+                background: linear-gradient(135deg, 
+                    #f0f9fa 0%, 
+                    #e1f5f7 25%, 
+                    #d4f1f4 50%, 
+                    #c8edee 75%, 
+                    #bce9e8 100%) !important;
+                padding: 40px !important; /* Increased padding */
+                border-radius: 16px !important; /* Smoother corners */
+                box-shadow: 
+                    0 6px 30px rgba(7, 155, 170, 0.15),
+                    0 2px 10px rgba(7, 155, 170, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+                border: 2px solid rgba(7, 155, 170, 0.12) !important;
+                position: relative !important;
+                overflow: hidden !important;
             }
             
-            /* Mobile portrait only - Apply enhanced styling */
-            @media (max-width: 768px) and (orientation: portrait) {
-                #view_3041 #chart-container {
-                    display: flex !important;
-                    justify-content: center !important;
-                    align-items: center !important;
-                    width: 98% !important;
-                    margin: 15px auto !important;
-                    text-align: center !important;
-                    /* Enhanced gradient background for mobile */
-                    background: linear-gradient(135deg, 
-                        #f0f9fa 0%, 
-                        #e1f5f7 25%, 
-                        #d4f1f4 50%, 
-                        #c8edee 75%, 
-                        #bce9e8 100%) !important;
-                    padding: 25px 15px !important;
-                    border-radius: 12px !important;
-                    box-shadow: 
-                        0 4px 20px rgba(7, 155, 170, 0.12),
-                        0 2px 8px rgba(7, 155, 170, 0.08) !important;
-                    border: 1px solid rgba(7, 155, 170, 0.1) !important;
-                    position: relative !important;
-                    overflow: hidden !important;
-                }
-                
-                /* Add subtle animated glow effect on mobile */
-                #view_3041 #chart-container::before {
-                    content: '';
-                    position: absolute;
-                    top: -50%;
-                    left: -50%;
-                    width: 200%;
-                    height: 200%;
-                    background: radial-gradient(circle, 
-                        rgba(7, 155, 170, 0.03) 0%, 
-                        transparent 70%);
-                    animation: pulse 4s ease-in-out infinite;
-                    pointer-events: none;
-                }
-                
-                #view_3041 #chart-container canvas {
-                    max-width: 100% !important;
-                    height: auto !important;
-                }
+            /* Add subtle animated glow effect */
+            #view_3041 #chart-container::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, 
+                    rgba(7, 155, 170, 0.05) 0%, 
+                    transparent 70%);
+                animation: pulse 4s ease-in-out infinite;
+                pointer-events: none;
             }
             
             @keyframes pulse {
                 0%, 100% { transform: scale(1); opacity: 0.5; }
                 50% { transform: scale(1.05); opacity: 0.3; }
+            }
+            
+            /* Make the canvas larger on desktop */
+            @media (min-width: 769px) {
+                #view_3041 #chart-container canvas {
+                    margin: 0 auto !important;
+                    transform: scale(1.15) !important; /* Slightly enlarge the chart */
+                    transform-origin: center !important;
+                }
             }
             
             /* FIX FOR VESPA MODAL REMNANTS - Ensure it's always hidden when not active */
@@ -899,6 +885,19 @@
             
             /* Mobile-only styles */
             @media (max-width: 768px) {
+                /* Keep the chart visible but responsive */
+                #view_3041 #chart-container {
+                    width: 98% !important;
+                    padding: 25px 15px !important; /* Adjusted padding for mobile */
+                    margin: 15px auto !important;
+                }
+                
+                /* Don't scale the canvas on mobile to prevent overflow */
+                #view_3041 #chart-container canvas {
+                    transform: none !important;
+                    max-width: 100% !important;
+                    height: auto !important;
+                }
                 
                 /* Show mobile headings ONLY on mobile */
                 .mobile-theme-heading,
@@ -1048,5 +1047,5 @@
         cleanupExistingModals();
     });
     
-    console.log('[Student Report Enhancement v5.4] Initialization complete');
+    console.log('[Student Report Enhancement v5.3] Initialization complete');
 })();
