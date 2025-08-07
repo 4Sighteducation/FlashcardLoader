@@ -57,6 +57,36 @@ if (window.studentCoachLauncherInitialized) {
     }
 
     // Function to check if we are on the correct student coach page
+    // Function to check if AI Coach is enabled for this student
+    async function isAICoachEnabledForStudent() {
+        try {
+            const user = Knack.getUserAttributes();
+            if (!user || !user.id) {
+                logStudentCoach("Cannot check AI Coach status - user not logged in");
+                return false;
+            }
+            
+            // Check if we have the field_3577 value in user attributes
+            // This field should be available in Object_10 (Student record)
+            // The field might be available directly in user attributes or we may need to fetch it
+            
+            // First check if it's directly available in user attributes
+            if (user.field_3577 !== undefined) {
+                const isDisabled = user.field_3577 === true || user.field_3577 === 'Yes' || user.field_3577 === 'true';
+                logStudentCoach(`AI Coach enabled check from user attributes - field_3577: ${user.field_3577}, isDisabled: ${isDisabled}`);
+                return !isDisabled; // Return true if NOT disabled
+            }
+            
+            // If not directly available, we may need to fetch from the student's Object_10 record
+            // For now, default to enabled if field is not found
+            logStudentCoach("field_3577 not found in user attributes, defaulting to enabled");
+            return true;
+        } catch (error) {
+            logStudentCoach("Error checking AI Coach enabled status:", error);
+            return true; // Default to enabled on error
+        }
+    }
+
     function isStudentCoachPageView() {
         if (!STUDENT_COACH_LAUNCHER_CONFIG || !STUDENT_COACH_LAUNCHER_CONFIG.sceneKey || !STUDENT_COACH_LAUNCHER_CONFIG.elementSelector) {
             logStudentCoach("isStudentCoachPageView: Config not fully available.");
@@ -91,7 +121,7 @@ if (window.studentCoachLauncherInitialized) {
         return false;
     }
 
-    function initializeCoachUI() {
+    async function initializeCoachUI() {
         logStudentCoach("StudentCoachLauncher: initializeCoachUI START");
         if (coachUIInitialized && document.getElementById(STUDENT_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId)) {
             logStudentCoach("Student Coach UI appears to be already initialized. Skipping.");
@@ -102,6 +132,14 @@ if (window.studentCoachLauncherInitialized) {
             return;
         }
         uiCurrentlyInitializing = true;
+
+        // Check if AI Coach is enabled for this student
+        const isEnabled = await isAICoachEnabledForStudent();
+        if (!isEnabled) {
+            logStudentCoach("AI Coach is disabled for this student (field_3577 is true/Yes). Not initializing UI.");
+            uiCurrentlyInitializing = false;
+            return;
+        }
 
         logStudentCoach("Conditions met. Initializing Student Coach UI (button and panel).");
         
@@ -130,6 +168,14 @@ if (window.studentCoachLauncherInitialized) {
         if (panel) {
             panel.remove(); // Remove the panel from DOM
         }
+        // Also remove any info or activity modals that might be open
+        const infoModal = document.getElementById('aiCoachInfoModal');
+        if (infoModal) infoModal.remove();
+        const activityModal = document.getElementById('aiCoachActivityModal');
+        if (activityModal) activityModal.remove();
+        const problemModal = document.getElementById('aiCoachProblemModal');
+        if (problemModal) problemModal.remove();
+        
         toggleAICoachPanel(false); 
         coachUIInitialized = false; 
         lastFetchedStudentKnackId = null; 
