@@ -2409,4 +2409,3 @@ if (window.studentCoachLauncherInitialized) {
         document.addEventListener('keydown', escHandler);
     }
 }
-}
