@@ -62,9 +62,9 @@ body:not(.ai-coach-active) #kn-scene_43 {
     background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%) !important;
     border-left: 2px solid var(--neon-cyan) !important;
     box-shadow: -5px 0 30px rgba(0, 255, 240, 0.3), inset 0 0 100px rgba(0, 255, 240, 0.05) !important;
-    padding: 0 !important; /* Remove padding - will be on content */
+    padding: 0 !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;  /* Panel itself shouldn't scroll, only content area */
+    overflow: hidden !important; /* Panel doesn't scroll, content does */
     z-index: 1050 !important;
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
@@ -163,13 +163,15 @@ body.ai-coach-active [id*="CoachPanel"] {
     border-bottom: 2px solid var(--neon-border);
     flex-shrink: 0; /* Prevent shrinking */
     position: relative;
-    z-index: 2;
+    z-index: 10;
     background: rgba(26, 26, 46, 0.98) !important;
-    margin: 0; /* Remove negative margins */
-    padding: 15px 20px; /* Consistent padding */
-    min-height: 70px; /* Minimum height */
-    max-height: 90px; /* Maximum height to prevent oversizing */
+    margin: 0;
+    padding: 15px 20px;
+    min-height: 70px;
+    height: 70px; /* Fixed height */
     color: var(--neon-text-primary) !important;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .ai-coach-panel-header::after {
@@ -238,11 +240,11 @@ body.ai-coach-active [id*="CoachPanel"] {
     min-height: 0; /* Critical for flex scrolling */
     padding: 20px;
     position: relative;
-    z-index: 2;
+    z-index: 1;
     background: transparent !important;
     color: var(--neon-text-primary) !important;
     -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
-    max-height: calc(100vh - 90px); /* Ensure it doesn't exceed viewport minus header */
+    height: calc(100vh - 70px); /* Full viewport minus header */
 }
 
 /* Launcher button container - Fixed to right side, more discreet */
@@ -1421,7 +1423,7 @@ button#activateAICoachBtn:active {
         box-shadow: none !important;
         font-size: 14px;
         z-index: 2100 !important;
-        overflow: hidden !important; /* Prevent overflow on panel itself */
+        overflow: hidden !important; /* Panel doesn't scroll */
         display: flex !important;
         flex-direction: column !important;
         padding: 0 !important;
@@ -1436,9 +1438,11 @@ button#activateAICoachBtn:active {
         background: rgba(26, 26, 46, 0.98) !important;
         flex-shrink: 0 !important;
         min-height: 60px !important;
-        max-height: 80px !important;
+        height: 60px !important;
         padding: 10px 15px !important;
         margin: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     
     body.ai-coach-active #aiCoachPanel,
@@ -1483,6 +1487,7 @@ button#activateAICoachBtn:active {
         min-height: 0 !important; /* Critical for flex scrolling */
         display: flex !important;
         flex-direction: column !important;
+        height: calc(100vh - 60px) !important; /* Full height minus header */
     }
     
     /* Adjust chat container for mobile */
