@@ -66,67 +66,53 @@ if (window.studentCoachLauncherInitialized) {
                 return false;
             }
             
-            // Check if we have the field_3577 value in user attributes
-            // This is a Yes/No field in Object_10 (Student record)
-            // Field name is "Show AI Coach" - Yes means show, No means hide
+            // Check for the "Show AI Coach" field
+            // Field is now field_3579 in Object_3 (Account object)
+            // Previously tried field_3578 in Object_6 and field_3577 in Object_10
             
-            // First check if it's directly available in user attributes (it might be set manually or cached)
-            if (user.field_3577 !== undefined && user.field_3577 !== null) {
+            let fieldValue = null;
+            
+            // Check for field_3579 in Object_3 (Account) - PRIMARY LOCATION
+            if (user.values && user.values.field_3579 !== undefined && user.values.field_3579 !== null) {
+                fieldValue = user.values.field_3579;
+                logStudentCoach(`Found field_3579 in user.values (Object_3): "${fieldValue}"`);
+            }
+            // Check for raw value
+            else if (user.values && user.values.field_3579_raw !== undefined && user.values.field_3579_raw !== null) {
+                fieldValue = user.values.field_3579_raw;
+                logStudentCoach(`Found field_3579_raw in user.values: "${fieldValue}"`);
+            }
+            // Check if manually set on user object
+            else if (user.field_3579 !== undefined && user.field_3579 !== null) {
+                fieldValue = user.field_3579;
+                logStudentCoach(`Found field_3579 directly on user: "${fieldValue}"`);
+            }
+            
+            // Check if we found the field value
+            if (fieldValue !== undefined && fieldValue !== null) {
                 // For Yes/No fields, Knack typically returns "Yes" or "No" as strings
-                const fieldValue = user.field_3577;
                 // "Yes" means SHOW the AI Coach (enabled)
                 // "No" means HIDE the AI Coach (disabled)
                 const isEnabled = fieldValue === 'Yes' || fieldValue === 'yes' || fieldValue === true;
-                logStudentCoach(`AI Coach enabled check - field_3577 ("Show AI Coach") value: "${fieldValue}" (type: ${typeof fieldValue}), isEnabled: ${isEnabled}`);
-                return isEnabled; // Return true if "Yes" (show), false if "No" (hide)
+                logStudentCoach(`AI Coach enabled check - "Show AI Coach" value: "${fieldValue}" (type: ${typeof fieldValue}), isEnabled: ${isEnabled}`);
+                return isEnabled;
             }
             
-            // Field not in user attributes, need to fetch from Object_10
-            logStudentCoach("field_3577 not in user attributes, fetching from Object_10...");
+            // Field not found in any location
+            logStudentCoach("Show AI Coach field (field_3578/field_3577) not found in user attributes");
+            logStudentCoach("Available fields in user.values:", user.values ? Object.keys(user.values) : 'None');
             
-            try {
-                // Make API call to get the student record
-                const filters = [
-                    {
-                        field: 'field_197', // Email field in Object_10
-                        operator: 'is',
-                        value: user.email
-                    }
-                ];
-                
-                const url = `https://api.knack.com/v1/objects/object_10/records?filters=${encodeURIComponent(JSON.stringify({match: 'and', rules: filters}))}`;
-                
-                const response = await $.ajax({
-                    url: url,
-                    type: 'GET',
-                    headers: {
-                        'X-Knack-Application-Id': Knack.application_id,
-                        'X-Knack-REST-API-KEY': 'knack'
-                    }
-                });
-                
-                if (response && response.records && response.records.length > 0) {
-                    const studentRecord = response.records[0];
-                    const fieldValue = studentRecord.field_3577 || studentRecord.field_3577_raw;
-                    
-                    if (fieldValue !== undefined && fieldValue !== null) {
-                        // Cache it for future use in this session
-                        user.field_3577 = fieldValue;
-                        
-                        const isEnabled = fieldValue === 'Yes' || fieldValue === 'yes' || fieldValue === true;
-                        logStudentCoach(`AI Coach fetched from Object_10 - field_3577: "${fieldValue}", isEnabled: ${isEnabled}`);
-                        return isEnabled;
-                    }
-                }
-                
-                logStudentCoach("field_3577 not found in Object_10 response, defaulting to enabled");
-                return true;
-                
-            } catch (apiError) {
-                logStudentCoach("Error fetching from Object_10:", apiError);
-                // Default to enabled if we can't fetch
-                return true;
+            // TEMPORARY WORKAROUND: Check if there's a manual override in localStorage
+            const localOverride = localStorage.getItem('aiCoachEnabled_' + user.id);
+            if (localOverride !== null) {
+                const isEnabled = localOverride === 'true' || localOverride === 'Yes';
+                logStudentCoach(`Using localStorage override for user ${user.id}: ${localOverride} -> enabled: ${isEnabled}`);
+                return isEnabled;
             }
+            
+            // Default to enabled if field is not found
+            logStudentCoach("Defaulting to enabled since field not found and no override set");
+            return true;
             
         } catch (error) {
             logStudentCoach("Error checking AI Coach enabled status:", error);
