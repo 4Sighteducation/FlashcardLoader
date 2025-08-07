@@ -227,12 +227,14 @@ body.ai-coach-active [id*="CoachPanel"] {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     min-height: 0;
     position: relative;
     z-index: 2;
     background: transparent !important;
     color: var(--neon-text-primary) !important;
+    -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
 }
 
 /* Launcher button container - Fixed to right side, more discreet */
@@ -241,7 +243,7 @@ body.ai-coach-active [id*="CoachPanel"] {
     position: fixed; 
     bottom: 30px;    
     right: 30px;       
-    z-index: 1040;   /* Reduced to be less intrusive */
+    z-index: 2200;   /* Higher than panel to stay on top */
     text-align: center; 
     padding: 0;      
     border-top: none; 
@@ -1411,6 +1413,17 @@ button#activateAICoachBtn:active {
         overflow: hidden !important; /* Prevent overflow on panel itself */
         display: flex !important;
         flex-direction: column !important;
+    }
+    
+    /* Ensure panel header stays fixed at top on mobile */
+    #aiCoachPanel .ai-coach-panel-header,
+    [id*="CoachPanel"] .ai-coach-panel-header,
+    .ai-coach-panel .ai-coach-panel-header {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10 !important;
+        background: inherit !important;
+        flex-shrink: 0 !important;
     }
     
     body.ai-coach-active #aiCoachPanel,
