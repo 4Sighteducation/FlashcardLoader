@@ -428,8 +428,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk2j.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original2j.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk2h.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original2h.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -638,6 +638,30 @@ if (window.studentCoachLauncherInitialized) {
         `;
         document.body.appendChild(panel);
         logStudentCoach("Student Coach panel created.");
+        
+        // Force header styles to ensure visibility
+        const header = panel.querySelector('.ai-coach-panel-header');
+        if (header) {
+            header.style.cssText = `
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 999999 !important;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                padding: 15px 20px !important;
+                height: 60px !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                color: white !important;
+            `;
+            
+            // Style the h3 title
+            const title = header.querySelector('h3');
+            if (title) {
+                title.style.cssText = 'color: white !important; margin: 0; font-size: 1.2em;';
+            }
+        }
+        
         setupTextSizeControls(panelId); // Pass panelId
         setupThemeToggle(); // New function to handle theme toggle
     }
