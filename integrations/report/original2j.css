@@ -159,12 +159,13 @@ body.ai-coach-active .ai-coach-panel {
 }
 
 /* Panel header - Modern Gradient */
+#studentCoachSlidePanel .ai-coach-panel-header,
 .ai-coach-panel-header {
-    display: flex;
+    display: flex !important;
     justify-content: space-between;
     align-items: center;
     padding: 15px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     flex-shrink: 0; /* Prevent shrinking */
     position: relative;
     border-bottom: 1px solid rgba(118, 75, 162, 0.3);
@@ -174,14 +175,19 @@ body.ai-coach-active .ai-coach-panel {
     height: 70px; /* Fixed height */
     width: 100%;
     box-sizing: border-box;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
+#studentCoachSlidePanel .ai-coach-panel-header h3,
 .ai-coach-panel-header h3 {
     margin: 0;
-    font-size: 1.6em;
-    color: white;
+    font-size: 1.4em;
+    color: white !important;
     font-weight: 700;
     letter-spacing: -0.5px;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .ai-coach-close-btn {
@@ -1578,6 +1584,21 @@ div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
     .ai-coach-panel .ai-coach-panel-header {
         flex-wrap: wrap;
     }
+}
+
+/* Header Controls Fix */
+#studentCoachSlidePanel .ai-coach-header-controls {
+    display: flex !important;
+    gap: 15px;
+    align-items: center;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#studentCoachSlidePanel .ai-coach-theme-toggle-btn,
+#studentCoachSlidePanel .ai-coach-text-controls {
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* AI Snapshot Toggle Styles - Original Theme */
