@@ -67,18 +67,18 @@ if (window.studentCoachLauncherInitialized) {
             }
             
             // Check if we have the field_3577 value in user attributes
-            // This field should be available in Object_10 (Student record)
-            // The field might be available directly in user attributes or we may need to fetch it
+            // This is a Yes/No field in Object_10 (Student record)
             
             // First check if it's directly available in user attributes
-            if (user.field_3577 !== undefined) {
-                const isDisabled = user.field_3577 === true || user.field_3577 === 'Yes' || user.field_3577 === 'true';
-                logStudentCoach(`AI Coach enabled check from user attributes - field_3577: ${user.field_3577}, isDisabled: ${isDisabled}`);
-                return !isDisabled; // Return true if NOT disabled
+            if (user.field_3577 !== undefined && user.field_3577 !== null) {
+                // For Yes/No fields, Knack typically returns "Yes" or "No" as strings
+                const fieldValue = user.field_3577;
+                const isDisabled = fieldValue === 'Yes' || fieldValue === 'yes' || fieldValue === true;
+                logStudentCoach(`AI Coach enabled check - field_3577 value: "${fieldValue}" (type: ${typeof fieldValue}), isDisabled: ${isDisabled}`);
+                return !isDisabled; // Return true if NOT disabled (i.e., field is "No" or false)
             }
             
-            // If not directly available, we may need to fetch from the student's Object_10 record
-            // For now, default to enabled if field is not found
+            // If not directly available, default to enabled
             logStudentCoach("field_3577 not found in user attributes, defaulting to enabled");
             return true;
         } catch (error) {
@@ -87,9 +87,39 @@ if (window.studentCoachLauncherInitialized) {
         }
     }
 
+    function isAllowedUrl() {
+        // Check if current URL is allowed for AI Coach
+        const currentUrl = window.location.href;
+        const currentPath = window.location.pathname;
+        const currentHash = window.location.hash;
+        
+        // Keep AI Coach on the #vespa-results page
+        if (currentHash && currentHash.includes('vespa-results')) {
+            logStudentCoach(`URL check: Allowed - on #vespa-results page (${currentUrl})`);
+            return true;
+        }
+        
+        // Clear AI Coach if navigating to other path-based pages
+        // Check if we're on a path that starts with /vespa-academy/ (excluding the base page)
+        if (currentPath && currentPath !== '/vespa-academy' && currentPath.startsWith('/vespa-academy/')) {
+            logStudentCoach(`URL check: Not allowed - navigated to path-based page (${currentUrl})`);
+            return false;
+        }
+        
+        // Default to true for the base page without specific paths
+        logStudentCoach(`URL check: Default allowed (${currentUrl})`);
+        return true;
+    }
+
     function isStudentCoachPageView() {
         if (!STUDENT_COACH_LAUNCHER_CONFIG || !STUDENT_COACH_LAUNCHER_CONFIG.sceneKey || !STUDENT_COACH_LAUNCHER_CONFIG.elementSelector) {
             logStudentCoach("isStudentCoachPageView: Config not fully available.");
+            return false;
+        }
+
+        // First check URL-based restrictions
+        if (!isAllowedUrl()) {
+            logStudentCoach("isStudentCoachPageView: Current URL not allowed for AI Coach.");
             return false;
         }
 
@@ -206,10 +236,11 @@ if (window.studentCoachLauncherInitialized) {
             return;
         }
 
-        const targetNode = document.querySelector('#kn-scene_43'); 
+        // Observe document.body for better navigation detection
+        const targetNode = document.body;
 
         if (!targetNode) {
-            console.error("[StudentCoachLauncher] Target node for MutationObserver not found (#kn-scene_43).");
+            console.error("[StudentCoachLauncher] Document body not available for MutationObserver.");
             return;
         }
 
@@ -225,18 +256,44 @@ if (window.studentCoachLauncherInitialized) {
         const observerCallback = function(mutationsList, observer) {
             // logStudentCoach("MutationObserver detected DOM change (raw event)."); // Can be noisy
             
-            // Check if we're still on the correct scene
-            if (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key && Knack.scene.key !== STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
-                // We've navigated away from the student coach scene
+            // First check URL-based restrictions
+            if (!isAllowedUrl()) {
                 if (coachUIInitialized) {
-                    logStudentCoach("Observer: Navigated away from student coach scene. Clearing UI.");
+                    logStudentCoach("Observer: Current URL not allowed. Clearing UI.");
                     clearCoachUI();
                     observerLastProcessedStudentKnackId = null;
                 }
-                return; // Exit early
+                return; // Exit early if URL not allowed
             }
             
-            if (isStudentCoachPageView()) { // Check if we are on the correct page
+            // Check if the target element for scene_43 still exists
+            const sceneElement = document.querySelector('#kn-scene_43');
+            const targetViewElement = document.querySelector(STUDENT_COACH_LAUNCHER_CONFIG.elementSelector);
+            
+            // Check if we're still on the correct scene
+            if (typeof Knack !== 'undefined' && Knack.scene && Knack.scene.key) {
+                if (Knack.scene.key !== STUDENT_COACH_LAUNCHER_CONFIG.sceneKey) {
+                    // We've navigated away from the student coach scene
+                    if (coachUIInitialized) {
+                        logStudentCoach(`Observer: Navigated away from scene (current: ${Knack.scene.key}, expected: ${STUDENT_COACH_LAUNCHER_CONFIG.sceneKey}). Clearing UI.`);
+                        clearCoachUI();
+                        observerLastProcessedStudentKnackId = null;
+                    }
+                    return; // Exit early
+                }
+            }
+            
+            // Also check if the scene element or target view element is missing
+            if (!sceneElement || !targetViewElement) {
+                if (coachUIInitialized) {
+                    logStudentCoach("Observer: Scene or target element no longer exists. Clearing UI.");
+                    clearCoachUI();
+                    observerLastProcessedStudentKnackId = null;
+                }
+                return;
+            }
+            
+            if (isStudentCoachPageView()) { // Check if we are on the correct page (includes URL check)
                 if (!coachUIInitialized && !uiCurrentlyInitializing) { // Only initialize UI if not already done and not in process
                     initializeCoachUI();
                 }
@@ -266,6 +323,40 @@ if (window.studentCoachLauncherInitialized) {
         coachObserver = new MutationObserver(debouncedObserverCallback);
         coachObserver.observe(targetNode, { childList: true, subtree: true });
 
+        // Add explicit scene change listener for better navigation detection
+        if (typeof Knack !== 'undefined' && Knack.router) {
+            $(document).on('knack-scene-render.any', function(event, scene) {
+                logStudentCoach(`Scene render event detected: ${scene.key}`);
+                if (scene.key !== STUDENT_COACH_LAUNCHER_CONFIG.sceneKey && coachUIInitialized) {
+                    logStudentCoach(`Scene changed to ${scene.key}, clearing AI Coach UI`);
+                    clearCoachUI();
+                    observerLastProcessedStudentKnackId = null;
+                }
+            });
+        }
+        
+        // Add URL change listeners for hash and popstate events
+        window.addEventListener('hashchange', function(event) {
+            logStudentCoach(`Hash change detected: ${window.location.hash}`);
+            if (!isAllowedUrl() && coachUIInitialized) {
+                logStudentCoach('URL changed to non-allowed page, clearing AI Coach UI');
+                clearCoachUI();
+                observerLastProcessedStudentKnackId = null;
+            } else if (isAllowedUrl() && !coachUIInitialized && isStudentCoachPageView()) {
+                logStudentCoach('URL changed to allowed page, initializing AI Coach UI');
+                initializeCoachUI();
+            }
+        });
+        
+        window.addEventListener('popstate', function(event) {
+            logStudentCoach(`Popstate event detected: ${window.location.href}`);
+            if (!isAllowedUrl() && coachUIInitialized) {
+                logStudentCoach('Navigation to non-allowed page, clearing AI Coach UI');
+                clearCoachUI();
+                observerLastProcessedStudentKnackId = null;
+            }
+        });
+
         // REMOVED: Initial direct call to initializeCoachUI via isStudentCoachPageView()
         // We now rely on the MutationObserver to make the first call when ready.
         // if (isStudentCoachPageView()) {
@@ -290,8 +381,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1w.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1w.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1x.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1x.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
