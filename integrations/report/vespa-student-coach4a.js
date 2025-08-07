@@ -90,11 +90,25 @@ if (window.studentCoachLauncherInitialized) {
             
             // Check if we found the field value
             if (fieldValue !== undefined && fieldValue !== null) {
-                // For Yes/No fields, Knack typically returns "Yes" or "No" as strings
-                // "Yes" means SHOW the AI Coach (enabled)
-                // "No" means HIDE the AI Coach (disabled)
-                const isEnabled = fieldValue === 'Yes' || fieldValue === 'yes' || fieldValue === true;
-                logStudentCoach(`AI Coach enabled check - "Show AI Coach" value: "${fieldValue}" (type: ${typeof fieldValue}), isEnabled: ${isEnabled}`);
+                // For Yes/No fields, Knack can return:
+                // - Boolean: true/false
+                // - String: "Yes"/"No" 
+                // "Yes"/true means SHOW the AI Coach (enabled)
+                // "No"/false means HIDE the AI Coach (disabled)
+                
+                let isEnabled;
+                if (typeof fieldValue === 'boolean') {
+                    isEnabled = fieldValue === true;
+                    logStudentCoach(`AI Coach enabled check - "Show AI Coach" boolean value: ${fieldValue}, isEnabled: ${isEnabled}`);
+                } else if (typeof fieldValue === 'string') {
+                    isEnabled = fieldValue === 'Yes' || fieldValue === 'yes';
+                    logStudentCoach(`AI Coach enabled check - "Show AI Coach" string value: "${fieldValue}", isEnabled: ${isEnabled}`);
+                } else {
+                    // Default to treating truthy values as enabled
+                    isEnabled = !!fieldValue;
+                    logStudentCoach(`AI Coach enabled check - "Show AI Coach" other type value: "${fieldValue}" (type: ${typeof fieldValue}), isEnabled: ${isEnabled}`);
+                }
+                
                 return isEnabled;
             }
             
