@@ -68,14 +68,17 @@ if (window.studentCoachLauncherInitialized) {
             
             // Check if we have the field_3577 value in user attributes
             // This is a Yes/No field in Object_10 (Student record)
+            // Field name is "Show AI Coach" - Yes means show, No means hide
             
             // First check if it's directly available in user attributes
             if (user.field_3577 !== undefined && user.field_3577 !== null) {
                 // For Yes/No fields, Knack typically returns "Yes" or "No" as strings
                 const fieldValue = user.field_3577;
-                const isDisabled = fieldValue === 'Yes' || fieldValue === 'yes' || fieldValue === true;
-                logStudentCoach(`AI Coach enabled check - field_3577 value: "${fieldValue}" (type: ${typeof fieldValue}), isDisabled: ${isDisabled}`);
-                return !isDisabled; // Return true if NOT disabled (i.e., field is "No" or false)
+                // "Yes" means SHOW the AI Coach (enabled)
+                // "No" means HIDE the AI Coach (disabled)
+                const isEnabled = fieldValue === 'Yes' || fieldValue === 'yes' || fieldValue === true;
+                logStudentCoach(`AI Coach enabled check - field_3577 ("Show AI Coach") value: "${fieldValue}" (type: ${typeof fieldValue}), isEnabled: ${isEnabled}`);
+                return isEnabled; // Return true if "Yes" (show), false if "No" (hide)
             }
             
             // If not directly available, default to enabled
@@ -381,8 +384,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1x.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1x.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk1y.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original1y.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
