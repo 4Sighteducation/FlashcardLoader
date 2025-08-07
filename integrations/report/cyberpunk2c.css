@@ -40,8 +40,11 @@ body.ai-coach-active #kn-scene_43 {
                 margin-right var(--ai-coach-transition-duration) ease-in-out;
 }
 
-#content,
-#kn-scene_43 {
+/* Ensure content resets when coach is closed */
+body:not(.ai-coach-active) #content,
+body:not(.ai-coach-active) #kn-scene_43 {
+    width: 100% !important;
+    margin-right: 0 !important;
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 margin-right var(--ai-coach-transition-duration) ease-in-out;
 }
@@ -61,7 +64,7 @@ body.ai-coach-active #kn-scene_43 {
     box-shadow: -5px 0 30px rgba(0, 255, 240, 0.3), inset 0 0 100px rgba(0, 255, 240, 0.05) !important;
     padding: 20px !important;
     box-sizing: border-box !important;
-    overflow: hidden !important; /* Changed from overflow-y: auto to prevent double scrolling */
+    overflow: hidden !important;  /* Panel itself shouldn't scroll, only content area */
     z-index: 1050 !important;
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
@@ -129,15 +132,8 @@ body.ai-coach-active [id*="CoachPanel"] {
     visibility: visible !important;
 }
 
-/* Lock body scroll in desktop when panel is active - CYBERPUNK */
-@media (min-width: 769px) {
-    body.ai-coach-active {
-        overflow: hidden !important;
-        position: fixed !important;
-        width: 100% !important;
-        height: 100vh !important;
-    }
-}
+/* Remove body scroll lock - causing issues */
+/* Desktop scrolling will be handled differently */
 
 /* Resize handle styles - use class selector for JavaScript-created element */
 .ai-coach-resize-handle {
@@ -237,16 +233,15 @@ body.ai-coach-active [id*="CoachPanel"] {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: auto !important;
+    overflow-y: auto !important;  /* Force scrolling on content */
     overflow-x: hidden !important;
     min-height: 0;
-    max-height: calc(100vh - 100px); /* Ensure content doesn't exceed viewport */
+    padding: 0 20px 20px 20px;
     position: relative;
     z-index: 2;
     background: transparent !important;
     color: var(--neon-text-primary) !important;
     -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
-    overscroll-behavior: contain; /* Prevent scroll chaining */
 }
 
 /* Launcher button container - Fixed to right side, more discreet */
