@@ -24,6 +24,8 @@
 }
 
 /* Apply modern font globally to AI Coach elements */
+#studentCoachSlidePanel,
+#studentCoachSlidePanel *,
 #aiCoachPanel,
 #aiCoachPanel *,
 [id*="CoachPanel"],
@@ -52,6 +54,7 @@ body:not(.ai-coach-active) #kn-scene_43 {
 }
 
 /* Main AI Coach Panel - Modern Design */
+#studentCoachSlidePanel,
 #aiCoachPanel,
 [id*="CoachPanel"],
 .ai-coach-panel {
@@ -79,6 +82,7 @@ body:not(.ai-coach-active) #kn-scene_43 {
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
 }
 
+body.ai-coach-active #studentCoachSlidePanel,
 body.ai-coach-active #aiCoachPanel,
 body.ai-coach-active [id*="CoachPanel"],
 body.ai-coach-active .ai-coach-panel {
@@ -91,6 +95,7 @@ body.ai-coach-active .ai-coach-panel {
 /* Desktop scrolling will be handled differently */
 
 /* Add subtle inner shadow for depth */
+#studentCoachSlidePanel::before,
 #aiCoachPanel::before,
 [id*="CoachPanel"]::before,
 .ai-coach-panel::before {
@@ -106,12 +111,14 @@ body.ai-coach-active .ai-coach-panel {
 }
 
 /* Smooth scrollbar styling */
+#studentCoachSlidePanel::-webkit-scrollbar,
 #aiCoachPanel::-webkit-scrollbar,
 [id*="CoachPanel"]::-webkit-scrollbar,
 .ai-coach-panel::-webkit-scrollbar {
     width: 8px;
 }
 
+#studentCoachSlidePanel::-webkit-scrollbar-track,
 #aiCoachPanel::-webkit-scrollbar-track,
 [id*="CoachPanel"]::-webkit-scrollbar-track,
 .ai-coach-panel::-webkit-scrollbar-track {
@@ -119,6 +126,7 @@ body.ai-coach-active .ai-coach-panel {
     border-radius: 4px;
 }
 
+#studentCoachSlidePanel::-webkit-scrollbar-thumb,
 #aiCoachPanel::-webkit-scrollbar-thumb,
 [id*="CoachPanel"]::-webkit-scrollbar-thumb,
 .ai-coach-panel::-webkit-scrollbar-thumb {
@@ -126,6 +134,7 @@ body.ai-coach-active .ai-coach-panel {
     border-radius: 4px;
 }
 
+#studentCoachSlidePanel::-webkit-scrollbar-thumb:hover,
 #aiCoachPanel::-webkit-scrollbar-thumb:hover,
 [id*="CoachPanel"]::-webkit-scrollbar-thumb:hover,
 .ai-coach-panel::-webkit-scrollbar-thumb:hover {
@@ -196,6 +205,7 @@ body.ai-coach-active .ai-coach-panel {
 }
 
 /* Panel content - make it flexible to accommodate chat */
+#studentCoachSlidePanel .ai-coach-panel-content,
 #aiCoachPanel .ai-coach-panel-content,
 [id*="CoachPanel"] .ai-coach-panel-content,
 .ai-coach-panel .ai-coach-panel-content {
@@ -1528,6 +1538,7 @@ div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
 }
 
 /* Ensure proper header layout */
+#studentCoachSlidePanel .ai-coach-panel-header,
 #aiCoachPanel .ai-coach-panel-header,
 [id*="CoachPanel"] .ai-coach-panel-header,
 .ai-coach-panel .ai-coach-panel-header {
