@@ -64,7 +64,7 @@ body.ai-coach-active #kn-scene_43 {
     border-left: 2px solid #d6dee5;
     padding: 20px;
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow: hidden; /* Changed from overflow-y: auto to prevent double scrolling */
     z-index: 1050;
     transition: width var(--ai-coach-transition-duration) cubic-bezier(0.4, 0, 0.2, 1), 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
@@ -82,6 +82,16 @@ body.ai-coach-active .ai-coach-panel {
     width: var(--ai-coach-panel-width);
     opacity: 1;
     visibility: visible;
+}
+
+/* Lock body scroll in desktop when panel is active */
+@media (min-width: 769px) {
+    body.ai-coach-active {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100% !important;
+        height: 100vh !important;
+    }
 }
 
 /* Add subtle inner shadow for depth */
@@ -195,11 +205,13 @@ body.ai-coach-active .ai-coach-panel {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     min-height: 0;
+    max-height: calc(100vh - 100px); /* Ensure content doesn't exceed viewport */
     padding: 0;
     background: transparent;
     margin: 0;
     -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
     position: relative; /* Ensure proper scroll context */
+    overscroll-behavior: contain; /* Prevent scroll chaining */
 }
 
 /* Launcher button container - Fixed to right side, more discreet */
@@ -859,7 +871,7 @@ button#activateAICoachBtn:active {
     height: 100%;
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(4px);
-    z-index: 2000;
+    z-index: 2200; /* Increased to appear above AI Coach panel (2100) */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -881,6 +893,7 @@ button#activateAICoachBtn:active {
     transform: scale(0.9);
     transition: transform 0.3s ease;
     overflow: hidden;
+    z-index: 2201; /* Ensure content is above overlay */
 }
 
 /* Problem selector modal specific styles */
