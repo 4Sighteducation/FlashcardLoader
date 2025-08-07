@@ -684,14 +684,20 @@
     
     // Setup popup event handlers
     function setupPopupEvents(validationResult) {
-        // Close button handlers
+        // Close button handlers - return to home for both happy and unhappy modals
         $('.popup-close, .close-btn').on('click', function() {
+            isNavigatingAway = true;
             closePopup();
+            // Navigate to home page
+            window.location.hash = '#landing-page/';
         });
         
-        // Overlay click to close
+        // Overlay click to close - also returns to home
         $('.vespa-questionnaire-popup-overlay').on('click', function() {
+            isNavigatingAway = true;
             closePopup();
+            // Navigate to home page
+            window.location.hash = '#landing-page/';
         });
         
         // Proceed to questionnaire button
@@ -924,5 +930,7 @@
             }, 100);
         }
     });
+    
+})(); 
     
 })(); 
