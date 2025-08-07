@@ -199,19 +199,19 @@ body.ai-coach-active .ai-coach-panel {
     margin: 0;
 }
 
-/* Launcher button container - For Centered Floating Button Style */
+/* Launcher button container - Fixed to right side, more discreet */
 #aiCoachLauncherButtonContainer,
 #studentCoachLauncherButtonContainer {
     position: fixed; 
-    bottom: 24px;    
-    left: 50%;       
-    transform: translateX(-50%); 
-    z-index: 9999;   /* Increased to ensure it's above other elements */
+    bottom: 30px;    
+    right: 30px;       
+    z-index: 1040;   /* Reduced to be less intrusive but still visible */
     text-align: center; 
     padding: 0;
     border-top: none; 
     background-color: transparent;
     pointer-events: auto; /* Ensure container can receive clicks */
+    transition: opacity 0.3s ease;
 }
 
 #aiCoachLauncherButtonContainer p,
@@ -219,31 +219,32 @@ body.ai-coach-active .ai-coach-panel {
     display: none; 
 }
 
-/* Styling for the main Activate button - Modern Gradient Design */
+/* Styling for the main Activate button - More Discreet Design */
 #aiCoachLauncherButtonContainer button#activateAICoachBtn,
 #studentCoachLauncherButtonContainer button#activateAICoachBtn,
 #aiCoachLauncherButtonContainer button[id*="activateAICoach"],
 #aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
 #studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
 button#activateAICoachBtn {
-    padding: 16px 32px !important;
-    font-size: 1.1em !important;
-    font-weight: 600 !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    color: white !important; 
-    border: 1px solid rgba(102, 126, 234, 0.3) !important;
-    border-radius: 28px !important;
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.1) !important;
+    padding: 12px 24px !important;
+    font-size: 0.95em !important;
+    font-weight: 500 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    color: #667eea !important; 
+    border: 2px solid rgba(102, 126, 234, 0.3) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
     cursor: pointer !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px; 
+    gap: 8px; 
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     position: relative;
     overflow: hidden;
-    z-index: 10000; /* Ensure button is above other elements */
+    opacity: 0.8;
+    z-index: 1040; /* Reduced to be less dominant */
     pointer-events: auto; /* Ensure button can receive clicks */
 }
 
@@ -279,8 +280,11 @@ button#activateAICoachBtn:hover::before {
 #aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover,
 #studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"]:hover,
 button#activateAICoachBtn:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow: 0 8px 28px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 -2px 4px rgba(0, 0, 0, 0.15) !important;
+    opacity: 1 !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3) !important;
     border-color: rgba(102, 126, 234, 0.5) !important;
 }
 
@@ -294,15 +298,15 @@ button#activateAICoachBtn:active {
     box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3), 0 1px 4px rgba(0, 0, 0, 0.15), inset 0 -1px 2px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Styling for the new Info Button - Modern Design */
+/* Styling for the new Info Button - More Discreet Design */
 #aiCoachInfoBtn {
-    width: 48px !important;
-    height: 48px !important;
+    width: 36px !important;
+    height: 36px !important;
     border-radius: 50% !important; 
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-    border: 2px solid rgba(255, 255, 255, 0.9) !important;
-    color: white !important; 
-    font-size: 24px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 2px solid rgba(102, 126, 234, 0.3) !important;
+    color: #667eea !important; 
+    font-size: 18px !important;
     font-weight: bold !important;
     font-family: 'Georgia', serif;
     line-height: 1;
@@ -310,21 +314,25 @@ button#activateAICoachBtn:active {
     display: inline-flex !important; 
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 4px 16px rgba(240, 87, 108, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
     transition: all 0.3s ease !important;
     vertical-align: middle;
     position: relative;
-    z-index: 10000; /* Ensure info button is above other elements */
+    opacity: 0.8;
+    z-index: 1040; /* Reduced to be less dominant */
     pointer-events: auto; /* Ensure button can receive clicks */
 }
 
 #aiCoachInfoBtn:hover {
-    transform: scale(1.15) rotate(10deg);
-    box-shadow: 0 6px 20px rgba(240, 87, 108, 0.5) !important;
+    opacity: 1 !important;
+    background: #667eea !important;
+    color: white !important;
+    transform: scale(1.1);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3) !important;
 }
 
 #aiCoachInfoBtn:active {
-    transform: scale(1.05) rotate(5deg);
+    transform: scale(1.0);
 }
 
 /* Ensure button child elements don't interfere with clicks */
@@ -1020,31 +1028,139 @@ button#activateAICoachBtn:active {
     border-radius: 4px;
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments - Enhanced Mobile Modal */
 @media (max-width: 768px) {
     :root {
-        --ai-coach-panel-width: 100%;
-        --ai-coach-panel-min-width: 100%;
+        --ai-coach-panel-width: 90%;
+        --ai-coach-panel-min-width: 90%;
+        --ai-coach-panel-max-width: 90%;
     }
     
-    body.ai-coach-active #content {
-        display: none;
+    /* Don't hide main content on mobile */
+    body.ai-coach-active #content,
+    body.ai-coach-active #kn-scene_43 {
+        width: 100% !important;
+        margin-right: 0 !important;
     }
     
+    /* Convert panel to modal on mobile */
     #aiCoachPanel,
     [id*="CoachPanel"],
     .ai-coach-panel {
-        width: 100% !important;
-        font-size: 16px;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translate(-50%, -50%) !important;
+        width: 90% !important;
+        max-width: 400px !important;
+        height: 85vh !important;
+        max-height: 600px !important;
+        border-radius: 16px !important;
+        border: 2px solid #d6dee5 !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+        font-size: 14px;
+        z-index: 2100 !important;
     }
     
+    body.ai-coach-active #aiCoachPanel,
+    body.ai-coach-active [id*="CoachPanel"],
+    body.ai-coach-active .ai-coach-panel {
+        transform: translate(-50%, -50%) scale(1) !important;
+        opacity: 1;
+    }
+    
+    /* Add overlay background on mobile */
+    body.ai-coach-active::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 2050;
+    }
+    
+    /* Adjust panel content for mobile */
+    #aiCoachPanel .ai-coach-panel-content,
+    [id*="CoachPanel"] .ai-coach-panel-content,
+    .ai-coach-panel .ai-coach-panel-content {
+        max-height: calc(100% - 80px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 15px !important;
+    }
+    
+    /* Adjust chat container for mobile */
     #aiCoachChatContainer {
-        max-height: calc(100vh - 300px);
+        max-height: calc(100vh - 350px);
+        margin-top: 15px;
     }
     
+    #aiCoachChatDisplay {
+        max-height: 250px !important;
+        min-height: 150px !important;
+    }
+    
+    /* Adjust header for mobile */
+    .ai-coach-panel-header {
+        padding: 15px !important;
+        margin: -15px -15px 15px -15px !important;
+    }
+    
+    .ai-coach-panel-header h3 {
+        font-size: 1.3em !important;
+    }
+    
+    /* Make buttons more touch-friendly */
+    .ai-coach-section-toggles {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+        padding: 10px !important;
+    }
+    
+    .ai-coach-section-toggles .p-button {
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+    }
+    
+    /* Adjust launcher button position for mobile */
+    #aiCoachLauncherButtonContainer,
+    #studentCoachLauncherButtonContainer {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    #aiCoachLauncherButtonContainer button#activateAICoachBtn,
+    #studentCoachLauncherButtonContainer button#activateAICoachBtn,
+    #aiCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"],
+    #studentCoachLauncherButtonContainer button[data-button-id="activateAICoachBtn"] {
+        padding: 10px 20px !important;
+        font-size: 0.9em !important;
+    }
+    
+    /* Modal content adjustments */
     .ai-coach-modal-content {
         width: 95%;
         max-height: 90vh;
+    }
+    
+    /* Hide resize handle on mobile */
+    .ai-coach-resize-handle {
+        display: none !important;
+    }
+    
+    /* Text controls mobile adjustment */
+    .ai-coach-text-controls {
+        flex-direction: row !important;
+        gap: 5px !important;
+    }
+    
+    .ai-coach-text-control-btn {
+        padding: 4px 8px !important;
+        font-size: 12px !important;
     }
 }
 
