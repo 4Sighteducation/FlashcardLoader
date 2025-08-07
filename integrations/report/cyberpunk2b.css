@@ -61,7 +61,7 @@ body.ai-coach-active #kn-scene_43 {
     box-shadow: -5px 0 30px rgba(0, 255, 240, 0.3), inset 0 0 100px rgba(0, 255, 240, 0.05) !important;
     padding: 20px !important;
     box-sizing: border-box !important;
-    overflow-y: auto !important;
+    overflow: hidden !important; /* Changed from overflow-y: auto to prevent double scrolling */
     z-index: 1050 !important;
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 opacity var(--ai-coach-transition-duration) ease-in-out, 
@@ -127,6 +127,16 @@ body.ai-coach-active [id*="CoachPanel"] {
     width: var(--ai-coach-panel-width) !important;
     opacity: 1 !important;
     visibility: visible !important;
+}
+
+/* Lock body scroll in desktop when panel is active - CYBERPUNK */
+@media (min-width: 769px) {
+    body.ai-coach-active {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100% !important;
+        height: 100vh !important;
+    }
 }
 
 /* Resize handle styles - use class selector for JavaScript-created element */
@@ -230,11 +240,13 @@ body.ai-coach-active [id*="CoachPanel"] {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     min-height: 0;
+    max-height: calc(100vh - 100px); /* Ensure content doesn't exceed viewport */
     position: relative;
     z-index: 2;
     background: transparent !important;
     color: var(--neon-text-primary) !important;
     -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
+    overscroll-behavior: contain; /* Prevent scroll chaining */
 }
 
 /* Launcher button container - Fixed to right side, more discreet */
@@ -1160,7 +1172,7 @@ button#activateAICoachBtn:active {
     height: 100%;
     background: rgba(10, 10, 15, 0.85);
     backdrop-filter: blur(5px);
-    z-index: 2000; 
+    z-index: 2200; /* Increased to appear above AI Coach panel (2100) */ 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1184,6 +1196,7 @@ button#activateAICoachBtn:active {
     transition: transform var(--ai-coach-transition-duration, 0.3s) cubic-bezier(0.25, 0.8, 0.25, 1), 
                 opacity calc(var(--ai-coach-transition-duration, 0.3s) * 0.8) ease-in-out;
     overflow: hidden;
+    z-index: 2201; /* Ensure content is above overlay */
 }
 
 /* Add scan line effect to modal */
