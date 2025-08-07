@@ -1408,6 +1408,9 @@ button#activateAICoachBtn:active {
         box-shadow: 0 0 40px rgba(0, 255, 240, 0.3), 0 10px 40px rgba(0, 0, 0, 0.5) !important;
         font-size: 14px;
         z-index: 2100 !important;
+        overflow: hidden !important; /* Prevent overflow on panel itself */
+        display: flex !important;
+        flex-direction: column !important;
     }
     
     body.ai-coach-active #aiCoachPanel,
@@ -1428,6 +1431,15 @@ button#activateAICoachBtn:active {
         background: rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(4px);
         z-index: 2050;
+        pointer-events: auto; /* Ensure overlay captures events */
+    }
+    
+    /* Prevent body scroll when modal is active on mobile */
+    body.ai-coach-active {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100% !important;
+        height: 100% !important;
     }
     
     /* Adjust panel content for mobile */
