@@ -426,10 +426,10 @@ if (window.studentCoachLauncherInitialized) {
         const styleId = 'student-coach-external-styles'; // Unique ID
         const existingLink = document.getElementById(styleId);
         
-        // URLs for both themes - VERSION O WITH PANEL POSITIONING FIXES
+        // URLs for both themes - VERSION P WITH SIMPLE FIXES
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk2o.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original2o.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk2p.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original2p.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -613,16 +613,7 @@ if (window.studentCoachLauncherInitialized) {
         // Also ensure the panel element is recognized by any wildcard selectors in CSS
         panel.setAttribute('data-coach-panel', 'student');
         
-        // FORCE PANEL TO START AT TOP OF VIEWPORT, NOT ABOVE IT
-        panel.style.cssText = `
-            position: fixed !important;
-            top: 0 !important;
-            right: 0 !important;
-            height: 100vh !important;
-            overflow: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-        `;
+
         
         const currentTheme = getCurrentTheme();
         const themeToggleText = currentTheme === 'cyberpunk' ? '🎨 Original Theme' : '🌆 Cyberpunk Theme';
@@ -650,178 +641,30 @@ if (window.studentCoachLauncherInitialized) {
         document.body.appendChild(panel);
         logStudentCoach("Student Coach panel created.");
         
-        // NUCLEAR OPTION: Force header styles and keep them forced
+        // Simple header style fix - no loops or observers
         const header = panel.querySelector('.ai-coach-panel-header');
         if (header) {
-            const forceHeaderStyles = () => {
-                header.style.cssText = `
-                    position: sticky !important;
-                    top: 0 !important;
-                    z-index: 999999 !important;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                    padding: 15px 20px !important;
-                    height: 60px !important;
-                    min-height: 60px !important;
-                    max-height: 60px !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    color: white !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                    margin: 0 !important;
-                    transform: none !important;
-                    flex-shrink: 0 !important;
-                `;
-                
-                // Style the h3 title
-                const title = header.querySelector('h3');
-                if (title) {
-                    title.style.cssText = 'color: white !important; margin: 0 !important; font-size: 1.2em !important; visibility: visible !important; opacity: 1 !important;';
-                }
-                
-                // Ensure controls are visible
-                const controls = header.querySelector('.ai-coach-header-controls');
-                if (controls) {
-                    controls.style.cssText = 'display: flex !important; gap: 15px !important; align-items: center !important; visibility: visible !important; opacity: 1 !important;';
-                }
-            };
-            
-            // Apply immediately
-            forceHeaderStyles();
-            
-            // Watch for any changes and reapply
-            const observer = new MutationObserver(() => {
-                forceHeaderStyles();
-            });
-            
-            observer.observe(header, {
-                attributes: true,
-                attributeFilter: ['style', 'class'],
-                childList: true,
-                subtree: true
-            });
-            
-            // Also watch the panel itself
-            const panelObserver = new MutationObserver(() => {
-                const h = panel.querySelector('.ai-coach-panel-header');
-                if (h && h !== header) {
-                    forceHeaderStyles();
-                }
-            });
-            
-            panelObserver.observe(panel, {
-                childList: true,
-                subtree: false
-            });
-            
-            // EXTRA NUCLEAR: Keep forcing every 500ms for 10 seconds
-            let retries = 0;
-            const forceInterval = setInterval(() => {
-                forceHeaderStyles();
-                retries++;
-                if (retries > 20) clearInterval(forceInterval);
-            }, 500);
-            
-            // Log that we're applying the nuclear option
-            console.warn('NUCLEAR HEADER FIX APPLIED - Monitoring and forcing header visibility');
-        }
-        
-        // ABSOLUTE FAILSAFE: Inject a style tag that overrides EVERYTHING
-        const styleId = 'student-coach-nuclear-header-fix';
-        if (!document.getElementById(styleId)) {
-            const nuclearStyle = document.createElement('style');
-            nuclearStyle.id = styleId;
-            nuclearStyle.innerHTML = `
-                #${panelId} .ai-coach-panel-header,
-                #${panelId} > .ai-coach-panel-header,
-                .ai-coach-panel-header {
-                    position: sticky !important;
-                    top: 0 !important;
-                    z-index: 999999 !important;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                    padding: 15px 20px !important;
-                    height: 60px !important;
-                    min-height: 60px !important;
-                    max-height: 60px !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    color: white !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                    margin: 0 !important;
-                    transform: none !important;
-                    flex-shrink: 0 !important;
-                }
-                
-                #${panelId} .ai-coach-panel-header * {
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                }
-                
-                #${panelId} .ai-coach-panel-content {
-                    margin-top: 0 !important;
-                    padding-top: 20px !important;
-                }
+            header.style.cssText = `
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 10 !important;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                padding: 15px 20px !important;
+                height: 60px !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                color: white !important;
             `;
-            document.head.appendChild(nuclearStyle);
-            console.warn('NUCLEAR STYLE TAG INJECTED - This should override everything');
+            
+            // Style the h3 title
+            const title = header.querySelector('h3');
+            if (title) {
+                title.style.color = 'white';
+            }
         }
         
-        // DEBUGGING: Check PANEL positioning and header visibility
-        setTimeout(() => {
-            const debugPanel = document.getElementById(panelId);
-            const debugHeader = document.querySelector('.ai-coach-panel-header');
-            const debugContent = document.querySelector('.ai-coach-panel-content');
-            
-            if (debugPanel) {
-                const panelRect = debugPanel.getBoundingClientRect();
-                const panelStyles = window.getComputedStyle(debugPanel);
-                console.log('🔍 PANEL POSITION DEBUG:', {
-                    rect: {
-                        top: panelRect.top,
-                        left: panelRect.left,
-                        right: panelRect.right,
-                        bottom: panelRect.bottom,
-                        height: panelRect.height
-                    },
-                    styles: {
-                        position: panelStyles.position,
-                        top: panelStyles.top,
-                        transform: panelStyles.transform,
-                        overflow: panelStyles.overflow
-                    },
-                    isAboveViewport: panelRect.bottom < 0,
-                    isBelowViewport: panelRect.top > window.innerHeight
-                });
-            }
-            
-            if (debugHeader) {
-                const headerRect = debugHeader.getBoundingClientRect();
-                console.log('🔍 HEADER POSITION DEBUG:', {
-                    rect: {
-                        top: headerRect.top,
-                        bottom: headerRect.bottom,
-                        height: headerRect.height
-                    },
-                    isAboveViewport: headerRect.bottom < 0,
-                    isBelowViewport: headerRect.top > window.innerHeight,
-                    isVisible: headerRect.top >= 0 && headerRect.top < window.innerHeight
-                });
-            }
-            
-            if (debugContent) {
-                const contentRect = debugContent.getBoundingClientRect();
-                console.log('🔍 CONTENT POSITION DEBUG:', {
-                    rect: {
-                        top: contentRect.top,
-                        height: contentRect.height
-                    },
-                    firstChild: debugContent.firstElementChild?.tagName + ': ' + debugContent.firstElementChild?.textContent?.substring(0, 30)
-                });
-            }
-        }, 2000);
+
         
         setupTextSizeControls(panelId); // Pass panelId
         setupThemeToggle(); // New function to handle theme toggle
@@ -1634,36 +1477,6 @@ if (window.studentCoachLauncherInitialized) {
 
         if (show) {
             document.body.classList.add('ai-coach-active'); // Use a generic or namespaced class
-            
-            // FORCE PANEL TO BE VISIBLE AND POSITIONED CORRECTLY
-            if (panel) {
-                panel.style.setProperty('position', 'fixed', 'important');
-                panel.style.setProperty('top', '0', 'important');
-                panel.style.setProperty('right', '0', 'important');
-                panel.style.setProperty('height', '100vh', 'important');
-                panel.style.setProperty('display', 'flex', 'important');
-                panel.style.setProperty('flex-direction', 'column', 'important');
-                panel.style.setProperty('overflow', 'hidden', 'important');
-                
-                // Also ensure header is at top
-                const header = panel.querySelector('.ai-coach-panel-header');
-                if (header) {
-                    const headerRect = header.getBoundingClientRect();
-                    console.log('📍 HEADER CHECK ON SHOW:', {
-                        top: headerRect.top,
-                        isVisible: headerRect.top >= 0 && headerRect.top < 100,
-                        height: headerRect.height
-                    });
-                    
-                    // If header is above viewport, scroll panel content
-                    if (headerRect.top < 0) {
-                        console.warn('⚠️ HEADER IS ABOVE VIEWPORT, FIXING...');
-                        panel.scrollTop = 0;
-                        header.scrollIntoView({ behavior: 'instant', block: 'start' });
-                    }
-                }
-            }
-            
             if (toggleButton) {
                 const buttonLabel = toggleButton.querySelector('.p-button-label');
                 const buttonIcon = toggleButton.querySelector('.p-button-icon');
