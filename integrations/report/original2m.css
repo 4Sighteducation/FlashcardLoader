@@ -158,23 +158,25 @@ body.ai-coach-active .ai-coach-panel {
     background: rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Panel header - Modern Gradient */
+/* Panel header - Modern Gradient - FORCE VISIBILITY */
 #studentCoachSlidePanel .ai-coach-panel-header,
 .ai-coach-panel-header {
     display: flex !important;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 15px 20px !important;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    flex-shrink: 0; /* Prevent shrinking */
-    position: relative;
-    border-bottom: 1px solid rgba(118, 75, 162, 0.3);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.1);
-    margin: 0;
-    min-height: 70px;
-    height: 70px; /* Fixed height */
-    width: 100%;
-    box-sizing: border-box;
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999999 !important;
+    border-bottom: 1px solid rgba(118, 75, 162, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.1) !important;
+    margin: 0 !important;
+    min-height: 60px !important;
+    height: 60px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
@@ -222,9 +224,12 @@ body.ai-coach-active .ai-coach-panel {
     overflow-x: hidden;
     min-height: 0; /* Critical for flex scrolling */
     padding: 20px;
+    padding-top: 20px !important; /* Ensure content doesn't overlap header */
     background: transparent;
     margin: 0;
-    height: calc(100vh - 70px); /* Full viewport minus header */
+    margin-top: 0 !important; /* No negative margins */
+    height: calc(100vh - 60px); /* Full viewport minus header */
+    max-height: calc(100vh - 60px) !important;
     -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
     position: relative; /* Ensure proper scroll context */
 }
@@ -1597,6 +1602,17 @@ div.card[data-v-7afa4eb2] .p-datatable .p-datatable-tbody td:nth-child(3) {
 
 #studentCoachSlidePanel .ai-coach-theme-toggle-btn,
 #studentCoachSlidePanel .ai-coach-text-controls {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* OVERRIDE ANY INLINE STYLES - NUCLEAR OPTION */
+#studentCoachSlidePanel > .ai-coach-panel-header[style] {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999999 !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    height: 60px !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
