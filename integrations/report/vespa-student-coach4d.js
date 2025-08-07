@@ -428,8 +428,8 @@ if (window.studentCoachLauncherInitialized) {
         
         // URLs for both themes
         const themeUrls = {
-            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk2c.css',
-            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original2c.css'
+            'cyberpunk': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/cyberpunk2d.css',
+            'original': 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/original2d.css'
         };
         
         const newHref = themeUrls[theme] || themeUrls['cyberpunk'];
@@ -2408,4 +2408,5 @@ if (window.studentCoachLauncherInitialized) {
         const escHandler = (e) => { if (e.key === 'Escape') closeModal(); };
         document.addEventListener('keydown', escHandler);
     }
+}
 }
