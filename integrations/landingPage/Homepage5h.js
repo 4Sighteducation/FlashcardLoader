@@ -1757,7 +1757,7 @@
           }
           
           .activity-name {
-            color: #00e5db;
+            color: #00e5db !important;
             font-size: 18px;
             font-weight: 600;
             margin: 0 0 8px 0;
@@ -1767,7 +1767,7 @@
             display: flex;
             gap: 20px;
             font-size: 13px;
-            color: #00e5db;
+            color: #00e5db !important;
           }
           
           .activity-buttons {
@@ -1902,7 +1902,18 @@
           .pdf-viewer {
             flex: 1;
             width: 100%;
+            height: 100%;
+            min-height: 600px;
             border: none;
+            background: #f5f5f5;
+          }
+          
+          #pdfViewerContainer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 80px); /* Account for header */
+            min-height: 600px;
             background: #f5f5f5;
           }
           
@@ -3803,4 +3814,4 @@
       });
     });
   }
-})(); // End of IIFE
+})(); // End of IIFEE
