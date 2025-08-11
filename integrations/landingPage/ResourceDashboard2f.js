@@ -479,7 +479,7 @@
         try {
             // Use the CDN URL provided by the user
             const response = await $.ajax({
-                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1f.json',
+                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1g.json',
                 type: 'GET',
                 dataType: 'json'
             });
