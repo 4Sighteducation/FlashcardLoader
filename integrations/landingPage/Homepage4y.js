@@ -1389,74 +1389,56 @@
   async function getActivityOfTheWeek() {
     debugLog('Fetching activities from CDN...');
     try {
-      // Try to fetch from CDN with minimal retries for 404s
-      const response = await new Promise((resolve, reject) => {
-        $.ajax({
-          url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
-          type: 'GET',
-          dataType: 'json',
-          timeout: 5000, // 5 second timeout
-          success: resolve,
-          error: (xhr, status, error) => {
-            // Don't retry on 404 - file doesn't exist
-            if (xhr.status === 404) {
-              debugLog('Activities JSON file not found (404), using fallback');
-              reject(new Error('Activities file not found'));
-            } else {
-              reject(new Error(`Failed to load activities: ${status} - ${error}`));
-            }
-          }
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
+            type: 'GET',
+            dataType: 'json',
+            success: resolve,
+            error: reject
+          });
         });
       });
       
       if (!response || !response.records || response.records.length === 0) {
-        debugLog('No activities found in CDN response');
+        debugLog('No activities found in response');
         return null;
       }
 
       const currentMonth = getCurrentMonthName();
-      const history = getActivityHistory();
-      const recentActivityIds = history.map(h => h.id);
+      debugLog(`Looking for activities for ${currentMonth}`);
       
-      // Filter out Welsh activities (where field_1924 is "Yes" OR is_welsh is true)
-      const nonWelshActivities = response.records.filter(activity => {
-        // Check both field_1924 and is_welsh property
-        const hasWelshField = activity.field_1924 === "Yes";
-        const isWelshFlag = activity.is_welsh === true;
-        const isWelsh = hasWelshField || isWelshFlag;
-        
-        if (isWelsh) {
-          debugLog(`Filtering out Welsh activity: ${activity.title}`);
-        }
-        
-        return !isWelsh;
-      });
-      
-      debugLog(`Total activities: ${response.records.length}, Non-Welsh activities: ${nonWelshActivities.length}`);
-      
-      // Filter activities by current month
-      let monthActivities = nonWelshActivities.filter(activity => {
-        const activityMonth = extractMonthFromIdentifier(activity.group_info?.identifier);
+      // Filter activities for current month
+      let monthActivities = response.records.filter(activity => {
+        if (!activity.identifier) return false;
+        const activityMonth = extractMonthFromIdentifier(activity.identifier);
         return activityMonth === currentMonth;
       });
-      
-      // If no activities for current month, use all non-Welsh activities
+
       if (monthActivities.length === 0) {
-        debugLog(`No activities found for ${currentMonth}, using all non-Welsh activities`);
-        monthActivities = nonWelshActivities;
+        debugLog(`No activities found for ${currentMonth}, falling back to all activities`);
+        monthActivities = response.records;
       }
-      
+
+      // Get recent activity history (last 7 days)
+      const history = getActivityHistory();
+      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      const recentActivityIds = history
+        .filter(item => item.timestamp > sevenDaysAgo)
+        .map(item => item.id);
+
       // Filter out recently shown activities
       let availableActivities = monthActivities.filter(activity => 
         !recentActivityIds.includes(activity.id)
       );
-      
+
       // If all activities have been shown recently, reset and use all month activities
       if (availableActivities.length === 0) {
         debugLog('All activities shown recently, resetting pool');
         availableActivities = monthActivities;
       }
-      
+
       // Select an activity based on day of year
       const today = new Date();
       const start = new Date(today.getFullYear(), 0, 0);
@@ -1475,87 +1457,39 @@
       // Extract PDF link from the full HTML content first
       let pdfLink = null;
       if (activity.html_content) {
-        const pdfMatch = activity.html_content.match(/href="([^"]+\.pdf[^"]*)"/i);
+        const pdfMatch = activity.html_content.match(/href="([^"]*\.pdf[^"]*)"/i);
         if (pdfMatch) {
           pdfLink = pdfMatch[1];
-          debugLog('Found PDF link:', pdfLink);
+          debugLog(`Found PDF link: ${pdfLink}`);
         }
       }
 
-      // Extract only the iframe from html_content (field_1448)
-      let embedCode = '';
-      if (activity.html_content) {
-        // Extract iframe using regex
-        const iframeMatch = activity.html_content.match(/<iframe[^>]*>[\s\S]*?<\/iframe>/i);
-        if (iframeMatch) {
-          embedCode = iframeMatch[0];
-          debugLog('Extracted iframe from activity HTML');
-          
-          // Debug: Log the full HTML content to see what we're dealing with
-          debugLog('Full HTML content:', activity.html_content);
-          debugLog('Extracted iframe:', embedCode);
-        } else {
-          // If no iframe found, use the full content as fallback
-          embedCode = activity.html_content;
-          debugLog('No iframe found, using full HTML content');
-        }
-      }
-      
-      // Enhance embed code for kiosk mode (similar to ResourceDashboardCopy.js)
-      const enhancedEmbedCode = enhanceEmbedForKioskMode(embedCode);
+      // Process and clean the embed code
+      if (activity.embed_code) {
+        let processedEmbedCode = activity.embed_code;
+        
+        // Enhanced kiosk mode - hide more UI elements
+        processedEmbedCode = processedEmbedCode.replace(
+          /(<iframe[^>]*src="[^"]*")([^>]*>)/i,
+          '$1$2'
+        );
 
-      return {
-        id: activity.id,
-        title: activity.title || 'Activity of the Day',
-        name: activity.title,
-        group: activity.group_info?.identifier || 'N/A',
-        category: activity.category,
-        embedCode: enhancedEmbedCode,
-        pdfLink: pdfLink
-      };
+        return {
+          id: activity.id,
+          title: activity.title || 'Activity of the Day',
+          embedCode: processedEmbedCode,
+          pdfLink: pdfLink
+        };
+      }
+
+      debugLog('No embed code found for activity:', activity);
+      return null;
 
     } catch (error) {
-      debugLog('Error fetching activity from CDN:', error);
+      debugLog('Error fetching activity:', error);
       return null;
     }
   }
-
-  // Enhance embed code for kiosk mode (copied from ResourceDashboardCopy.js)
-  function enhanceEmbedForKioskMode(embedCode) {
-    if (!embedCode) return embedCode;
-    
-    let enhancedCode = embedCode;
-    
-    // Add kiosk mode parameters to iframe src
-    enhancedCode = enhancedCode.replace(
-      /(<iframe[^>]*src="[^"]*")([^>]*>)/i,
-      (match, beforeSrc, afterSrc) => {
-        let src = beforeSrc;
-        
-        // Add kiosk mode parameters
-        const kioskParams = [
-          'kiosk=1',
-          'hideui=1',
-          'hidetoolbar=1',
-          'hidenavigation=1',
-          'hideheader=1',
-          'hidefooter=1'
-        ];
-        
-        // Check if URL already has parameters
-        const hasParams = src.includes('?');
-        const separator = hasParams ? '&' : '?';
-        
-        src += separator + kioskParams.join('&');
-        
-        return src + '"' + afterSrc;
-      }
-    );
-    
-    return enhancedCode;
-  }
-
-
 
   function renderActivitySection(activity) {
     if (!activity || !activity.embedCode) {
@@ -1921,7 +1855,9 @@
           About the VESPA Questionnaire
         </h3>
         <div class="vespa-questionnaire-content">
-            <p><strong>"The VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, goal-setting, and your ongoing development.Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</strong></p> 
+          <p class="vespa-quote">"Hi there! We're the creators of the VESPA Questionnaire, and we're delighted you've completed it and seen your personalized scores. Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</p>
+          <div class="vespa-highlight-box">
+            <p><strong>"Most importantly, the VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, team discussions, goal-setting, and your ongoing development."</strong></p>
           </div>
         </div>
       </div>
@@ -1937,7 +1873,7 @@
             ${renderVespaQuestionnaireSection()}
           </div>
           <div class="activity-day-section">
-            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">No activity available today.</p><p style="color: #999; font-size: 12px;">Please check back later.</p></div></div></div>'}
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
           </div>
         </div>
         ${vespaScoresData ? renderVespaCirclesHTML(vespaScoresData) : ''}
@@ -2200,7 +2136,7 @@
             ${renderVespaQuestionnaireSection()}
           </div>
           <div class="activity-day-section">
-            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">No activity available today.</p><p style="color: #999; font-size: 12px;">Please check back later.</p></div></div></div>'}
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
           </div>
         </div>
         ${showVespaScores ? renderVespaCirclesHTML(vespaScoresData) : ''}
