@@ -25,6 +25,9 @@
         const userRoles = config.userRoles || [];
         const userAttributes = config.userAttributes || {};
         
+        // Track the last scene for cleanup purposes
+        let lastScene = null;
+        
         // Helper function for debug logging
         function log(message, data) {
             if (DEBUG) {
@@ -867,6 +870,92 @@
             // You can add analytics tracking here if needed
         }
         
+        // Aggressive DOM cleanup function
+        function cleanupPageContent(newScene) {
+            log('Starting aggressive DOM cleanup for scene change to:', newScene);
+            
+            // Remove all scene-level containers from previous apps
+            const sceneContainers = document.querySelectorAll('[id^="scene-level-container"]');
+            sceneContainers.forEach(container => {
+                log('Removing scene container:', container.id);
+                container.remove();
+            });
+            
+            // Remove all app-specific style elements
+            const appStyles = document.querySelectorAll('style[id*="dashboard"], style[id*="homepage"], style[id*="resource"], style[id*="staff"], style[id*="student"]');
+            appStyles.forEach(style => {
+                log('Removing app style:', style.id);
+                style.remove();
+            });
+            
+            // Remove any modals or overlays
+            const modals = document.querySelectorAll('.vespa-modal, .modal-backdrop, .modal-overlay, [class*="modal"]');
+            modals.forEach(modal => {
+                log('Removing modal:', modal.className);
+                modal.remove();
+            });
+            
+            // Clear any loading messages
+            const loadingMessages = document.querySelectorAll('[id*="loading"], [class*="loading"]');
+            loadingMessages.forEach(msg => {
+                if (!msg.closest('#vespaGeneralHeader')) { // Don't remove header loading states
+                    log('Removing loading message:', msg.id || msg.className);
+                    msg.remove();
+                }
+            });
+            
+            // Reset body classes and styles (except header-related)
+            document.body.classList.remove('landing-page-scene', 'dashboard-scene');
+            const landingPageClasses = Array.from(document.body.classList).filter(cls => cls.startsWith('landing-page-'));
+            landingPageClasses.forEach(cls => document.body.classList.remove(cls));
+            
+            // Reset body background styles
+            if (!document.body.classList.contains('has-general-header')) {
+                document.body.style.backgroundColor = '';
+                document.body.style.backgroundImage = '';
+                document.body.style.backgroundAttachment = '';
+                document.body.style.minHeight = '';
+            }
+            
+            // Clear any scene-specific content from main containers
+            const mainContainers = document.querySelectorAll('.kn-scene-content, #kn-app-container > div');
+            mainContainers.forEach(container => {
+                // Only clear if it contains app-specific content
+                const hasAppContent = container.querySelector('[id*="vespa"], [class*="dashboard"], [class*="homepage"]');
+                if (hasAppContent) {
+                    log('Clearing app content from main container');
+                    container.innerHTML = '';
+                }
+            });
+            
+            // Call any exposed cleanup functions from other apps
+            if (typeof window.cleanupResourceDashboard === 'function') {
+                log('Calling ResourceDashboard cleanup');
+                window.cleanupResourceDashboard();
+            }
+            
+            if (typeof window.cleanupStaffHomepage === 'function') {
+                log('Calling Staff Homepage cleanup');
+                window.cleanupStaffHomepage();
+            }
+            
+            if (typeof window.cleanupStudentHomepage === 'function') {
+                log('Calling Student Homepage cleanup');
+                window.cleanupStudentHomepage();
+            }
+            
+            // Clear any global app state flags
+            const appFlags = Object.keys(window).filter(key => key.startsWith('_loading_') || key.startsWith('_initialized_'));
+            appFlags.forEach(flag => {
+                if (flag !== '_generalHeaderLoaded' && flag !== '_generalHeaderInitComplete') {
+                    log('Clearing app flag:', flag);
+                    delete window[flag];
+                }
+            });
+            
+            log('DOM cleanup completed');
+        }
+        
         // Initialize the header
         function init() {
             log('Starting General Header initialization...');
@@ -909,6 +998,13 @@
             // Re-inject on scene changes in case it gets removed - BUT ONLY IF HEADER IS MISSING
             $(document).on('knack-scene-render.any', function(event, scene) {
                 log('Scene rendered, checking header...', scene.key);
+                
+                // AGGRESSIVE CLEANUP: If scene changed, clean up previous page content
+                if (lastScene && lastScene !== scene.key) {
+                    log(`Scene changed from ${lastScene} to ${scene.key} - performing cleanup`);
+                    cleanupPageContent(scene.key);
+                }
+                lastScene = scene.key;
                 
                 // Check if this is a login scene
                 const isNowLoginPage = loginScenes.includes(scene.key) || 
