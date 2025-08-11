@@ -1757,7 +1757,7 @@
           }
           
           .activity-name {
-            color: #ffffff;
+            color: #00e5db;
             font-size: 18px;
             font-weight: 600;
             margin: 0 0 8px 0;
@@ -1928,7 +1928,9 @@
 
           /* Compact VESPA Scores Styles */
           .vespa-scores-compact {
-            margin-top: 20px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 229, 219, 0.2);
           }
           
           .vespa-scores-title {
