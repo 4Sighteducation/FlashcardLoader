@@ -405,7 +405,7 @@
         return false;
       }
     } catch (error) {
-      console.error('[Homepage] Error tracking user login in Object_3:', error);
+      if (DEBUG_MODE) console.error('[Homepage] Error tracking user login in Object_3:', error);
       return false;
     }
   }
@@ -457,7 +457,7 @@
         
         // Also track login in Object_3 (accounts object) - field_3208
         trackUserLoginInObject3(userEmail).catch(error => {
-          console.warn('[Homepage] Failed to track login in Object_3:', error);
+          if (DEBUG_MODE) console.warn('[Homepage] Failed to track login in Object_3:', error);
         });
       } else {
         // No profile found, create a new one
@@ -964,7 +964,7 @@
         
         // Track initial login in Object_3 (accounts object) - field_3208
         trackUserLoginInObject3(userEmail).catch(error => {
-          console.warn('[Homepage] Failed to track initial login in Object_3:', error);
+          if (DEBUG_MODE) console.warn('[Homepage] Failed to track initial login in Object_3:', error);
         });
         
         return response;
@@ -1595,11 +1595,13 @@
         const userAttributes = Knack.getUserAttributes();
         
         // Debug the actual field values
-        console.log('[Homepage Debug] User attributes field values:');
-        console.log('DISPLAY_PREFERENCE_FIELDS:', DISPLAY_PREFERENCE_FIELDS);
-        console.log('userAttributes structure:', userAttributes);
-        console.log('userAttributes.values:', userAttributes?.values);
-        console.log('All values keys:', Object.keys(userAttributes?.values || {}));
+        if (DEBUG_MODE) {
+          console.log('[Homepage Debug] User attributes field values:');
+          console.log('DISPLAY_PREFERENCE_FIELDS:', DISPLAY_PREFERENCE_FIELDS);
+          console.log('userAttributes structure:', userAttributes);
+          console.log('userAttributes.values:', userAttributes?.values);
+          console.log('All values keys:', Object.keys(userAttributes?.values || {}));
+        }
         
         // Access fields from the values object
         const showAcademicProfileValue = userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile];
@@ -1609,9 +1611,11 @@
         const directAcademicProfileValue = userAttributes?.values?.field_3646;
         const directProductivityHubValue = userAttributes?.values?.field_3647;
         
-        console.log('[Homepage Debug] Field value comparison:');
-        console.log('Via DISPLAY_PREFERENCE_FIELDS - Academic:', showAcademicProfileValue, 'Productivity:', showProductivityHubValue);
-        console.log('Via direct access - Academic:', directAcademicProfileValue, 'Productivity:', directProductivityHubValue);
+        if (DEBUG_MODE) {
+          console.log('[Homepage Debug] Field value comparison:');
+          console.log('Via DISPLAY_PREFERENCE_FIELDS - Academic:', showAcademicProfileValue, 'Productivity:', showProductivityHubValue);
+          console.log('Via direct access - Academic:', directAcademicProfileValue, 'Productivity:', directProductivityHubValue);
+        }
         
         // Use direct field access if DISPLAY_PREFERENCE_FIELDS doesn't work
         const finalAcademicValue = showAcademicProfileValue !== undefined ? showAcademicProfileValue : directAcademicProfileValue;
@@ -1623,10 +1627,12 @@
           showProductivityHub: finalProductivityValue !== false // Show unless explicitly false
         };
         
-        console.log('[Homepage Debug] Final value resolution:');
-        console.log('finalAcademicValue:', finalAcademicValue, '-> showAcademicProfile:', displayPreferences.showAcademicProfile);
-        console.log('finalProductivityValue:', finalProductivityValue, '-> showProductivityHub:', displayPreferences.showProductivityHub);
-        console.log('[Homepage Debug] Final display preferences:', displayPreferences);
+        if (DEBUG_MODE) {
+          console.log('[Homepage Debug] Final value resolution:');
+          console.log('finalAcademicValue:', finalAcademicValue, '-> showAcademicProfile:', displayPreferences.showAcademicProfile);
+          console.log('finalProductivityValue:', finalProductivityValue, '-> showProductivityHub:', displayPreferences.showProductivityHub);
+          console.log('[Homepage Debug] Final display preferences:', displayPreferences);
+        }
         
         debugLog('Processed VESPA scores:', scores);
         debugLog('Display preferences:', displayPreferences);
@@ -2297,7 +2303,7 @@
       const downloadLink = document.getElementById('pdfDownloadLink');
       const viewerContainer = document.getElementById('pdfViewerContainer');
       
-      console.log('[Homepage] Opening PDF modal with URL:', pdfUrl);
+      if (DEBUG_MODE) console.log('[Homepage] Opening PDF modal with URL:', pdfUrl);
       
       // Set title and download link
       title.textContent = activityName || 'Activity PDF';
@@ -2327,7 +2333,7 @@
             const fileIdMatch = pdfUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
             if (fileIdMatch) {
               pdfViewerUrl = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
-              console.log('[Homepage] Converted Google Drive URL to preview format:', pdfViewerUrl);
+              if (DEBUG_MODE) console.log('[Homepage] Converted Google Drive URL to preview format:', pdfViewerUrl);
             }
           }
           
@@ -2342,18 +2348,18 @@
           
           // Handle iframe load errors
           iframe.onerror = function() {
-            console.log('[Homepage] PDF iframe failed to load, showing error message');
+            if (DEBUG_MODE) console.log('[Homepage] PDF iframe failed to load, showing error message');
             showPdfError(pdfUrl, viewerContainer);
           };
           
           // Set a timeout to check if PDF loaded
           const loadTimeout = setTimeout(() => {
-            console.log('[Homepage] PDF load timeout reached, showing fallback options');
+            if (DEBUG_MODE) console.log('[Homepage] PDF load timeout reached, showing fallback options');
             showPdfError(pdfUrl, viewerContainer);
           }, 10000); // 10 second timeout
           
           iframe.onload = function() {
-            console.log('[Homepage] PDF iframe loaded successfully');
+            if (DEBUG_MODE) console.log('[Homepage] PDF iframe loaded successfully');
             clearTimeout(loadTimeout);
           };
           
@@ -2362,7 +2368,7 @@
           viewerContainer.appendChild(iframe);
           
         } catch (error) {
-          console.log('[Homepage] Error setting up PDF viewer:', error);
+          if (DEBUG_MODE) console.log('[Homepage] Error setting up PDF viewer:', error);
           showPdfError(pdfUrl, viewerContainer);
         }
       }, 500);
@@ -3071,7 +3077,7 @@
       }
       else {
         // Edge case - log the state and default to showing what's missing
-        console.warn("[Homepage] Unexpected verification state", {
+        if (DEBUG_MODE) console.warn("[Homepage] Unexpected verification state", {
           isVerified, hasAcceptedPrivacy, hasResetPassword
         });
         needsPrivacy = !hasAcceptedPrivacy;
