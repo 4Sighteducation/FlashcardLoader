@@ -3285,13 +3285,33 @@ async function handleToggleClick(toggleId, schoolId, profileData) {
     
     console.log(`[Staff Homepage] Updating ${toggleId}: ${isActive ? 'enabled' : 'disabled'}`);
     
-    // Update Object_2 (school/customer record)
+    // Get friendly name for the toggle
+    const toggleNames = {
+      'toggle-productivity': 'Productivity Hub',
+      'toggle-academic': 'Academic Profile', 
+      'toggle-coach': 'AI Coach'
+    };
+    const toggleName = toggleNames[toggleId] || toggleId.replace('toggle-', '');
+    
+    // Hide the API loading indicator to prevent user from feeling they need to wait
+    const apiIndicator = document.getElementById('api-loading-indicator');
+    if (apiIndicator) {
+      apiIndicator.style.display = 'none';
+    }
+    
+    // Show immediate success modal
+    showToggleUpdateModal(toggleName, isActive);
+    
+    // Update Object_2 (school/customer record) - this is fast
     await updateSchoolToggleField(schoolId, obj2Field, isActive);
     
-    // Update all connected Object_3 records (student accounts)
-    await updateConnectedStudentToggles(schoolId, obj3Field, isActive);
+    // Update all connected Object_3 records (student accounts) in background - this might be slow
+    updateConnectedStudentToggles(schoolId, obj3Field, isActive).catch(error => {
+      console.error(`[Staff Homepage] Background error updating student accounts for ${toggleId}:`, error);
+      // Don't show error to user since they already got success message
+    });
     
-    console.log(`[Staff Homepage] Successfully updated ${toggleId} for all connected accounts`);
+    console.log(`[Staff Homepage] Toggle ${toggleId} updated successfully`);
     
   } catch (error) {
     console.error(`[Staff Homepage] Error handling toggle ${toggleId}:`, error);
@@ -3349,6 +3369,60 @@ function showNotification(message, type = 'info') {
       notification.parentNode.removeChild(notification);
     }
   }, 4000);
+}
+
+// Show toggle update success modal
+function showToggleUpdateModal(toggleName, isEnabled) {
+  // Remove any existing modal
+  const existingModal = document.getElementById('toggle-update-modal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  const status = isEnabled ? 'enabled' : 'disabled';
+  const statusColor = isEnabled ? '#00e5db' : '#ff6b6b';
+  
+  const modalHtml = `
+    <div id="toggle-update-modal" class="vespa-modal" style="display: block; z-index: 10001;">
+      <div class="vespa-modal-content" style="max-width: 400px; text-align: center;">
+        <span class="vespa-modal-close" onclick="document.getElementById('toggle-update-modal').remove()">&times;</span>
+        <div style="margin-bottom: 20px;">
+          <div style="width: 60px; height: 60px; margin: 0 auto 15px; border-radius: 50%; background: ${statusColor}; display: flex; align-items: center; justify-content: center;">
+            <i class="fas ${isEnabled ? 'fa-check' : 'fa-times'}" style="color: white; font-size: 24px;"></i>
+          </div>
+          <h3 style="color: ${statusColor}; margin-bottom: 10px;">${toggleName} ${isEnabled ? 'Enabled' : 'Disabled'}</h3>
+        </div>
+        
+        <div style="background: rgba(0, 229, 219, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="margin: 0 0 10px 0; font-weight: 500;">Update in Progress</p>
+          <p style="margin: 0; font-size: 14px; color: #ccc;">
+            The <strong>${toggleName}</strong> feature has been <strong>${status}</strong> for your school. 
+            This change will be applied to all connected student accounts and may take a few minutes to process completely.
+          </p>
+        </div>
+        
+        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px; color: #00e5db;">
+          <div class="api-loading-spinner" style="width: 20px; height: 20px; margin-right: 10px;"></div>
+          <span style="font-size: 14px;">Processing student accounts...</span>
+        </div>
+        
+        <button onclick="document.getElementById('toggle-update-modal').remove()" 
+                style="background: #00e5db; color: #0a2b8c; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 500;">
+          Got it
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Auto-remove after 8 seconds
+  setTimeout(() => {
+    const modal = document.getElementById('toggle-update-modal');
+    if (modal) {
+      modal.remove();
+    }
+  }, 8000);
 }
 
 // Update all connected Object_3 records
@@ -6149,6 +6223,7 @@ document.addEventListener('knack-scene-render.any', function(event) {
       'feedback-modal',
       'student-emulator-modal',
       'logo-modal',
+      'toggle-update-modal',
       'welcome-banner',
       'staff-homepage' // Main container
     ];
