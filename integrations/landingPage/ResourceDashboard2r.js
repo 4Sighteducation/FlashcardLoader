@@ -785,7 +785,7 @@
 
     function renderNavigationSection() {
         const navButtons = MY_RESOURCES_APPS.map(app => `
-            <a href="${app.url}" class="nav-button" target="_blank">
+            <a href="${app.url}" class="nav-button" onclick="event.preventDefault(); window.location.href='${app.url}';">
                 <i class="${app.icon}"></i>
                 <span>${app.name}</span>
             </a>
@@ -803,7 +803,7 @@
     
     function renderAdminSection() {
         const adminButtons = ADMIN_APPS.map(app => `
-            <a href="${app.url}" class="admin-button" target="_blank">
+            <a href="${app.url}" class="admin-button" onclick="event.preventDefault(); window.location.href='${app.url}';">
                 <i class="${app.icon}"></i>
                 <span>${app.name}</span>
             </a>
@@ -877,12 +877,12 @@
                             </div>
                         </div>
                         <div class="activity-buttons">
-                            ${activity.pdfLink ? `
-                                <a href="${activity.pdfLink}" target="_blank" class="pdf-download-button" title="Download PDF">
-                                    <i class="fas fa-file-pdf"></i>
-                                    <span>DOWNLOAD PDF</span>
-                                </a>
-                            ` : ''}
+                                        ${activity.pdfLink ? `
+                <button onclick="openPdfModal('${activity.pdfLink}', '${activity.name}')" class="pdf-download-button" title="View PDF">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>VIEW PDF</span>
+                </button>
+            ` : ''}
                             <button class="fullscreen-toggle" onclick="toggleActivityFullscreen(this)" title="Toggle Fullscreen">
                                 <i class="fas fa-expand"></i>
                             </button>
@@ -1200,6 +1200,146 @@
             
             .pdf-download-button span {
                 color: #ffffff !important;
+            }
+            
+            /* PDF Modal Styles */
+            .pdf-modal {
+                display: none;
+                position: fixed;
+                z-index: 10000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(5px);
+            }
+            
+            .pdf-modal-content {
+                position: relative;
+                background-color: #ffffff;
+                margin: 2% auto;
+                padding: 0;
+                border-radius: 12px;
+                width: 90%;
+                max-width: 1200px;
+                height: 90%;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .pdf-modal-header {
+                background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
+                color: white;
+                padding: 20px 30px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .pdf-modal-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin: 0;
+                color: #ffffff;
+            }
+            
+            .pdf-modal-controls {
+                display: flex;
+                gap: 15px;
+                align-items: center;
+            }
+            
+            .pdf-download-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: linear-gradient(135deg, #e59437 0%, #d88327 100%);
+                color: #ffffff !important;
+                text-decoration: none;
+                padding: 10px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .pdf-download-link:hover {
+                background: linear-gradient(135deg, #f0a040 0%, #e59437 100%);
+                color: #ffffff !important;
+                text-decoration: none;
+                transform: translateY(-1px);
+            }
+            
+            .pdf-close-button {
+                background: none;
+                border: none;
+                color: #ffffff;
+                font-size: 24px;
+                cursor: pointer;
+                padding: 5px;
+                border-radius: 4px;
+                transition: background-color 0.3s ease;
+            }
+            
+            .pdf-close-button:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            .pdf-viewer {
+                flex: 1;
+                width: 100%;
+                border: none;
+                background: #f5f5f5;
+            }
+            
+            .pdf-loading {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 200px;
+                color: #666;
+                font-size: 16px;
+            }
+            
+            .pdf-error {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 200px;
+                color: #d32f2f;
+                text-align: center;
+                padding: 20px;
+            }
+            
+            /* Mobile responsive */
+            @media (max-width: 768px) {
+                .pdf-modal-content {
+                    width: 95%;
+                    height: 95%;
+                    margin: 2.5% auto;
+                }
+                
+                .pdf-modal-header {
+                    padding: 15px 20px;
+                    flex-direction: column;
+                    gap: 15px;
+                    align-items: stretch;
+                }
+                
+                .pdf-modal-controls {
+                    justify-content: space-between;
+                }
+                
+                .pdf-modal-title {
+                    font-size: 16px;
+                    text-align: center;
+                }
             }
             
             /* Fullscreen Button */
@@ -3229,6 +3369,30 @@
                     ${renderActivitySection(activity)}
                     ${profileData.hasAdminRole ? renderAdminSection() : ''}
                 </div>
+                
+                <!-- PDF Modal -->
+                <div id="pdfModal" class="pdf-modal">
+                    <div class="pdf-modal-content">
+                        <div class="pdf-modal-header">
+                            <h3 class="pdf-modal-title" id="pdfModalTitle">Activity PDF</h3>
+                            <div class="pdf-modal-controls">
+                                <a id="pdfDownloadLink" href="#" target="_blank" class="pdf-download-link">
+                                    <i class="fas fa-download"></i>
+                                    <span>Download</span>
+                                </a>
+                                <button class="pdf-close-button" onclick="closePdfModal()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="pdfViewerContainer">
+                            <div class="pdf-loading">
+                                <i class="fas fa-spinner fa-spin" style="margin-right: 10px;"></i>
+                                Loading PDF...
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
 
             $container.html(dashboardHtml);
@@ -3270,10 +3434,87 @@
                     }
                 });
                 
-                log('Cleaned up any Knack-generated PDF download elements');
-            }, 500); // Wait for Knack to finish rendering
+                            log('Cleaned up any Knack-generated PDF download elements');
+        }, 500); // Wait for Knack to finish rendering
+        
+        // Add PDF modal functions to global scope
+        window.openPdfModal = function(pdfUrl, activityName) {
+            const modal = document.getElementById('pdfModal');
+            const title = document.getElementById('pdfModalTitle');
+            const downloadLink = document.getElementById('pdfDownloadLink');
+            const viewerContainer = document.getElementById('pdfViewerContainer');
+            
+            // Set title and download link
+            title.textContent = activityName || 'Activity PDF';
+            downloadLink.href = pdfUrl;
+            
+            // Show loading state
+            viewerContainer.innerHTML = `
+                <div class="pdf-loading">
+                    <i class="fas fa-spinner fa-spin" style="margin-right: 10px;"></i>
+                    Loading PDF...
+                </div>
+            `;
+            
+            // Show modal
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // Load PDF
+            setTimeout(() => {
+                try {
+                    viewerContainer.innerHTML = `
+                        <iframe src="${pdfUrl}" class="pdf-viewer" title="PDF Viewer">
+                            <div class="pdf-error">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                                <p>Unable to display PDF in browser.</p>
+                                <a href="${pdfUrl}" target="_blank" class="pdf-download-link">
+                                    <i class="fas fa-download"></i>
+                                    Open in new tab
+                                </a>
+                            </div>
+                        </iframe>
+                    `;
+                } catch (error) {
+                    viewerContainer.innerHTML = `
+                        <div class="pdf-error">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                            <p>Error loading PDF</p>
+                            <a href="${pdfUrl}" target="_blank" class="pdf-download-link">
+                                <i class="fas fa-download"></i>
+                                Download PDF
+                            </a>
+                        </div>
+                    `;
+                }
+            }, 500);
+        };
+        
+        window.closePdfModal = function() {
+            const modal = document.getElementById('pdfModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        };
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('pdfModal');
+            if (event.target === modal) {
+                closePdfModal();
+            }
+        };
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('pdfModal');
+                if (modal.style.display === 'block') {
+                    closePdfModal();
+                }
+            }
+        });
 
-        } catch (err) {
+    } catch (err) {
             $container.html('<div class="error-state">Could not load dashboard. Please try again later.</div>');
             errorLog('Failed to initialize dashboard:', err);
         }
