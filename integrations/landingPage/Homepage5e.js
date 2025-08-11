@@ -1926,6 +1926,73 @@
             padding: 20px;
           }
 
+          /* Compact VESPA Scores Styles */
+          .vespa-scores-compact {
+            margin-top: 20px;
+          }
+          
+          .vespa-scores-title {
+            color: #00e5db;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          .vespa-scores-grid-compact {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+          }
+          
+          .vespa-score-item-compact {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+          
+          .vespa-score-circle-compact {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          
+          .vespa-score-label-compact {
+            font-size: 10px;
+            font-weight: 600;
+            color: #cccccc;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          /* Mobile responsive for compact scores */
+          @media (max-width: 768px) {
+            .vespa-scores-grid-compact {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 8px;
+            }
+            
+            .vespa-score-circle-compact {
+              width: 30px;
+              height: 30px;
+              font-size: 12px;
+            }
+            
+            .vespa-score-label-compact {
+              font-size: 9px;
+            }
+          }
+
           /* No activity state */
           .no-activity {
             text-align: center;
@@ -2186,17 +2253,22 @@
   }
   
   // New function to render VESPA Questionnaire section
-  function renderVespaQuestionnaireSection() {
+  function renderVespaQuestionnaireSection(vespaScoresData = null) {
     return `
       <div class="vespa-questionnaire-inner">
         <h3 class="vespa-questionnaire-title">
           About the VESPA Questionnaire
         </h3>
         <div class="vespa-questionnaire-content">
-          <p class="vespa-quote">"Hi there! We're the creators of the VESPA Questionnaire, and we're delighted you've completed it and seen your personalized scores. Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</p>
           <div class="vespa-highlight-box">
-            <p><strong>"Most importantly, the VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, team discussions, goal-setting, and your ongoing development."</strong></p>
+            <p><strong>"The VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, team discussions, goal-setting, and your ongoing development. Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict""</strong></p>
           </div>
+          ${vespaScoresData ? `
+            <div class="vespa-scores-compact">
+              <h4 class="vespa-scores-title">Current VESPA Scores</h4>
+              ${renderVespaCirclesHTML(vespaScoresData, true)}
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -2208,13 +2280,12 @@
       <section class="vespa-section vespa-standalone-section">
         <div class="vespa-content-grid">
           <div class="vespa-questionnaire-section">
-            ${renderVespaQuestionnaireSection()}
+            ${renderVespaQuestionnaireSection(vespaScoresData)}
           </div>
           <div class="activity-day-section">
             ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
           </div>
         </div>
-        ${vespaScoresData ? renderVespaCirclesHTML(vespaScoresData) : ''}
       </section>
     `;
   }
@@ -2471,19 +2542,18 @@
         </div>
         <div class="vespa-content-grid">
           <div class="vespa-questionnaire-section">
-            ${renderVespaQuestionnaireSection()}
+            ${renderVespaQuestionnaireSection(showVespaScores ? vespaScoresData : null)}
           </div>
           <div class="activity-day-section">
             ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
           </div>
         </div>
-        ${showVespaScores ? renderVespaCirclesHTML(vespaScoresData) : ''}
       </section>
     `;
   }
 
   // Helper to render VESPA score circles HTML (to be used within renderProfileSection)
-  function renderVespaCirclesHTML(scoresData) {
+  function renderVespaCirclesHTML(scoresData, isCompact = false) {
     if (!scoresData) return '';
 
     let scoresCircleHTML = '';
@@ -2494,12 +2564,16 @@
         const scoreValue = sanitizeField(scoresData[key]);
         const color = VESPA_SCORE_COLORS[key] || '#cccccc';
         const textColor = (key === 'overall' && color === '#f3f553') ? '#333333' : '#ffffff';
+        const itemClass = isCompact ? 'vespa-score-item vespa-score-item-compact' : 'vespa-score-item';
+        const circleClass = isCompact ? 'vespa-score-circle vespa-score-circle-compact' : 'vespa-score-circle';
+        const labelClass = isCompact ? 'vespa-score-label vespa-score-label-compact' : 'vespa-score-label';
+        
         scoresCircleHTML += `
-          <div class="vespa-score-item">
-            <div class="vespa-score-circle" style="background-color: ${color}; color: ${textColor};">
+          <div class="${itemClass}">
+            <div class="${circleClass}" style="background-color: ${color}; color: ${textColor};">
               <span>${scoreValue}</span>
             </div>
-            <div class="vespa-score-label">${key.toUpperCase()}</div>
+            <div class="${labelClass}">${key.toUpperCase()}</div>
           </div>
         `;
       }
@@ -2507,6 +2581,14 @@
 
     if (!scoresCircleHTML) {
       return ''; // Don't render section if no scores to show
+    }
+
+    if (isCompact) {
+      return `
+        <div class="vespa-scores-grid vespa-scores-grid-compact">
+          ${scoresCircleHTML}
+        </div>
+      `;
     }
 
     return `
