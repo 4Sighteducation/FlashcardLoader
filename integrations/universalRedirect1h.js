@@ -240,10 +240,21 @@ console.log('[Universal Redirect] Script loaded!');
                 return;
             }
             
+            // Check if we're already on the correct page to avoid unnecessary redirects
             const userType = getUserType();
+            const currentUrl = window.location.hash;
+            
+            // Don't redirect if user is already on their correct page
+            if ((userType === 'student' && currentUrl.includes('#landing-page')) ||
+                (userType === 'staffCoaching' && currentUrl.includes('#staff-landing-page')) ||
+                (userType === 'staffResource' && currentUrl.includes('#resources-home'))) {
+                console.log('[Universal Redirect] User already on correct page, no redirect needed');
+                return;
+            }
+            
             console.log('[Universal Redirect] User type detected:', userType);
             redirectUser(userType);
-        }, 1000); // Increased delay to ensure user data is loaded
+        }, 1500); // Slightly longer delay to let homepages load first
     }
     
     // Make function globally available BEFORE the IIFE closes
