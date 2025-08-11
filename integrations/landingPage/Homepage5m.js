@@ -1596,23 +1596,36 @@
         
         // Debug the actual field values
         console.log('[Homepage Debug] User attributes field values:');
-        console.log('field_3646 (showAcademicProfile):', userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile]);
-        console.log('field_3647 (showProductivityHub):', userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub]);
-        console.log('Raw userAttributes object:', userAttributes);
+        console.log('DISPLAY_PREFERENCE_FIELDS:', DISPLAY_PREFERENCE_FIELDS);
+        console.log('userAttributes structure:', userAttributes);
+        console.log('userAttributes.values:', userAttributes?.values);
+        console.log('All values keys:', Object.keys(userAttributes?.values || {}));
         
-        // More flexible logic - show if true, hide if explicitly false, default to true if null/undefined
-        const showAcademicProfileValue = userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile];
-        const showProductivityHubValue = userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub];
+        // Access fields from the values object
+        const showAcademicProfileValue = userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile];
+        const showProductivityHubValue = userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub];
+        
+        // Also try direct field access in values object
+        const directAcademicProfileValue = userAttributes?.values?.field_3646;
+        const directProductivityHubValue = userAttributes?.values?.field_3647;
+        
+        console.log('[Homepage Debug] Field value comparison:');
+        console.log('Via DISPLAY_PREFERENCE_FIELDS - Academic:', showAcademicProfileValue, 'Productivity:', showProductivityHubValue);
+        console.log('Via direct access - Academic:', directAcademicProfileValue, 'Productivity:', directProductivityHubValue);
+        
+        // Use direct field access if DISPLAY_PREFERENCE_FIELDS doesn't work
+        const finalAcademicValue = showAcademicProfileValue !== undefined ? showAcademicProfileValue : directAcademicProfileValue;
+        const finalProductivityValue = showProductivityHubValue !== undefined ? showProductivityHubValue : directProductivityHubValue;
         
         const displayPreferences = {
           showVespaScores: record[DISPLAY_PREFERENCE_FIELDS.showVespaScores] !== false, // Keep from VESPA record for backwards compatibility
-          showAcademicProfile: showAcademicProfileValue !== false, // Show unless explicitly false
-          showProductivityHub: showProductivityHubValue !== false // Show unless explicitly false
+          showAcademicProfile: finalAcademicValue !== false, // Show unless explicitly false
+          showProductivityHub: finalProductivityValue !== false // Show unless explicitly false
         };
         
-        console.log('[Homepage Debug] Individual field checks:');
-        console.log('showAcademicProfile value:', showAcademicProfileValue, '-> result:', displayPreferences.showAcademicProfile);
-        console.log('showProductivityHub value:', showProductivityHubValue, '-> result:', displayPreferences.showProductivityHub);
+        console.log('[Homepage Debug] Final value resolution:');
+        console.log('finalAcademicValue:', finalAcademicValue, '-> showAcademicProfile:', displayPreferences.showAcademicProfile);
+        console.log('finalProductivityValue:', finalProductivityValue, '-> showProductivityHub:', displayPreferences.showProductivityHub);
         console.log('[Homepage Debug] Final display preferences:', displayPreferences);
         
         debugLog('Processed VESPA scores:', scores);
@@ -1627,8 +1640,8 @@
           scores: null, 
           displayPreferences: { 
             showVespaScores: true, 
-            showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
-            showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
+            showAcademicProfile: userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
+            showProductivityHub: userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
           } 
         };
       }
@@ -1640,8 +1653,8 @@
         scores: null, 
         displayPreferences: { 
           showVespaScores: true, 
-          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
-          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
+          showAcademicProfile: userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
+          showProductivityHub: userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
         } 
       };
     }
