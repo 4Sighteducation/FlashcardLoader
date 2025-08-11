@@ -1389,56 +1389,74 @@
   async function getActivityOfTheWeek() {
     debugLog('Fetching activities from CDN...');
     try {
-      const response = await retryApiCall(() => {
-        return new Promise((resolve, reject) => {
-          $.ajax({
-            url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
-            type: 'GET',
-            dataType: 'json',
-            success: resolve,
-            error: reject
-          });
+      // Try to fetch from CDN with minimal retries for 404s
+      const response = await new Promise((resolve, reject) => {
+        $.ajax({
+          url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
+          type: 'GET',
+          dataType: 'json',
+          timeout: 5000, // 5 second timeout
+          success: resolve,
+          error: (xhr, status, error) => {
+            // Don't retry on 404 - file doesn't exist
+            if (xhr.status === 404) {
+              debugLog('Activities JSON file not found (404), using fallback');
+              reject(new Error('Activities file not found'));
+            } else {
+              reject(new Error(`Failed to load activities: ${status} - ${error}`));
+            }
+          }
         });
       });
       
       if (!response || !response.records || response.records.length === 0) {
-        debugLog('No activities found in response');
-        return null;
+        debugLog('No activities found in CDN response');
+        return createFallbackActivity();
       }
 
       const currentMonth = getCurrentMonthName();
-      debugLog(`Looking for activities for ${currentMonth}`);
+      const history = getActivityHistory();
+      const recentActivityIds = history.map(h => h.id);
       
-      // Filter activities for current month
-      let monthActivities = response.records.filter(activity => {
-        if (!activity.identifier) return false;
-        const activityMonth = extractMonthFromIdentifier(activity.identifier);
+      // Filter out Welsh activities (where field_1924 is "Yes" OR is_welsh is true)
+      const nonWelshActivities = response.records.filter(activity => {
+        // Check both field_1924 and is_welsh property
+        const hasWelshField = activity.field_1924 === "Yes";
+        const isWelshFlag = activity.is_welsh === true;
+        const isWelsh = hasWelshField || isWelshFlag;
+        
+        if (isWelsh) {
+          debugLog(`Filtering out Welsh activity: ${activity.title}`);
+        }
+        
+        return !isWelsh;
+      });
+      
+      debugLog(`Total activities: ${response.records.length}, Non-Welsh activities: ${nonWelshActivities.length}`);
+      
+      // Filter activities by current month
+      let monthActivities = nonWelshActivities.filter(activity => {
+        const activityMonth = extractMonthFromIdentifier(activity.group_info?.identifier);
         return activityMonth === currentMonth;
       });
-
+      
+      // If no activities for current month, use all non-Welsh activities
       if (monthActivities.length === 0) {
-        debugLog(`No activities found for ${currentMonth}, falling back to all activities`);
-        monthActivities = response.records;
+        debugLog(`No activities found for ${currentMonth}, using all non-Welsh activities`);
+        monthActivities = nonWelshActivities;
       }
-
-      // Get recent activity history (last 7 days)
-      const history = getActivityHistory();
-      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-      const recentActivityIds = history
-        .filter(item => item.timestamp > sevenDaysAgo)
-        .map(item => item.id);
-
+      
       // Filter out recently shown activities
       let availableActivities = monthActivities.filter(activity => 
         !recentActivityIds.includes(activity.id)
       );
-
+      
       // If all activities have been shown recently, reset and use all month activities
       if (availableActivities.length === 0) {
         debugLog('All activities shown recently, resetting pool');
         availableActivities = monthActivities;
       }
-
+      
       // Select an activity based on day of year
       const today = new Date();
       const start = new Date(today.getFullYear(), 0, 0);
@@ -1457,38 +1475,159 @@
       // Extract PDF link from the full HTML content first
       let pdfLink = null;
       if (activity.html_content) {
-        const pdfMatch = activity.html_content.match(/href="([^"]*\.pdf[^"]*)"/i);
+        const pdfMatch = activity.html_content.match(/href="([^"]+\.pdf[^"]*)"/i);
         if (pdfMatch) {
           pdfLink = pdfMatch[1];
-          debugLog(`Found PDF link: ${pdfLink}`);
+          debugLog('Found PDF link:', pdfLink);
         }
       }
 
-      // Process and clean the embed code
-      if (activity.embed_code) {
-        let processedEmbedCode = activity.embed_code;
-        
-        // Enhanced kiosk mode - hide more UI elements
-        processedEmbedCode = processedEmbedCode.replace(
-          /(<iframe[^>]*src="[^"]*")([^>]*>)/i,
-          '$1$2'
-        );
-
-        return {
-          id: activity.id,
-          title: activity.title || 'Activity of the Day',
-          embedCode: processedEmbedCode,
-          pdfLink: pdfLink
-        };
+      // Extract only the iframe from html_content (field_1448)
+      let embedCode = '';
+      if (activity.html_content) {
+        // Extract iframe using regex
+        const iframeMatch = activity.html_content.match(/<iframe[^>]*>[\s\S]*?<\/iframe>/i);
+        if (iframeMatch) {
+          embedCode = iframeMatch[0];
+          debugLog('Extracted iframe from activity HTML');
+          
+          // Debug: Log the full HTML content to see what we're dealing with
+          debugLog('Full HTML content:', activity.html_content);
+          debugLog('Extracted iframe:', embedCode);
+        } else {
+          // If no iframe found, use the full content as fallback
+          embedCode = activity.html_content;
+          debugLog('No iframe found, using full HTML content');
+        }
       }
+      
+      // Enhance embed code for kiosk mode (similar to ResourceDashboardCopy.js)
+      const enhancedEmbedCode = enhanceEmbedForKioskMode(embedCode);
 
-      debugLog('No embed code found for activity:', activity);
-      return null;
+      return {
+        id: activity.id,
+        title: activity.title || 'Activity of the Day',
+        name: activity.title,
+        group: activity.group_info?.identifier || 'N/A',
+        category: activity.category,
+        embedCode: enhancedEmbedCode,
+        pdfLink: pdfLink
+      };
 
     } catch (error) {
-      debugLog('Error fetching activity:', error);
-      return null;
+      debugLog('Error fetching activity from CDN:', error);
+      debugLog('Falling back to default activity');
+      
+      // Fallback to a default activity when CDN is unavailable
+      return createFallbackActivity();
     }
+  }
+
+  // Enhance embed code for kiosk mode (copied from ResourceDashboardCopy.js)
+  function enhanceEmbedForKioskMode(embedCode) {
+    if (!embedCode) return embedCode;
+    
+    let enhancedCode = embedCode;
+    
+    // Add kiosk mode parameters to iframe src
+    enhancedCode = enhancedCode.replace(
+      /(<iframe[^>]*src="[^"]*")([^>]*>)/i,
+      (match, beforeSrc, afterSrc) => {
+        let src = beforeSrc;
+        
+        // Add kiosk mode parameters
+        const kioskParams = [
+          'kiosk=1',
+          'hideui=1',
+          'hidetoolbar=1',
+          'hidenavigation=1',
+          'hideheader=1',
+          'hidefooter=1'
+        ];
+        
+        // Check if URL already has parameters
+        const hasParams = src.includes('?');
+        const separator = hasParams ? '&' : '?';
+        
+        src += separator + kioskParams.join('&');
+        
+        return src + '"' + afterSrc;
+      }
+    );
+    
+    return enhancedCode;
+  }
+
+  function createFallbackActivity() {
+    const fallbackActivities = [
+      {
+        id: 'fallback-reflection',
+        title: 'Daily Reflection Activity',
+        embedCode: `
+          <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; text-align: center; min-height: 280px; display: flex; flex-direction: column; justify-content: center;">
+            <h3 style="color: #fff; margin-bottom: 20px;">🤔 Daily Reflection</h3>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+              <p style="margin: 0; font-size: 16px; line-height: 1.5;">Take a moment to reflect on your learning journey today:</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px;">
+                <strong>What did I learn?</strong>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px;">
+                <strong>How can I improve?</strong>
+              </div>
+            </div>
+            <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">💡 Reflection helps consolidate learning and identify growth areas</p>
+          </div>
+        `
+      },
+      {
+        id: 'fallback-goals',
+        title: 'Goal Setting Activity',
+        embedCode: `
+          <div style="padding: 20px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 8px; color: white; text-align: center; min-height: 280px; display: flex; flex-direction: column; justify-content: center;">
+            <h3 style="color: #fff; margin-bottom: 20px;">🎯 Set Your Learning Goal</h3>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+              <p style="margin: 0; font-size: 16px; line-height: 1.5;">What's one specific thing you want to achieve today?</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 15px;">
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 4px;">
+                <strong>My learning goal for today:</strong><br/>
+                <small style="opacity: 0.8;">Write it down or say it out loud!</small>
+              </div>
+            </div>
+            <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">🌟 Clear goals increase focus and motivation</p>
+          </div>
+        `
+      },
+      {
+        id: 'fallback-mindset',
+        title: 'Growth Mindset Activity',
+        embedCode: `
+          <div style="padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%); border-radius: 8px; color: white; text-align: center; min-height: 280px; display: flex; flex-direction: column; justify-content: center;">
+            <h3 style="color: #fff; margin-bottom: 20px;">🧠 Growth Mindset Check</h3>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+              <p style="margin: 0; font-size: 16px; line-height: 1.5;">Turn today's challenges into growth opportunities</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px; font-size: 14px;">
+                <strong>Instead of:</strong><br/>"I can't do this"
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px; font-size: 14px;">
+                <strong>Try saying:</strong><br/>"I can't do this YET"
+              </div>
+            </div>
+            <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">💪 Every challenge is a chance to grow stronger</p>
+          </div>
+        `
+      }
+    ];
+
+    // Select activity based on day of month to ensure variety
+    const dayOfMonth = new Date().getDate();
+    const activityIndex = dayOfMonth % fallbackActivities.length;
+    
+    return fallbackActivities[activityIndex];
   }
 
   function renderActivitySection(activity) {
@@ -1855,9 +1994,7 @@
           About the VESPA Questionnaire
         </h3>
         <div class="vespa-questionnaire-content">
-          <p class="vespa-quote">"Hi there! We're the creators of the VESPA Questionnaire, and we're delighted you've completed it and seen your personalized scores. Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</p>
-          <div class="vespa-highlight-box">
-            <p><strong>"Most importantly, the VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, team discussions, goal-setting, and your ongoing development."</strong></p>
+            <p><strong>"The VESPA Questionnaire isn't just about measuring your current mindset—it's designed to motivate growth and spark meaningful change. Use these insights as the starting point for coaching conversations, goal-setting, and your ongoing development.Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</strong></p> 
           </div>
         </div>
       </div>
@@ -3338,4 +3475,3 @@
     });
   }
 })(); // End of IIFE
-
