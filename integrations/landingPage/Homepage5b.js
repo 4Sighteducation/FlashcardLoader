@@ -1393,7 +1393,7 @@
       const cdnResponse = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
-            url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
+            url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1h.json',
             type: 'GET',
             dataType: 'json',
             success: resolve,
