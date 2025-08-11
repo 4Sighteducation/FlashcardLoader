@@ -1509,7 +1509,7 @@
     if (!activity || !activity.embedCode) {
       return `
         <div class="activity-section">
-          <h3 class="activity-section-title">Activity of the Day</h3>
+  <h3 class="activity-section-title" style="color: #00e5db !important;">Activity of the Day</h3>
           <div class="activity-container">
             <div class="no-activity">
               <i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i>
@@ -1523,7 +1523,7 @@
 
     return `
       <div class="activity-section">
-        <h3 class="activity-section-title">Activity of the Day</h3>
+<h3 class="activity-section-title" style="color: #00e5db !important;">Activity of the Day</h3>
         <div class="activity-header">
           <div class="activity-info">
             <h4 class="activity-name" style="color: #00e5db !important;">${activity.title || 'Activity'}</h4>
@@ -1598,13 +1598,21 @@
         console.log('[Homepage Debug] User attributes field values:');
         console.log('field_3646 (showAcademicProfile):', userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile]);
         console.log('field_3647 (showProductivityHub):', userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub]);
+        console.log('Raw userAttributes object:', userAttributes);
+        
+        // More flexible logic - show if true, hide if explicitly false, default to true if null/undefined
+        const showAcademicProfileValue = userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile];
+        const showProductivityHubValue = userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub];
         
         const displayPreferences = {
           showVespaScores: record[DISPLAY_PREFERENCE_FIELDS.showVespaScores] !== false, // Keep from VESPA record for backwards compatibility
-          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] === true, // Changed to explicit true check
-          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] === true // Changed to explicit true check
+          showAcademicProfile: showAcademicProfileValue !== false, // Show unless explicitly false
+          showProductivityHub: showProductivityHubValue !== false // Show unless explicitly false
         };
         
+        console.log('[Homepage Debug] Individual field checks:');
+        console.log('showAcademicProfile value:', showAcademicProfileValue, '-> result:', displayPreferences.showAcademicProfile);
+        console.log('showProductivityHub value:', showProductivityHubValue, '-> result:', displayPreferences.showProductivityHub);
         console.log('[Homepage Debug] Final display preferences:', displayPreferences);
         
         debugLog('Processed VESPA scores:', scores);
@@ -1619,8 +1627,8 @@
           scores: null, 
           displayPreferences: { 
             showVespaScores: true, 
-            showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] === true,
-            showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] === true
+            showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
+            showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
           } 
         };
       }
@@ -1632,8 +1640,8 @@
         scores: null, 
         displayPreferences: { 
           showVespaScores: true, 
-          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] === true,
-          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] === true
+          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
+          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
         } 
       };
     }
@@ -1796,6 +1804,60 @@
           .kn-scene-content .activity-meta span,
           #kn-app-container .activity-meta span {
             color: #00e5db !important;
+          }
+          
+          /* NUCLEAR OPTION - Super specific selectors */
+          body .kn-content .activity-name,
+          body .kn-scene .activity-name,
+          body #kn-app-container .activity-name,
+          body div .activity-name,
+          body * .activity-name {
+            color: #00e5db !important;
+            text-shadow: none !important;
+          }
+          
+          body .kn-content .activity-meta,
+          body .kn-scene .activity-meta,
+          body #kn-app-container .activity-meta,
+          body div .activity-meta,
+          body * .activity-meta,
+          body .kn-content .activity-meta span,
+          body .kn-scene .activity-meta span,
+          body #kn-app-container .activity-meta span,
+          body div .activity-meta span,
+          body * .activity-meta span {
+            color: #00e5db !important;
+            text-shadow: none !important;
+          }
+          
+          /* Target any potential inherited color */
+          .activity-name, .activity-name *,
+          .activity-meta, .activity-meta * {
+            color: #00e5db !important;
+          }
+          
+          /* FIX THE ACTUAL GREY TEXT - Activity Section Title and VESPA Scores Title */
+          .activity-section-title,
+          .vespa-scores-title,
+          .profile-vespa-scores-title {
+            color: #00e5db !important;
+          }
+          
+          /* More specific selectors for these titles */
+          body .activity-section-title,
+          body .vespa-scores-title,
+          body .profile-vespa-scores-title,
+          .kn-content .activity-section-title,
+          .kn-scene .activity-section-title,
+          .kn-content .vespa-scores-title,
+          .kn-scene .vespa-scores-title,
+          .kn-content .profile-vespa-scores-title,
+          .kn-scene .profile-vespa-scores-title,
+          #kn-app-container .activity-section-title,
+          #kn-app-container .vespa-scores-title,
+          #kn-app-container .profile-vespa-scores-title {
+            color: #00e5db !important;
+            text-shadow: none !important;
           }
           
           .activity-buttons {
@@ -2350,7 +2412,7 @@
           </div>
           ${vespaScoresData ? `
             <div class="vespa-scores-compact">
-              <h4 class="vespa-scores-title">Current VESPA Scores</h4>
+              <h4 class="vespa-scores-title" style="color: #00e5db !important;">Current VESPA Scores</h4>
               ${renderVespaCirclesHTML(vespaScoresData, true)}
             </div>
           ` : ''}
@@ -2678,7 +2740,7 @@
 
     return `
       <div class="profile-vespa-scores-container">
-        <h3 class="profile-vespa-scores-title">Current VESPA Scores</h3>
+        <h3 class="profile-vespa-scores-title" style="color: #00e5db !important;">Current VESPA Scores</h3>
         <div class="vespa-scores-grid">
           ${scoresCircleHTML}
         </div>
