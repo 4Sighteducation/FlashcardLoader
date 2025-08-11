@@ -572,37 +572,77 @@
             
             log(`Selected activity for ${currentMonth}:`, activity["Activities Name"]);
 
-            // Extract PDF link from the full HTML content first
+            // Extract PDF link from background content or media
             let pdfLink = null;
-            if (activity.html_content) {
-                const pdfMatch = activity.html_content.match(/href="([^"]+\.pdf[^"]*)"/i);
+            if (activity.background_content) {
+                const pdfMatch = activity.background_content.match(/href="([^"]+\.pdf[^"]*)"/i);
                 if (pdfMatch) {
                     pdfLink = pdfMatch[1];
                     log('Found PDF link:', pdfLink);
                 }
             }
 
-            // Extract only the iframe from html_content (field_1448)
+            // Generate embed code from new media structure
             let embedCode = '';
-            if (activity.html_content) {
+            if (activity.media) {
+                log('Processing new media structure:', activity.media);
+                
+                // Priority: slides first, then video, then images
+                if (activity.media.slides && activity.media.slides.url) {
+                    const slides = activity.media.slides;
+                    let slideUrl = slides.url;
+                    
+                    // Add parameters if they exist
+                    if (slides.parameters) {
+                        const params = new URLSearchParams();
+                        if (slides.parameters.start) params.append('start', 'true');
+                        if (slides.parameters.loop) params.append('loop', 'true');
+                        if (slides.parameters.delayms) params.append('delayms', slides.parameters.delayms);
+                        
+                        const paramString = params.toString();
+                        if (paramString) {
+                            slideUrl += (slideUrl.includes('?') ? '&' : '?') + paramString;
+                        }
+                    }
+                    
+                    embedCode = `<iframe src="${slideUrl}" frameborder="0" width="100%" height="500" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+                    log('Generated slides embed code');
+                    
+                } else if (activity.media.video && activity.media.video.url) {
+                    const video = activity.media.video;
+                    embedCode = `<iframe src="${video.url}" frameborder="0" width="100%" height="500" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+                    log('Generated video embed code');
+                    
+                } else if (activity.media.images && activity.media.images.length > 0) {
+                    const image = activity.media.images[0];
+                    embedCode = `<div style="text-align: center; padding: 20px;"><img src="${image.url}" alt="${image.alt || 'Activity image'}" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
+                    log('Generated image embed code');
+                }
+            }
+            
+            // Fallback to html_content if media structure doesn't exist
+            if (!embedCode && activity.html_content) {
                 // Extract iframe using regex
                 const iframeMatch = activity.html_content.match(/<iframe[^>]*>[\s\S]*?<\/iframe>/i);
                 if (iframeMatch) {
                     embedCode = iframeMatch[0];
-                    log('Extracted iframe from activity HTML');
-                    
-                    // Debug: Log the full HTML content to see what we're dealing with
-                    log('Full HTML content:', activity.html_content);
-                    log('Extracted iframe:', embedCode);
+                    log('Extracted iframe from activity HTML (fallback)');
                 } else {
                     // If no iframe found, use the full content as fallback
                     embedCode = activity.html_content;
-                    log('No iframe found, using full HTML content');
+                    log('No iframe found, using full HTML content (fallback)');
                 }
             }
             
             // Enhance embed code for kiosk mode
             const enhancedEmbedCode = enhanceEmbedForKioskMode(embedCode);
+            
+            log('Final activity object:', {
+                name: activity["Activities Name"],
+                category: activity["VESPA Category"],
+                hasEmbedCode: !!enhancedEmbedCode,
+                embedCodeLength: enhancedEmbedCode ? enhancedEmbedCode.length : 0
+            });
 
             return {
                 name: activity["Activities Name"],
@@ -3314,3 +3354,4 @@
     }
 
 })();
+
