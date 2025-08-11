@@ -47,10 +47,11 @@
     overall: '#f3f553'
   };
 
-  // Display preference fields
+  // Display preference fields - now using Object_3 fields from user attributes
   const DISPLAY_PREFERENCE_FIELDS = {
-    showVespaScores: 'field_3476',    // Boolean field for VESPA Scores display
-    showAcademicProfile: 'field_3477'  // Boolean field for Academic Profile display
+    showVespaScores: 'field_3476',    // Boolean field for VESPA Scores display (keeping for backwards compatibility)
+    showAcademicProfile: 'field_3646', // Academic Profile visibility from Object_3
+    showProductivityHub: 'field_3647'  // Productivity Hub visibility from Object_3
   };
 
   // Field mappings for the user profile object
@@ -1334,6 +1335,190 @@
     return result;
   }
 
+  // --- Activity of the Day Functions (copied from ResourceDashboardCopy.js) ---
+  function getCurrentMonthName() {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[new Date().getMonth()];
+  }
+
+  function extractMonthFromIdentifier(identifier) {
+    const monthMap = {
+      'jan': 'January', 'feb': 'February', 'mar': 'March', 'apr': 'April',
+      'may': 'May', 'jun': 'June', 'jul': 'July', 'aug': 'August',
+      'sep': 'September', 'oct': 'October', 'nov': 'November', 'dec': 'December'
+    };
+    
+    const lowerIdentifier = identifier.toLowerCase();
+    for (const [abbr, fullName] of Object.entries(monthMap)) {
+      if (lowerIdentifier.includes(abbr)) return fullName;
+    }
+    return null;
+  }
+
+  function getActivityHistory() {
+    try {
+      const history = localStorage.getItem('vespa_activity_history');
+      return history ? JSON.parse(history) : [];
+    } catch (e) {
+      debugLog('Failed to get activity history:', e);
+      return [];
+    }
+  }
+
+  function saveActivityToHistory(activityId) {
+    try {
+      let history = getActivityHistory();
+      const now = Date.now();
+      
+      // Add current activity
+      history.push({ id: activityId, timestamp: now });
+      
+      // Keep only last 30 days
+      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+      history = history.filter(item => item.timestamp > thirtyDaysAgo);
+      
+      localStorage.setItem('vespa_activity_history', JSON.stringify(history));
+    } catch (e) {
+      debugLog('Failed to save activity history:', e);
+    }
+  }
+
+  async function getActivityOfTheWeek() {
+    debugLog('Fetching activities from CDN...');
+    try {
+      const response = await retryApiCall(() => {
+        return new Promise((resolve, reject) => {
+          $.ajax({
+            url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
+            type: 'GET',
+            dataType: 'json',
+            success: resolve,
+            error: reject
+          });
+        });
+      });
+      
+      if (!response || !response.records || response.records.length === 0) {
+        debugLog('No activities found in response');
+        return null;
+      }
+
+      const currentMonth = getCurrentMonthName();
+      debugLog(`Looking for activities for ${currentMonth}`);
+      
+      // Filter activities for current month
+      let monthActivities = response.records.filter(activity => {
+        if (!activity.identifier) return false;
+        const activityMonth = extractMonthFromIdentifier(activity.identifier);
+        return activityMonth === currentMonth;
+      });
+
+      if (monthActivities.length === 0) {
+        debugLog(`No activities found for ${currentMonth}, falling back to all activities`);
+        monthActivities = response.records;
+      }
+
+      // Get recent activity history (last 7 days)
+      const history = getActivityHistory();
+      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      const recentActivityIds = history
+        .filter(item => item.timestamp > sevenDaysAgo)
+        .map(item => item.id);
+
+      // Filter out recently shown activities
+      let availableActivities = monthActivities.filter(activity => 
+        !recentActivityIds.includes(activity.id)
+      );
+
+      // If all activities have been shown recently, reset and use all month activities
+      if (availableActivities.length === 0) {
+        debugLog('All activities shown recently, resetting pool');
+        availableActivities = monthActivities;
+      }
+
+      // Select an activity based on day of year
+      const today = new Date();
+      const start = new Date(today.getFullYear(), 0, 0);
+      const diff = today - start;
+      const oneDay = 1000 * 60 * 60 * 24;
+      const dayOfYear = Math.floor(diff / oneDay);
+      
+      const activityIndex = dayOfYear % availableActivities.length;
+      const activity = availableActivities[activityIndex];
+      
+      // Save to history
+      saveActivityToHistory(activity.id);
+      
+      debugLog(`Selected activity for ${currentMonth}:`, activity.title);
+
+      // Extract PDF link from the full HTML content first
+      let pdfLink = null;
+      if (activity.html_content) {
+        const pdfMatch = activity.html_content.match(/href="([^"]*\.pdf[^"]*)"/i);
+        if (pdfMatch) {
+          pdfLink = pdfMatch[1];
+          debugLog(`Found PDF link: ${pdfLink}`);
+        }
+      }
+
+      // Process and clean the embed code
+      if (activity.embed_code) {
+        let processedEmbedCode = activity.embed_code;
+        
+        // Enhanced kiosk mode - hide more UI elements
+        processedEmbedCode = processedEmbedCode.replace(
+          /(<iframe[^>]*src="[^"]*")([^>]*>)/i,
+          '$1$2'
+        );
+
+        return {
+          id: activity.id,
+          title: activity.title || 'Activity of the Day',
+          embedCode: processedEmbedCode,
+          pdfLink: pdfLink
+        };
+      }
+
+      debugLog('No embed code found for activity:', activity);
+      return null;
+
+    } catch (error) {
+      debugLog('Error fetching activity:', error);
+      return null;
+    }
+  }
+
+  function renderActivitySection(activity) {
+    if (!activity || !activity.embedCode) {
+      return `
+        <div class="activity-section">
+          <h3 class="activity-section-title">Activity of the Day</h3>
+          <div class="activity-container">
+            <div class="no-activity">
+              <i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i>
+              <p style="color: #cccccc; font-size: 14px;">No activity available today.</p>
+              <p style="color: #999; font-size: 12px;">Please check back later.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="activity-section">
+        <h3 class="activity-section-title">Activity of the Day</h3>
+        <div class="activity-container">
+          <div class="activity-embed-frame" style="width: 100%; min-height: 400px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+            ${activity.embedCode}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   // --- VESPA Scores Data Function ---
   async function fetchVespaScores(userEmail) {
     if (!userEmail) {
@@ -1375,10 +1560,12 @@
           scores[key] = sanitizeField(record[VESPA_SCORES_FIELDS[key]] || 'N/A');
         }
         
-        // Extract display preferences
+        // Extract display preferences from user attributes (Object_3) instead of VESPA scores record
+        const userAttributes = Knack.getUserAttributes();
         const displayPreferences = {
-          showVespaScores: record[DISPLAY_PREFERENCE_FIELDS.showVespaScores] !== false, // Show if yes or null
-          showAcademicProfile: record[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false // Show if yes or null
+          showVespaScores: record[DISPLAY_PREFERENCE_FIELDS.showVespaScores] !== false, // Keep from VESPA record for backwards compatibility
+          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false, // From Object_3
+          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false // From Object_3
         };
         
         debugLog('Processed VESPA scores:', scores);
@@ -1387,23 +1574,27 @@
         return { scores, displayPreferences };
       } else {
         debugLog(`No VESPA scores record found for ${userEmail}`);
-        // Default to showing both if no record found
+        // Default to showing all if no record found, but still check user attributes for Object_3 fields
+        const userAttributes = Knack.getUserAttributes();
         return { 
           scores: null, 
           displayPreferences: { 
             showVespaScores: true, 
-            showAcademicProfile: true 
+            showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
+            showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
           } 
         };
       }
     } catch (error) {
       debugLog('[Homepage] Error fetching VESPA scores', { error: error.message, stack: error.stack });
-      // Default to showing both on error
+      // Default to showing all on error, but still check user attributes for Object_3 fields
+      const userAttributes = Knack.getUserAttributes();
       return { 
         scores: null, 
         displayPreferences: { 
           showVespaScores: true, 
-          showAcademicProfile: true 
+          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
+          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
         } 
       };
     }
@@ -1411,7 +1602,7 @@
 
   // --- UI Rendering ---
   // Render the main homepage UI
-  function renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData, vespaScoresData) {
+  function renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData, vespaScoresData, activityData = null) {
     const container = document.querySelector(window.HOMEPAGE_CONFIG.elementSelector);
     if (!container) {
       if (DEBUG_MODE) console.error('[Homepage] Container element not found.');
@@ -1476,6 +1667,65 @@
           /* Profile section adjustments */
           #vespa-homepage .profile-section {
             max-width: none !important;
+          }
+          
+          /* VESPA Content Grid - 1x2 layout for questionnaire and activity */
+          .vespa-content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+          }
+          
+          /* Individual grid sections */
+          .vespa-questionnaire-section,
+          .activity-day-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+          }
+          
+          /* Activity section styling */
+          .activity-section-title {
+            color: #00e5db;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          .activity-container {
+            width: 100%;
+          }
+          
+          .activity-embed-frame {
+            width: 100%;
+            min-height: 300px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.02);
+          }
+          
+          /* No activity state */
+          .no-activity {
+            text-align: center;
+            padding: 40px 20px;
+            color: #cccccc;
+          }
+          
+          /* Mobile responsive - stack vertically on small screens */
+          @media (max-width: 768px) {
+            .vespa-content-grid {
+              grid-template-columns: 1fr;
+              gap: 15px;
+            }
+            
+            .activity-embed-frame {
+              min-height: 250px;
+            }
           }
           
           /* Ensure profile containers use full width */
@@ -1563,18 +1813,19 @@
     // Extract display preferences
     const displayPreferences = vespaScoresData?.displayPreferences || { 
       showVespaScores: true, 
-      showAcademicProfile: true 
+      showAcademicProfile: true,
+      showProductivityHub: true
     };
     const actualScores = vespaScoresData?.scores || null;
 
     // Add content to the container
     container.innerHTML += `
       <div id="vespa-homepage">
-        ${displayPreferences.showAcademicProfile ? renderProfileSection(profileData, actualScores, displayPreferences.showVespaScores) : ''}
-        ${!displayPreferences.showAcademicProfile && displayPreferences.showVespaScores ? renderStandaloneVespaSection(actualScores) : ''}
+        ${displayPreferences.showAcademicProfile ? renderProfileSection(profileData, actualScores, displayPreferences.showVespaScores, activityData) : ''}
+        ${!displayPreferences.showAcademicProfile && displayPreferences.showVespaScores ? renderStandaloneVespaSection(actualScores, activityData) : ''}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
-          ${renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData)}
+          ${displayPreferences.showProductivityHub ? renderAppHubSection('Productivity Hub', APP_HUBS.productivity, flashcardReviewCounts, studyPlannerData, taskboardData) : ''}
         </div>
       </div>
     `;
@@ -1602,10 +1853,6 @@
       <div class="vespa-questionnaire-inner">
         <h3 class="vespa-questionnaire-title">
           About the VESPA Questionnaire
-          <span class="vespa-questionnaire-authors">
-            <img src="https://vespa.academy/assets/martingriffin.jpg" alt="Martin Griffin" class="author-photo">
-            <img src="https://vespa.academy/assets/stevoakes1.png" alt="Steve Oakes" class="author-photo">
-          </span>
         </h3>
         <div class="vespa-questionnaire-content">
           <p class="vespa-quote">"Hi there! We're the creators of the VESPA Questionnaire, and we're delighted you've completed it and seen your personalized scores. Keep in mind that your results capture how you see yourself right now—an insightful snapshot, not a fixed verdict"</p>
@@ -1618,17 +1865,24 @@
   }
   
   // Render VESPA sections when academic profile is hidden
-  function renderStandaloneVespaSection(vespaScoresData) {
+  function renderStandaloneVespaSection(vespaScoresData, activityData = null) {
     return `
       <section class="vespa-section vespa-standalone-section">
-        ${renderVespaQuestionnaireSection()}
+        <div class="vespa-content-grid">
+          <div class="vespa-questionnaire-section">
+            ${renderVespaQuestionnaireSection()}
+          </div>
+          <div class="activity-day-section">
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
+          </div>
+        </div>
         ${vespaScoresData ? renderVespaCirclesHTML(vespaScoresData) : ''}
       </section>
     `;
   }
   
-  // Render the profile section
-  function renderProfileSection(profileData, vespaScoresData, showVespaScores) {
+  // Render the profile section with responsive grid layout
+  function renderProfileSection(profileData, vespaScoresData, showVespaScores, activityData = null) {
     const name = sanitizeField(profileData.name);
     
     // Fix for school field - handle if it's an object - improved to handle connection fields better
@@ -1877,7 +2131,14 @@
             </div>
           </div>
         </div>
-        ${renderVespaQuestionnaireSection()}
+        <div class="vespa-content-grid">
+          <div class="vespa-questionnaire-section">
+            ${renderVespaQuestionnaireSection()}
+          </div>
+          <div class="activity-day-section">
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
+          </div>
+        </div>
         ${showVespaScores ? renderVespaCirclesHTML(vespaScoresData) : ''}
       </section>
     `;
@@ -2891,8 +3152,17 @@
           debugLog("[Homepage] Error fetching or processing VESPA scores", { error: vsError.message });
         }
         
+        // Fetch Activity of the Day
+        let activityData = null;
+        try {
+          activityData = await getActivityOfTheWeek();
+          debugLog('Activity Data After Processing:', activityData);
+        } catch (actError) {
+          debugLog("[Homepage] Error fetching or processing activity data", { error: actError.message });
+        }
+        
         // Render the homepage UI with all data
-        renderHomepage(userProfile, flashcardReviewCounts, studyPlannerNotificationData, taskboardNotificationData, vespaScoresData);
+        renderHomepage(userProfile, flashcardReviewCounts, studyPlannerNotificationData, taskboardNotificationData, vespaScoresData, activityData);
         window._homepageInitializing = false;
         window._homepageInitialized = true;
       } else {
