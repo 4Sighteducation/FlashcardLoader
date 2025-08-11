@@ -906,7 +906,7 @@
                 injectHeader();
             }, 250);
             
-            // Re-inject on scene changes in case it gets removed
+            // Re-inject on scene changes in case it gets removed - BUT ONLY IF HEADER IS MISSING
             $(document).on('knack-scene-render.any', function(event, scene) {
                 log('Scene rendered, checking header...', scene.key);
                 
@@ -925,10 +925,23 @@
                     return;
                 }
                 
-                // Longer delay for scene changes to ensure other apps load first
-                setTimeout(() => {
-                    injectHeader(); // This will handle both injection and removal based on login state
-                }, 300);
+                // ONLY re-inject if header is actually missing and user is logged in
+                const existingHeader = document.getElementById('vespaGeneralHeader');
+                if (!existingHeader) {
+                    const userType = getUserType();
+                    if (userType) {
+                        log('Header missing and user logged in, re-injecting after delay');
+                        // Longer delay for scene changes to ensure other apps load first
+                        setTimeout(() => {
+                            // Double-check header is still missing before injecting
+                            if (!document.getElementById('vespaGeneralHeader')) {
+                                injectHeader();
+                            }
+                        }, 300);
+                    }
+                } else {
+                    log('Header exists, no need to re-inject');
+                }
             });
             
             // Listen for logout events
