@@ -1393,7 +1393,7 @@
       const cdnResponse = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
-            url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1h.json',
+            url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1p.json',
             type: 'GET',
             dataType: 'json',
             success: resolve,
@@ -1408,7 +1408,7 @@
       }
 
       // Filter active activities
-      const activeActivities = cdnResponse.filter(activity => activity.Active === true);
+      const activeActivities = cdnResponse.filter(activity => activity.active === true);
       
       if (activeActivities.length === 0) {
         debugLog('No active activities found');
@@ -1424,7 +1424,7 @@
 
       // Filter out recently shown activities
       let availableActivities = activeActivities.filter(activity => 
-        !recentActivityIds.includes(activity.Activity_id)
+        !recentActivityIds.includes(activity.id)
       );
 
       // If all activities have been shown recently, reset and use all activities
@@ -1438,47 +1438,61 @@
       const selectedActivity = availableActivities[randomIndex];
       
       // Save to history
-      saveActivityToHistory(selectedActivity.Activity_id);
+      saveActivityToHistory(selectedActivity.id);
       
-      debugLog(`Selected activity: ${selectedActivity["Activities Name"]}`);
+      debugLog(`Selected activity: ${selectedActivity.activity_name}`);
 
       // Build embed code from CDN media content
       let embedCode = '';
       let pdfLink = null;
       
-      // Priority: slides first, then video
-      if (selectedActivity.media?.slides?.url) {
-        const slidesUrl = selectedActivity.media.slides.url;
-        const params = selectedActivity.media.slides.parameters || {};
-        
-        // Build iframe with parameters
-        let finalUrl = slidesUrl;
-        if (Object.keys(params).length > 0) {
-          const urlParams = new URLSearchParams();
-          Object.entries(params).forEach(([key, value]) => {
-            urlParams.append(key, value);
-          });
-          finalUrl += (slidesUrl.includes('?') ? '&' : '?') + urlParams.toString();
+      // Extract PDF link from sections.do.links
+      if (selectedActivity.sections?.do?.links && selectedActivity.sections.do.links.length > 0) {
+        pdfLink = selectedActivity.sections.do.links.find(link => link.includes('.pdf'));
+        if (pdfLink) {
+          debugLog('Found PDF link in sections.do.links:', pdfLink);
         }
+      }
+      
+      // Priority: slides first, then video from think section
+      if (selectedActivity.sections?.think?.links && selectedActivity.sections.think.links.length > 0) {
+        const thinkLinks = selectedActivity.sections.think.links;
         
-        embedCode = `<iframe src="${finalUrl}" frameborder="0" width="100%" height="400" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
-        debugLog('Using slides embed:', finalUrl);
-        
-      } else if (selectedActivity.media?.video?.url) {
-        const videoUrl = selectedActivity.media.video.url;
-        embedCode = `<iframe src="${videoUrl}" frameborder="0" width="100%" height="400" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
-        debugLog('Using video embed:', videoUrl);
+        // Look for Google Slides first
+        const slideLink = thinkLinks.find(link => link.includes('docs.google.com/presentation'));
+        if (slideLink) {
+          embedCode = `<iframe src="${slideLink}" frameborder="0" width="100%" height="400" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+          debugLog('Using slides from sections.think.links');
+        } else {
+          // Look for YouTube video
+          const videoLink = thinkLinks.find(link => link.includes('youtube.com/embed'));
+          if (videoLink) {
+            embedCode = `<iframe src="${videoLink}" frameborder="0" width="100%" height="400" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+            debugLog('Using video from sections.think.links');
+          }
+        }
+      }
+      
+      // Fall back to learn section images if no think content
+      if (!embedCode && selectedActivity.sections?.learn?.links && selectedActivity.sections.learn.links.length > 0) {
+        const imageLink = selectedActivity.sections.learn.links.find(link => 
+          link.includes('.jpg') || link.includes('.png') || link.includes('.gif') || link.includes('.jpeg')
+        );
+        if (imageLink) {
+          embedCode = `<div style="text-align: center; padding: 20px;"><img src="${imageLink}" alt="Activity image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
+          debugLog('Using image from sections.learn.links');
+        }
       }
 
       if (embedCode) {
         return {
-          id: selectedActivity.Activity_id,
-          title: selectedActivity["Activities Name"],
-          category: selectedActivity["VESPA Category"],
-          level: selectedActivity.Level,
+          id: selectedActivity.id,
+          title: selectedActivity.activity_name,
+          category: selectedActivity.category?.name || selectedActivity.category || 'N/A',
+          level: selectedActivity.level,
           embedCode: embedCode,
           pdfLink: pdfLink,
-          backgroundContent: selectedActivity.background_content
+          backgroundContent: selectedActivity.sections?.learn?.text || ''
         };
       }
 
