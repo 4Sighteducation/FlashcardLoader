@@ -1389,7 +1389,8 @@
   async function getActivityOfTheWeek() {
     debugLog('Fetching activities from CDN...');
     try {
-      const response = await retryApiCall(() => {
+      // Fetch activity list from CDN
+      const cdnResponse = await retryApiCall(() => {
         return new Promise((resolve, reject) => {
           $.ajax({
             url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities.json',
@@ -1401,24 +1402,17 @@
         });
       });
       
-      if (!response || !response.records || response.records.length === 0) {
-        debugLog('No activities found in response');
+      if (!cdnResponse || !Array.isArray(cdnResponse) || cdnResponse.length === 0) {
+        debugLog('No activities found in CDN response');
         return null;
       }
 
-      const currentMonth = getCurrentMonthName();
-      debugLog(`Looking for activities for ${currentMonth}`);
+      // Filter active activities
+      const activeActivities = cdnResponse.filter(activity => activity.Active === true);
       
-      // Filter activities for current month
-      let monthActivities = response.records.filter(activity => {
-        if (!activity.identifier) return false;
-        const activityMonth = extractMonthFromIdentifier(activity.identifier);
-        return activityMonth === currentMonth;
-      });
-
-      if (monthActivities.length === 0) {
-        debugLog(`No activities found for ${currentMonth}, falling back to all activities`);
-        monthActivities = response.records;
+      if (activeActivities.length === 0) {
+        debugLog('No active activities found');
+        return null;
       }
 
       // Get recent activity history (last 7 days)
@@ -1429,60 +1423,66 @@
         .map(item => item.id);
 
       // Filter out recently shown activities
-      let availableActivities = monthActivities.filter(activity => 
-        !recentActivityIds.includes(activity.id)
+      let availableActivities = activeActivities.filter(activity => 
+        !recentActivityIds.includes(activity.Activity_id)
       );
 
-      // If all activities have been shown recently, reset and use all month activities
+      // If all activities have been shown recently, reset and use all activities
       if (availableActivities.length === 0) {
         debugLog('All activities shown recently, resetting pool');
-        availableActivities = monthActivities;
+        availableActivities = activeActivities;
       }
 
-      // Select an activity based on day of year
-      const today = new Date();
-      const start = new Date(today.getFullYear(), 0, 0);
-      const diff = today - start;
-      const oneDay = 1000 * 60 * 60 * 24;
-      const dayOfYear = Math.floor(diff / oneDay);
-      
-      const activityIndex = dayOfYear % availableActivities.length;
-      const activity = availableActivities[activityIndex];
+      // Randomly select an activity
+      const randomIndex = Math.floor(Math.random() * availableActivities.length);
+      const selectedActivity = availableActivities[randomIndex];
       
       // Save to history
-      saveActivityToHistory(activity.id);
+      saveActivityToHistory(selectedActivity.Activity_id);
       
-      debugLog(`Selected activity for ${currentMonth}:`, activity.title);
+      debugLog(`Selected activity: ${selectedActivity["Activities Name"]}`);
 
-      // Extract PDF link from the full HTML content first
+      // Build embed code from CDN media content
+      let embedCode = '';
       let pdfLink = null;
-      if (activity.html_content) {
-        const pdfMatch = activity.html_content.match(/href="([^"]*\.pdf[^"]*)"/i);
-        if (pdfMatch) {
-          pdfLink = pdfMatch[1];
-          debugLog(`Found PDF link: ${pdfLink}`);
+      
+      // Priority: slides first, then video
+      if (selectedActivity.media?.slides?.url) {
+        const slidesUrl = selectedActivity.media.slides.url;
+        const params = selectedActivity.media.slides.parameters || {};
+        
+        // Build iframe with parameters
+        let finalUrl = slidesUrl;
+        if (Object.keys(params).length > 0) {
+          const urlParams = new URLSearchParams();
+          Object.entries(params).forEach(([key, value]) => {
+            urlParams.append(key, value);
+          });
+          finalUrl += (slidesUrl.includes('?') ? '&' : '?') + urlParams.toString();
         }
+        
+        embedCode = `<iframe src="${finalUrl}" frameborder="0" width="100%" height="400" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+        debugLog('Using slides embed:', finalUrl);
+        
+      } else if (selectedActivity.media?.video?.url) {
+        const videoUrl = selectedActivity.media.video.url;
+        embedCode = `<iframe src="${videoUrl}" frameborder="0" width="100%" height="400" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+        debugLog('Using video embed:', videoUrl);
       }
 
-      // Process and clean the embed code
-      if (activity.embed_code) {
-        let processedEmbedCode = activity.embed_code;
-        
-        // Enhanced kiosk mode - hide more UI elements
-        processedEmbedCode = processedEmbedCode.replace(
-          /(<iframe[^>]*src="[^"]*")([^>]*>)/i,
-          '$1$2'
-        );
-
+      if (embedCode) {
         return {
-          id: activity.id,
-          title: activity.title || 'Activity of the Day',
-          embedCode: processedEmbedCode,
-          pdfLink: pdfLink
+          id: selectedActivity.Activity_id,
+          title: selectedActivity["Activities Name"],
+          category: selectedActivity["VESPA Category"],
+          level: selectedActivity.Level,
+          embedCode: embedCode,
+          pdfLink: pdfLink,
+          backgroundContent: selectedActivity.background_content
         };
       }
 
-      debugLog('No embed code found for activity:', activity);
+      debugLog('No media content found for activity');
       return null;
 
     } catch (error) {
