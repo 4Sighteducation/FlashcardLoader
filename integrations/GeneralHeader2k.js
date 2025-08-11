@@ -19,7 +19,7 @@
         console.log('[General Header] Initializing with config:', config);
         
         // Configuration
-        const DEBUG = true; // TEMPORARILY ENABLED for debugging resource button issue
+        const DEBUG = false; // Disabled to reduce log spam
         const currentScene = config.sceneKey;
         const currentView = config.viewKey;
         const userRoles = config.userRoles || [];
@@ -870,90 +870,53 @@
             // You can add analytics tracking here if needed
         }
         
-        // Aggressive DOM cleanup function
+        // Lightweight DOM cleanup function - only clean up what's actually needed
         function cleanupPageContent(newScene) {
-            log('Starting aggressive DOM cleanup for scene change to:', newScene);
+            log('Starting lightweight DOM cleanup for scene change to:', newScene);
             
-            // Remove all scene-level containers from previous apps
+            // Only clean up if we're leaving a homepage scene
+            const homepageScenes = ['scene_1210', 'scene_1215', 'scene_1252'];
+            const wasOnHomepage = homepageScenes.includes(lastScene);
+            const isGoingToHomepage = homepageScenes.includes(newScene);
+            
+            if (!wasOnHomepage) {
+                log('Not leaving a homepage scene, skipping cleanup');
+                return;
+            }
+            
+            log(`Leaving homepage scene ${lastScene}, going to ${newScene}`);
+            
+            // Remove scene-level containers only from homepage scenes
             const sceneContainers = document.querySelectorAll('[id^="scene-level-container"]');
             sceneContainers.forEach(container => {
                 log('Removing scene container:', container.id);
                 container.remove();
             });
             
-            // Remove all app-specific style elements
-            const appStyles = document.querySelectorAll('style[id*="dashboard"], style[id*="homepage"], style[id*="resource"], style[id*="staff"], style[id*="student"]');
-            appStyles.forEach(style => {
-                log('Removing app style:', style.id);
+            // Remove homepage-specific styles only
+            const homepageStyles = document.querySelectorAll('style[id*="homepage"], style[id*="resource-dashboard"], style[id*="staff-homepage"], style[id*="student-homepage"]');
+            homepageStyles.forEach(style => {
+                log('Removing homepage style:', style.id);
                 style.remove();
             });
             
-            // Remove any modals or overlays
-            const modals = document.querySelectorAll('.vespa-modal, .modal-backdrop, .modal-overlay, [class*="modal"]');
-            modals.forEach(modal => {
-                log('Removing modal:', modal.className);
-                modal.remove();
-            });
-            
-            // Clear any loading messages
-            const loadingMessages = document.querySelectorAll('[id*="loading"], [class*="loading"]');
-            loadingMessages.forEach(msg => {
-                if (!msg.closest('#vespaGeneralHeader')) { // Don't remove header loading states
-                    log('Removing loading message:', msg.id || msg.className);
-                    msg.remove();
-                }
-            });
-            
-            // Reset body classes and styles (except header-related)
+            // Reset body background styles only if leaving homepage
             document.body.classList.remove('landing-page-scene', 'dashboard-scene');
             const landingPageClasses = Array.from(document.body.classList).filter(cls => cls.startsWith('landing-page-'));
             landingPageClasses.forEach(cls => document.body.classList.remove(cls));
             
-            // Reset body background styles
-            if (!document.body.classList.contains('has-general-header')) {
-                document.body.style.backgroundColor = '';
-                document.body.style.backgroundImage = '';
-                document.body.style.backgroundAttachment = '';
-                document.body.style.minHeight = '';
-            }
+            document.body.style.backgroundColor = '';
+            document.body.style.backgroundImage = '';
+            document.body.style.backgroundAttachment = '';
+            document.body.style.minHeight = '';
             
-            // Clear any scene-specific content from main containers
-            const mainContainers = document.querySelectorAll('.kn-scene-content, #kn-app-container > div');
-            mainContainers.forEach(container => {
-                // Only clear if it contains app-specific content
-                const hasAppContent = container.querySelector('[id*="vespa"], [class*="dashboard"], [class*="homepage"]');
-                if (hasAppContent) {
-                    log('Clearing app content from main container');
-                    container.innerHTML = '';
-                }
-            });
-            
-            // Call any exposed cleanup functions from other apps
+            // Call cleanup functions only if we have them
             if (typeof window.cleanupResourceDashboard === 'function') {
                 log('Calling ResourceDashboard cleanup');
                 window.cleanupResourceDashboard();
             }
             
-            if (typeof window.cleanupStaffHomepage === 'function') {
-                log('Calling Staff Homepage cleanup');
-                window.cleanupStaffHomepage();
-            }
-            
-            if (typeof window.cleanupStudentHomepage === 'function') {
-                log('Calling Student Homepage cleanup');
-                window.cleanupStudentHomepage();
-            }
-            
-            // Clear any global app state flags
-            const appFlags = Object.keys(window).filter(key => key.startsWith('_loading_') || key.startsWith('_initialized_'));
-            appFlags.forEach(flag => {
-                if (flag !== '_generalHeaderLoaded' && flag !== '_generalHeaderInitComplete') {
-                    log('Clearing app flag:', flag);
-                    delete window[flag];
-                }
-            });
-            
-            log('DOM cleanup completed');
+            log('Lightweight DOM cleanup completed');
         }
         
         // Initialize the header
