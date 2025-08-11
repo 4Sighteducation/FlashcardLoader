@@ -479,13 +479,27 @@
         try {
             // Use the CDN URL provided by the user
             const response = await $.ajax({
-                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1h.json',
+                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1i.json',
                 type: 'GET',
                 dataType: 'json'
             });
             
-            if (!response || !response.records || response.records.length === 0) {
-                errorLog('No activities found in CDN.');
+            log('CDN Response received:', response);
+            log('Response type:', typeof response);
+            log('Response keys:', response ? Object.keys(response) : 'null');
+            
+            if (!response) {
+                errorLog('No response received from CDN.');
+                return null;
+            }
+            
+            if (!response.records) {
+                errorLog('No records property found in CDN response. Response structure:', response);
+                return null;
+            }
+            
+            if (response.records.length === 0) {
+                errorLog('Empty records array in CDN response.');
                 return null;
             }
             
