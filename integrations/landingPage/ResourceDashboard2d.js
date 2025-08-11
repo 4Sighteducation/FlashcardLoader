@@ -853,15 +853,6 @@
     
     function getDashboardCSS() {
         return `
-            /* Scene-level background for resource landing page */
-            body.knack-body,
-            #kn-scene_1252,
-            #kn-scene_1252 .kn-scene,
-            #kn-scene_1252 .kn-scene-content,
-            #kn-scene_1252 .kn-content {
-                background-color: #072769 !important;
-            }
-            
             /* Main Container - Resource Theme */
             #resource-dashboard-container {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
