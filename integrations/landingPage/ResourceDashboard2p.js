@@ -480,7 +480,7 @@
         try {
             // Use the CDN URL provided by the user
             const response = await $.ajax({
-                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1m.json',
+                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1p.json',
                 type: 'GET',
                 dataType: 'json'
             });
@@ -494,22 +494,16 @@
                 return null;
             }
             
-            // Handle both formats: object with records property OR direct array
-            let activities;
-            if (response.records) {
-                // Old format: {records: [...]}
-                activities = response.records;
-                log('Using records property from response');
-            } else if (Array.isArray(response)) {
-                // New format: direct array [...]
-                activities = response;
-                log('Using direct array response');
-            } else {
-                errorLog('No records property found and response is not an array. Response structure:', response);
+            // New format: direct array [...]
+            if (!Array.isArray(response)) {
+                errorLog('Expected array response from CDN. Response structure:', response);
                 return null;
             }
             
-            if (!activities || activities.length === 0) {
+            const activities = response;
+            log(`CDN Response received: ${activities.length} activities`);
+            
+            if (activities.length === 0) {
                 errorLog('Empty activities array in CDN response.');
                 return null;
             }
@@ -526,13 +520,13 @@
                 const isWelsh = hasWelshField || isWelshFlag;
                 
                 if (isWelsh) {
-                    log(`Filtering out Welsh activity: ${activity["Activities Name"]}`);
+                    log(`Filtering out Welsh activity: ${activity.activity_name}`);
                 }
                 
                 return !isWelsh;
             });
             
-            log(`Total activities: ${response.records.length}, Non-Welsh activities: ${nonWelshActivities.length}`);
+            log(`Total activities: ${activities.length}, Non-Welsh activities: ${nonWelshActivities.length}`);
             
             // Filter activities by current month
             let monthActivities = nonWelshActivities.filter(activity => {
@@ -548,7 +542,7 @@
             
             // Filter out recently shown activities
             let availableActivities = monthActivities.filter(activity => 
-                !recentActivityIds.includes(activity.Activity_id)
+                !recentActivityIds.includes(activity.id)
             );
             
             // If all activities have been shown recently, reset and use all month activities
@@ -568,55 +562,49 @@
             const activity = availableActivities[activityIndex];
             
             // Save to history
-            saveActivityToHistory(activity.Activity_id);
+            saveActivityToHistory(activity.id);
             
-            log(`Selected activity for ${currentMonth}:`, activity["Activities Name"]);
+            log(`Selected activity for ${currentMonth}:`, activity.activity_name);
 
-            // Extract PDF link from background content or media
+            // Extract PDF link from sections.do.links
             let pdfLink = null;
-            if (activity.background_content) {
-                const pdfMatch = activity.background_content.match(/href="([^"]+\.pdf[^"]*)"/i);
-                if (pdfMatch) {
-                    pdfLink = pdfMatch[1];
-                    log('Found PDF link:', pdfLink);
+            if (activity.sections?.do?.links && activity.sections.do.links.length > 0) {
+                // Find PDF link in the do section
+                pdfLink = activity.sections.do.links.find(link => link.includes('.pdf'));
+                if (pdfLink) {
+                    log('Found PDF link in sections.do.links:', pdfLink);
                 }
             }
 
-            // Generate embed code from new media structure
+            // Generate embed code from new sections structure
             let embedCode = '';
-            if (activity.media) {
-                log('Processing new media structure:', activity.media);
+            if (activity.sections?.think?.links && activity.sections.think.links.length > 0) {
+                log('Processing new sections structure:', activity.sections);
+                const thinkLinks = activity.sections.think.links;
                 
-                // Priority: slides first, then video, then images
-                if (activity.media.slides && activity.media.slides.url) {
-                    const slides = activity.media.slides;
-                    let slideUrl = slides.url;
-                    
-                    // Add parameters if they exist
-                    if (slides.parameters) {
-                        const params = new URLSearchParams();
-                        if (slides.parameters.start) params.append('start', 'true');
-                        if (slides.parameters.loop) params.append('loop', 'true');
-                        if (slides.parameters.delayms) params.append('delayms', slides.parameters.delayms);
-                        
-                        const paramString = params.toString();
-                        if (paramString) {
-                            slideUrl += (slideUrl.includes('?') ? '&' : '?') + paramString;
-                        }
+                // Look for Google Slides first (usually longer URLs)
+                const slideLink = thinkLinks.find(link => link.includes('docs.google.com/presentation'));
+                if (slideLink) {
+                    embedCode = `<iframe src="${slideLink}" frameborder="0" width="100%" height="500" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+                    log('Generated slides embed code from sections.think.links');
+                } else {
+                    // Look for YouTube video
+                    const videoLink = thinkLinks.find(link => link.includes('youtube.com/embed'));
+                    if (videoLink) {
+                        embedCode = `<iframe src="${videoLink}" frameborder="0" width="100%" height="500" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+                        log('Generated video embed code from sections.think.links');
                     }
-                    
-                    embedCode = `<iframe src="${slideUrl}" frameborder="0" width="100%" height="500" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
-                    log('Generated slides embed code');
-                    
-                } else if (activity.media.video && activity.media.video.url) {
-                    const video = activity.media.video;
-                    embedCode = `<iframe src="${video.url}" frameborder="0" width="100%" height="500" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
-                    log('Generated video embed code');
-                    
-                } else if (activity.media.images && activity.media.images.length > 0) {
-                    const image = activity.media.images[0];
-                    embedCode = `<div style="text-align: center; padding: 20px;"><img src="${image.url}" alt="${image.alt || 'Activity image'}" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
-                    log('Generated image embed code');
+                }
+            }
+            
+            // Fall back to learn section images if no think content
+            if (!embedCode && activity.sections?.learn?.links && activity.sections.learn.links.length > 0) {
+                const imageLink = activity.sections.learn.links.find(link => 
+                    link.includes('.jpg') || link.includes('.png') || link.includes('.gif') || link.includes('.jpeg')
+                );
+                if (imageLink) {
+                    embedCode = `<div style="text-align: center; padding: 20px;"><img src="${imageLink}" alt="Activity image" style="max-width: 100%; height: auto; border-radius: 8px;"></div>`;
+                    log('Generated image embed code from sections.learn.links');
                 }
             }
             
@@ -645,9 +633,9 @@
             });
 
             return {
-                name: activity["Activities Name"],
-                group: activity.group_info?.identifier || 'N/A',
-                category: activity["VESPA Category"],
+                name: activity.activity_name,
+                group: activity.level || 'N/A',
+                category: activity.category?.name || activity.category || 'N/A',
                 embedCode: enhancedEmbedCode,
                 pdfLink: pdfLink
             };
@@ -3354,4 +3342,3 @@
     }
 
 })();
-
