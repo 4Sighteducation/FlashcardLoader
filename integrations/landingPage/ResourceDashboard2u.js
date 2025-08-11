@@ -26,7 +26,7 @@
             knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
             knackApiKey: loaderConfig.knackApiKey || '8f733aa5-dd35-4464-8348-64824d1f5f0d',
             elementSelector: loaderConfig.elementSelector || '#view_3024',
-            debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : true,
+            debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : false,
             sendGrid: loaderConfig.sendGrid || {
                 proxyUrl: 'https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email',
                 fromEmail: 'noreply@notifications.vespa.academy',
