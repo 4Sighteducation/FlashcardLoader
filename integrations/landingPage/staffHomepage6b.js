@@ -2582,23 +2582,25 @@ function renderProfileSection(profileData, hasAdminRole) {
     
     // Add feature toggles for admin users
     featureToggles = `
-      <div class="feature-toggles">
-        <div class="toggle-item">
-          <span class="toggle-label">Productivity Hub</span>
-          <div class="toggle-switch" id="toggle-productivity" data-field-obj2="field_3569" data-field-obj3="field_3647">
-            <div class="toggle-slider"></div>
+      <div class="toggles-container">
+        <div class="feature-toggles">
+          <div class="toggle-item">
+            <span class="toggle-label">Productivity Hub</span>
+            <div class="toggle-switch" id="toggle-productivity" data-field-obj2="field_3569" data-field-obj3="field_3647">
+              <div class="toggle-slider"></div>
+            </div>
           </div>
-        </div>
-        <div class="toggle-item">
-          <span class="toggle-label">Academic Profile</span>
-          <div class="toggle-switch" id="toggle-academic" data-field-obj2="field_3575" data-field-obj3="field_3646">
-            <div class="toggle-slider"></div>
+          <div class="toggle-item">
+            <span class="toggle-label">Academic Profile</span>
+            <div class="toggle-switch" id="toggle-academic" data-field-obj2="field_3575" data-field-obj3="field_3646">
+              <div class="toggle-slider"></div>
+            </div>
           </div>
-        </div>
-        <div class="toggle-item">
-          <span class="toggle-label">AI Coach</span>
-          <div class="toggle-switch" id="toggle-coach" data-field-obj2="field_3570" data-field-obj3="field_3579">
-            <div class="toggle-slider"></div>
+          <div class="toggle-item">
+            <span class="toggle-label">AI Coach</span>
+            <div class="toggle-switch" id="toggle-coach" data-field-obj2="field_3570" data-field-obj3="field_3579">
+              <div class="toggle-slider"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -2610,9 +2612,11 @@ function renderProfileSection(profileData, hasAdminRole) {
       <h2 class="vespa-section-title">Staff Profile</h2>
       <div class="profile-info">
         <div class="profile-details">
-          <div class="logo-container">
-            ${profileData.schoolLogo ? `<img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">` : ''}
-            ${logoControls}
+          <div class="logo-toggles-container">
+            <div class="logo-container">
+              ${profileData.schoolLogo ? `<img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">` : ''}
+              ${logoControls}
+            </div>
             ${featureToggles}
           </div>
           <div class="profile-name">${sanitizeField(profileData.name)}</div>
@@ -3285,7 +3289,7 @@ async function handleToggleClick(toggleId, schoolId, profileData) {
     await updateSchoolToggleField(schoolId, obj2Field, isActive);
     
     // Update all connected Object_3 records (student accounts)
-    await updateConnectedStudentToggles(profileData.school, obj3Field, isActive);
+    await updateConnectedStudentToggles(schoolId, obj3Field, isActive);
     
     console.log(`[Staff Homepage] Successfully updated ${toggleId} for all connected accounts`);
     
@@ -3348,18 +3352,20 @@ function showNotification(message, type = 'info') {
 }
 
 // Update all connected Object_3 records
-async function updateConnectedStudentToggles(schoolName, fieldName, value) {
-  if (!schoolName) {
-    console.warn('[Staff Homepage] No school name provided for student updates');
+async function updateConnectedStudentToggles(schoolId, fieldName, value) {
+  if (!schoolId) {
+    console.warn('[Staff Homepage] No school ID provided for student updates');
     return;
   }
   
   try {
+    console.log(`[Staff Homepage] Searching for Object_3 records with school ID: "${schoolId}"`);
+    
     // Find all Object_3 records connected by field_122 (school connection)
     const filters = encodeURIComponent(JSON.stringify({
       match: 'and',
       rules: [
-        { field: 'field_122', operator: 'is', value: schoolName }
+        { field: 'field_122', operator: 'is', value: schoolId }
       ]
     }));
     
@@ -3372,14 +3378,20 @@ async function updateConnectedStudentToggles(schoolName, fieldName, value) {
       });
     });
     
+    console.log(`[Staff Homepage] Object_3 search response:`, response);
+    
     if (response && response.records && response.records.length > 0) {
       console.log(`[Staff Homepage] Found ${response.records.length} connected student accounts to update`);
+      console.log(`[Staff Homepage] Sample record field_122 values:`, response.records.slice(0, 3).map(r => r.field_122));
       
       // Update each connected record
       const updateData = {};
       updateData[fieldName] = value;
       
+      console.log(`[Staff Homepage] Updating ${fieldName} to ${value} for ${response.records.length} records`);
+      
       const updatePromises = response.records.map(record => {
+        console.log(`[Staff Homepage] Updating record ${record.id} with:`, updateData);
         return retryApiCall(() => {
           return KnackAPIQueue.addRequest({
             url: `${KNACK_API_URL}/objects/object_3/records/${record.id}`,
@@ -3390,11 +3402,17 @@ async function updateConnectedStudentToggles(schoolName, fieldName, value) {
         });
       });
       
-      await Promise.all(updatePromises);
+      const results = await Promise.all(updatePromises);
+      console.log(`[Staff Homepage] Update results:`, results);
       console.log(`[Staff Homepage] Successfully updated ${response.records.length} student accounts`);
       
     } else {
-      console.log('[Staff Homepage] No connected student accounts found to update');
+      console.log(`[Staff Homepage] No connected student accounts found for school ID: "${schoolId}"`);
+      console.log(`[Staff Homepage] Response details:`, {
+        hasResponse: !!response,
+        hasRecords: !!(response && response.records),
+        recordCount: response && response.records ? response.records.length : 0
+      });
     }
     
   } catch (error) {
@@ -3812,23 +3830,38 @@ function getStyleCSS() {
   min-height: calc(100% - 40px);
 }
 
+/* Logo and toggles container - responsive grid */
+.logo-toggles-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 15px;
+}
+
 .logo-container {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 10px;
+}
+
+.toggles-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .school-logo {
-  max-width: 40px;
-  max-height: 40px;
+  max-width: 80px;
+  max-height: 80px;
   width: auto;
   height: auto;
   margin-bottom: 10px;
   align-self: center;
-  border-radius: 3px;
-  padding: 2px;
+  border-radius: 5px;
+  padding: 4px;
   background: rgba(255, 255, 255, 0.1);
   object-fit: contain;
 }
@@ -3839,11 +3872,9 @@ function getStyleCSS() {
 
 /* Feature Toggle Switches */
 .feature-toggles {
-  margin-top: 15px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  align-items: center;
+  gap: 10px;
   width: 100%;
 }
 
@@ -3852,8 +3883,7 @@ function getStyleCSS() {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  max-width: 180px;
-  font-size: 11px;
+  font-size: 12px;
   color: #ffffff;
 }
 
@@ -4535,6 +4565,16 @@ canvas {
   /* Adjust profile layout for smaller screens */
   .profile-info {
     flex-direction: column;
+  }
+  
+  /* Stack logo and toggles vertically on mobile */
+  .logo-toggles-container {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .toggles-container {
+    align-items: center;
   }
   
   /* Charts take full width on mobile */
