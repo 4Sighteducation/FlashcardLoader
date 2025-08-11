@@ -26,7 +26,7 @@
             knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
             knackApiKey: loaderConfig.knackApiKey || '8f733aa5-dd35-4464-8348-64824d1f5f0d',
             elementSelector: loaderConfig.elementSelector || '#view_3024',
-            debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : false,
+            debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : true,
             sendGrid: loaderConfig.sendGrid || {
                 proxyUrl: 'https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email',
                 fromEmail: 'noreply@notifications.vespa.academy',
@@ -475,11 +475,12 @@
     }
     
     async function getActivityOfTheWeek() {
+        log('=== getActivityOfTheWeek() function called ===');
         log('Fetching activities from CDN...');
         try {
             // Use the CDN URL provided by the user
             const response = await $.ajax({
-                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1j.json',
+                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1i.json',
                 type: 'GET',
                 dataType: 'json'
             });
@@ -2912,9 +2913,12 @@
         log('Container found, proceeding with initialization');
 
         // NEW: Check user verification status before proceeding
+        log('Checking user verification status...');
         try {
             const canProceed = await checkUserVerificationStatus();
+            log('User verification check result:', canProceed);
             if (!canProceed) {
+                log('User verification failed - showing modals and returning early');
                 // User needs to complete verification steps
                 // The modals are already being shown
                 return;
@@ -2923,6 +2927,7 @@
             errorLog('Error checking user verification status:', error);
             // Continue anyway on error
         }
+        log('User verification passed, continuing with initialization...');
 
         // Add styles - with debugging
         const cssContent = getDashboardCSS();
@@ -3033,10 +3038,13 @@
                 };
             }
             
+            log('About to call getActivityOfTheWeek()...');
             try {
                 activity = await getActivityOfTheWeek();
+                log('getActivityOfTheWeek() completed successfully:', activity ? 'Got activity' : 'No activity returned');
             } catch (activityError) {
                 errorLog('Error getting activity:', activityError);
+                errorLog('Activity error stack:', activityError.stack);
                 activity = null;
             }
 
