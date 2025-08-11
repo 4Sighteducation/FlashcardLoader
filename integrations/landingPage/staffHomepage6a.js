@@ -2561,6 +2561,7 @@ function renderProfileSection(profileData, hasAdminRole) {
   // Initialize variables first to avoid the "Cannot access before initialization" error
   let dashboardButton = '';
   let logoControls = '';
+  let featureToggles = '';
   
   if (hasAdminRole) {
     dashboardButton = `
@@ -2578,6 +2579,30 @@ function renderProfileSection(profileData, hasAdminRole) {
         <button id="admin-set-logo-btn" class="logo-button">Change Logo</button>
       </div>
     `;
+    
+    // Add feature toggles for admin users
+    featureToggles = `
+      <div class="feature-toggles">
+        <div class="toggle-item">
+          <span class="toggle-label">Productivity Hub</span>
+          <div class="toggle-switch" id="toggle-productivity" data-field-obj2="field_3569" data-field-obj3="field_3647">
+            <div class="toggle-slider"></div>
+          </div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-label">Academic Profile</span>
+          <div class="toggle-switch" id="toggle-academic" data-field-obj2="field_3575" data-field-obj3="field_3646">
+            <div class="toggle-slider"></div>
+          </div>
+        </div>
+        <div class="toggle-item">
+          <span class="toggle-label">AI Coach</span>
+          <div class="toggle-switch" id="toggle-coach" data-field-obj2="field_3570" data-field-obj3="field_3579">
+            <div class="toggle-slider"></div>
+          </div>
+        </div>
+      </div>
+    `;
   }
   
   return `
@@ -2588,6 +2613,7 @@ function renderProfileSection(profileData, hasAdminRole) {
           <div class="logo-container">
             ${profileData.schoolLogo ? `<img src="${profileData.schoolLogo}" alt="${profileData.school} Logo" class="school-logo">` : ''}
             ${logoControls}
+            ${featureToggles}
           </div>
           <div class="profile-name">${sanitizeField(profileData.name)}</div>
           
@@ -3194,6 +3220,189 @@ function setupCycleRefresh(userId, schoolId) {
   });
 }
 
+// Set up feature toggles for admin users
+async function setupFeatureToggles(schoolId, profileData) {
+  if (!schoolId) return;
+  
+  try {
+    // Get current toggle states from Object_2 (school/customer record)
+    const schoolRecord = await getSchoolRecord(schoolId);
+    if (!schoolRecord) {
+      console.warn('[Staff Homepage] Could not load school record for toggles');
+      return;
+    }
+    
+    // Set initial toggle states based on Object_2 fields
+    const toggles = [
+      { id: 'toggle-productivity', field: 'field_3569', value: schoolRecord.field_3569 },
+      { id: 'toggle-academic', field: 'field_3575', value: schoolRecord.field_3575 },
+      { id: 'toggle-coach', field: 'field_3570', value: schoolRecord.field_3570 }
+    ];
+    
+    toggles.forEach(toggle => {
+      const toggleElement = document.getElementById(toggle.id);
+      if (toggleElement) {
+        // Set initial state (true = active)
+        if (toggle.value === true || toggle.value === 'true') {
+          toggleElement.classList.add('active');
+        }
+        
+        // Add click event listener
+        toggleElement.addEventListener('click', async () => {
+          await handleToggleClick(toggle.id, schoolId, profileData);
+        });
+      }
+    });
+    
+    console.log('[Staff Homepage] Feature toggles initialized');
+    
+  } catch (error) {
+    console.error('[Staff Homepage] Error setting up feature toggles:', error);
+  }
+}
+
+// Handle toggle click events
+async function handleToggleClick(toggleId, schoolId, profileData) {
+  const toggleElement = document.getElementById(toggleId);
+  if (!toggleElement) return;
+  
+  try {
+    // Toggle the visual state
+    const isActive = toggleElement.classList.toggle('active');
+    
+    // Get field mappings from data attributes
+    const obj2Field = toggleElement.dataset.fieldObj2;
+    const obj3Field = toggleElement.dataset.fieldObj3;
+    
+    if (!obj2Field || !obj3Field) {
+      console.error('[Staff Homepage] Missing field mappings on toggle');
+      return;
+    }
+    
+    console.log(`[Staff Homepage] Updating ${toggleId}: ${isActive ? 'enabled' : 'disabled'}`);
+    
+    // Update Object_2 (school/customer record)
+    await updateSchoolToggleField(schoolId, obj2Field, isActive);
+    
+    // Update all connected Object_3 records (student accounts)
+    await updateConnectedStudentToggles(profileData.school, obj3Field, isActive);
+    
+    console.log(`[Staff Homepage] Successfully updated ${toggleId} for all connected accounts`);
+    
+  } catch (error) {
+    console.error(`[Staff Homepage] Error handling toggle ${toggleId}:`, error);
+    
+    // Revert visual state on error
+    toggleElement.classList.toggle('active');
+    
+    // Show error message
+    showNotification(`Error updating ${toggleId.replace('toggle-', '')} setting. Please try again.`, 'error');
+  }
+}
+
+// Update Object_2 field
+async function updateSchoolToggleField(schoolId, fieldName, value) {
+  const updateData = {};
+  updateData[fieldName] = value;
+  
+  return await retryApiCall(() => {
+    return KnackAPIQueue.addRequest({
+      url: `${KNACK_API_URL}/objects/object_2/records/${schoolId}`,
+      type: 'PUT',
+      headers: getKnackHeaders(),
+      data: JSON.stringify(updateData)
+    });
+  });
+}
+
+// Show notification to user
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `vespa-notification ${type}`;
+  notification.textContent = message;
+  
+  // Add styles
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 6px;
+    color: white;
+    font-weight: 500;
+    z-index: 10000;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    ${type === 'error' ? 'background-color: #ff6b6b;' : 'background-color: #00e5db;'}
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 4 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 4000);
+}
+
+// Update all connected Object_3 records
+async function updateConnectedStudentToggles(schoolName, fieldName, value) {
+  if (!schoolName) {
+    console.warn('[Staff Homepage] No school name provided for student updates');
+    return;
+  }
+  
+  try {
+    // Find all Object_3 records connected by field_122 (school connection)
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [
+        { field: 'field_122', operator: 'is', value: schoolName }
+      ]
+    }));
+    
+    const response = await retryApiCall(() => {
+      return KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+        type: 'GET',
+        headers: getKnackHeaders(),
+        data: { format: 'raw' }
+      });
+    });
+    
+    if (response && response.records && response.records.length > 0) {
+      console.log(`[Staff Homepage] Found ${response.records.length} connected student accounts to update`);
+      
+      // Update each connected record
+      const updateData = {};
+      updateData[fieldName] = value;
+      
+      const updatePromises = response.records.map(record => {
+        return retryApiCall(() => {
+          return KnackAPIQueue.addRequest({
+            url: `${KNACK_API_URL}/objects/object_3/records/${record.id}`,
+            type: 'PUT',
+            headers: getKnackHeaders(),
+            data: JSON.stringify(updateData)
+          });
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      console.log(`[Staff Homepage] Successfully updated ${response.records.length} student accounts`);
+      
+    } else {
+      console.log('[Staff Homepage] No connected student accounts found to update');
+    }
+    
+  } catch (error) {
+    console.error('[Staff Homepage] Error updating connected student accounts:', error);
+    throw error;
+  }
+}
+
 // Set up logo controls for admin users
 function setupLogoControls(schoolId) {
   // Get modal elements
@@ -3400,15 +3609,6 @@ async function updateSchoolLogo(schoolId, logoUrl) {
 // Get CSS styles for the homepage with improved UI
 function getStyleCSS() {
     return `
-  /* Scene-level background for staff landing page */
-  body.knack-body,
-  #kn-scene_1215,
-  #kn-scene_1215 .kn-scene,
-  #kn-scene_1215 .kn-scene-content,
-  #kn-scene_1215 .kn-content {
-    background-color: #072769 !important;
-  }
-  
   /* Main Container - Staff Theme */
 #staff-homepage {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -3428,10 +3628,10 @@ function getStyleCSS() {
 .top-row {
   display: flex;
   flex-direction: row;
-  gap: 24px;
-  margin-bottom: 28px;
+  gap: 20px;
+  margin-bottom: 20px;
   align-items: stretch; /* Make heights equal */
-  min-height: 400px; /* Set minimum height to ensure content has room */
+  min-height: 320px; /* Reduced height to fit desktop window */
 }
 
 /* Profile container takes 30% width */
@@ -3521,7 +3721,7 @@ function getStyleCSS() {
   height: 100%;
   box-sizing: border-box;
   position: relative;
-  padding: 22px;
+  padding: 16px;
   border: 2px solid #00e5db;
   border-radius: 10px;
   overflow: hidden;
@@ -3617,21 +3817,86 @@ function getStyleCSS() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .school-logo {
-  max-width: 60px;
+  max-width: 40px;
+  max-height: 40px;
+  width: auto;
   height: auto;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   align-self: center;
-  border-radius: 5px;
-  padding: 5px;
+  border-radius: 3px;
+  padding: 2px;
   background: rgba(255, 255, 255, 0.1);
+  object-fit: contain;
 }
 
 .logo-controls {
   margin-top: 8px;
+}
+
+/* Feature Toggle Switches */
+.feature-toggles {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 180px;
+  font-size: 11px;
+  color: #ffffff;
+}
+
+.toggle-label {
+  flex: 1;
+  text-align: left;
+  font-weight: 500;
+}
+
+/* Toggle Switch Styling */
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background-color: #ccc;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-left: 8px;
+}
+
+.toggle-switch.active {
+  background-color: #00e5db;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch.active .toggle-slider {
+  transform: translateX(16px);
+}
+
+.toggle-switch:hover {
+  box-shadow: 0 0 8px rgba(0, 229, 219, 0.3);
 }
 
 .logo-button {
@@ -3716,8 +3981,8 @@ function getStyleCSS() {
 .group-resources-container {
   display: flex;
   flex-direction: row;
-  gap: 24px;
-  margin-bottom: 28px;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 .group-resources-container > section {
@@ -4910,6 +5175,11 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
     
       // Add event listeners after modal is added
   setupLogoControls(profileData.schoolId);
+  
+  // Setup feature toggles for admin users
+  if (hasAdminRole) {
+    setupFeatureToggles(profileData.schoolId, profileData);
+  }
 }
 // Setup cycle refresh button
 if (profileData && profileData.userId) {
