@@ -640,17 +640,17 @@
     // --- Rendering Functions ---
     
     const MY_RESOURCES_APPS = [
-       { name: "Slide Decks", url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/", icon: "fa-solid fa-display" },
-       { name: "Newsletter", url: "https://vespaacademy.knack.com/vespa-academy#vespa-newsletter/", icon: "fa-solid fa-newspaper" },
-       { name: "Curriculum", url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/", icon: "fa-solid fa-book-open" },
-       { name: "Worksheets", url: "https://vespaacademy.knack.com/vespa-academy#worksheets/", icon: "fa-solid fa-file-pdf" },
+       { name: "Slide Decks", url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/", icon: "fa-solid fa-display", color: "#079baa" },
+       { name: "Videos", url: "https://vespaacademy.knack.com/vespa-academy#vespa-videos", icon: "fa-solid fa-play", color: "#7bd8d0" },
+       { name: "Curriculum", url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/", icon: "fa-solid fa-book-open", color: "#62d1d2" },
+       { name: "Worksheets", url: "https://vespaacademy.knack.com/vespa-academy#worksheets/", icon: "fa-solid fa-file-pdf", color: "#00e5db" },
     ];
     
     const ADMIN_APPS = [
-       { name: "Manage Schools", url: "https://vespaacademy.knack.com/vespa-academy#manage-schools/", icon: "fa-solid fa-school" },
-       { name: "Manage Staff", url: "https://vespaacademy.knack.com/vespa-academy#manage-staff/", icon: "fa-solid fa-users-cog" },
-       { name: "Manage Students", url: "https://vespaacademy.knack.com/vespa-academy#students/", icon: "fa-solid fa-user-graduate" },
-       { name: "Import Data", url: "https://vespaacademy.knack.com/vespa-academy#import-data/", icon: "fa-solid fa-file-import" },
+       { name: "Manage Schools", url: "https://vespaacademy.knack.com/vespa-academy#manage-schools/", icon: "fa-solid fa-school", color: "#5899a8" },
+       { name: "Manage Staff", url: "https://vespaacademy.knack.com/vespa-academy#manage-staff/", icon: "fa-solid fa-users-cog", color: "#2f8dcb" },
+       { name: "Manage Students", url: "https://vespaacademy.knack.com/vespa-academy#students/", icon: "fa-solid fa-user-graduate", color: "#23356f" },
+       { name: "Import Data", url: "https://vespaacademy.knack.com/vespa-academy#import-data/", icon: "fa-solid fa-file-import", color: "#2a3c7a" },
     ];
 
     // --- User Activity Tracking Functions ---
@@ -785,7 +785,7 @@
 
     function renderNavigationSection() {
         const navButtons = MY_RESOURCES_APPS.map(app => `
-            <a href="${app.url}" class="nav-button" onclick="event.preventDefault(); window.location.href='${app.url}';">
+            <a href="${app.url}" class="nav-button" onclick="event.preventDefault(); window.location.href='${app.url}';" style="--theme-color: ${app.color}">
                 <i class="${app.icon}"></i>
                 <span>${app.name}</span>
             </a>
@@ -803,7 +803,7 @@
     
     function renderAdminSection() {
         const adminButtons = ADMIN_APPS.map(app => `
-            <a href="${app.url}" class="admin-button" onclick="event.preventDefault(); window.location.href='${app.url}';">
+            <a href="${app.url}" class="admin-button" onclick="event.preventDefault(); window.location.href='${app.url}';" style="--theme-color: ${app.color}">
                 <i class="${app.icon}"></i>
                 <span>${app.name}</span>
             </a>
@@ -943,7 +943,7 @@
 
             .nav-button {
                 background: linear-gradient(135deg, #15348e 0%, #102983 100%);
-                color: #00e5db !important;
+                color: var(--theme-color, #00e5db) !important;
                 text-decoration: none;
                 padding: 20px;
                 border-radius: 8px;
@@ -952,29 +952,52 @@
                 justify-content: center;
                 gap: 12px;
                 transition: all 0.3s ease;
-                border: 2px solid #00e5db;
+                border: 2px solid var(--theme-color, #00e5db);
                 font-weight: 700;
                 font-size: 16px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                 min-height: 80px;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .nav-button::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(135deg, var(--theme-color, #00e5db) 0%, rgba(var(--theme-color-rgb, 0, 229, 219), 0.8) 100%);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                z-index: -1;
             }
 
             .nav-button span {
-                color: #00e5db !important;
+                color: var(--theme-color, #00e5db) !important;
                 text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+                position: relative;
+                z-index: 1;
             }
 
             .nav-button:hover {
                 transform: translateY(-3px);
                 box-shadow: 0 8px 20px rgba(0, 229, 219, 0.4);
-                background: linear-gradient(135deg, #1a3ea0 0%, #153494 100%);
+                border-color: #ffffff;
+            }
+            
+            .nav-button:hover::before {
+                opacity: 0.2;
             }
 
             .nav-button i {
                 font-size: 24px;
-                color: #00e5db !important;
+                color: var(--theme-color, #00e5db) !important;
+                position: relative;
+                z-index: 1;
             }
 
             .nav-button:hover i {
@@ -1505,7 +1528,7 @@
 
             .admin-button {
                 background: linear-gradient(135deg, #2d3561 0%, #1e2549 100%);
-                color: #ff4757 !important;
+                color: var(--theme-color, #ff4757) !important;
                 text-decoration: none;
                 padding: 20px;
                 border-radius: 8px;
@@ -1514,29 +1537,52 @@
                 justify-content: center;
                 gap: 12px;
                 transition: all 0.3s ease;
-                border: 2px solid #ff4757;
+                border: 2px solid var(--theme-color, #ff4757);
                 font-weight: 700;
                 font-size: 16px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                 min-height: 80px;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .admin-button::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(135deg, var(--theme-color, #ff4757) 0%, rgba(var(--theme-color-rgb, 255, 71, 87), 0.8) 100%);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                z-index: -1;
             }
 
             .admin-button span {
-                color: #ff4757 !important;
+                color: var(--theme-color, #ff4757) !important;
                 text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+                position: relative;
+                z-index: 1;
             }
 
             .admin-button:hover {
                 transform: translateY(-3px);
                 box-shadow: 0 8px 20px rgba(255, 71, 87, 0.4);
-                background: linear-gradient(135deg, #3a4270 0%, #2a3157 100%);
+                border-color: #ffffff;
+            }
+            
+            .admin-button:hover::before {
+                opacity: 0.2;
             }
 
             .admin-button i {
                 font-size: 24px;
-                color: #ff4757 !important;
+                color: var(--theme-color, #ff4757) !important;
+                position: relative;
+                z-index: 1;
             }
 
             .admin-button:hover i {
