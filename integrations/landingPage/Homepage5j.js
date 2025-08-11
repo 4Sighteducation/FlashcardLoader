@@ -1593,11 +1593,19 @@
         
         // Extract display preferences from user attributes (Object_3) instead of VESPA scores record
         const userAttributes = Knack.getUserAttributes();
+        
+        // Debug the actual field values
+        console.log('[Homepage Debug] User attributes field values:');
+        console.log('field_3646 (showAcademicProfile):', userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile]);
+        console.log('field_3647 (showProductivityHub):', userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub]);
+        
         const displayPreferences = {
           showVespaScores: record[DISPLAY_PREFERENCE_FIELDS.showVespaScores] !== false, // Keep from VESPA record for backwards compatibility
-          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false, // From Object_3
-          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false // From Object_3
+          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] === true, // Changed to explicit true check
+          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] === true // Changed to explicit true check
         };
+        
+        console.log('[Homepage Debug] Final display preferences:', displayPreferences);
         
         debugLog('Processed VESPA scores:', scores);
         debugLog('Display preferences:', displayPreferences);
@@ -1611,8 +1619,8 @@
           scores: null, 
           displayPreferences: { 
             showVespaScores: true, 
-            showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
-            showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
+            showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] === true,
+            showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] === true
           } 
         };
       }
@@ -1624,8 +1632,8 @@
         scores: null, 
         displayPreferences: { 
           showVespaScores: true, 
-          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] !== false,
-          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] !== false
+          showAcademicProfile: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile] === true,
+          showProductivityHub: userAttributes?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub] === true
         } 
       };
     }
@@ -1763,10 +1771,30 @@
             margin: 0 0 8px 0;
           }
           
+          /* More specific selectors to override Knack's CSS */
+          .kn-content .activity-name,
+          .kn-scene .activity-name,
+          .kn-scene-content .activity-name,
+          #kn-app-container .activity-name {
+            color: #00e5db !important;
+          }
+          
           .activity-meta {
             display: flex;
             gap: 20px;
             font-size: 13px;
+            color: #00e5db !important;
+          }
+          
+          /* More specific selectors for activity meta */
+          .kn-content .activity-meta,
+          .kn-scene .activity-meta,
+          .kn-scene-content .activity-meta,
+          #kn-app-container .activity-meta,
+          .kn-content .activity-meta span,
+          .kn-scene .activity-meta span,
+          .kn-scene-content .activity-meta span,
+          #kn-app-container .activity-meta span {
             color: #00e5db !important;
           }
           
