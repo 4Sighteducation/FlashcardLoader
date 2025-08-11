@@ -513,7 +513,7 @@
             const recentActivityIds = history.map(h => h.id);
             
             // Filter out Welsh activities (where field_1924 is "Yes" OR is_welsh is true)
-            const nonWelshActivities = response.records.filter(activity => {
+            const nonWelshActivities = activities.filter(activity => {
                 // Check both field_1924 and is_welsh property
                 const hasWelshField = activity.field_1924 === "Yes";
                 const isWelshFlag = activity.is_welsh === true;
@@ -528,17 +528,9 @@
             
             log(`Total activities: ${activities.length}, Non-Welsh activities: ${nonWelshActivities.length}`);
             
-            // Filter activities by current month
-            let monthActivities = nonWelshActivities.filter(activity => {
-                const activityMonth = extractMonthFromIdentifier(activity.group_info?.identifier);
-                return activityMonth === currentMonth;
-            });
-            
-            // If no activities for current month, use all non-Welsh activities
-            if (monthActivities.length === 0) {
-                log(`No activities found for ${currentMonth}, using all non-Welsh activities`);
-                monthActivities = nonWelshActivities;
-            }
+            // For now, use all non-Welsh activities (month filtering disabled for new JSON structure)
+            let monthActivities = nonWelshActivities;
+            log(`Using all non-Welsh activities (${monthActivities.length} total) - month filtering temporarily disabled`);
             
             // Filter out recently shown activities
             let availableActivities = monthActivities.filter(activity => 
