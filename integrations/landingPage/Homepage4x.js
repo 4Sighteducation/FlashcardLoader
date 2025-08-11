@@ -1411,7 +1411,7 @@
       
       if (!response || !response.records || response.records.length === 0) {
         debugLog('No activities found in CDN response');
-        return createFallbackActivity();
+        return null;
       }
 
       const currentMonth = getCurrentMonthName();
@@ -1516,10 +1516,7 @@
 
     } catch (error) {
       debugLog('Error fetching activity from CDN:', error);
-      debugLog('Falling back to default activity');
-      
-      // Fallback to a default activity when CDN is unavailable
-      return createFallbackActivity();
+      return null;
     }
   }
 
@@ -1558,77 +1555,7 @@
     return enhancedCode;
   }
 
-  function createFallbackActivity() {
-    const fallbackActivities = [
-      {
-        id: 'fallback-reflection',
-        title: 'Daily Reflection Activity',
-        embedCode: `
-          <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; text-align: center; min-height: 280px; display: flex; flex-direction: column; justify-content: center;">
-            <h3 style="color: #fff; margin-bottom: 20px;">🤔 Daily Reflection</h3>
-            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-              <p style="margin: 0; font-size: 16px; line-height: 1.5;">Take a moment to reflect on your learning journey today:</p>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px;">
-                <strong>What did I learn?</strong>
-              </div>
-              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px;">
-                <strong>How can I improve?</strong>
-              </div>
-            </div>
-            <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">💡 Reflection helps consolidate learning and identify growth areas</p>
-          </div>
-        `
-      },
-      {
-        id: 'fallback-goals',
-        title: 'Goal Setting Activity',
-        embedCode: `
-          <div style="padding: 20px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 8px; color: white; text-align: center; min-height: 280px; display: flex; flex-direction: column; justify-content: center;">
-            <h3 style="color: #fff; margin-bottom: 20px;">🎯 Set Your Learning Goal</h3>
-            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-              <p style="margin: 0; font-size: 16px; line-height: 1.5;">What's one specific thing you want to achieve today?</p>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 15px;">
-              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 4px;">
-                <strong>My learning goal for today:</strong><br/>
-                <small style="opacity: 0.8;">Write it down or say it out loud!</small>
-              </div>
-            </div>
-            <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">🌟 Clear goals increase focus and motivation</p>
-          </div>
-        `
-      },
-      {
-        id: 'fallback-mindset',
-        title: 'Growth Mindset Activity',
-        embedCode: `
-          <div style="padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%); border-radius: 8px; color: white; text-align: center; min-height: 280px; display: flex; flex-direction: column; justify-content: center;">
-            <h3 style="color: #fff; margin-bottom: 20px;">🧠 Growth Mindset Check</h3>
-            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-              <p style="margin: 0; font-size: 16px; line-height: 1.5;">Turn today's challenges into growth opportunities</p>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px; font-size: 14px;">
-                <strong>Instead of:</strong><br/>"I can't do this"
-              </div>
-              <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px; font-size: 14px;">
-                <strong>Try saying:</strong><br/>"I can't do this YET"
-              </div>
-            </div>
-            <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">💪 Every challenge is a chance to grow stronger</p>
-          </div>
-        `
-      }
-    ];
 
-    // Select activity based on day of month to ensure variety
-    const dayOfMonth = new Date().getDate();
-    const activityIndex = dayOfMonth % fallbackActivities.length;
-    
-    return fallbackActivities[activityIndex];
-  }
 
   function renderActivitySection(activity) {
     if (!activity || !activity.embedCode) {
@@ -2010,7 +1937,7 @@
             ${renderVespaQuestionnaireSection()}
           </div>
           <div class="activity-day-section">
-            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">No activity available today.</p><p style="color: #999; font-size: 12px;">Please check back later.</p></div></div></div>'}
           </div>
         </div>
         ${vespaScoresData ? renderVespaCirclesHTML(vespaScoresData) : ''}
@@ -2273,7 +2200,7 @@
             ${renderVespaQuestionnaireSection()}
           </div>
           <div class="activity-day-section">
-            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">No activity available today.</p><p style="color: #999; font-size: 12px;">Please check back later.</p></div></div></div>'}
           </div>
         </div>
         ${showVespaScores ? renderVespaCirclesHTML(vespaScoresData) : ''}
