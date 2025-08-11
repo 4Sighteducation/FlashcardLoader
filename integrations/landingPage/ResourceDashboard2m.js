@@ -480,7 +480,7 @@
         try {
             // Use the CDN URL provided by the user
             const response = await $.ajax({
-                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1i.json',
+                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1j.json',
                 type: 'GET',
                 dataType: 'json'
             });
@@ -494,13 +494,23 @@
                 return null;
             }
             
-            if (!response.records) {
-                errorLog('No records property found in CDN response. Response structure:', response);
+            // Handle both formats: object with records property OR direct array
+            let activities;
+            if (response.records) {
+                // Old format: {records: [...]}
+                activities = response.records;
+                log('Using records property from response');
+            } else if (Array.isArray(response)) {
+                // New format: direct array [...]
+                activities = response;
+                log('Using direct array response');
+            } else {
+                errorLog('No records property found and response is not an array. Response structure:', response);
                 return null;
             }
             
-            if (response.records.length === 0) {
-                errorLog('Empty records array in CDN response.');
+            if (!activities || activities.length === 0) {
+                errorLog('Empty activities array in CDN response.');
                 return null;
             }
             
@@ -3269,4 +3279,3 @@
     }
 
 })();
-
