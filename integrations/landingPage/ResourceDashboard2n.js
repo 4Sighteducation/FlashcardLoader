@@ -480,7 +480,7 @@
         try {
             // Use the CDN URL provided by the user
             const response = await $.ajax({
-                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1k.json',
+                url: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/tutor_activities1m.json',
                 type: 'GET',
                 dataType: 'json'
             });
@@ -526,7 +526,7 @@
                 const isWelsh = hasWelshField || isWelshFlag;
                 
                 if (isWelsh) {
-                    log(`Filtering out Welsh activity: ${activity.title}`);
+                    log(`Filtering out Welsh activity: ${activity["Activities Name"]}`);
                 }
                 
                 return !isWelsh;
@@ -548,7 +548,7 @@
             
             // Filter out recently shown activities
             let availableActivities = monthActivities.filter(activity => 
-                !recentActivityIds.includes(activity.id)
+                !recentActivityIds.includes(activity.Activity_id)
             );
             
             // If all activities have been shown recently, reset and use all month activities
@@ -568,9 +568,9 @@
             const activity = availableActivities[activityIndex];
             
             // Save to history
-            saveActivityToHistory(activity.id);
+            saveActivityToHistory(activity.Activity_id);
             
-            log(`Selected activity for ${currentMonth}:`, activity.title);
+            log(`Selected activity for ${currentMonth}:`, activity["Activities Name"]);
 
             // Extract PDF link from the full HTML content first
             let pdfLink = null;
@@ -605,9 +605,9 @@
             const enhancedEmbedCode = enhanceEmbedForKioskMode(embedCode);
 
             return {
-                name: activity.title,
+                name: activity["Activities Name"],
                 group: activity.group_info?.identifier || 'N/A',
-                category: activity.category,
+                category: activity["VESPA Category"],
                 embedCode: enhancedEmbedCode,
                 pdfLink: pdfLink
             };
@@ -881,12 +881,14 @@
             /* Main Container - Resource Theme */
             #resource-dashboard-container {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 15px;
+                max-width: 100%;
+                margin: 0;
+                padding: 20px;
                 color: #ffffff;
                 background: linear-gradient(135deg, #0a2b8c 0%, #061a54 100%);
                 line-height: 1.3;
+                width: 100%;
+                box-sizing: border-box;
                 border: 2px solid #00e5db;
                 border-radius: 10px;
                 box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
@@ -913,9 +915,10 @@
 
             .nav-container {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                 gap: 20px;
                 margin-top: 15px;
+                max-width: none;
             }
 
             .nav-button {
@@ -1782,6 +1785,38 @@
             }
 
             /* Responsive adjustments */
+            @media (min-width: 1600px) {
+                #resource-dashboard-container {
+                    padding: 30px 50px;
+                }
+                
+                .nav-container {
+                    gap: 25px;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                }
+                
+                .nav-button {
+                    padding: 18px 30px;
+                    font-size: 17px;
+                }
+            }
+            
+            @media (min-width: 1400px) and (max-width: 1599px) {
+                #resource-dashboard-container {
+                    padding: 25px 40px;
+                }
+                
+                .nav-container {
+                    gap: 22px;
+                    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                }
+                
+                .nav-button {
+                    padding: 15px 25px;
+                    font-size: 16px;
+                }
+            }
+            
             @media (max-width: 768px) {
                 #resource-dashboard-container {
                     padding: 15px;
