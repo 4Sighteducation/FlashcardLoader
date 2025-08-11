@@ -2903,11 +2903,35 @@
         log('Config:', SCRIPT_CONFIG);
         log('Looking for container:', SCRIPT_CONFIG.elementSelector);
         
-        const $container = $(SCRIPT_CONFIG.elementSelector);
+        let $container = $(SCRIPT_CONFIG.elementSelector);
         
         if ($container.length === 0) {
             errorLog('Container element not found:', SCRIPT_CONFIG.elementSelector);
-            return;
+            // Try alternative selectors as fallback
+            const fallbackSelectors = [
+                '#scene-level-container-resourceDashboardDedicated',
+                '#view_3024',
+                '.kn-scene-content'
+            ];
+            
+            let foundContainer = null;
+            for (const selector of fallbackSelectors) {
+                const $fallback = $(selector);
+                if ($fallback.length > 0) {
+                    log('Found fallback container:', selector);
+                    foundContainer = $fallback;
+                    SCRIPT_CONFIG.elementSelector = selector;
+                    break;
+                }
+            }
+            
+            if (!foundContainer) {
+                errorLog('No valid container found with any selector');
+                return;
+            } else {
+                // Update the container variable
+                $container = foundContainer;
+            }
         }
         
         log('Container found, proceeding with initialization');
@@ -3190,9 +3214,45 @@
         }
     }
 
+    // Navigation cleanup function
+    function cleanupResourceDashboard() {
+        log('Cleaning up Resource Dashboard...');
+        
+        // Remove the dashboard content
+        $('#scene-level-container-resourceDashboardDedicated').remove();
+        $('#view_3024').empty();
+        $('.kn-scene-content').find('.resource-dashboard-container').remove();
+        
+        // Remove styles
+        $('#resource-dashboard-styles').remove();
+        
+        // Remove any modals
+        $('.vespa-modal').remove();
+        $('.modal-backdrop').remove();
+        
+        // Reset body styles
+        document.body.classList.remove('landing-page-scene', 'landing-page-scene_1252');
+        document.body.style.backgroundColor = '';
+        document.body.style.backgroundImage = '';
+        
+        log('Resource Dashboard cleanup completed');
+    }
+    
+    // Listen for scene changes to cleanup when navigating away from scene_1252
+    $(document).on('knack-scene-render.any', function(event, scene) {
+        if (scene && scene.key && scene.key !== 'scene_1252') {
+            // User navigated away from the resource dashboard scene
+            cleanupResourceDashboard();
+        }
+    });
+    
     try {
         // Expose the initializer function globally for the loader
         window.initializeResourceDashboard = initializeResourceDashboard;
+        
+        // Also expose cleanup function for manual cleanup if needed
+        window.cleanupResourceDashboard = cleanupResourceDashboard;
+        
         // Can't use SCRIPT_CONFIG here as it's not initialized yet
         // console.log('[Resource Dashboard] Exposed initializeResourceDashboard to window');
         
@@ -3209,3 +3269,4 @@
     }
 
 })();
+
