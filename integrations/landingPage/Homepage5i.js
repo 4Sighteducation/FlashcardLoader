@@ -1526,10 +1526,10 @@
         <h3 class="activity-section-title">Activity of the Day</h3>
         <div class="activity-header">
           <div class="activity-info">
-            <h4 class="activity-name">${activity.title || 'Activity'}</h4>
-            <div class="activity-meta">
-              <span><strong>Category:</strong> ${activity.category || 'N/A'}</span>
-              <span><strong>Level:</strong> ${activity.level || 'N/A'}</span>
+            <h4 class="activity-name" style="color: #00e5db !important;">${activity.title || 'Activity'}</h4>
+            <div class="activity-meta" style="color: #00e5db !important;">
+              <span style="color: #00e5db !important;"><strong>Category:</strong> ${activity.category || 'N/A'}</span>
+              <span style="color: #00e5db !important;"><strong>Level:</strong> ${activity.level || 'N/A'}</span>
             </div>
           </div>
           <div class="activity-buttons">
@@ -3814,4 +3814,4 @@
       });
     });
   }
-})(); // End of IIFEE
+})(); // End of IIFE
