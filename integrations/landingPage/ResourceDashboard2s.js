@@ -1293,7 +1293,18 @@
             .pdf-viewer {
                 flex: 1;
                 width: 100%;
+                height: 100%;
+                min-height: 600px;
                 border: none;
+                background: #f5f5f5;
+            }
+            
+            #pdfViewerContainer {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                height: calc(100% - 80px); /* Account for header */
+                min-height: 600px;
                 background: #f5f5f5;
             }
             
@@ -3444,6 +3455,8 @@
             const downloadLink = document.getElementById('pdfDownloadLink');
             const viewerContainer = document.getElementById('pdfViewerContainer');
             
+            log('Opening PDF modal with URL:', pdfUrl);
+            
             // Set title and download link
             title.textContent = activityName || 'Activity PDF';
             downloadLink.href = pdfUrl;
@@ -3460,35 +3473,77 @@
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
             
-            // Load PDF
+            // Load PDF with better error handling and fallback options
             setTimeout(() => {
                 try {
-                    viewerContainer.innerHTML = `
-                        <iframe src="${pdfUrl}" class="pdf-viewer" title="PDF Viewer">
-                            <div class="pdf-error">
-                                <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
-                                <p>Unable to display PDF in browser.</p>
-                                <a href="${pdfUrl}" target="_blank" class="pdf-download-link">
-                                    <i class="fas fa-download"></i>
-                                    Open in new tab
-                                </a>
-                            </div>
-                        </iframe>
-                    `;
+                    // Try to create a proper PDF viewer URL
+                    let pdfViewerUrl = pdfUrl;
+                    
+                    // If it's a Google Drive link, convert to direct view
+                    if (pdfUrl.includes('drive.google.com')) {
+                        // Extract file ID from Google Drive URL
+                        const fileIdMatch = pdfUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                        if (fileIdMatch) {
+                            pdfViewerUrl = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+                            log('Converted Google Drive URL to preview format:', pdfViewerUrl);
+                        }
+                    }
+                    
+                    // Create iframe with fallback content
+                    const iframe = document.createElement('iframe');
+                    iframe.src = pdfViewerUrl;
+                    iframe.className = 'pdf-viewer';
+                    iframe.title = 'PDF Viewer';
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    
+                    // Handle iframe load errors
+                    iframe.onerror = function() {
+                        log('PDF iframe failed to load, showing error message');
+                        showPdfError(pdfUrl, viewerContainer);
+                    };
+                    
+                    // Set a timeout to check if PDF loaded
+                    const loadTimeout = setTimeout(() => {
+                        log('PDF load timeout reached, showing fallback options');
+                        showPdfError(pdfUrl, viewerContainer);
+                    }, 10000); // 10 second timeout
+                    
+                    iframe.onload = function() {
+                        log('PDF iframe loaded successfully');
+                        clearTimeout(loadTimeout);
+                    };
+                    
+                    // Clear container and add iframe
+                    viewerContainer.innerHTML = '';
+                    viewerContainer.appendChild(iframe);
+                    
                 } catch (error) {
-                    viewerContainer.innerHTML = `
-                        <div class="pdf-error">
-                            <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
-                            <p>Error loading PDF</p>
-                            <a href="${pdfUrl}" target="_blank" class="pdf-download-link">
-                                <i class="fas fa-download"></i>
-                                Download PDF
-                            </a>
-                        </div>
-                    `;
+                    log('Error setting up PDF viewer:', error);
+                    showPdfError(pdfUrl, viewerContainer);
                 }
             }, 500);
         };
+        
+        function showPdfError(pdfUrl, container) {
+            container.innerHTML = `
+                <div class="pdf-error">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px; color: #f39c12;"></i>
+                    <p>Unable to display PDF in browser.</p>
+                    <div style="margin-top: 15px;">
+                        <a href="${pdfUrl}" target="_blank" class="pdf-download-link" style="margin-right: 10px;">
+                            <i class="fas fa-external-link-alt"></i>
+                            Open in new tab
+                        </a>
+                        <a href="${pdfUrl}" download class="pdf-download-link">
+                            <i class="fas fa-download"></i>
+                            Download PDF
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
         
         window.closePdfModal = function() {
             const modal = document.getElementById('pdfModal');
