@@ -36,6 +36,20 @@
         function getUserType() {
             log('User attributes:', userAttributes);
             
+            // SPECIAL CHECK: If we're in student emulator mode, always return 'student'
+            // Check URL parameter or special marker
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('student_emulator') === 'true' || 
+                window.location.hash.includes('student_emulator=true')) {
+                log('Student emulator mode detected via URL parameter - forcing student view');
+                // Store emulator mode in a variable we can check later
+                window._isStudentEmulatorMode = true;
+                return 'student';
+            }
+            
+            // Not in emulator mode
+            window._isStudentEmulatorMode = false;
+            
             // Check if user is logged in at all
             if (!userAttributes || (!userAttributes.email && !userAttributes.id)) {
                 log('No user attributes found - user might not be logged in');
@@ -175,12 +189,12 @@
             student: {
                 brand: 'VESPA Student',
                 brandIcon: 'fa-graduation-cap',
-                color: '#079baa', // Using main teal color
+                color: '#079baa', // Main teal - bright and welcoming for students
                 accentColor: '#06206e', // Dark blue for accents
                 items: [
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
                     { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-results', scene: 'scene_43' },
-                    { label: 'My Activities', icon: 'fa-book', href: '#y-vespa-activities', scene: 'scene_1258' },
+                    { label: 'My Activities', icon: 'fa-book', href: '#my-vespa', scene: 'scene_437' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
                     { label: 'Taskboard', icon: 'fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' },
@@ -191,14 +205,14 @@
             staffResource: {
                 brand: 'VESPA Resources',
                 brandIcon: 'fa-book',
-                color: '#72cb44', // Green (VESPA color)
+                color: '#5899a8', // Muted blue-green - professional yet approachable
                 accentColor: '#06206e',
                 items: [
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Videos', icon: 'fa-solid fa-video', href: '#vespa-videos', scene: 'scene_1266' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#study-guides', scene: 'scene_1241' },
                     { label: 'FAQ', icon: 'fa-graduation-cap', href: '#staff-training', scene: 'scene_1242' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
@@ -207,7 +221,7 @@
             staffCoaching: {
                 brand: 'VESPA Coaching',
                 brandIcon: 'fa-users',
-                color: '#ff8f00', // Orange (VESPA color)
+                color: '#2f8dcb', // Bright blue - energetic and engaging for coaching
                 accentColor: '#06206e',
                 items: [
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
@@ -223,7 +237,7 @@
             staffAdminResource: {
                 brand: 'VESPA Admin',
                 brandIcon: 'fa-shield',
-                color: '#7f31a4', // Purple (VESPA color)
+                color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 items: [
                     { label: 'Manage', icon: 'fa-cog', href: '#accounts', scene: 'scene_68' },
@@ -231,7 +245,7 @@
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Videos', icon: 'fa-solid fa-video', href: '#vespa-videos', scene: 'scene_1266' },
+                    { label: 'Analytics', icon: 'fa-line-chart', href: '#resource-analytics', scene: 'scene_1244' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -239,7 +253,7 @@
             staffAdminCoaching: {
                 brand: 'VESPA Admin',
                 brandIcon: 'fa-shield',
-                color: '#7f31a4', // Purple (VESPA color)
+                color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 items: [
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
@@ -276,14 +290,36 @@
                 if (item.isLogout) buttonClass += ' header-logout-button';
                 if (isActive) buttonClass += ' active';
                 
+                // HIDE LOGOUT BUTTON IN EMULATOR MODE
+                if (item.isLogout && window._isStudentEmulatorMode) {
+                    return ''; // Return empty string to hide logout button
+                }
+                
                 // Add data attributes for special buttons
                 const dataAttrs = item.isLogout ? 'data-logout="true"' : '';
+                
+                // Check if this is the questionnaire button and if validator is enabled
+                let tooltipText = '';
+                if (item.scene === 'scene_358' && userType === 'student') {
+                    // Check if questionnaireValidator is enabled
+                    const validatorEnabled = window.QUESTIONNAIRE_VALIDATOR_CONFIG && 
+                                           window.QUESTIONNAIRE_VALIDATOR_CONFIG.enabled !== false;
+                    
+                    if (validatorEnabled) {
+                        tooltipText = 'title="Click to check questionnaire availability"';
+                        log('Questionnaire validator is enabled - button will be intercepted');
+                    } else {
+                        tooltipText = 'title="Click to go to questionnaire page"';
+                        log('Questionnaire validator is disabled - normal navigation to scene_358');
+                    }
+                }
                 
                 return `
                     <a href="${item.href}" 
                        class="${buttonClass}" 
                        data-scene="${item.scene}"
-                       ${dataAttrs}>
+                       ${dataAttrs}
+                       ${tooltipText}>
                         <i class="fa ${item.icon}"></i>
                         <span>${item.label}</span>
                     </a>
@@ -790,15 +826,26 @@
                     
                     // Check if this is the logout button
                     if (this.getAttribute('data-logout') === 'true') {
-                        // Trigger Knack logout
-                        const logoutLink = document.querySelector('.kn-log-out');
-                        if (logoutLink) {
-                            logoutLink.click();
-                        } else {
-                            // Fallback: try to find and click any logout link
-                            const altLogout = document.querySelector('a[href*="logout"]');
-                            if (altLogout) altLogout.click();
-                        }
+                        log('Logout button clicked');
+                        
+                        // FIRST: Navigate to home page immediately
+                        log('Navigating to home page first');
+                        window.location.href = 'https://vespaacademy.knack.com/vespa-academy#home/';
+                        
+                        // THEN: Trigger logout after a small delay to allow navigation to start
+                        setTimeout(() => {
+                            log('Now triggering logout');
+                            // Trigger Knack logout
+                            const logoutLink = document.querySelector('.kn-log-out');
+                            if (logoutLink) {
+                                logoutLink.click();
+                            } else {
+                                // Fallback: try to find and click any logout link
+                                const altLogout = document.querySelector('a[href*="logout"]');
+                                if (altLogout) altLogout.click();
+                            }
+                        }, 100); // Small delay to ensure navigation starts first
+                        
                         return;
                     }
                     
@@ -831,6 +878,23 @@
             
             const isLoginPage = loginScenes.includes(currentScene) || 
                                loginPages.some(page => currentUrl.includes(page));
+            
+            // Also check for home page redirect
+            $(document).on('knack-scene-render.scene_1', function() {
+                // If we're on the home/login page and we came from a logout
+                if (window.location.hash === '#home/' || window.location.hash === '#home' || 
+                    window.location.pathname.endsWith('/vespa-academy/') ||
+                    window.location.pathname.endsWith('/vespa-academy')) {
+                    log('On home page after potential logout');
+                    // Ensure header is removed
+                    const existingHeader = document.getElementById('vespaGeneralHeader');
+                    if (existingHeader) {
+                        existingHeader.remove();
+                        document.body.classList.remove('has-general-header');
+                        document.body.style.paddingTop = '';
+                    }
+                }
+            });
             
             if (isLoginPage) {
                 log('On login page, not showing header');
@@ -876,6 +940,11 @@
                 document.body.style.paddingTop = '';
                 // Clear the global loaded flag
                 window._generalHeaderLoaded = false;
+                // Clear session storage flag
+                sessionStorage.removeItem('_generalHeaderLoadedSession');
+                
+                // Since we navigate BEFORE logout, user should already be on home page
+                log('Logout complete - user should already be on home page');
             });
         }
         
