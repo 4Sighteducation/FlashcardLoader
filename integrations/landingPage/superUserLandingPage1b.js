@@ -59,7 +59,7 @@
                         
                         <a href="https://vespaacademy.knack.com/vespa-academy#dashboard" class="app-button result-dashboard">
                             <div class="app-icon">
-                                <i class="fa fa-tachometer-alt"></i>
+                                <i class="fa fa-tachometer"></i>
                             </div>
                             <div class="app-content">
                                 <h3>Result Dashboard</h3>
