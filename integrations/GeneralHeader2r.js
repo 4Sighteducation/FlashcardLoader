@@ -630,7 +630,7 @@
                 items: [
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
                     { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-results', scene: 'scene_43' },
-                    { label: 'My Activities', icon: 'fa-book', href: '#my-vespa', scene: 'scene_437' },
+                    { label: 'My Activities', icon: 'fa-book', href: '#my-vespa-activities', scene: 'scene_1258' },
                     { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
                     { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
                     { label: 'Taskboard', icon: 'fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' },
@@ -648,8 +648,7 @@
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Videos', icon: 'fa-book-open', href: '#study-guides', scene: 'scene_1241' },
-                    { label: 'FAQ', icon: 'fa-graduation-cap', href: '#staff-training', scene: 'scene_1242' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -662,10 +661,11 @@
                 items: [
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
+                    { label: 'Activities', icon: 'fa-book', href: '#activity-manage', scene: 'scene_1256' },
+                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
-                    { label: 'Reports', icon: 'fa-file-text', href: '#coaching-reports', scene: 'scene_1243' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -681,7 +681,7 @@
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Analytics', icon: 'fa-line-chart', href: '#resource-analytics', scene: 'scene_1244' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -697,7 +697,7 @@
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Reports', icon: 'fa-file-text', href: '#admin-reports', scene: 'scene_1245' },
+                    { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -1505,5 +1505,7 @@
     // Export the initializer function
     window.initializeGeneralHeader = initializeGeneralHeader;
     
+    console.log('[General Header] Script setup complete, initializer function ready');
+})();
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
