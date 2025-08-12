@@ -102,6 +102,12 @@
         // Function to show role selection modal
         function showRoleSelectionModal(availableRoles) {
             return new Promise((resolve) => {
+                // Check if modal already exists
+                if (document.getElementById('roleSelectionModal')) {
+                    console.log('[General Header] DEBUG - Modal already exists, not creating another');
+                    return;
+                }
+                
                 // Create modal HTML
                 const modalHTML = `
                     <div id="roleSelectionModal" class="role-selection-modal-overlay">
@@ -342,7 +348,8 @@
                     roleButtons.forEach((button, index) => {
                         console.log('[General Header] DEBUG - Setting up button', index, button.getAttribute('data-role'));
                         
-                        button.addEventListener('click', (e) => {
+                        // Add multiple event types to ensure click is captured
+                        const handleClick = (e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             
@@ -353,8 +360,18 @@
                             modal.remove();
                             document.getElementById('roleSelectionModalStyles')?.remove();
                             
+                            // Reset modal flag
+                            window._roleModalShowing = false;
+                            
                             resolve(selectedRole);
-                        });
+                        };
+                        
+                        button.addEventListener('click', handleClick);
+                        button.addEventListener('mousedown', handleClick);
+                        button.addEventListener('touchstart', handleClick);
+                        
+                        // Also add a direct onclick for backup
+                        button.onclick = handleClick;
                     });
                     
                     // Prevent modal from closing when clicking outside
@@ -515,6 +532,13 @@
                     log('Using previously selected role:', selectedRole);
                     return selectedRole;
                 }
+                
+                // Prevent multiple modals
+                if (window._roleModalShowing) {
+                    console.log('[General Header] DEBUG - Role modal already showing, returning superUser');
+                    return 'superUser';
+                }
+                window._roleModalShowing = true;
                 
                 // Show role selection modal and return based on available roles
                 const availableRoles = determineAvailableRoles(hasStaffAdminRole, hasStaffRole, hasStudentRole, isResourceOnly);
@@ -1470,6 +1494,8 @@
             if (existingStyles) {
                 existingStyles.remove();
             }
+            // Reset modal flag
+            window._roleModalShowing = false;
         };
         
         // Start initialization
