@@ -6,9 +6,9 @@
 
 /* CSS Custom Properties for dynamic values */
 :root {
-    --ai-coach-panel-width: 450px;
-    --ai-coach-panel-min-width: 300px;
-    --ai-coach-panel-max-width: 1200px;
+    --ai-coach-panel-width: 473px; /* Increased by ~5% from 450px */
+    --ai-coach-panel-min-width: 315px; /* Increased by ~5% from 300px */
+    --ai-coach-panel-max-width: 1260px; /* Increased by ~5% from 1200px */
     --ai-coach-transition-duration: 0.3s;
     /* VESPA Theme Colors */
     --vespa-vision-color: #ff8f00;
@@ -37,6 +37,20 @@ body.ai-coach-active #content {
                 margin-right var(--ai-coach-transition-duration) ease-in-out;
 }
 
+/* Reduce excessive white space in the main content area */
+body.ai-coach-active .kn-scene-content,
+.kn-scene-content {
+    padding-top: 10px !important;
+    margin-top: 0 !important;
+}
+
+/* Specifically target the gap between sections */
+body.ai-coach-active #kn-scene_1095 .kn-view,
+#kn-scene_1095 .kn-view {
+    margin-bottom: 15px !important;
+    padding-bottom: 10px !important;
+}
+
 #content {
     transition: width var(--ai-coach-transition-duration) ease-in-out, 
                 margin-right var(--ai-coach-transition-duration) ease-in-out;
@@ -48,9 +62,9 @@ body.ai-coach-active #content {
     opacity: 0;
     visibility: hidden;
     position: fixed;
-    top: 0;
+    top: 60px; /* Start below the header instead of top: 0 */
     right: 0;
-    height: 100vh;
+    height: calc(100vh - 60px); /* Adjust height to account for header offset */
     background-color: #f8f9fa;
     border-left: 1px solid #e9ecef;
     padding: 20px;
@@ -1077,6 +1091,12 @@ body.ai-coach-active #aiCoachPanel {
     :root {
         --ai-coach-panel-width: 100%;
         --ai-coach-panel-min-width: 100%;
+    }
+    
+    /* On mobile, panel should still avoid header */
+    #aiCoachPanel {
+        top: 50px !important;
+        height: calc(100vh - 50px) !important;
     }
     
     body.ai-coach-active #content {
