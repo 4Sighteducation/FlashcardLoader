@@ -524,6 +524,17 @@
                     showRoleSelectionModal(availableRoles).then(chosenRole => {
                         if (chosenRole) {
                             sessionStorage.setItem('selectedUserRole', chosenRole);
+                            
+                            // Clean up any existing modals before reload
+                            const existingModal = document.getElementById('roleSelectionModal');
+                            if (existingModal) {
+                                existingModal.remove();
+                            }
+                            const existingStyles = document.getElementById('roleSelectionModalStyles');
+                            if (existingStyles) {
+                                existingStyles.remove();
+                            }
+                            
                             // Reload the page to apply the new role
                             window.location.reload();
                         }
@@ -1448,6 +1459,18 @@
                 log('Logout complete - user should already be on home page');
             });
         }
+        
+        // Global cleanup function for role selection modals
+        window.cleanupRoleSelectionModal = function() {
+            const existingModal = document.getElementById('roleSelectionModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            const existingStyles = document.getElementById('roleSelectionModalStyles');
+            if (existingStyles) {
+                existingStyles.remove();
+            }
+        };
         
         // Start initialization
         init();
