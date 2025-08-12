@@ -14,13 +14,17 @@ console.log('[Universal Redirect] Script loaded!');
         scenes: {
             student: 'scene_1210',
             staffCoaching: 'scene_1215', 
-            staffResource: 'scene_1252' // New scene for resource staff
+            staffResource: 'scene_1252', // New scene for resource staff
+            staffAdminCoaching: 'scene_1215', // Staff admin coaching uses same scene as staff coaching
+            staffAdminResource: 'scene_1252', // Staff admin resource uses same scene as staff resource
+            superUser: 'scene_1268' // New scene for super users
         },
         // Map scenes to their URL hashes
         urls: {
             scene_1210: '#landing-page/',
             scene_1215: '#staff-landing-page/',
-            scene_1252: '#resources-home' // Correct URL for resources page
+            scene_1252: '#resources-home', // Correct URL for resources page
+            scene_1268: '#oversight-page/' // New URL for super users
         }
     };
     
@@ -48,6 +52,44 @@ console.log('[Universal Redirect] Script loaded!');
             field_73: user.values?.field_73,
             field_441: user.values?.field_441
         });
+
+        // Check if user has super user role (profile_8)
+        let hasSuperUserRole = false;
+        let hasStaffAdminRole = false;
+        let hasStaffRole = false;
+        let hasStudentRole = false;
+        
+        if (user.values && user.values.field_73) {
+            const userRoles = Array.isArray(user.values.field_73) ? user.values.field_73 : [user.values.field_73];
+            
+            // Check for different role types
+            hasSuperUserRole = userRoles.includes('profile_8');
+            hasStaffAdminRole = userRoles.includes('profile_5');
+            hasStaffRole = userRoles.includes('profile_7');
+            hasStudentRole = userRoles.includes('profile_6') || userRoles.includes('profile_4');
+            
+            log('Role analysis:', {
+                hasSuperUserRole,
+                hasStaffAdminRole,
+                hasStaffRole,
+                hasStudentRole,
+                userRoles
+            });
+        }
+        
+        // If user has super user role, check for session storage selection
+        if (hasSuperUserRole) {
+            const selectedRole = sessionStorage.getItem('selectedUserRole');
+            
+            if (selectedRole) {
+                log('Super user has selected role:', selectedRole);
+                // Return the selected role instead of super user
+                return selectedRole;
+            } else {
+                log('Super user detected but no role selected - redirecting to super user page');
+                return 'superUser';
+            }
+        }
         
         // Check if user is a student
         // Check profile_keys first (most reliable)
@@ -66,32 +108,36 @@ console.log('[Universal Redirect] Script loaded!');
             return 'student';
         }
         
-        // Check if user is staff first (they might have student role too)
-        if (user.values && user.values.field_73) {
-            const userRoles = Array.isArray(user.values.field_73) ? user.values.field_73 : [user.values.field_73];
-            const staffRoles = ['profile_5', 'profile_7'];
+        // Check for staff admin role
+        if (hasStaffAdminRole) {
+            const accountType = user.values?.field_441;
             
-            // If user has ANY staff role, they are staff (even if they also have student role)
-            const hasStaffRole = userRoles.some(role => staffRoles.includes(role));
-            
-            if (hasStaffRole) {
-                // Check account type for staff
-                const accountType = user.values.field_441;
-                
-                if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
-                    log('Detected as Staff (Resource)');
-                    return 'staffResource';
-                } else {
-                    log('Detected as Staff (Coaching)');
-                    return 'staffCoaching';
-                }
+            if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+                log('Detected as Staff Admin (Resource)');
+                return 'staffAdminResource';
+            } else {
+                log('Detected as Staff Admin (Coaching)');
+                return 'staffAdminCoaching';
             }
+        }
+        
+        // Check for regular staff role
+        if (hasStaffRole) {
+            const accountType = user.values?.field_441;
             
-            // If no staff role found, check if they ONLY have student role
-            if (userRoles.length === 1 && userRoles[0] === 'profile_6') {
-                log('Detected as Student - has ONLY student role');
-                return 'student';
+            if (accountType && accountType.toString().toUpperCase().includes('RESOURCE')) {
+                log('Detected as Staff (Resource)');
+                return 'staffResource';
+            } else {
+                log('Detected as Staff (Coaching)');
+                return 'staffCoaching';
             }
+        }
+        
+        // Check if they ONLY have student role
+        if (hasStudentRole) {
+            log('Detected as Student');
+            return 'student';
         }
         
         log('User type could not be determined');
@@ -247,7 +293,10 @@ console.log('[Universal Redirect] Script loaded!');
             // Don't redirect if user is already on their correct page
             if ((userType === 'student' && currentUrl.includes('#landing-page')) ||
                 (userType === 'staffCoaching' && currentUrl.includes('#staff-landing-page')) ||
-                (userType === 'staffResource' && currentUrl.includes('#resources-home'))) {
+                (userType === 'staffResource' && currentUrl.includes('#resources-home')) ||
+                (userType === 'staffAdminCoaching' && currentUrl.includes('#staff-landing-page')) ||
+                (userType === 'staffAdminResource' && currentUrl.includes('#resources-home')) ||
+                (userType === 'superUser' && currentUrl.includes('#oversight-page'))) {
                 console.log('[Universal Redirect] User already on correct page, no redirect needed');
                 return;
             }
