@@ -30,13 +30,13 @@
             'Subject Teacher': 'field_2190' // Object_78 connection
         },
         
-        // Staff role detection from field_73
+        // Staff role detection from field_73 (using profile IDs)
         staffRoles: {
-            'Tutor': ['Tutor'],
-            'Head of Dept': ['Head of Dept', 'Head of Department'],
-            'Head of Year': ['Head of Year'],
-            'Subject Teacher': ['Subject Teacher', 'Teacher'],
-            'Staff Admin': ['Staff Admin', 'Admin']
+            'Tutor': ['profile_7'], // Staff profile
+            'Head of Dept': ['profile_7'], 
+            'Head of Year': ['profile_7'],
+            'Subject Teacher': ['profile_7'],
+            'Staff Admin': ['profile_21'] // Super user profile (if exists)
         }
     };
 
