@@ -59,14 +59,33 @@ console.log('[Universal Redirect] Script loaded!');
         let hasStaffRole = false;
         let hasStudentRole = false;
         
-        if (user.values && user.values.field_73) {
-            const userRoles = Array.isArray(user.values.field_73) ? user.values.field_73 : [user.values.field_73];
+        console.log('[Universal Redirect] DEBUG - Raw field_73 value:', user.values?.field_73);
+        console.log('[Universal Redirect] DEBUG - User values object:', user.values);
+        
+        if (user.values && (user.values.field_73 || user.values.profile_keys)) {
+            // Check both field_73 (object_XX format) and profile_keys (profile_XX format)
+            const field73Roles = user.values.field_73 ? (Array.isArray(user.values.field_73) ? user.values.field_73 : [user.values.field_73]) : [];
+            const profileKeys = user.values.profile_keys ? (Array.isArray(user.values.profile_keys) ? user.values.profile_keys : [user.values.profile_keys]) : [];
             
-            // Check for different role types
-            hasSuperUserRole = userRoles.includes('profile_8');
-            hasStaffAdminRole = userRoles.includes('profile_5');
-            hasStaffRole = userRoles.includes('profile_7');
-            hasStudentRole = userRoles.includes('profile_6') || userRoles.includes('profile_4');
+            console.log('[Universal Redirect] DEBUG - field_73 roles:', field73Roles);
+            console.log('[Universal Redirect] DEBUG - profile_keys:', profileKeys);
+            
+            // Check for different role types using both formats
+            hasSuperUserRole = profileKeys.includes('profile_21') || field73Roles.includes('object_21');
+            hasStaffAdminRole = profileKeys.includes('profile_5') || field73Roles.includes('object_5');
+            hasStaffRole = profileKeys.includes('profile_7') || field73Roles.includes('object_7');
+            hasStudentRole = profileKeys.includes('profile_6') || profileKeys.includes('profile_4') || 
+                            field73Roles.includes('object_6') || field73Roles.includes('object_4');
+            
+            console.log('[Universal Redirect] DEBUG - Role detection results:', {
+                hasSuperUserRole,
+                hasStaffAdminRole,
+                hasStaffRole,
+                hasStudentRole,
+                userRoles,
+                checkingForProfile8: userRoles.includes('profile_8'),
+                actualRoleValues: userRoles.map(role => `"${role}"`)
+            });
             
             log('Role analysis:', {
                 hasSuperUserRole,
@@ -75,6 +94,8 @@ console.log('[Universal Redirect] Script loaded!');
                 hasStudentRole,
                 userRoles
             });
+        } else {
+            console.log('[Universal Redirect] DEBUG - No field_73 found in user.values');
         }
         
         // If user has super user role, check for session storage selection
@@ -239,6 +260,7 @@ console.log('[Universal Redirect] Script loaded!');
             return;
         }
         
+        console.log('[Universal Redirect] DEBUG - Starting initialization');
         log('Initializing Universal Redirect');
         
         // Multiple ways to check if we're on scene_1
@@ -276,19 +298,26 @@ console.log('[Universal Redirect] Script loaded!');
         
         // Increased delay to ensure Knack user data is loaded
         setTimeout(() => {
-            console.log('[Universal Redirect] Checking user type...');
+            console.log('[Universal Redirect] DEBUG - Timeout fired, checking user type...');
             
             // First check if user is logged in at all
             const user = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes() : null;
+            console.log('[Universal Redirect] DEBUG - User object from Knack:', user);
+            
             if (!user || !user.email) {
                 console.log('[Universal Redirect] No user logged in, not redirecting');
                 // Don't show welcome page or do anything - let Knack handle the login
                 return;
             }
             
+            console.log('[Universal Redirect] DEBUG - User is logged in, proceeding with type detection');
+            
             // Check if we're already on the correct page to avoid unnecessary redirects
             const userType = getUserType();
+            console.log('[Universal Redirect] DEBUG - Detected user type:', userType);
+            
             const currentUrl = window.location.hash;
+            console.log('[Universal Redirect] DEBUG - Current URL hash:', currentUrl);
             
             // Don't redirect if user is already on their correct page
             if ((userType === 'student' && currentUrl.includes('#landing-page')) ||
