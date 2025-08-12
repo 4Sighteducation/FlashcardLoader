@@ -1,8 +1,7 @@
-
 /**
  * Scene 1095 Staff Coaching Report Mobile Optimization & Help System
  * Optimizes the VESPA coaching report display for staff members viewing student reports
- * Based on mobileReportFix.js v5.1 - Adapted for scene_1095/view_2776
+ * Based on mobileReportFix.js v5.1 - EXACT SAME LOGIC adapted for scene_1095/view_2776
  */
 
 (function() {
@@ -133,6 +132,8 @@
                 enableZoom();
                 // Fix EFFORT section width issues
                 fixEffortSection();
+                // Add mobile section headings - THIS IS THE KEY MISSING PIECE!
+                addSectionHeadings();
             }
             
             return true;
@@ -855,7 +856,7 @@
         const style = document.createElement('style');
         style.id = styleId;
         
-        // Universal and mobile-optimized styles adapted for staff coaching views
+        // EXACT SAME LOGIC as mobileReportFix.js but adapted for staff selectors
         style.textContent = `
             /* Universal styles for Staff Coaching Report - v1.0 */
             
@@ -877,12 +878,14 @@
                     align-items: center !important;
                     margin: 20px auto !important;
                     text-align: center !important;
+                    /* NO background, padding, or other styling changes for desktop */
                 }
                 
                 #view_2776 #chart-container canvas,
                 #view_3015 #chart-container canvas,
                 #kn-scene_1095 #chart-container canvas {
                     margin: 0 auto !important;
+                    /* NO scaling or transformations */
                 }
             }
             
@@ -919,7 +922,22 @@
             .mobile-section-heading-comments,
             .mobile-section-heading-coaching,
             .mobile-theme-heading,
-            .mobile-score-display {
+            .mobile-score-display,
+            #view_2776 .mobile-section-heading,
+            #view_2776 .mobile-theme-heading,
+            #view_2776 .mobile-score-display,
+            #view_2776 .mobile-section-heading-comments,
+            #view_2776 .mobile-section-heading-coaching,
+            #view_3015 .mobile-section-heading,
+            #view_3015 .mobile-theme-heading,
+            #view_3015 .mobile-score-display,
+            #view_3015 .mobile-section-heading-comments,
+            #view_3015 .mobile-section-heading-coaching,
+            #kn-scene_1095 .mobile-section-heading,
+            #kn-scene_1095 .mobile-theme-heading,
+            #kn-scene_1095 .mobile-score-display,
+            #kn-scene_1095 .mobile-section-heading-comments,
+            #kn-scene_1095 .mobile-section-heading-coaching {
                 display: none !important;
                 visibility: hidden !important;
                 height: 0 !important;
@@ -934,7 +952,10 @@
             }
             
             /* Original theme content - VISIBLE BY DEFAULT ON DESKTOP */
-            .original-theme-content {
+            .original-theme-content,
+            #view_2776 .original-theme-content,
+            #view_3015 .original-theme-content,
+            #kn-scene_1095 .original-theme-content {
                 display: block !important;
                 visibility: visible !important;
                 height: auto !important;
@@ -966,6 +987,7 @@
                 font-weight: 500 !important;
             }
             
+            /* Limit button width on very large screens */
             @media (min-width: 1200px) {
                 .help-writing-btn {
                     max-width: 600px !important;
@@ -1104,92 +1126,105 @@
                 font-size: 18px !important;
             }
             
+            /* PrimeVue Dialog fixes for mobile */
+            @media (max-width: 768px) {
+                /* Fix PrimeVue dialog overlay */
+                .p-dialog-mask {
+                    padding: 20px !important;
+                }
+                
+                /* Fix PrimeVue dialog sizing */
+                .p-dialog {
+                    width: 85vw !important;
+                    max-width: 400px !important;
+                    max-height: 70vh !important;
+                    margin: 0 auto !important;
+                }
+                
+                /* Fix dialog content */
+                .p-dialog-content {
+                    max-height: 50vh !important;
+                    overflow-y: auto !important;
+                    padding: 20px !important;
+                    font-size: 16px !important;
+                    line-height: 1.6 !important;
+                }
+                
+                /* Fix dialog header */
+                .p-dialog-header {
+                    padding: 15px 20px !important;
+                    flex-shrink: 0 !important;
+                }
+                
+                /* Make close button touch-friendly */
+                .p-dialog-header-close {
+                    width: 44px !important;
+                    height: 44px !important;
+                    min-width: 44px !important;
+                    min-height: 44px !important;
+                }
+                
+                /* Ensure proper modal display on small screens */
+                .p-dialog[style*="width: 95vw"] {
+                    width: 85vw !important;
+                    max-width: 400px !important;
+                }
+            }
+            
             /* Mobile-only styles */
             @media (max-width: 768px) {
-                /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
-                .mobile-theme-heading {
-                    display: block !important;
-                    visibility: visible !important;
-                    height: auto !important;
-                    position: static !important;
-                    left: auto !important;
-                    top: auto !important;
-                    opacity: 1 !important;
-                    pointer-events: auto !important;
-                    font-size: 16px !important;
-                    font-weight: 600 !important;
-                    color: white !important;
-                    margin: 0 !important;
-                    padding: 8px 12px !important;
-                    text-align: center !important;
-                    background: inherit !important;
-                    text-transform: uppercase !important;
-                    letter-spacing: 0.5px !important;
-                }
-                
-                /* Mobile score display - ONLY SHOW ON MOBILE */
-                .mobile-score-display {
-                    display: block !important;
-                    visibility: visible !important;
-                    height: auto !important;
-                    position: static !important;
-                    left: auto !important;
-                    top: auto !important;
-                    opacity: 1 !important;
-                    pointer-events: auto !important;
-                    font-size: 48px !important;
-                    font-weight: 700 !important;
-                    color: white !important;
-                    text-align: center !important;
-                    padding: 20px 0 !important;
-                    line-height: 1 !important;
-                }
-                
-                /* Hide original theme content on mobile */
-                .original-theme-content {
+                /* Hide only logo on mobile, keep info buttons visible */
+                #view_2776 .image-logo,
+                #view_2776 img[alt="Logo"],
+                #view_2776 img[src*="logo"],
+                #view_2776 .logo,
+                #view_2776 [class*="logo"] img,
+                #view_3015 .image-logo,
+                #view_3015 img[alt="Logo"],
+                #view_3015 img[src*="logo"],
+                #view_3015 .logo,
+                #view_3015 [class*="logo"] img,
+                #kn-scene_1095 .image-logo,
+                #kn-scene_1095 img[alt="Logo"],
+                #kn-scene_1095 img[src*="logo"],
+                #kn-scene_1095 .logo,
+                #kn-scene_1095 [class*="logo"] img {
                     display: none !important;
                     visibility: hidden !important;
-                    position: absolute !important;
-                    left: -9999px !important;
                 }
                 
-                /* Section headings (Comments, Coaching Questions) - ONLY SHOW ON MOBILE */
-                .mobile-section-heading,
-                .mobile-section-heading-comments,
-                .mobile-section-heading-coaching {
-                    display: block !important;
-                    visibility: visible !important;
-                    height: auto !important;
-                    position: static !important;
-                    left: auto !important;
-                    top: auto !important;
-                    opacity: 1 !important;
-                    pointer-events: auto !important;
-                    font-size: 14px !important;
-                    font-weight: 600 !important;
-                    color: #1a4d4d !important;
-                    margin: 10px 0 8px 0 !important;
-                    padding: 6px 12px !important;
-                    background: #f5fafa !important;
-                    border-left: 3px solid #079baa !important;
-                    border-radius: 2px !important;
-                    text-transform: none !important;
+                /* Make info buttons touch-friendly on mobile */
+                #view_2776 .p-button-icon-only[aria-label*="info" i],
+                #view_2776 button i.pi-info-circle,
+                #view_2776 button[aria-label*="info" i],
+                #view_2776 button[title*="info" i],
+                #view_3015 .p-button-icon-only[aria-label*="info" i],
+                #view_3015 button i.pi-info-circle,
+                #view_3015 button[aria-label*="info" i],
+                #view_3015 button[title*="info" i],
+                #kn-scene_1095 .p-button-icon-only[aria-label*="info" i],
+                #kn-scene_1095 button i.pi-info-circle,
+                #kn-scene_1095 button[aria-label*="info" i],
+                #kn-scene_1095 button[title*="info" i] {
+                    min-width: 44px !important;
+                    min-height: 44px !important;
+                    padding: 8px !important;
                 }
                 
-                /* Make text areas larger on mobile */
+                /* Make text areas even larger by default on mobile */
                 #view_2776 textarea,
                 #view_3015 textarea,
                 #kn-scene_1095 textarea {
                     min-height: 200px !important;
-                    font-size: 16px !important;
+                    font-size: 16px !important; /* Prevent iOS zoom on focus */
                     padding: 15px !important;
                 }
                 
                 #view_2776 .ql-editor,
-                #view_3015 .ql-editor,
-                #kn-scene_1095 .ql-editor,
                 #view_2776 .ql-container,
+                #view_3015 .ql-editor,
                 #view_3015 .ql-container,
+                #kn-scene_1095 .ql-editor,
                 #kn-scene_1095 .ql-container {
                     min-height: 250px !important;
                 }
@@ -1232,7 +1267,7 @@
                     margin: 10px !important;
                 }
                 
-                /* When focused, make text areas bigger */
+                /* When focused, make text areas much bigger */
                 #view_2776 textarea:focus,
                 #view_3015 textarea:focus,
                 #kn-scene_1095 textarea:focus {
@@ -1242,10 +1277,10 @@
                 }
                 
                 #view_2776 .ql-editor:focus,
-                #view_3015 .ql-editor:focus,
-                #kn-scene_1095 .ql-editor:focus,
                 #view_2776 .ql-container:focus-within,
+                #view_3015 .ql-editor:focus,
                 #view_3015 .ql-container:focus-within,
+                #kn-scene_1095 .ql-editor:focus,
                 #kn-scene_1095 .ql-container:focus-within {
                     min-height: 450px !important;
                 }
@@ -1257,35 +1292,266 @@
                     background: white !important;
                 }
                 
-                /* Make VESPA sections look clickable on mobile */
+                /* Hide the rich text toolbar to maximize writing space */
+                #view_2776 .ql-toolbar,
+                #view_2776 .ql-snow .ql-toolbar,
+                #view_2776 .ql-toolbar.ql-snow,
+                #view_2776 .comment-section .ql-toolbar,
+                #view_3015 .ql-toolbar,
+                #view_3015 .ql-snow .ql-toolbar,
+                #view_3015 .ql-toolbar.ql-snow,
+                #view_3015 .comment-section .ql-toolbar,
+                #kn-scene_1095 .ql-toolbar,
+                #kn-scene_1095 .ql-snow .ql-toolbar,
+                #kn-scene_1095 .ql-toolbar.ql-snow,
+                #kn-scene_1095 .comment-section .ql-toolbar {
+                    display: none !important;
+                }
+                
+                /* Adjust container to compensate for hidden toolbar */
+                #view_2776 .ql-container.ql-snow,
+                #view_3015 .ql-container.ql-snow,
+                #kn-scene_1095 .ql-container.ql-snow {
+                    border-top: 1px solid #ccc !important;
+                    border-radius: 4px !important;
+                }
+                
+                /* Make all text inputs bigger */
+                #view_2776 input[type="text"],
+                #view_2776 input[type="email"],
+                #view_2776 input[type="number"],
+                #view_3015 input[type="text"],
+                #view_3015 input[type="email"],
+                #view_3015 input[type="number"],
+                #kn-scene_1095 input[type="text"],
+                #kn-scene_1095 input[type="email"],
+                #kn-scene_1095 input[type="number"] {
+                    height: 44px !important;
+                    font-size: 16px !important;
+                    padding: 10px !important;
+                }
+                
+                /* Touch-friendly buttons */
+                #view_2776 button,
+                #view_2776 .p-button,
+                #view_2776 input[type="submit"],
+                #view_2776 input[type="button"],
+                #view_3015 button,
+                #view_3015 .p-button,
+                #view_3015 input[type="submit"],
+                #view_3015 input[type="button"],
+                #kn-scene_1095 button,
+                #kn-scene_1095 .p-button,
+                #kn-scene_1095 input[type="submit"],
+                #kn-scene_1095 input[type="button"] {
+                    min-height: 44px !important;
+                    padding: 12px 20px !important;
+                }
+                
+                /* Smaller submit/cancel buttons in comment sections */
+                #view_2776 .comment-section button[type="submit"],
+                #view_2776 .comment-section .p-button,
+                #view_3015 .comment-section button[type="submit"],
+                #view_3015 .comment-section .p-button,
+                #kn-scene_1095 .comment-section button[type="submit"],
+                #kn-scene_1095 .comment-section .p-button {
+                    min-height: 36px !important;
+                    padding: 8px 16px !important;
+                    font-size: 14px !important;
+                }
+                
+                /* Comprehensive fix for EFFORT section consistency on mobile */
+                /* Target EFFORT section by its blue color */
+                #view_2776 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]),
+                #view_3015 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]),
+                #kn-scene_1095 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                    padding-left: 0 !important;
+                    padding-right: 0 !important;
+                    box-sizing: border-box !important;
+                }
+                
+                /* Fix EFFORT score section width - preserve display type */
+                #view_2776 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"],
+                #view_3015 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"],
+                #kn-scene_1095 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"] {
+                    max-width: 100% !important;
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                    box-sizing: border-box !important;
+                }
+                
+                /* Fix EFFORT comments section */
+                #view_2776 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-comments,
+                #view_3015 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-comments,
+                #kn-scene_1095 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-comments {
+                    max-width: 100% !important;
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                    box-sizing: border-box !important;
+                }
+                
+                /* Fix EFFORT coaching questions section */
+                #view_2776 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-coaching-questions,
+                #view_3015 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-coaching-questions,
+                #kn-scene_1095 .vespa-report:has(.vespa-report-score[style*="background-color: rgb(134, 180, 240)"]) .vespa-report-coaching-questions {
+                    max-width: 100% !important;
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                    box-sizing: border-box !important;
+                }
+                
+                /* Ensure VESPA sections maintain their layout */
                 #view_2776 .vespa-report,
                 #view_3015 .vespa-report,
                 #kn-scene_1095 .vespa-report {
-                    position: relative !important;
-                    transition: transform 0.2s ease !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    box-sizing: border-box !important;
                 }
                 
-                #view_2776 .vespa-report:active,
-                #view_3015 .vespa-report:active,
-                #kn-scene_1095 .vespa-report:active {
-                    transform: scale(0.98) !important;
+                /* Theme headings (VISION, EFFORT, etc.) - ONLY SHOW ON MOBILE */
+                #view_2776 .mobile-theme-heading,
+                #view_3015 .mobile-theme-heading,
+                #kn-scene_1095 .mobile-theme-heading,
+                .mobile-theme-heading {
+                    display: block !important;
+                    visibility: visible !important;
+                    height: auto !important;
+                    position: static !important;
+                    left: auto !important;
+                    top: auto !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                    font-size: 16px !important;
+                    font-weight: 600 !important;
+                    color: white !important;
+                    margin: 0 !important;
+                    padding: 8px 12px !important;
+                    text-align: center !important;
+                    background: inherit !important; /* Use parent's background color */
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.5px !important;
                 }
+                    
+                /* Mobile score display - ONLY SHOW ON MOBILE */
+                #view_2776 .mobile-score-display,
+                #view_3015 .mobile-score-display,
+                #kn-scene_1095 .mobile-score-display,
+                .mobile-score-display {
+                    display: block !important;
+                    visibility: visible !important;
+                    height: auto !important;
+                    position: static !important;
+                    left: auto !important;
+                    top: auto !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                    font-size: 48px !important;
+                    font-weight: 700 !important;
+                    color: white !important;
+                    text-align: center !important;
+                    padding: 20px 0 !important;
+                    line-height: 1 !important;
+                }
+                    
+                /* Hide original theme content on mobile */
+                #view_2776 .original-theme-content,
+                #view_3015 .original-theme-content,
+                #kn-scene_1095 .original-theme-content,
+                .original-theme-content {
+                    display: none !important;
+                    visibility: hidden !important;
+                    position: absolute !important;
+                    left: -9999px !important;
+                }
+                    
+                /* Section headings (Comments, Coaching Questions) - ONLY SHOW ON MOBILE */
+                #view_2776 .mobile-section-heading,
+                #view_2776 .mobile-section-heading-comments,
+                #view_2776 .mobile-section-heading-coaching,
+                #view_3015 .mobile-section-heading,
+                #view_3015 .mobile-section-heading-comments,
+                #view_3015 .mobile-section-heading-coaching,
+                #kn-scene_1095 .mobile-section-heading,
+                #kn-scene_1095 .mobile-section-heading-comments,
+                #kn-scene_1095 .mobile-section-heading-coaching,
+                .mobile-section-heading,
+                .mobile-section-heading-comments,
+                .mobile-section-heading-coaching {
+                    display: block !important;
+                    visibility: visible !important;
+                    height: auto !important;
+                    position: static !important;
+                    left: auto !important;
+                    top: auto !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                    font-size: 14px !important;
+                    font-weight: 600 !important;
+                    color: #1a4d4d !important;
+                    margin: 10px 0 8px 0 !important;
+                    padding: 6px 12px !important;
+                    background: #f5fafa !important;
+                    border-left: 3px solid #079baa !important;
+                    border-radius: 2px !important;
+                    text-transform: none !important;
+                }
+                    
+                /* Adjust spacing for score sections with theme headings */
+                #view_2776 .vespa-report-score,
+                #view_3015 .vespa-report-score,
+                #kn-scene_1095 .vespa-report-score {
+                    padding-top: 0 !important;
+                }
+                    
+                /* Ensure vertical stacking on mobile for better readability */
+                #view_2776 .vespa-report,
+                #view_3015 .vespa-report,
+                #kn-scene_1095 .vespa-report {
+                    display: block !important;
+                }
+                    
+                #view_2776 .vespa-report > *,
+                #view_3015 .vespa-report > *,
+                #kn-scene_1095 .vespa-report > * {
+                    display: block !important;
+                    width: 100% !important;
+                    margin-bottom: 15px !important;
+                }
+            }
                 
-                /* Add tap indicator */
-                #view_2776 .vespa-report::after,
-                #view_3015 .vespa-report::after,
-                #kn-scene_1095 .vespa-report::after {
-                    content: "Tap to expand >";
-                    position: absolute;
-                    top: 10px;
-                    right: 10px;
-                    font-size: 12px;
-                    color: #666;
-                    background: rgba(255,255,255,0.9);
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    pointer-events: none;
-                }
+            /* Make VESPA sections look clickable on mobile */
+            #view_2776 .vespa-report,
+            #view_3015 .vespa-report,
+            #kn-scene_1095 .vespa-report {
+                position: relative !important;
+                transition: transform 0.2s ease !important;
+            }
+            
+            #view_2776 .vespa-report:active,
+            #view_3015 .vespa-report:active,
+            #kn-scene_1095 .vespa-report:active {
+                transform: scale(0.98) !important;
+            }
+            
+            /* Add a subtle tap indicator */
+            #view_2776 .vespa-report::after,
+            #view_3015 .vespa-report::after,
+            #kn-scene_1095 .vespa-report::after {
+                content: "Tap to expand >";
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 12px;
+                color: #666;
+                background: rgba(255,255,255,0.9);
+                padding: 4px 8px;
+                border-radius: 4px;
+                pointer-events: none;
             }
             
             /* VESPA Modal styles - always apply these but only show on mobile */
@@ -1297,7 +1563,7 @@
                 right: 0 !important;
                 bottom: 0 !important;
                 background: rgba(0, 0, 0, 0.8) !important;
-                z-index: 2147483647 !important;
+                z-index: 2147483647 !important; /* Maximum z-index value */
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
             }
@@ -1554,3 +1820,4 @@
     
     console.log('[Staff Mobile Report Enhancement v1.0] Initialization complete');
 })();
+
