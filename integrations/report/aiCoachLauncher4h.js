@@ -108,6 +108,15 @@ if (window.aiCoachLauncherInitialized) {
     function clearCoachUI() {
         if (!coachUIInitialized) return;
         logAICoach("Clearing AI Coach UI.");
+        
+        // Clear any inline styles from main content before removing UI
+        const mainContent = document.querySelector(AI_COACH_LAUNCHER_CONFIG?.mainContentSelector);
+        if (mainContent) {
+            mainContent.style.width = '';
+            mainContent.style.marginRight = '';
+            logAICoach("Cleared inline styles from main content during cleanup");
+        }
+        
         const launcherButtonContainer = document.getElementById('aiCoachLauncherButtonContainer');
         if (launcherButtonContainer) {
             // Remove the entire floating button from DOM instead of just clearing content
@@ -135,6 +144,15 @@ if (window.aiCoachLauncherInitialized) {
     // Global cleanup function that can be called by other systems
     function globalCleanupAICoach() {
         logAICoach("Global cleanup called - ensuring all AI Coach elements are removed");
+        
+        // Clear any inline styles from main content first
+        const mainContent = document.querySelector('#kn-scene_1095') || document.querySelector('#content');
+        if (mainContent) {
+            mainContent.style.width = '';
+            mainContent.style.marginRight = '';
+            logAICoach("Cleared inline styles from main content during global cleanup");
+        }
+        
         clearCoachUI();
         
         // Also clean up any orphaned elements that might persist
@@ -337,7 +355,7 @@ if (window.aiCoachLauncherInitialized) {
         link.id = styleId;
         link.rel = 'stylesheet';
         link.type = 'text/css';
-        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1m.css';
+        link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/report/aiCoachLauncher1n.css';
         // .css';
         
         // Add dynamic CSS for config-specific IDs
@@ -1635,6 +1653,15 @@ if (window.aiCoachLauncherInitialized) {
 
         } else {
             document.body.classList.remove('ai-coach-active');
+            
+            // Clear any inline styles that might have been applied during resizing
+            const mainContent = document.querySelector(AI_COACH_LAUNCHER_CONFIG.mainContentSelector);
+            if (mainContent) {
+                mainContent.style.width = '';
+                mainContent.style.marginRight = '';
+                logAICoach("Cleared inline styles from main content");
+            }
+            
             if (toggleButton) {
                 // Restore original button text while preserving the SVG icon structure
                 const buttonSpan = toggleButton.querySelector('span:last-child');
