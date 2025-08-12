@@ -1507,5 +1507,3 @@
     
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
-    console.log('[General Header] Script setup complete, initializer function ready');
-})();
