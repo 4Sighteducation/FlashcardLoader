@@ -1,1 +1,589 @@
+/**
+ * Dynamic Staff Table for Scene 1014 - Complete Coaching Solution
+ * Creates role-aware student table and integrates with existing coaching system
+ * Version: 1.0
+ */
+
+(function() {
+    'use strict';
+
+    const VERSION = '1.0';
+    const DEBUG_MODE = true;
+
+    function log(message, data = '') {
+        if (DEBUG_MODE) {
+            console.log(`[DynamicTable1014 v${VERSION}] ${message}`, data);
+        }
+    }
+
+    function errorLog(message, error = '') {
+        console.error(`[DynamicTable1014 v${VERSION} ERROR] ${message}`, error);
+    }
+
+    // Role-based connection configuration
+    const ROLE_CONNECTIONS = {
+        'Staff Admin': {
+            object: 'object_5',
+            field: 'field_86', 
+            description: 'Staff Admins - access all students'
+        },
+        'Tutor': {
+            object: 'object_7',
+            field: 'field_225',
+            description: 'Tutors connected via Object_7 field_225'
+        },
+        'Head of Year': {
+            object: 'object_18',
+            field: 'field_417',
+            description: 'Head of Year connected via Object_18 field_417'
+        },
+        'Head of Dept': {
+            object: 'object_25',
+            field: 'field_559',
+            description: 'Head of Dept connected via Object_25 field_559'
+        },
+        'Subject Teacher': {
+            object: 'object_78',
+            field: 'field_1879',
+            description: 'Subject Teachers connected via Object_78 field_1879'
+        }
+    };
+
+    // Initialize the dynamic table system
+    async function initializeDynamicTable1014() {
+        log('🚀 Initializing Dynamic Staff Table for Scene 1014...');
+
+        try {
+            // Wait for the scene to be ready
+            await waitForElement('#kn-scene_1014', 5000);
+            await waitForElement('#view_3202', 5000);
+
+            // Get user information and determine role
+            const userInfo = await getUserInfo();
+            log('User info obtained:', userInfo);
+
+            // Get students based on user role
+            const students = await getStudentsForRole(userInfo);
+            log(`Found ${students.length} students for role: ${userInfo.role}`);
+
+            // Create and display the custom table
+            await createCustomTable(students, userInfo);
+
+            // Hide the original table (view_2772)
+            hideOriginalTable();
+
+            log('✅ Dynamic Staff Table for Scene 1014 initialized successfully!');
+
+        } catch (error) {
+            errorLog('Failed to initialize Dynamic Staff Table for Scene 1014:', error);
+        }
+    }
+
+    // Wait for element to exist
+    function waitForElement(selector, timeout = 10000) {
+        return new Promise((resolve, reject) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                resolve(element);
+                return;
+            }
+
+            const observer = new MutationObserver((mutations, obs) => {
+                const element = document.querySelector(selector);
+                if (element) {
+                    obs.disconnect();
+                    resolve(element);
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            setTimeout(() => {
+                observer.disconnect();
+                reject(new Error(`Element ${selector} not found within ${timeout}ms`));
+            }, timeout);
+        });
+    }
+
+    // Get user information and determine role
+    async function getUserInfo() {
+        const userAttributes = (typeof Knack !== 'undefined' && Knack.getUserAttributes) 
+            ? Knack.getUserAttributes() : {};
+        
+        if (!userAttributes || !userAttributes.email) {
+            throw new Error('Could not get user information from Knack');
+        }
+
+        const email = userAttributes.email;
+        const field73 = userAttributes.values?.field_73 || [];
+        const profileKeys = userAttributes.profile_keys_raw || [];
+
+        log('User email:', email);
+        log('Field_73 roles:', field73);
+        log('Profile keys:', profileKeys);
+
+        // Determine role based on profile keys
+        let role = 'Tutor'; // Default
+        
+        if (profileKeys.includes('profile_5') || field73.includes('profile_5')) {
+            role = 'Staff Admin';
+        } else if (profileKeys.includes('profile_18') || field73.includes('profile_18')) {
+            role = 'Head of Year';
+        } else if (profileKeys.includes('profile_25') || field73.includes('profile_25')) {
+            role = 'Head of Dept';
+        } else if (profileKeys.includes('profile_78') || field73.includes('profile_78')) {
+            role = 'Subject Teacher';
+        }
+
+        return {
+            role: role,
+            email: email,
+            userId: userAttributes.id,
+            field73: field73,
+            profileKeys: profileKeys,
+            attributes: userAttributes
+        };
+    }
+
+    // Get connection ID for the user's role
+    function getConnectionId(userInfo) {
+        const userAttributes = userInfo.attributes;
+        
+        // Check various fields where connection IDs might be stored
+        const possibleFields = ['field_122', 'field_86', 'field_96', 'field_417', 'field_559', 'field_1879'];
+        
+        for (const field of possibleFields) {
+            let value = userAttributes.values?.[field] || userAttributes[field];
+            if (value) {
+                // Handle array values
+                if (Array.isArray(value) && value.length > 0) {
+                    return value[0];
+                }
+                // Handle string values
+                if (typeof value === 'string') {
+                    return value;
+                }
+            }
+        }
+
+        log('No connection ID found, user may have direct access');
+        return null;
+    }
+
+    // Get students based on user role
+    async function getStudentsForRole(userInfo) {
+        const roleConfig = ROLE_CONNECTIONS[userInfo.role];
+        
+        if (!roleConfig) {
+            throw new Error(`No configuration found for role: ${userInfo.role}`);
+        }
+
+        log(`Getting students for role: ${userInfo.role}`, roleConfig);
+
+        // For Staff Admins, get all students from scene_1014/view_2772
+        if (userInfo.role === 'Staff Admin') {
+            return await getAllStudentsFromScene1014();
+        }
+
+        // For other roles, use connection-based filtering
+        const connectionId = getConnectionId(userInfo);
+        
+        if (!connectionId) {
+            // Fallback to current scene data
+            return await getStudentsFromCurrentScene();
+        }
+
+        return await getStudentsWithConnection(roleConfig, connectionId);
+    }
+
+    // Get all students from scene_1014/view_2772 (for Staff Admins)
+    async function getAllStudentsFromScene1014() {
+        try {
+            const url = 'https://api.knack.com/v1/pages/scene_1014/views/view_2772/records?rows_per_page=1000';
+            
+            const response = await fetch(url, {
+                headers: getKnackHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            log(`Staff Admin: Found ${data.records.length} students from scene_1014`);
+            
+            return data.records.map(record => ({
+                name: record.field_187 || 'Unknown Student',
+                reportResponse: record.field_147 || 'No Response',
+                object10Id: record.id,
+                email: record.field_188 || '',
+                rawRecord: record
+            }));
+
+        } catch (error) {
+            errorLog('Failed to get all students from scene_1014:', error);
+            // Fallback to current scene
+            return await getStudentsFromCurrentScene();
+        }
+    }
+
+    // Get students using connection-based filtering
+    async function getStudentsWithConnection(roleConfig, connectionId) {
+        try {
+            // Try filtering by connection field
+            const filterUrl = `https://api.knack.com/v1/pages/scene_1014/views/view_2772/records?filters=${encodeURIComponent(JSON.stringify({
+                match: 'and',
+                rules: [{
+                    field: roleConfig.field,
+                    operator: 'is',
+                    value: [connectionId]
+                }]
+            }))}&rows_per_page=1000`;
+
+            const response = await fetch(filterUrl, {
+                headers: getKnackHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            log(`Connection-based: Found ${data.records.length} students`);
+
+            if (data.records.length === 0) {
+                // Fallback to current scene
+                return await getStudentsFromCurrentScene();
+            }
+            
+            return data.records.map(record => ({
+                name: record.field_187 || 'Unknown Student',
+                reportResponse: record.field_147 || 'No Response',
+                object10Id: record.id,
+                email: record.field_188 || '',
+                rawRecord: record
+            }));
+
+        } catch (error) {
+            errorLog('Failed to get students with connection:', error);
+            // Fallback to current scene
+            return await getStudentsFromCurrentScene();
+        }
+    }
+
+    // Fallback: Get students from current scene (scene_1095 style)
+    async function getStudentsFromCurrentScene() {
+        try {
+            const url = 'https://api.knack.com/v1/pages/scene_1095/views/view_2716/records?rows_per_page=1000';
+            
+            const response = await fetch(url, {
+                headers: getKnackHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            log(`Fallback: Found ${data.records.length} students from current scene`);
+            
+            return data.records.map(record => ({
+                name: record.field_187 || 'Unknown Student',
+                reportResponse: record.field_147 || 'No Response',
+                object10Id: record.id,
+                email: record.field_188 || '',
+                rawRecord: record
+            }));
+
+        } catch (error) {
+            errorLog('Failed to get students from current scene:', error);
+            return [];
+        }
+    }
+
+    // Get Knack headers for API requests
+    function getKnackHeaders() {
+        const headers = {
+            'X-Knack-Application-Id': '5ee90912c38ae7001510c1a9',
+            'X-Knack-REST-API-Key': '8f733aa5-dd35-4464-8348-64824d1f5f0d',
+            'Content-Type': 'application/json'
+        };
+
+        // Add session token if available
+        if (typeof Knack !== 'undefined' && Knack.getUserToken && Knack.getUserToken()) {
+            headers['Authorization'] = Knack.getUserToken();
+        }
+
+        return headers;
+    }
+
+    // Create and display the custom table
+    async function createCustomTable(students, userInfo) {
+        const container = document.querySelector('#view_3202 .kn-rich_text__content');
+        
+        if (!container) {
+            throw new Error('Container #view_3202 .kn-rich_text__content not found');
+        }
+
+        const tableHtml = `
+            <div id="dynamic-staff-table-1014" class="dynamic-staff-table">
+                <div class="table-header">
+                    <h2>Student Reports - ${userInfo.role}</h2>
+                    <p class="student-count">${students.length} students found</p>
+                </div>
+                
+                <div class="table-container">
+                    <table class="student-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Report Response</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${students.map((student, index) => `
+                                <tr data-student-index="${index}" data-object10-id="${student.object10Id}">
+                                    <td class="student-name">${student.name}</td>
+                                    <td class="report-response">${student.reportResponse}</td>
+                                    <td class="action-cell">
+                                        <button class="report-button" 
+                                                onclick="triggerReport('${student.object10Id}', '${student.name}', '${student.email}')"
+                                                data-object10-id="${student.object10Id}">
+                                            Report
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <style>
+                .dynamic-staff-table {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    margin: 20px 0;
+                }
+                
+                .table-header {
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    background: linear-gradient(135deg, #079baa 0%, #00e5db 100%);
+                    color: white;
+                    border-radius: 8px;
+                }
+                
+                .table-header h2 {
+                    margin: 0 0 5px 0;
+                    font-size: 24px;
+                    font-weight: 600;
+                }
+                
+                .student-count {
+                    margin: 0;
+                    opacity: 0.9;
+                    font-size: 14px;
+                }
+                
+                .table-container {
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                    overflow: hidden;
+                }
+                
+                .student-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                
+                .student-table th {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    text-align: left;
+                    font-weight: 600;
+                    color: #2a3c7a;
+                    border-bottom: 2px solid #e9ecef;
+                }
+                
+                .student-table td {
+                    padding: 12px 15px;
+                    border-bottom: 1px solid #e9ecef;
+                }
+                
+                .student-table tr:hover {
+                    background-color: #f8f9fa;
+                }
+                
+                .student-name {
+                    font-weight: 500;
+                    color: #2a3c7a;
+                }
+                
+                .report-response {
+                    color: #666;
+                }
+                
+                .report-button {
+                    background: linear-gradient(135deg, #079baa 0%, #00e5db 100%);
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                }
+                
+                .report-button:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(7, 155, 170, 0.3);
+                }
+                
+                .report-button:active {
+                    transform: translateY(0);
+                }
+                
+                @media (max-width: 768px) {
+                    .student-table {
+                        font-size: 14px;
+                    }
+                    
+                    .student-table th,
+                    .student-table td {
+                        padding: 10px 8px;
+                    }
+                    
+                    .table-header h2 {
+                        font-size: 20px;
+                    }
+                }
+            </style>
+        `;
+
+        container.innerHTML = tableHtml;
+        log('Custom table created and inserted');
+    }
+
+    // Global function to trigger reports
+    window.triggerReport = async function(object10Id, studentName, studentEmail) {
+        log(`🚀 Triggering report for: ${studentName} (${object10Id})`);
+        
+        try {
+            // Set global variables that the coaching system expects
+            window.currentReportObject10Id = object10Id;
+            window.currentReportStudentEmail = studentEmail;
+            window.currentReportStudentObject6Id = null; // Will be populated by the system
+            
+            log('Set global variables:', {
+                currentReportObject10Id: window.currentReportObject10Id,
+                currentReportStudentEmail: window.currentReportStudentEmail
+            });
+
+            // Find and click the corresponding button in the hidden table
+            await clickHiddenReportButton(object10Id);
+            
+            // Alternative: Make the API call that triggers the report
+            await makeReportTriggerCall(object10Id);
+            
+        } catch (error) {
+            errorLog('Failed to trigger report:', error);
+        }
+    };
+
+    // Click the hidden report button in view_2772
+    async function clickHiddenReportButton(object10Id) {
+        try {
+            // Wait for the hidden table to exist
+            await waitForElement('#view_2772', 2000);
+            
+            // Find the button for this object10Id in the hidden table
+            const hiddenButtons = document.querySelectorAll('#view_2772 .view-report-button');
+            
+            for (let button of hiddenButtons) {
+                const row = button.closest('tr');
+                if (row) {
+                    // Look for hidden links with the object10Id
+                    const hiddenLinks = row.querySelectorAll('a[href*="' + object10Id + '"]');
+                    if (hiddenLinks.length > 0) {
+                        log('Found matching hidden button, clicking...');
+                        button.click();
+                        return;
+                    }
+                }
+            }
+            
+            log('No matching hidden button found');
+            
+        } catch (error) {
+            log('Could not click hidden button:', error);
+        }
+    }
+
+    // Make the API call that triggers the report
+    async function makeReportTriggerCall(object10Id) {
+        try {
+            const url = `https://api.knack.com/v1/pages/scene_515/views/view_1346/records/?filters=${encodeURIComponent(JSON.stringify({
+                match: 'and',
+                rules: [{
+                    field: 'field_182',
+                    operator: 'is',
+                    value: [object10Id]
+                }]
+            }))}&page=1&rows_per_page=1000`;
+
+            log('Making report trigger API call:', url);
+
+            const response = await fetch(url, {
+                headers: getKnackHeaders()
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                log('Report trigger API call successful:', data);
+                
+                // Small delay then navigate to the report view
+                setTimeout(() => {
+                    // The report should now load in the existing coaching system
+                    log('Report should now be loading in the coaching system');
+                }, 500);
+                
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+        } catch (error) {
+            errorLog('Report trigger API call failed:', error);
+        }
+    }
+
+    // Hide the original table (view_2772)
+    function hideOriginalTable() {
+        const originalTable = document.querySelector('#view_2772');
+        if (originalTable) {
+            originalTable.style.display = 'none';
+            log('Hidden original table view_2772');
+        }
+    }
+
+    // Initialize when the DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeDynamicTable1014);
+    } else {
+        initializeDynamicTable1014();
+    }
+
+    // Also initialize on Knack events
+    if (typeof $ !== 'undefined') {
+        $(document).on('knack-scene-render.scene_1014', initializeDynamicTable1014);
+        $(document).on('knack-view-render.view_3202', initializeDynamicTable1014);
+    }
+
+    log(`Dynamic Staff Table for Scene 1014 v${VERSION} loaded`);
+
+})();
 
