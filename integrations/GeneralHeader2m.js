@@ -36,6 +36,340 @@
         }
         
         // Detect user type
+        // Helper function to determine available roles for super users
+        function determineAvailableRoles(hasStaffAdminRole, hasStaffRole, hasStudentRole, isResourceOnly) {
+            const roles = [];
+            
+            // Always add Super User option
+            roles.push({
+                id: 'superUser',
+                label: 'Super User',
+                description: 'Full administrative access',
+                available: true
+            });
+            
+            // Add Staff Admin options if available
+            if (hasStaffAdminRole) {
+                if (isResourceOnly) {
+                    roles.push({
+                        id: 'staffAdminResource',
+                        label: 'Staff Admin (Resources)',
+                        description: 'Administrative access to resources',
+                        available: true
+                    });
+                } else {
+                    roles.push({
+                        id: 'staffAdminCoaching',
+                        label: 'Staff Admin (Coaching)',
+                        description: 'Administrative access to coaching tools',
+                        available: true
+                    });
+                }
+            }
+            
+            // Add Teaching Staff options if available
+            if (hasStaffRole) {
+                if (isResourceOnly) {
+                    roles.push({
+                        id: 'staffResource',
+                        label: 'Teaching Staff (Resources)',
+                        description: 'Access to teaching resources',
+                        available: true
+                    });
+                } else {
+                    roles.push({
+                        id: 'staffCoaching',
+                        label: 'Teaching Staff (Coaching)',
+                        description: 'Access to coaching and student management',
+                        available: true
+                    });
+                }
+            }
+            
+            // Add Student option if available
+            if (hasStudentRole) {
+                roles.push({
+                    id: 'student',
+                    label: 'Student',
+                    description: 'Student learning interface',
+                    available: true
+                });
+            }
+            
+            return roles;
+        }
+        
+        // Function to show role selection modal
+        function showRoleSelectionModal(availableRoles) {
+            return new Promise((resolve) => {
+                // Create modal HTML
+                const modalHTML = `
+                    <div id="roleSelectionModal" class="role-selection-modal-overlay">
+                        <div class="role-selection-modal">
+                            <div class="modal-header">
+                                <h2><i class="fa fa-user-circle"></i> Choose Your Login Mode</h2>
+                                <p>You have multiple roles available. Please select how you'd like to access VESPA:</p>
+                            </div>
+                            <div class="modal-body">
+                                <div class="role-options">
+                                    ${availableRoles.map(role => `
+                                        <button class="role-option ${role.available ? 'available' : 'unavailable'}" 
+                                                data-role="${role.id}" 
+                                                ${!role.available ? 'disabled' : ''}>
+                                            <div class="role-icon">
+                                                <i class="fa ${getRoleIcon(role.id)}"></i>
+                                            </div>
+                                            <div class="role-content">
+                                                <h3>${role.label}</h3>
+                                                <p>${role.description}</p>
+                                            </div>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <p class="session-note">
+                                    <i class="fa fa-info-circle"></i>
+                                    Your selection will be remembered for this session. You can change it by logging out and logging back in.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add modal styles
+                const modalStyles = `
+                    <style id="roleSelectionModalStyles">
+                        .role-selection-modal-overlay {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: rgba(0, 0, 0, 0.8);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            z-index: 10000;
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        }
+                        
+                        .role-selection-modal {
+                            background: white;
+                            border-radius: 16px;
+                            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                            max-width: 600px;
+                            width: 90%;
+                            max-height: 90vh;
+                            overflow-y: auto;
+                        }
+                        
+                        .modal-header {
+                            padding: 30px 30px 20px;
+                            text-align: center;
+                            border-bottom: 1px solid #e0e0e0;
+                        }
+                        
+                        .modal-header h2 {
+                            color: #2a3c7a;
+                            font-size: 1.8rem;
+                            font-weight: 700;
+                            margin: 0 0 15px 0;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 12px;
+                        }
+                        
+                        .modal-header h2 i {
+                            color: #079baa;
+                            font-size: 1.6rem;
+                        }
+                        
+                        .modal-header p {
+                            color: #5899a8;
+                            font-size: 1.1rem;
+                            margin: 0;
+                            line-height: 1.5;
+                        }
+                        
+                        .modal-body {
+                            padding: 30px;
+                        }
+                        
+                        .role-options {
+                            display: grid;
+                            gap: 15px;
+                        }
+                        
+                        .role-option {
+                            display: flex;
+                            align-items: center;
+                            gap: 20px;
+                            padding: 20px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 12px;
+                            background: white;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            text-align: left;
+                            width: 100%;
+                        }
+                        
+                        .role-option.available:hover {
+                            border-color: #079baa;
+                            background: #f0fdfe;
+                            transform: translateY(-2px);
+                            box-shadow: 0 4px 12px rgba(7, 155, 170, 0.2);
+                        }
+                        
+                        .role-option.unavailable {
+                            opacity: 0.5;
+                            cursor: not-allowed;
+                            background: #f5f5f5;
+                        }
+                        
+                        .role-icon {
+                            flex-shrink: 0;
+                            width: 50px;
+                            height: 50px;
+                            border-radius: 10px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 20px;
+                            color: white;
+                            background: linear-gradient(135deg, #2a3c7a 0%, #079baa 100%);
+                        }
+                        
+                        .role-option.unavailable .role-icon {
+                            background: #ccc;
+                        }
+                        
+                        .role-content h3 {
+                            color: #2a3c7a;
+                            font-size: 1.2rem;
+                            font-weight: 600;
+                            margin: 0 0 5px 0;
+                        }
+                        
+                        .role-content p {
+                            color: #5899a8;
+                            font-size: 0.95rem;
+                            margin: 0;
+                            line-height: 1.4;
+                        }
+                        
+                        .role-option.unavailable .role-content h3,
+                        .role-option.unavailable .role-content p {
+                            color: #999;
+                        }
+                        
+                        .modal-footer {
+                            padding: 20px 30px 30px;
+                            text-align: center;
+                            border-top: 1px solid #e0e0e0;
+                        }
+                        
+                        .session-note {
+                            color: #5899a8;
+                            font-size: 0.9rem;
+                            margin: 0;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                        }
+                        
+                        .session-note i {
+                            color: #079baa;
+                        }
+                        
+                        @media (max-width: 768px) {
+                            .role-selection-modal {
+                                margin: 20px;
+                                width: calc(100% - 40px);
+                            }
+                            
+                            .modal-header {
+                                padding: 25px 20px 15px;
+                            }
+                            
+                            .modal-header h2 {
+                                font-size: 1.5rem;
+                                flex-direction: column;
+                                gap: 8px;
+                            }
+                            
+                            .modal-body {
+                                padding: 20px;
+                            }
+                            
+                            .role-option {
+                                padding: 15px;
+                                gap: 15px;
+                            }
+                            
+                            .role-icon {
+                                width: 40px;
+                                height: 40px;
+                                font-size: 16px;
+                            }
+                            
+                            .role-content h3 {
+                                font-size: 1.1rem;
+                            }
+                            
+                            .role-content p {
+                                font-size: 0.9rem;
+                            }
+                        }
+                    </style>
+                `;
+                
+                // Inject styles and modal
+                document.head.insertAdjacentHTML('beforeend', modalStyles);
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                // Add click handlers
+                const modal = document.getElementById('roleSelectionModal');
+                const roleButtons = modal.querySelectorAll('.role-option.available');
+                
+                roleButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const selectedRole = button.getAttribute('data-role');
+                        
+                        // Clean up
+                        modal.remove();
+                        document.getElementById('roleSelectionModalStyles')?.remove();
+                        
+                        resolve(selectedRole);
+                    });
+                });
+                
+                // Prevent modal from closing when clicking outside
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                });
+            });
+        }
+        
+        // Helper function to get role icons
+        function getRoleIcon(roleId) {
+            const iconMap = {
+                'superUser': 'fa-shield',
+                'staffAdminResource': 'fa-cog',
+                'staffAdminCoaching': 'fa-tachometer-alt',
+                'staffResource': 'fa-book',
+                'staffCoaching': 'fa-users',
+                'student': 'fa-graduation-cap'
+            };
+            return iconMap[roleId] || 'fa-user';
+        }
+
         function getUserType() {
             log('User attributes:', userAttributes);
             
@@ -94,7 +428,7 @@
                 'profile_7': 'staff',        // Tutor profile
                 'profile_5': 'staffAdmin',   // Staff Admin profile
                 'profile_4': 'student',      // Alternative student profile
-                'profile_8': 'staff',        // Super User profile
+                'profile_8': 'superUser',    // Super User profile
                 // Add more mappings as needed
             };
             
@@ -102,6 +436,7 @@
             let hasStaffRole = false;
             let hasStudentRole = false;
             let hasStaffAdminRole = false;
+            let hasSuperUserRole = false;
             
             // If field_73 contains multiple roles
             if (Array.isArray(userAttributes.values?.field_73)) {
@@ -116,6 +451,8 @@
                         hasStudentRole = true;
                     } else if (profileMapping[roleStr] === 'staffAdmin') {
                         hasStaffAdminRole = true;
+                    } else if (profileMapping[roleStr] === 'superUser') {
+                        hasSuperUserRole = true;
                     }
                 }
             } else {
@@ -124,6 +461,7 @@
                 if (mappedRole === 'staff') hasStaffRole = true;
                 if (mappedRole === 'student') hasStudentRole = true;
                 if (mappedRole === 'staffAdmin') hasStaffAdminRole = true;
+                if (mappedRole === 'superUser') hasSuperUserRole = true;
             }
             
             // Get account type from field_441
@@ -133,8 +471,34 @@
             // Check if account type contains "RESOURCE" (case-insensitive)
             const isResourceOnly = accountType && accountType.toString().toUpperCase().includes('RESOURCE');
             
-            // PRIORITY: Staff Admin takes precedence, then regular staff, then student
-            if (hasStaffAdminRole) {
+            // PRIORITY: Super User gets role selection modal, then Staff Admin, then regular staff, then student
+            if (hasSuperUserRole) {
+                log('User has super user role - checking for role selection');
+                
+                // Check if user has already selected a role in this session
+                const selectedRole = sessionStorage.getItem('selectedUserRole');
+                if (selectedRole) {
+                    log('Using previously selected role:', selectedRole);
+                    return selectedRole;
+                }
+                
+                // Show role selection modal and return based on available roles
+                const availableRoles = determineAvailableRoles(hasStaffAdminRole, hasStaffRole, hasStudentRole, isResourceOnly);
+                
+                // Show modal immediately and return temporary role
+                setTimeout(() => {
+                    showRoleSelectionModal(availableRoles).then(chosenRole => {
+                        if (chosenRole) {
+                            sessionStorage.setItem('selectedUserRole', chosenRole);
+                            // Reload the page to apply the new role
+                            window.location.reload();
+                        }
+                    });
+                }, 100);
+                
+                // Return super user as default while modal is shown
+                return 'superUser';
+            } else if (hasStaffAdminRole) {
                 log('User has staff admin role');
                 if (isResourceOnly) {
                     log('Detected as staffAdminResource');
@@ -268,6 +632,20 @@
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
+            },
+            superUser: {
+                brand: 'VESPA Super User',
+                brandIcon: 'fa-shield',
+                color: '#2a3c7a', // Dark blue - authoritative and professional for super users
+                accentColor: '#079baa', // Teal accent
+                items: [
+                    { label: 'Upload Manager', icon: 'fa-upload', href: '#upload-manager', scene: 'scene_1212' },
+                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
+                    { label: 'CRM', icon: 'fa-users', href: '#vespa-customers/', scene: 'scene_1226' },
+                    { label: 'Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
+                    { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
+                ]
             }
         };
         
@@ -279,8 +657,17 @@
             log(`Creating header for userType: ${userType}, isResource: ${userType.includes('Resource')}`);
             
             // Determine home page based on user type
-            const homeHref = userType === 'student' ? '#landing-page/' : '#staff-landing-page/';
-            const homeScene = userType === 'student' ? 'scene_1210' : 'scene_1215';
+            let homeHref, homeScene;
+            if (userType === 'student') {
+                homeHref = '#landing-page/';
+                homeScene = 'scene_1210';
+            } else if (userType === 'superUser') {
+                homeHref = '#oversight-page/';
+                homeScene = 'scene_1268';
+            } else {
+                homeHref = '#staff-landing-page/';
+                homeScene = 'scene_1215';
+            }
             const isHomePage = currentScene === homeScene;
             
             // Build navigation items
@@ -699,6 +1086,10 @@
                         background-color: ${navigationConfig.staffAdminResource.color};
                     }
                     
+                    .vespa-general-header.superUser {
+                        background-color: ${navigationConfig.superUser.color};
+                    }
+                    
                     /* Smooth transitions */
                     * {
                         -webkit-font-smoothing: antialiased;
@@ -830,6 +1221,10 @@
                     // Check if this is the logout button
                     if (this.getAttribute('data-logout') === 'true') {
                         log('Logout button clicked');
+                        
+                        // Clear role selection from session storage
+                        sessionStorage.removeItem('selectedUserRole');
+                        log('Cleared role selection from session storage');
                         
                         // FIRST: Navigate to home page immediately
                         log('Navigating to home page first');
