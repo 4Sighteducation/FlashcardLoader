@@ -331,29 +331,40 @@
                 document.head.insertAdjacentHTML('beforeend', modalStyles);
                 document.body.insertAdjacentHTML('beforeend', modalHTML);
                 
-                // Add click handlers
-                const modal = document.getElementById('roleSelectionModal');
-                const roleButtons = modal.querySelectorAll('.role-option.available');
+                // Add small delay to ensure modal is fully rendered
+                setTimeout(() => {
+                    // Add click handlers
+                    const modal = document.getElementById('roleSelectionModal');
+                    const roleButtons = modal.querySelectorAll('.role-option.available');
                 
-                roleButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const selectedRole = button.getAttribute('data-role');
+                    console.log('[General Header] DEBUG - Found role buttons:', roleButtons.length);
+                    
+                    roleButtons.forEach((button, index) => {
+                        console.log('[General Header] DEBUG - Setting up button', index, button.getAttribute('data-role'));
                         
-                        // Clean up
-                        modal.remove();
-                        document.getElementById('roleSelectionModalStyles')?.remove();
-                        
-                        resolve(selectedRole);
+                        button.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            const selectedRole = button.getAttribute('data-role');
+                            console.log('[General Header] DEBUG - Button clicked, selected role:', selectedRole);
+                            
+                            // Clean up
+                            modal.remove();
+                            document.getElementById('roleSelectionModalStyles')?.remove();
+                            
+                            resolve(selectedRole);
+                        });
                     });
-                });
-                
-                // Prevent modal from closing when clicking outside
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                });
+                    
+                    // Prevent modal from closing when clicking outside
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                    });
+                }, 100); // Small delay to ensure DOM is ready
             });
         }
         
