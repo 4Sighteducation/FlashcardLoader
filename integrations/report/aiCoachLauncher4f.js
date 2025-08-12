@@ -1607,7 +1607,24 @@ if (window.aiCoachLauncherInitialized) {
 
         if (show) {
             document.body.classList.add('ai-coach-active');
-            if (toggleButton) toggleButton.textContent = '🙈 Hide AI Coach';
+            if (toggleButton) {
+                // Update button text while preserving the SVG icon structure
+                const buttonSpan = toggleButton.querySelector('span:last-child');
+                if (buttonSpan) {
+                    buttonSpan.textContent = 'Hide Coaching Assistant';
+                } else {
+                    // Fallback if structure is different
+                    toggleButton.innerHTML = `
+                        <span style="display: inline-flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="opacity: 0.9;">
+                                <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"/>
+                                <path d="M12 18L13.09 20.26L16 21L13.09 21.74L12 24L10.91 21.74L8 21L10.91 20.26L12 18Z"/>
+                            </svg>
+                            <span>Hide Coaching Assistant</span>
+                        </span>
+                    `;
+                }
+            }
             logAICoach("AI Coach panel activated.");
             
             // MOVED to fetchAICoachingData: starting rotator is now conditional on fetch proceeding
@@ -1618,8 +1635,25 @@ if (window.aiCoachLauncherInitialized) {
 
         } else {
             document.body.classList.remove('ai-coach-active');
-            if (toggleButton) toggleButton.textContent = '🚀 Activate AI Coach';
-            if (panelContent) panelContent.innerHTML = '<p>Activate the AI Coach to get insights.</p>';
+            if (toggleButton) {
+                // Restore original button text while preserving the SVG icon structure
+                const buttonSpan = toggleButton.querySelector('span:last-child');
+                if (buttonSpan) {
+                    buttonSpan.textContent = 'Student Coaching Assistant';
+                } else {
+                    // Fallback if structure is different
+                    toggleButton.innerHTML = `
+                        <span style="display: inline-flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="opacity: 0.9;">
+                                <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"/>
+                                <path d="M12 18L13.09 20.26L16 21L13.09 21.74L12 24L10.91 21.74L8 21L10.91 20.26L12 18Z"/>
+                            </svg>
+                            <span>Student Coaching Assistant</span>
+                        </span>
+                    `;
+                }
+            }
+            if (panelContent) panelContent.innerHTML = '<p>Activate the Student Coaching Assistant to get insights.</p>';
             logAICoach("AI Coach panel deactivated.");
             stopLoadingMessageRotator(); // Stop rotator when panel is closed
             lastFetchedStudentId = null; 
@@ -1662,6 +1696,12 @@ if (window.aiCoachLauncherInitialized) {
             }
             
             if (event.target && event.target.id === toggleButtonId) {
+                logAICoach("Main toggle button clicked!", { id: event.target.id, isActive: document.body.classList.contains('ai-coach-active') });
+                const isActive = document.body.classList.contains('ai-coach-active');
+                toggleAICoachPanel(!isActive);
+            } else if (event.target && event.target.closest && event.target.closest(`#${toggleButtonId}`)) {
+                // Handle clicks on child elements of the button (like the SVG or span)
+                logAICoach("Click detected on child element of toggle button!", { target: event.target.tagName });
                 const isActive = document.body.classList.contains('ai-coach-active');
                 toggleAICoachPanel(!isActive);
             }
