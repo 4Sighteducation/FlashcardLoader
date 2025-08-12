@@ -18,6 +18,7 @@ if (window.aiCoachLauncherInitialized) {
     let vespaChartInstance = null; // To keep track of the chart instance for updates/destruction
     let currentLLMInsightsForChat = null; // ADDED: To store insights for chat context
     let loadingMessageIntervalId = null; // For the rotating loading messages
+    let lastKnownUrl = ''; // Track URL changes for cleanup
 
     // --- Configuration ---
     const HEROKU_API_BASE_URL = 'https://vespa-coach-c64c795edaa7.herokuapp.com/api/v1'; // MODIFIED for base path
@@ -59,6 +60,13 @@ if (window.aiCoachLauncherInitialized) {
 
     // Function to check if we are on the individual student report view
     function isIndividualReportView() {
+        // First check if we're on the correct scene
+        const currentUrl = window.location.hash;
+        if (!currentUrl.includes('mygroup-vespa-results2')) {
+            logAICoach("Not on the correct page (mygroup-vespa-results2).");
+            return false;
+        }
+        
         const studentNameDiv = document.querySelector('#student-name p'); // More specific selector for the student name paragraph
         const backButton = document.querySelector('a.kn-back-link'); // General Knack back link
         
@@ -108,7 +116,7 @@ if (window.aiCoachLauncherInitialized) {
         }
         toggleAICoachPanel(false); // Ensure panel is closed
         // Optionally, remove the panel from DOM if preferred when navigating away
-        const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId);
+        const panel = document.getElementById(AI_COACH_LAUNCHER_CONFIG?.aiCoachPanelId);
         if (panel && panel.parentNode) {
             panel.parentNode.removeChild(panel);
             logAICoach("Removed AI Coach panel from DOM.");
@@ -123,6 +131,46 @@ if (window.aiCoachLauncherInitialized) {
             logAICoach("Aborted ongoing fetch as UI was cleared (not individual report).");
         }
     }
+    
+    // Global cleanup function that can be called by other systems
+    function globalCleanupAICoach() {
+        logAICoach("Global cleanup called - ensuring all AI Coach elements are removed");
+        clearCoachUI();
+        
+        // Also clean up any orphaned elements that might persist
+        const orphanedButton = document.getElementById('aiCoachLauncherButtonContainer');
+        if (orphanedButton) {
+            orphanedButton.remove();
+            logAICoach("Removed orphaned launcher button");
+        }
+        
+        const orphanedPanel = document.getElementById('aiCoachSlidePanel');
+        if (orphanedPanel) {
+            orphanedPanel.remove();
+            logAICoach("Removed orphaned panel");
+        }
+        
+        // Reset all state variables
+        coachUIInitialized = false;
+        eventListenersAttached = false;
+        lastFetchedStudentId = null;
+        observerLastProcessedStudentId = null;
+        currentlyFetchingStudentId = null;
+        
+        if (currentFetchAbortController) {
+            currentFetchAbortController.abort();
+            currentFetchAbortController = null;
+        }
+        
+        // Disconnect observer if it exists
+        if (coachObserver) {
+            coachObserver.disconnect();
+            coachObserver = null;
+        }
+    }
+    
+    // Expose the cleanup function globally so other scripts can call it
+    window.globalCleanupAICoach = globalCleanupAICoach;
 
     function initializeAICoachLauncher() {
         logAICoach("AICoachLauncher: initializeAICoachLauncher START"); // ADDED LOG
@@ -232,7 +280,7 @@ if (window.aiCoachLauncherInitialized) {
         if (isIndividualReportView()) {
             initializeCoachUI();
         }
-        logAICoach("AICoachLauncher: initializeAICoachLauncher END"); // ADDED LOG
+        logAICoach("AICoachLauncher: initializeAICoachLauncher END with URL monitoring"); // ADDED LOG
     }
 
     function loadExternalStyles() {
@@ -624,9 +672,12 @@ if (window.aiCoachLauncherInitialized) {
                             transition: all 0.3s ease;
                             box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
                         ">
-                    <span style="display: inline-flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 16px;">🤖</span>
-                        <span>AI Coach</span>
+                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="opacity: 0.9;">
+                            <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"/>
+                            <path d="M12 18L13.09 20.26L16 21L13.09 21.74L12 24L10.91 21.74L8 21L10.91 20.26L12 18Z"/>
+                        </svg>
+                        <span>Student Coaching Assistant</span>
                     </span>
                 </button>
                 <button id="aiCoachInfoBtn" 
@@ -1549,18 +1600,24 @@ if (window.aiCoachLauncherInitialized) {
         }
         logAICoach("AICoachLauncher: setupEventListeners - BEFORE document.body.addEventListener"); // ADDED LOG
         document.body.addEventListener('click', function(event) {
-            logAICoach("AICoachLauncher: document.body CLICK DETECTED", { target: event.target }); // ADDED LOG
-
             if (!AI_COACH_LAUNCHER_CONFIG || 
                 !AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId || 
                 !AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId) {
                 // Config might not be ready if an event fires too early, or if script reloaded weirdly.
-                // console.warn("[AICoachLauncher] Event listener fired, but essential config is missing.");
                 return; 
             }
 
             const toggleButtonId = AI_COACH_LAUNCHER_CONFIG.aiCoachToggleButtonId;
             const panelId = AI_COACH_LAUNCHER_CONFIG.aiCoachPanelId;
+            
+            // Only log clicks that are relevant to AI Coach functionality
+            const isRelevantClick = (event.target && event.target.id === toggleButtonId) || 
+                                  (event.target && event.target.classList.contains('ai-coach-close-btn')) ||
+                                  (event.target && event.target.id === 'aiCoachInfoBtn');
+            
+            if (isRelevantClick) {
+                logAICoach("AICoachLauncher: Relevant click detected", { target: event.target.id || event.target.className });
+            }
             
             if (event.target && event.target.id === toggleButtonId) {
                 const isActive = document.body.classList.contains('ai-coach-active');
