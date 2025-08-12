@@ -167,6 +167,12 @@ if (window.aiCoachLauncherInitialized) {
             coachObserver.disconnect();
             coachObserver = null;
         }
+        
+        // Clear URL monitor if it exists
+        if (window._aiCoachUrlMonitor) {
+            clearInterval(window._aiCoachUrlMonitor);
+            window._aiCoachUrlMonitor = null;
+        }
     }
     
     // Expose the cleanup function globally so other scripts can call it
@@ -275,6 +281,42 @@ if (window.aiCoachLauncherInitialized) {
 
         coachObserver = new MutationObserver(observerCallback); // Use the raw, non-debounced one
         coachObserver.observe(targetNode, { childList: true, subtree: true });
+        
+        // Initialize URL tracking
+        lastKnownUrl = window.location.hash;
+        logAICoach("Initial URL tracked:", lastKnownUrl);
+        
+        // Set up URL monitoring to detect navigation away from the target page
+        const urlMonitor = setInterval(() => {
+            const currentUrl = window.location.hash;
+            if (currentUrl !== lastKnownUrl) {
+                logAICoach(`URL changed from ${lastKnownUrl} to ${currentUrl}`);
+                lastKnownUrl = currentUrl;
+                
+                // If we've navigated away from the target page, cleanup
+                if (!currentUrl.includes('mygroup-vespa-results2') && coachUIInitialized) {
+                    logAICoach("Navigated away from target page, cleaning up AI Coach UI");
+                    globalCleanupAICoach();
+                    clearInterval(urlMonitor); // Stop monitoring
+                }
+            }
+        }, 500); // Check every 500ms for faster response
+        
+        // Also hook into Knack's scene change events if available
+        if (typeof Knack !== 'undefined' && Knack.router) {
+            const originalNavigate = Knack.router.navigate;
+            Knack.router.navigate = function(fragment, options) {
+                logAICoach('Knack navigation detected:', fragment);
+                if (fragment && !fragment.includes('mygroup-vespa-results2') && coachUIInitialized) {
+                    logAICoach('Knack navigation away from target, cleaning up');
+                    globalCleanupAICoach();
+                }
+                return originalNavigate.call(this, fragment, options);
+            };
+        }
+        
+        // Store the cleanup interval globally so it can be cleared
+        window._aiCoachUrlMonitor = urlMonitor;
 
         // Initial check in case the page loads directly on an individual report
         if (isIndividualReportView()) {
@@ -626,7 +668,7 @@ if (window.aiCoachLauncherInitialized) {
             buttonContainer.style.cssText = `
                 position: fixed;
                 bottom: 20px;
-                right: 20px;
+                left: 20px;
                 z-index: 1000;
                 display: flex;
                 align-items: center;
