@@ -422,13 +422,18 @@
                 roleText = userRole.toString();
             }
             
-            // Profile mapping - map profile IDs to user types
+            // Profile mapping - map profile IDs to user types (both profile_XX and object_XX formats)
             const profileMapping = {
                 'profile_6': 'student',      // Student profile
                 'profile_7': 'staff',        // Tutor profile
                 'profile_5': 'staffAdmin',   // Staff Admin profile
                 'profile_4': 'student',      // Alternative student profile
-                'profile_8': 'superUser',    // Super User profile
+                'profile_21': 'superUser',   // Super User profile
+                'object_6': 'student',       // Student profile (object format)
+                'object_7': 'staff',         // Tutor profile (object format)
+                'object_5': 'staffAdmin',    // Staff Admin profile (object format)
+                'object_4': 'student',       // Alternative student profile (object format)
+                'object_21': 'superUser',    // Super User profile (object format)
                 // Add more mappings as needed
             };
             
@@ -438,13 +443,25 @@
             let hasStaffAdminRole = false;
             let hasSuperUserRole = false;
             
-            // If field_73 contains multiple roles
-            if (Array.isArray(userAttributes.values?.field_73)) {
-                const allRoles = userAttributes.values.field_73;
-                log('Checking all roles:', allRoles);
+            console.log('[General Header] DEBUG - Raw field_73:', userAttributes.values?.field_73);
+            console.log('[General Header] DEBUG - Raw profile_keys:', userAttributes.values?.profile_keys);
+            console.log('[General Header] DEBUG - Profile mapping check for profile_21:', profileMapping['profile_21']);
+            console.log('[General Header] DEBUG - Profile mapping check for object_21:', profileMapping['object_21']);
+            
+            // Check both field_73 and profile_keys
+            const field73Roles = userAttributes.values?.field_73 ? (Array.isArray(userAttributes.values.field_73) ? userAttributes.values.field_73 : [userAttributes.values.field_73]) : [];
+            const profileKeys = userAttributes.values?.profile_keys ? (Array.isArray(userAttributes.values.profile_keys) ? userAttributes.values.profile_keys : [userAttributes.values.profile_keys]) : [];
+            const allRoles = [...field73Roles, ...profileKeys];
+            
+            log('Checking all roles (field_73 + profile_keys):', allRoles);
+            
+            // If we have roles to check
+            if (allRoles.length > 0) {
                 
                 for (const role of allRoles) {
                     const roleStr = role.toString();
+                    console.log('[General Header] DEBUG - Checking role:', roleStr, 'maps to:', profileMapping[roleStr]);
+                    
                     if (profileMapping[roleStr] === 'staff') {
                         hasStaffRole = true;
                     } else if (profileMapping[roleStr] === 'student') {
@@ -452,16 +469,10 @@
                     } else if (profileMapping[roleStr] === 'staffAdmin') {
                         hasStaffAdminRole = true;
                     } else if (profileMapping[roleStr] === 'superUser') {
+                        console.log('[General Header] DEBUG - Found super user role!');
                         hasSuperUserRole = true;
                     }
                 }
-            } else {
-                // Single role
-                const mappedRole = profileMapping[roleText];
-                if (mappedRole === 'staff') hasStaffRole = true;
-                if (mappedRole === 'student') hasStudentRole = true;
-                if (mappedRole === 'staffAdmin') hasStaffAdminRole = true;
-                if (mappedRole === 'superUser') hasSuperUserRole = true;
             }
             
             // Get account type from field_441
@@ -471,12 +482,24 @@
             // Check if account type contains "RESOURCE" (case-insensitive)
             const isResourceOnly = accountType && accountType.toString().toUpperCase().includes('RESOURCE');
             
+            console.log('[General Header] DEBUG - Final role detection results:', {
+                hasStaffRole,
+                hasStudentRole,
+                hasStaffAdminRole,
+                hasSuperUserRole,
+                accountType,
+                isResourceOnly
+            });
+            
             // PRIORITY: Super User gets role selection modal, then Staff Admin, then regular staff, then student
             if (hasSuperUserRole) {
+                console.log('[General Header] DEBUG - Super user role detected!');
                 log('User has super user role - checking for role selection');
                 
                 // Check if user has already selected a role in this session
                 const selectedRole = sessionStorage.getItem('selectedUserRole');
+                console.log('[General Header] DEBUG - Selected role from session:', selectedRole);
+                
                 if (selectedRole) {
                     log('Using previously selected role:', selectedRole);
                     return selectedRole;
