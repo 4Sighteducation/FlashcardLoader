@@ -82,9 +82,8 @@ console.log('[Universal Redirect] Script loaded!');
                 hasStaffAdminRole,
                 hasStaffRole,
                 hasStudentRole,
-                userRoles,
-                checkingForProfile8: userRoles.includes('profile_8'),
-                actualRoleValues: userRoles.map(role => `"${role}"`)
+                field73Roles,
+                profileKeys
             });
             
             log('Role analysis:', {
@@ -92,7 +91,8 @@ console.log('[Universal Redirect] Script loaded!');
                 hasStaffAdminRole,
                 hasStaffRole,
                 hasStudentRole,
-                userRoles
+                field73Roles,
+                profileKeys
             });
         } else {
             console.log('[Universal Redirect] DEBUG - No field_73 found in user.values');
