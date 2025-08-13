@@ -11,13 +11,18 @@
     
     log('🎨 Vue Table Safe Enhancer Initializing...');
     
-    // Configuration
+    // Configuration - dynamically detect which view to target
     const CONFIG = {
-        targetView: '#view_2772',
+        // Check if we have a config from the loader, otherwise default to view_2772
+        targetView: window.DYNAMIC_STAFF_TABLE_1014_CONFIG?.targetView || 
+                   (document.querySelector('#view_2772') ? '#view_2772' : '#view_2776'),
         checkInterval: 500,
         maxAttempts: 30,  // Increased attempts
         initialDelay: 2000  // Add 2 second initial delay
+        // enableUserFiltering: false  // Disabled - keeping separate pages for different user types
     };
+    
+    log('Target view configured as:', CONFIG.targetView);
     
     // Strip HTML tags from text - more aggressive
     function stripHtmlTags(html) {
@@ -86,7 +91,7 @@
         if (document.getElementById('vue-table-safe-styles')) return;
         
         // First, analyze the table to understand column positions
-        const table = document.querySelector('#view_2772 table');
+        const table = document.querySelector(`${CONFIG.targetView} table`);
         if (!table) {
             log('Table not found for style analysis');
             return;
@@ -107,8 +112,8 @@
         // Narrow columns (Group, Year Group)
         if (columnInfo['group'] !== undefined) {
             columnStyles += `
-                #view_2772 th:nth-child(${columnInfo['group'] + 1}),
-                #view_2772 td:nth-child(${columnInfo['group'] + 1}) {
+                ${CONFIG.targetView} th:nth-child(${columnInfo['group'] + 1}),
+                ${CONFIG.targetView} td:nth-child(${columnInfo['group'] + 1}) {
                     width: 80px !important;
                     max-width: 80px !important;
                 }
@@ -117,8 +122,8 @@
         
         if (columnInfo['year group'] !== undefined) {
             columnStyles += `
-                #view_2772 th:nth-child(${columnInfo['year group'] + 1}),
-                #view_2772 td:nth-child(${columnInfo['year group'] + 1}) {
+                ${CONFIG.targetView} th:nth-child(${columnInfo['year group'] + 1}),
+                ${CONFIG.targetView} td:nth-child(${columnInfo['year group'] + 1}) {
                     width: 80px !important;
                     max-width: 80px !important;
                 }
@@ -129,8 +134,8 @@
         ['v', 'e', 's', 'p', 'a', 'o'].forEach(letter => {
             if (columnInfo[letter] !== undefined) {
                 columnStyles += `
-                    #view_2772 th:nth-child(${columnInfo[letter] + 1}),
-                    #view_2772 td:nth-child(${columnInfo[letter] + 1}) {
+                    ${CONFIG.targetView} th:nth-child(${columnInfo[letter] + 1}),
+                    ${CONFIG.targetView} td:nth-child(${columnInfo[letter] + 1}) {
                         width: 40px !important;
                         max-width: 40px !important;
                         text-align: center !important;
@@ -142,10 +147,10 @@
         // Text columns (Report Response, Action Plan) - simpler styling without box effect
         if (columnInfo['report response'] !== undefined) {
             columnStyles += `
-                #view_2772 th:nth-child(${columnInfo['report response'] + 1}) {
+                ${CONFIG.targetView} th:nth-child(${columnInfo['report response'] + 1}) {
                     min-width: 200px !important;
                 }
-                #view_2772 td:nth-child(${columnInfo['report response'] + 1}) {
+                ${CONFIG.targetView} td:nth-child(${columnInfo['report response'] + 1}) {
                     min-width: 200px !important;
                     max-width: 300px !important;
                     white-space: normal !important;
@@ -158,7 +163,7 @@
                     cursor: pointer !important;
                     vertical-align: top !important;
                 }
-                #view_2772 td:nth-child(${columnInfo['report response'] + 1}):hover {
+                ${CONFIG.targetView} td:nth-child(${columnInfo['report response'] + 1}):hover {
                     background: rgba(7, 155, 170, 0.05) !important;
                 }
             `;
@@ -166,10 +171,10 @@
         
         if (columnInfo['action plan'] !== undefined) {
             columnStyles += `
-                #view_2772 th:nth-child(${columnInfo['action plan'] + 1}) {
+                ${CONFIG.targetView} th:nth-child(${columnInfo['action plan'] + 1}) {
                     min-width: 200px !important;
                 }
-                #view_2772 td:nth-child(${columnInfo['action plan'] + 1}) {
+                ${CONFIG.targetView} td:nth-child(${columnInfo['action plan'] + 1}) {
                     min-width: 200px !important;
                     max-width: 300px !important;
                     white-space: normal !important;
@@ -182,7 +187,7 @@
                     cursor: pointer !important;
                     vertical-align: top !important;
                 }
-                #view_2772 td:nth-child(${columnInfo['action plan'] + 1}):hover {
+                ${CONFIG.targetView} td:nth-child(${columnInfo['action plan'] + 1}):hover {
                     background: rgba(7, 155, 170, 0.05) !important;
                 }
             `;
@@ -191,13 +196,13 @@
         const styles = `
             <style id="vue-table-safe-styles">
                 /* Table container */
-                #view_2772 .kn-rich_text__content {
+                ${CONFIG.targetView} .kn-rich_text__content {
                     padding: 0 !important;
                     overflow-x: auto !important;
                 }
                 
                 /* Table base styles */
-                #view_2772 table {
+                ${CONFIG.targetView} table {
                     width: 100% !important;
                     table-layout: auto !important;
                     border-collapse: separate !important;
@@ -209,7 +214,7 @@
                 }
                 
                 /* Headers */
-                #view_2772 thead th {
+                ${CONFIG.targetView} thead th {
                     background: linear-gradient(135deg, #079baa 0%, #00b8d4 100%) !important;
                     color: white !important;
                     padding: 12px 8px !important;
@@ -224,19 +229,19 @@
                 }
                 
                 /* Rows */
-                #view_2772 tbody tr {
+                ${CONFIG.targetView} tbody tr {
                     transition: all 0.2s ease !important;
                     border-bottom: 1px solid #f0f0f0 !important;
                 }
                 
-                #view_2772 tbody tr:hover {
+                ${CONFIG.targetView} tbody tr:hover {
                     background-color: #f0f8ff !important;
                     transform: translateX(2px) !important;
                     box-shadow: 0 2px 8px rgba(7, 155, 170, 0.1) !important;
                 }
                 
                 /* Cells */
-                #view_2772 td {
+                ${CONFIG.targetView} td {
                     padding: 12px 8px !important;
                     color: #333 !important;
                     font-size: 14px !important;
@@ -245,7 +250,7 @@
                 }
                 
                 /* Student name styling */
-                #view_2772 td:first-child {
+                ${CONFIG.targetView} td:first-child {
                     font-weight: 600 !important;
                     color: #23356f !important;
                 }
@@ -254,7 +259,7 @@
                 ${columnStyles}
                 
                 /* Report buttons */
-                #view_2772 button {
+                ${CONFIG.targetView} button {
                     background: linear-gradient(135deg, #079baa 0%, #00e5db 100%) !important;
                     color: white !important;
                     border: none !important;
@@ -269,35 +274,35 @@
                     box-shadow: 0 2px 8px rgba(7, 155, 170, 0.2) !important;
                 }
                 
-                #view_2772 button:hover {
+                ${CONFIG.targetView} button:hover {
                     transform: translateY(-2px) !important;
                     box-shadow: 0 4px 12px rgba(7, 155, 170, 0.3) !important;
                 }
                 
                 /* RAG Score Background Colors - Applied via JavaScript */
-                #view_2772 td.score-null {
+                ${CONFIG.targetView} td.score-null {
                     background: transparent !important;
                 }
                 
-                #view_2772 td.score-low {
+                ${CONFIG.targetView} td.score-low {
                     background: #fee2e2 !important; /* Light red for 1-3 */
                     color: #991b1b !important;
                     font-weight: 600 !important;
                 }
                 
-                #view_2772 td.score-medium {
+                ${CONFIG.targetView} td.score-medium {
                     background: #fed7aa !important; /* Light orange for 4-5 */
                     color: #9a3412 !important;
                     font-weight: 600 !important;
                 }
                 
-                #view_2772 td.score-good {
+                ${CONFIG.targetView} td.score-good {
                     background: #bbf7d0 !important; /* Light green for 6-7 */
                     color: #14532d !important;
                     font-weight: 600 !important;
                 }
                 
-                #view_2772 td.score-high {
+                ${CONFIG.targetView} td.score-high {
                     background: #86efac !important; /* Darker green for 8-10 */
                     color: #14532d !important;
                     font-weight: 700 !important;
@@ -398,13 +403,13 @@
     // Update filter placeholders
     function updateFilterPlaceholders() {
         // Find filter inputs
-        const filterInputs = document.querySelectorAll('#view_2772 input[placeholder*="FILTER"]');
+        const filterInputs = document.querySelectorAll(`${CONFIG.targetView} input[placeholder*="FILTER"]`);
         filterInputs.forEach(input => {
             input.placeholder = 'Filter';
         });
         
         // Also check for dropdown filters
-        const filterDropdowns = document.querySelectorAll('#view_2772 .p-dropdown-label');
+        const filterDropdowns = document.querySelectorAll(`${CONFIG.targetView} .p-dropdown-label`);
         filterDropdowns.forEach(dropdown => {
             if (dropdown.textContent.includes('FILTER')) {
                 dropdown.textContent = 'Filter';
@@ -531,6 +536,116 @@
         log('Text cell handlers added');
     }
     
+    // Filter table rows based on user connections
+    // DISABLED: Keeping separate pages for different user types due to Vue app limitations
+    function filterTableByUserConnections(table) {
+        return; // Disabled - Vue app only works for staff admins
+        
+        /* Original filtering code preserved below for future reference
+        if (!CONFIG.enableUserFiltering) return;
+        
+        log('Checking if user filtering is needed...');
+        
+        // Get current user
+        const user = Knack.getUserAttributes();
+        if (!user) {
+            log('No user found, skipping filtering');
+            return;
+        }
+        
+        // Check user roles
+        const roles = user.values?.field_73 || user.field_73 || [];
+        const profileKeys = user.values?.profile_keys || user.profile_keys || [];
+        const allRoles = [...(Array.isArray(roles) ? roles : [roles]), 
+                         ...(Array.isArray(profileKeys) ? profileKeys : [profileKeys])];
+        
+        log('User roles:', allRoles);
+        
+        // Determine if user should see all records
+        const isStaffAdmin = allRoles.includes('profile_5');
+        const isSuperUser = allRoles.includes('profile_21');
+        const isTutor = allRoles.includes('profile_7');
+        
+        if (isStaffAdmin || isSuperUser) {
+            log('Staff admin or super user detected - showing all records');
+            return;
+        }
+        
+        if (!isTutor) {
+            log('Not a tutor - no filtering rules defined yet');
+            return;
+        }
+        
+        // For tutors, we need to filter
+        log('Tutor detected - will filter records based on connections');
+        
+        // Get tutor's email (this is how they're connected in field_145)
+        const tutorEmail = user.email;
+        log('Tutor email:', tutorEmail);
+        
+        // We need to check each row to see if this tutor is connected
+        const rows = table.querySelectorAll('tbody tr');
+        let hiddenCount = 0;
+        
+        rows.forEach((row, index) => {
+            // Try to find connection data in the row
+            // This is tricky because we need to know which column has the tutor connections
+            // For now, let's log what we find
+            
+            const cells = row.querySelectorAll('td');
+            
+            // Log first row structure to understand the data
+            if (index === 0) {
+                log('First row structure:');
+                cells.forEach((cell, cellIndex) => {
+                    const text = cell.textContent.trim();
+                    if (text.length > 0 && text.length < 100) {
+                        log(`  Cell ${cellIndex}: ${text.substring(0, 50)}`);
+                    }
+                });
+            }
+            
+            // For now, let's check if the tutor's name or email appears anywhere in the row
+            const rowText = row.textContent.toLowerCase();
+            const tutorName = user.name?.toLowerCase() || '';
+            const tutorEmailLower = tutorEmail.toLowerCase();
+            
+            // Check if this student is connected to the tutor
+            // This is a simplified check - we'd need to know the exact column structure
+            const isConnected = rowText.includes(tutorEmailLower) || 
+                               (tutorName && rowText.includes(tutorName));
+            
+            if (!isConnected) {
+                // Hide rows that aren't connected to this tutor
+                row.style.display = 'none';
+                hiddenCount++;
+            }
+        });
+        
+        log(`Filtered table: Hidden ${hiddenCount} of ${rows.length} rows`);
+        
+        // Add a notice about filtering
+        if (hiddenCount > 0) {
+            const notice = document.createElement('div');
+            notice.className = 'filter-notice';
+            notice.style.cssText = `
+                padding: 10px;
+                background: #079baa;
+                color: white;
+                margin-bottom: 10px;
+                border-radius: 6px;
+                font-size: 14px;
+            `;
+            notice.textContent = `Showing only students connected to you (${rows.length - hiddenCount} of ${rows.length} total)`;
+            
+            const tableContainer = table.parentElement;
+            if (tableContainer && !tableContainer.querySelector('.filter-notice')) {
+                tableContainer.insertBefore(notice, table);
+            }
+        }
+        */
+    }
+    
     // Apply RAG rating colors to VESPAO score cells
     function applyScoreRAGRating(table) {
         // Find VESPAO column indices
@@ -607,6 +722,9 @@
                 // Apply RAG rating to score cells
                 applyScoreRAGRating(table);
                 
+                // Filter table based on user connections (disabled - using separate pages)
+                // filterTableByUserConnections(table);
+                
                 // Watch for table updates
                 const observer = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
@@ -618,6 +736,7 @@
                                     addTextCellHandlers(updatedTable);
                                     updateFilterPlaceholders();
                                     applyScoreRAGRating(updatedTable);
+                                    filterTableByUserConnections(updatedTable);
                                 }
                             }, 100);
                         }
@@ -659,11 +778,11 @@
         initAttempts++;
         
         // Check if the Vue app exists (look for Vue-specific attributes)
-        const vueApp = document.querySelector('#view_2772 [data-v-app], #view_2772 .p-datatable, #view_2772 table');
+        const vueApp = document.querySelector(`${CONFIG.targetView} [data-v-app], ${CONFIG.targetView} .p-datatable, ${CONFIG.targetView} table`);
         
         if (vueApp) {
             // Check if there's an error state
-            const hasError = document.querySelector('#view_2772 .error, #view_2772 .exception');
+            const hasError = document.querySelector(`${CONFIG.targetView} .error, ${CONFIG.targetView} .exception`);
             if (hasError) {
                 log('⚠️ Vue app has errors, waiting...');
                 if (initAttempts >= CONFIG.maxAttempts) {
@@ -680,7 +799,7 @@
             
             // Also try after a delay as fallback
             setTimeout(() => {
-                const table = document.querySelector('#view_2772 table');
+                const table = document.querySelector(`${CONFIG.targetView} table`);
                 if (table && !document.getElementById('vue-table-safe-styles')) {
                     log('Fallback enhancement triggered');
                     enhanceVueTable();
