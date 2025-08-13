@@ -1417,9 +1417,9 @@
                 return;
             }
             
-            // Inject header immediately for scene_1014, with delay for others
-            if (currentScene === 'scene_1014') {
-                // For scene_1014, inject immediately as we have loading screen
+            // Inject header immediately for scenes with loading screens, with delay for others
+            if (currentScene === 'scene_1014' || currentScene === 'scene_1095') {
+                // For scenes with loading screen, inject immediately
                 injectHeader();
             } else {
                 // For other scenes, slight delay to allow other apps to load
