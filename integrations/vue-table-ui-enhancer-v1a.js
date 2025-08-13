@@ -4,6 +4,18 @@
 (function() {
     'use strict';
     
+    // IMMEDIATE HIDE - Execute before anything else to prevent flash
+    const immediateHideStyle = document.createElement('style');
+    immediateHideStyle.id = 'vue-table-immediate-hide';
+    immediateHideStyle.textContent = `
+        /* Immediately hide both table views to prevent flash */
+        #view_2772, #view_2776 {
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+    `;
+    document.head.appendChild(immediateHideStyle);
+    
     const DEBUG = true;
     const log = (msg, data) => {
         if (DEBUG) console.log(`[VueTableSafe] ${msg}`, data || '');
@@ -38,6 +50,24 @@
         
         // Clean up extra whitespace
         return text.replace(/\s+/g, ' ').trim();
+    }
+    
+    // Get first sentence from text
+    function getFirstSentence(text) {
+        if (!text) return '';
+        
+        // Find the first sentence-ending punctuation
+        const match = text.match(/^[^.!?]+[.!?]/);
+        if (match) {
+            return match[0];
+        }
+        
+        // If no sentence ending found, take first 80 characters
+        if (text.length > 80) {
+            return text.substring(0, 80) + '...';
+        }
+        
+        return text;
     }
     
     // Create modal HTML
@@ -144,27 +174,41 @@
             }
         });
         
-        // Text columns (Report Response, Action Plan) - simpler styling without box effect
+        // Text columns (Report Response, Action Plan) - with color indicators
         if (columnInfo['report response'] !== undefined) {
             columnStyles += `
                 ${CONFIG.targetView} th:nth-child(${columnInfo['report response'] + 1}) {
-                    min-width: 200px !important;
+                    min-width: 220px !important;
                 }
                 ${CONFIG.targetView} td:nth-child(${columnInfo['report response'] + 1}) {
-                    min-width: 200px !important;
-                    max-width: 300px !important;
-                    white-space: normal !important;
-                    word-wrap: break-word !important;
-                    overflow-wrap: break-word !important;
-                    line-height: 1.3 !important;
+                    min-width: 220px !important;
+                    max-width: 320px !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    line-height: 1.5 !important;
                     font-size: 13px !important;
-                    color: #333 !important;
-                    padding: 12px 8px !important;
+                    padding: 8px 12px !important;
                     cursor: pointer !important;
-                    vertical-align: top !important;
+                    vertical-align: middle !important;
+                    position: relative !important;
+                    border-left: 4px solid transparent !important;
+                    transition: all 0.2s ease !important;
+                }
+                ${CONFIG.targetView} td:nth-child(${columnInfo['report response'] + 1}).has-content {
+                    border-left-color: #10b981 !important;
+                    background: rgba(16, 185, 129, 0.04) !important;
+                    color: #065f46 !important;
+                }
+                ${CONFIG.targetView} td:nth-child(${columnInfo['report response'] + 1}).no-content {
+                    border-left-color: #ef4444 !important;
+                    background: rgba(239, 68, 68, 0.04) !important;
+                    color: #991b1b !important;
+                    font-style: italic !important;
                 }
                 ${CONFIG.targetView} td:nth-child(${columnInfo['report response'] + 1}):hover {
-                    background: rgba(7, 155, 170, 0.05) !important;
+                    background: rgba(7, 155, 170, 0.08) !important;
+                    transform: translateX(2px) !important;
                 }
             `;
         }
@@ -172,36 +216,158 @@
         if (columnInfo['action plan'] !== undefined) {
             columnStyles += `
                 ${CONFIG.targetView} th:nth-child(${columnInfo['action plan'] + 1}) {
-                    min-width: 200px !important;
+                    min-width: 220px !important;
                 }
                 ${CONFIG.targetView} td:nth-child(${columnInfo['action plan'] + 1}) {
-                    min-width: 200px !important;
-                    max-width: 300px !important;
-                    white-space: normal !important;
-                    word-wrap: break-word !important;
-                    overflow-wrap: break-word !important;
-                    line-height: 1.3 !important;
+                    min-width: 220px !important;
+                    max-width: 320px !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    line-height: 1.5 !important;
                     font-size: 13px !important;
-                    color: #333 !important;
-                    padding: 12px 8px !important;
+                    padding: 8px 12px !important;
                     cursor: pointer !important;
-                    vertical-align: top !important;
+                    vertical-align: middle !important;
+                    position: relative !important;
+                    border-left: 4px solid transparent !important;
+                    transition: all 0.2s ease !important;
+                }
+                ${CONFIG.targetView} td:nth-child(${columnInfo['action plan'] + 1}).has-content {
+                    border-left-color: #10b981 !important;
+                    background: rgba(16, 185, 129, 0.04) !important;
+                    color: #065f46 !important;
+                }
+                ${CONFIG.targetView} td:nth-child(${columnInfo['action plan'] + 1}).no-content {
+                    border-left-color: #ef4444 !important;
+                    background: rgba(239, 68, 68, 0.04) !important;
+                    color: #991b1b !important;
+                    font-style: italic !important;
                 }
                 ${CONFIG.targetView} td:nth-child(${columnInfo['action plan'] + 1}):hover {
-                    background: rgba(7, 155, 170, 0.05) !important;
+                    background: rgba(7, 155, 170, 0.08) !important;
+                    transform: translateX(2px) !important;
                 }
             `;
         }
         
         const styles = `
             <style id="vue-table-safe-styles">
+                /* Enhanced title styling */
+                ${CONFIG.targetView} .kn-title h1,
+                ${CONFIG.targetView} .kn-title h2,
+                ${CONFIG.targetView} .view-header h1,
+                ${CONFIG.targetView} .view-header h2 {
+                    text-transform: uppercase !important;
+                    letter-spacing: 2px !important;
+                    font-weight: 700 !important;
+                    color: #2a3c7a !important;
+                    font-size: 24px !important;
+                    margin-bottom: 20px !important;
+                    text-align: center !important;
+                    position: relative !important;
+                    padding-bottom: 15px !important;
+                }
+                
+                ${CONFIG.targetView} .kn-title h1:after,
+                ${CONFIG.targetView} .kn-title h2:after,
+                ${CONFIG.targetView} .view-header h1:after,
+                ${CONFIG.targetView} .view-header h2:after {
+                    content: '' !important;
+                    position: absolute !important;
+                    bottom: 0 !important;
+                    left: 50% !important;
+                    transform: translateX(-50%) !important;
+                    width: 80px !important;
+                    height: 3px !important;
+                    background: linear-gradient(90deg, #079baa 0%, #00e5db 100%) !important;
+                    border-radius: 2px !important;
+                }
+                
+                /* Info section for cycle filters */
+                .cycle-filter-info {
+                    background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+                    border: 1px solid #5eead4;
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin: 20px auto;
+                    max-width: 900px;
+                    box-shadow: 0 2px 10px rgba(94, 234, 212, 0.1);
+                }
+                
+                .cycle-filter-info h3 {
+                    color: #0f766e;
+                    margin: 0 0 12px 0;
+                    font-size: 18px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                
+                .cycle-filter-info h3::before {
+                    content: 'ℹ️';
+                    font-size: 20px;
+                }
+                
+                .cycle-filter-info p {
+                    color: #134e4a;
+                    margin: 0 0 10px 0;
+                    line-height: 1.6;
+                    font-size: 14px;
+                }
+                
+                .cycle-filter-info ul {
+                    margin: 10px 0 0 20px;
+                    padding: 0;
+                    list-style: none;
+                }
+                
+                .cycle-filter-info li {
+                    color: #134e4a;
+                    padding: 5px 0;
+                    position: relative;
+                    padding-left: 25px;
+                    font-size: 14px;
+                }
+                
+                .cycle-filter-info li::before {
+                    content: '▸';
+                    position: absolute;
+                    left: 0;
+                    color: #10b981;
+                    font-weight: bold;
+                }
+                
+                /* Fix table positioning - ensure it stays in place */
+                ${CONFIG.targetView} {
+                    min-height: 600px !important;
+                    position: relative !important;
+                }
+                
+                /* Prevent table from jumping when filtering */
+                ${CONFIG.targetView} .p-datatable-wrapper,
+                ${CONFIG.targetView} [data-v-app] {
+                    min-height: 500px !important;
+                    transition: none !important;
+                }
+                
+                ${CONFIG.targetView} .p-paginator {
+                    position: relative !important;
+                    background: white !important;
+                    z-index: 5 !important;
+                    padding: 10px !important;
+                    border-top: 1px solid #e5e7eb !important;
+                    margin-top: 20px !important;
+                }
+                
                 /* Table container */
                 ${CONFIG.targetView} .kn-rich_text__content {
                     padding: 0 !important;
                     overflow-x: auto !important;
                 }
                 
-                /* Table base styles */
+                /* Table base styles with mobile responsiveness */
                 ${CONFIG.targetView} table {
                     width: 100% !important;
                     table-layout: auto !important;
@@ -211,6 +377,71 @@
                     overflow: hidden !important;
                     box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
                     background: white !important;
+                }
+                
+                /* Mobile responsive wrapper */
+                @media (max-width: 768px) {
+                    ${CONFIG.targetView} {
+                        padding: 10px !important;
+                    }
+                    
+                    ${CONFIG.targetView} table {
+                        font-size: 12px !important;
+                        border-radius: 8px !important;
+                    }
+                    
+                    ${CONFIG.targetView} th,
+                    ${CONFIG.targetView} td {
+                        padding: 8px 4px !important;
+                        font-size: 11px !important;
+                    }
+                    
+                    ${CONFIG.targetView} .kn-title h1,
+                    ${CONFIG.targetView} .kn-title h2 {
+                        font-size: 18px !important;
+                        letter-spacing: 1px !important;
+                    }
+                    
+                    .cycle-filter-info {
+                        margin: 10px !important;
+                        padding: 15px !important;
+                    }
+                    
+                    .cycle-filter-info h3 {
+                        font-size: 16px !important;
+                    }
+                    
+                    .cycle-filter-info p,
+                    .cycle-filter-info li {
+                        font-size: 12px !important;
+                    }
+                    
+                    /* Hide less important columns on mobile */
+                    ${CONFIG.targetView} th:nth-child(n+8),
+                    ${CONFIG.targetView} td:nth-child(n+8) {
+                        display: none !important;
+                    }
+                    
+                    /* Make buttons smaller on mobile */
+                    ${CONFIG.targetView} button {
+                        padding: 4px 8px !important;
+                        font-size: 10px !important;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    /* Even more aggressive mobile optimization */
+                    ${CONFIG.targetView} th,
+                    ${CONFIG.targetView} td {
+                        padding: 6px 2px !important;
+                        font-size: 10px !important;
+                    }
+                    
+                    /* Show only essential columns */
+                    ${CONFIG.targetView} th:nth-child(n+6),
+                    ${CONFIG.targetView} td:nth-child(n+6) {
+                        display: none !important;
+                    }
                 }
                 
                 /* Headers */
@@ -258,7 +489,7 @@
                 /* Adaptive column widths */
                 ${columnStyles}
                 
-                /* Report buttons */
+                /* Report buttons and filter buttons */
                 ${CONFIG.targetView} button {
                     background: linear-gradient(135deg, #079baa 0%, #00e5db 100%) !important;
                     color: white !important;
@@ -277,6 +508,41 @@
                 ${CONFIG.targetView} button:hover {
                     transform: translateY(-2px) !important;
                     box-shadow: 0 4px 12px rgba(7, 155, 170, 0.3) !important;
+                }
+                
+                /* Style filter/pagination buttons specifically */
+                ${CONFIG.targetView} .p-paginator button,
+                ${CONFIG.targetView} .p-button {
+                    min-width: 36px !important;
+                    height: 36px !important;
+                    padding: 0 !important;
+                    margin: 0 2px !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                }
+                
+                ${CONFIG.targetView} .p-paginator .p-button.p-highlight {
+                    background: linear-gradient(135deg, #2a3c7a 0%, #079baa 100%) !important;
+                    box-shadow: 0 2px 10px rgba(42, 60, 122, 0.3) !important;
+                }
+                
+                /* Filter dropdowns styling */
+                ${CONFIG.targetView} .p-dropdown {
+                    border: 1px solid #d1d5db !important;
+                    border-radius: 6px !important;
+                    transition: all 0.2s ease !important;
+                }
+                
+                ${CONFIG.targetView} .p-dropdown:hover {
+                    border-color: #079baa !important;
+                    box-shadow: 0 0 0 2px rgba(7, 155, 170, 0.1) !important;
+                }
+                
+                ${CONFIG.targetView} .p-dropdown-label {
+                    padding: 8px 12px !important;
+                    font-size: 14px !important;
+                    color: #374151 !important;
                 }
                 
                 /* RAG Score Background Colors - Applied via JavaScript */
@@ -419,6 +685,61 @@
         log('Filter placeholders updated');
     }
     
+    // Add info section about cycle filters
+    function addCycleFilterInfo() {
+        // Check if info section already exists
+        if (document.querySelector('.cycle-filter-info')) {
+            return;
+        }
+        
+        // Find the table or view container
+        const viewContainer = document.querySelector(CONFIG.targetView);
+        if (!viewContainer) {
+            log('View container not found for cycle filter info');
+            return;
+        }
+        
+        // Create the info section HTML
+        const infoHTML = `
+            <div class="cycle-filter-info">
+                <h3>Understanding Cycle Filters</h3>
+                <p>The numbered tabs above filter students based on their questionnaire completion status:</p>
+                <ul>
+                    <li><strong>Tab "1":</strong> Shows ALL students (including those who haven't completed any questionnaires)</li>
+                    <li><strong>Tab "2":</strong> Shows ONLY students who have completed the Cycle 2 questionnaire</li>
+                    <li><strong>Tab "3":</strong> Shows ONLY students who have completed the Cycle 3 questionnaire</li>
+                    <li><strong>Tab "4+":</strong> Each subsequent tab shows students who have completed that specific cycle</li>
+                </ul>
+                <p><em>Note: Students must have completed the specific cycle's questionnaire to appear when that filter is selected.</em></p>
+            </div>
+        `;
+        
+        // Find the best place to insert it (after filters/pagination if visible, otherwise before table)
+        const paginatorElement = viewContainer.querySelector('.p-paginator');
+        const tableElement = viewContainer.querySelector('table');
+        const titleElement = viewContainer.querySelector('.kn-title, .view-header, h1, h2');
+        
+        // Try to insert after pagination/filter buttons if they exist at the top
+        if (paginatorElement && paginatorElement.offsetTop < 200) {
+            // Paginator is at the top (filters)
+            paginatorElement.insertAdjacentHTML('afterend', infoHTML);
+            log('Cycle filter info added after filters');
+        } else if (tableElement) {
+            // Insert before the table's parent container
+            const tableParent = tableElement.closest('.p-datatable, .kn-table, [data-v-app]') || tableElement.parentElement;
+            tableParent.insertAdjacentHTML('beforebegin', infoHTML);
+            log('Cycle filter info added before table');
+        } else if (titleElement) {
+            // Insert after the title
+            titleElement.insertAdjacentHTML('afterend', infoHTML);
+            log('Cycle filter info added after title');
+        } else {
+            // Insert at the beginning of the view
+            viewContainer.insertAdjacentHTML('afterbegin', infoHTML);
+            log('Cycle filter info added at beginning of view');
+        }
+    }
+    
     // Add click handlers to text cells WITHOUT moving them
     function addTextCellHandlers(table) {
         const headers = table.querySelectorAll('thead th');
@@ -470,43 +791,31 @@
             if (responseColumnIndex >= 0 && cells[responseColumnIndex]) {
                 const cell = cells[responseColumnIndex];
                 const originalText = cell.innerHTML;
-                let cleanText = stripHtmlTags(originalText);
+                const cleanText = stripHtmlTags(originalText);
                 
-                // Check if this cell actually contains Action Plan text that was misplaced
-                if (cleanText.toLowerCase().includes('goal') || cleanText.toLowerCase().includes('action plan')) {
-                    // This is actually Action Plan content, move it to the right column if possible
-                    if (actionColumnIndex >= 0 && cells[actionColumnIndex]) {
-                        const actionCell = cells[actionColumnIndex];
-                        if (!actionCell.textContent.trim()) {
-                            // Action Plan cell is empty, move the content there
-                            actionCell.textContent = cleanText;
-                            cell.textContent = ''; // Clear from wrong column
-                            
-                            // Add click handler to the correct cell
-                            actionCell.title = 'Click to view full text';
-                            actionCell.style.cursor = 'pointer';
-                            actionCell.onclick = () => {
-                                const studentName = cells[0] ? cells[0].textContent : 'Student';
-                                showModal(`${studentName} - Action Plan`, cleanText);
-                            };
-                            return; // Skip processing this cell further
-                        }
-                    }
-                }
-                
-                // Process as Report Response
-                if (originalText !== cleanText && cleanText.trim()) {
-                    cell.textContent = cleanText;
-                }
+                // Clear existing classes
+                cell.classList.remove('has-content', 'no-content');
                 
                 if (cleanText.trim()) {
-                    cell.title = 'Click to view full text';
-                    cell.style.cursor = 'pointer';
+                    // Has content - show first sentence
+                    const truncated = getFirstSentence(cleanText);
+                    cell.textContent = truncated;
+                    cell.classList.add('has-content');
+                    cell.title = 'Click to read full response';
+                    
+                    // Store full text for modal
+                    cell.dataset.fullText = cleanText;
                     
                     cell.onclick = () => {
                         const studentName = cells[0] ? cells[0].textContent : 'Student';
                         showModal(`${studentName} - Report Response`, cleanText);
                     };
+                } else {
+                    // No content - show indicator
+                    cell.textContent = 'No response added';
+                    cell.classList.add('no-content');
+                    cell.title = 'No response provided';
+                    cell.onclick = null;
                 }
             }
             
@@ -516,19 +825,29 @@
                 const originalText = cell.innerHTML;
                 const cleanText = stripHtmlTags(originalText);
                 
-                // Only process if there's content and we haven't already moved content here
-                if (cleanText.trim() && !cell.onclick) {
-                    if (originalText !== cleanText) {
-                        cell.textContent = cleanText;
-                    }
+                // Clear existing classes
+                cell.classList.remove('has-content', 'no-content');
+                
+                if (cleanText.trim()) {
+                    // Has content - show first sentence
+                    const truncated = getFirstSentence(cleanText);
+                    cell.textContent = truncated;
+                    cell.classList.add('has-content');
+                    cell.title = 'Click to read full action plan';
                     
-                    cell.title = 'Click to view full text';
-                    cell.style.cursor = 'pointer';
+                    // Store full text for modal
+                    cell.dataset.fullText = cleanText;
                     
                     cell.onclick = () => {
                         const studentName = cells[0] ? cells[0].textContent : 'Student';
                         showModal(`${studentName} - Action Plan`, cleanText);
                     };
+                } else {
+                    // No content - show indicator
+                    cell.textContent = 'No action plan added';
+                    cell.classList.add('no-content');
+                    cell.title = 'No action plan provided';
+                    cell.onclick = null;
                 }
             }
         });
@@ -713,6 +1032,11 @@
                 // Inject adaptive styles
                 injectAdaptiveStyles();
                 
+                // Add cycle filter info section (with slight delay to ensure DOM is ready)
+                setTimeout(() => {
+                    addCycleFilterInfo();
+                }, 500);
+                
                 // Update filter placeholders
                 updateFilterPlaceholders();
                 
@@ -733,6 +1057,10 @@
                             setTimeout(() => {
                                 const updatedTable = document.querySelector(`${CONFIG.targetView} table`);
                                 if (updatedTable) {
+                                    // Check if info section was removed during update
+                                    if (!document.querySelector('.cycle-filter-info')) {
+                                        setTimeout(() => addCycleFilterInfo(), 200);
+                                    }
                                     addTextCellHandlers(updatedTable);
                                     updateFilterPlaceholders();
                                     applyScoreRAGRating(updatedTable);
@@ -751,13 +1079,37 @@
                 // Mark table as enhanced for the loader
                 table.classList.add('enhanced');
                 
-                // Ensure table is visible
-                table.style.opacity = '1';
+                // Ensure table is visible and remove immediate hide
+                const viewContainer = document.querySelector(CONFIG.targetView);
+                if (viewContainer) {
+                    viewContainer.style.opacity = '1';
+                    viewContainer.style.visibility = 'visible';
+                }
+                
+                // Remove the immediate hide style once enhanced
+                const hideStyle = document.getElementById('vue-table-immediate-hide');
+                if (hideStyle) {
+                    hideStyle.remove();
+                }
                 
                 log('✅ Vue table safely enhanced!');
                 clearInterval(checkAndEnhance);
             } else if (attempts >= CONFIG.maxAttempts) {
                 log('❌ Table not found after maximum attempts');
+                
+                // Still need to show the view even if enhancement failed
+                const viewContainer = document.querySelector(CONFIG.targetView);
+                if (viewContainer) {
+                    viewContainer.style.opacity = '1';
+                    viewContainer.style.visibility = 'visible';
+                }
+                
+                // Remove the immediate hide style
+                const hideStyle = document.getElementById('vue-table-immediate-hide');
+                if (hideStyle) {
+                    hideStyle.remove();
+                }
+                
                 clearInterval(checkAndEnhance);
             }
         }, CONFIG.checkInterval);
@@ -808,6 +1160,19 @@
         } else if (initAttempts >= CONFIG.maxAttempts) {
             clearInterval(initInterval);
             log('❌ Vue app not found after maximum attempts');
+            
+            // Make sure view is visible even if enhancement failed
+            const viewContainer = document.querySelector(CONFIG.targetView);
+            if (viewContainer) {
+                viewContainer.style.opacity = '1';
+                viewContainer.style.visibility = 'visible';
+            }
+            
+            // Remove the immediate hide style
+            const hideStyle = document.getElementById('vue-table-immediate-hide');
+            if (hideStyle) {
+                hideStyle.remove();
+            }
         } else {
             log(`Waiting for Vue app (attempt ${initAttempts}/${CONFIG.maxAttempts})`);
         }
