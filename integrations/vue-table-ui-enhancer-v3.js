@@ -1,4 +1,4 @@
-// Vue Table UI Enhancer v2.0 for Scene 1014
+// Vue Table UI Enhancer v2.0 for Scene 1014// Vue Table UI Enhancer v2.0 for Scene 1014
 // Enhanced features: Column reordering, width optimization, modal popups, HTML stripping
 // Purpose: Enhance the visual appearance of the Vue.js student table in view_2772
 
@@ -536,17 +536,41 @@
         }, CONFIG.checkInterval);
     }
     
-    // Initialize on scene render
-    if (typeof Knack !== 'undefined') {
-        Knack.on('scene:render', function(event, scene) {
-            if (scene.key === 'scene_1014') {
-                log('Scene 1014 rendered, waiting for Vue table...');
-                setTimeout(enhanceVueTable, 1000);
-            }
-        });
-    } else {
-        log('Knack not found, trying direct enhancement...');
-        setTimeout(enhanceVueTable, 2000);
+    // Initialize on scene render or immediately if scene already rendered
+    function initialize() {
+        // Check if we're already on scene_1014
+        if (window.location.hash && window.location.hash.includes('coaching-staff-admin')) {
+            log('Already on scene_1014, enhancing immediately...');
+            setTimeout(enhanceVueTable, 1500);
+        } else if (document.querySelector('#kn-scene_1014')) {
+            log('Scene 1014 detected in DOM, enhancing...');
+            setTimeout(enhanceVueTable, 1500);
+        }
+        
+        // Also listen for future scene renders
+        if (typeof Knack !== 'undefined') {
+            Knack.on('scene:render', function(event, scene) {
+                if (scene.key === 'scene_1014') {
+                    log('Scene 1014 rendered, waiting for Vue table...');
+                    setTimeout(enhanceVueTable, 1000);
+                }
+            });
+        }
     }
+    
+    // Try multiple initialization methods
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
+    }
+    
+    // Fallback: also try after a delay
+    setTimeout(() => {
+        if (document.querySelector('#view_2772 table')) {
+            log('Table found via fallback check, enhancing...');
+            enhanceVueTable();
+        }
+    }, 3000);
     
 })();
