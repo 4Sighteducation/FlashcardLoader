@@ -1417,10 +1417,16 @@
                 return;
             }
             
-            // Inject header with slight delay to allow other apps to load
-            setTimeout(() => {
+            // Inject header immediately for scene_1014, with delay for others
+            if (currentScene === 'scene_1014') {
+                // For scene_1014, inject immediately as we have loading screen
                 injectHeader();
-            }, 250);
+            } else {
+                // For other scenes, slight delay to allow other apps to load
+                setTimeout(() => {
+                    injectHeader();
+                }, 250);
+            }
             
             // Re-inject on scene changes in case it gets removed - BUT ONLY IF HEADER IS MISSING
             $(document).on('knack-scene-render.any', function(event, scene) {
