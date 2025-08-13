@@ -102,6 +102,12 @@ if (window.reportProfilesInitialized) {
   function initializeReportProfiles() {
     debugLog("ReportProfiles initializing...");
     
+    // Check if config was provided by the loader
+    if (window.REPORTPROFILE_CONFIG) {
+      debugLog("Using config from loader:", window.REPORTPROFILE_CONFIG);
+      REPORTPROFILE_CONFIG = window.REPORTPROFILE_CONFIG;
+    }
+    
     // Add CSS styles
     addStyles();
     
@@ -132,18 +138,40 @@ if (window.reportProfilesInitialized) {
     `;
     indicator.textContent = 'Profile Script Loaded';
     indicator.addEventListener('click', function() {
+      // Get configured selectors or use defaults
+      let reportSelector = '#view_2776 .kn-rich_text__content';
+      let profileSelector = '#view_3015 .kn-rich_text__content';
+      
+      if (window.REPORTPROFILE_CONFIG && window.REPORTPROFILE_CONFIG.elementSelectors) {
+        reportSelector = window.REPORTPROFILE_CONFIG.elementSelectors.reportContainer || reportSelector;
+        profileSelector = window.REPORTPROFILE_CONFIG.elementSelectors.profileContainer || profileSelector;
+      }
+      
       // Log debug info when clicked
+      // Handle multiple selectors for report container
+      let reportFound = false;
+      let reportContent = '';
+      const reportSelectors = reportSelector.split(',').map(s => s.trim());
+      for (const selector of reportSelectors) {
+        const container = document.querySelector(selector);
+        if (container) {
+          reportFound = true;
+          reportContent = container.innerHTML || '';
+          break;
+        }
+      }
+      
       debugLog("Debug indicator clicked", {
-        'reportContainer': document.querySelector('#view_2776 .kn-rich_text__content') ? 'Found' : 'Not found',
-        'profileContainer': document.querySelector('#view_3015 .kn-rich_text__content') ? 'Found' : 'Not found',
+        'reportContainer': reportFound ? 'Found' : 'Not found',
+        'profileContainer': document.querySelector(profileSelector) ? 'Found' : 'Not found',
         'activityButton': document.querySelector('#view-activities-button a') ? 'Found' : 'Not found',
-        'studentNameInReport': document.querySelector('#view_2776 .kn-rich_text__content')?.textContent.includes('STUDENT:') ? 'Found' : 'Not found',
+        'studentNameInReport': reportContent.includes('STUDENT:') ? 'Found' : 'Not found',
         'currentStudent': currentStudentId,
-        'cachedProfiles': Object.keys(profileCache)
+        'cachedProfiles': Object.keys(profileCache),
+        'configSelectors': window.REPORTPROFILE_CONFIG?.elementSelectors || 'Not configured'
       });
       
       // Dump the report content to console
-      const reportContent = document.querySelector('#view_2776 .kn-rich_text__content')?.innerHTML || '';
       debugLog("Report content sample", reportContent.substring(0, 500));
     });
     document.body.appendChild(indicator);
@@ -155,16 +183,35 @@ if (window.reportProfilesInitialized) {
     let checkCount = 0;
     
     const checkInterval = setInterval(function() {
+      // Use config selectors if available, otherwise fallback to defaults
+      let reportSelector = '#view_2776 .kn-rich_text__content';
+      let profileSelector = '#view_3015 .kn-rich_text__content';
+      
+      if (window.REPORTPROFILE_CONFIG && window.REPORTPROFILE_CONFIG.elementSelectors) {
+        reportSelector = window.REPORTPROFILE_CONFIG.elementSelectors.reportContainer || reportSelector;
+        profileSelector = window.REPORTPROFILE_CONFIG.elementSelectors.profileContainer || profileSelector;
+      }
+      
       // Check if the report elements exist
-      const reportContainer = document.querySelector('#view_2776 .kn-rich_text__content');
-      const profileContainer = document.querySelector('#view_3015 .kn-rich_text__content');
+      // Handle multiple selectors (comma-separated) for scene_1014
+      let reportContainer = null;
+      const reportSelectors = reportSelector.split(',').map(s => s.trim());
+      for (const selector of reportSelectors) {
+        reportContainer = document.querySelector(selector);
+        if (reportContainer) {
+          debugLog(`Found report container using selector: ${selector}`);
+          break;
+        }
+      }
+      
+      const profileContainer = document.querySelector(profileSelector);
       
       if (reportContainer && profileContainer) {
         // Elements found, clear the interval
         clearInterval(checkInterval);
         debugLog("Report containers found", { 
-          reportContainer: '#view_2776 .kn-rich_text__content', 
-          profileContainer: '#view_3015 .kn-rich_text__content' 
+          reportContainer: reportSelector, 
+          profileContainer: profileSelector 
         });
         
     // Set up MutationObserver to watch for changes
@@ -1240,7 +1287,13 @@ if (window.reportProfilesInitialized) {
   async function toggleMasterEditMode() {
     if (!isEditableByStaff()) return;
 
-    const profileContainer = document.querySelector('#view_3015 .kn-rich_text__content');
+    // Get configured selector or use default
+    let profileSelector = '#view_3015 .kn-rich_text__content';
+    if (window.REPORTPROFILE_CONFIG && window.REPORTPROFILE_CONFIG.elementSelectors) {
+      profileSelector = window.REPORTPROFILE_CONFIG.elementSelectors.profileContainer || profileSelector;
+    }
+    
+    const profileContainer = document.querySelector(profileSelector);
     if (!profileContainer) {
       console.error("[ReportProfiles] Profile container not found for master edit toggle.");
       return;
@@ -1575,7 +1628,12 @@ if (window.reportProfilesInitialized) {
     
     if (!document.contains(profileContainer)) {
       debugLog("Container element is no longer in the DOM, attempting to find it again");
-      const newContainer = document.querySelector('#view_3015 .kn-rich_text__content');
+      // Get configured selector or use default
+      let profileSelector = '#view_3015 .kn-rich_text__content';
+      if (window.REPORTPROFILE_CONFIG && window.REPORTPROFILE_CONFIG.elementSelectors) {
+        profileSelector = window.REPORTPROFILE_CONFIG.elementSelectors.profileContainer || profileSelector;
+      }
+      const newContainer = document.querySelector(profileSelector);
       if (newContainer) {
         profileContainer = newContainer;
         debugLog("Found new container reference");
