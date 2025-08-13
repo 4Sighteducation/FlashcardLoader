@@ -44,7 +44,7 @@
             'Tutor': ['profile_7'],
             'Head of Year': ['profile_7'], 
             'Subject Teacher': ['profile_7'],
-            'Staff Admin': ['profile_21']
+            'Staff Admin': ['profile_5', 'profile_21'] // profile_5 is the actual Staff Admin profile
         }
     };
 
@@ -112,7 +112,8 @@
             // Determine role from field_73 (profile keys)
             let userRole = 'Tutor'; // Default fallback
             
-            if (field73.includes('profile_21')) {
+            // Check for Staff Admin profiles (profile_5 or profile_21)
+            if (field73.includes('profile_5') || field73.includes('profile_21')) {
                 userRole = 'Staff Admin';
             } else if (field73.includes('profile_7')) {
                 // Could add more specific role detection here later
@@ -422,3 +423,4 @@
     log('Dynamic Staff Table Override v2.0 loaded');
 
 })();
+
