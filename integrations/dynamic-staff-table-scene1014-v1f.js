@@ -423,4 +423,3 @@
     log('Dynamic Staff Table Override v2.0 loaded');
 
 })();
-
