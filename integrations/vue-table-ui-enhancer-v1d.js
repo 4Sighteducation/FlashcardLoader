@@ -832,92 +832,99 @@
             if (responseColumnIndex >= 0 && cells[responseColumnIndex]) {
                 const cell = cells[responseColumnIndex];
                 
-                // Skip if we've already processed this cell and content hasn't changed
-                // First, capture the current HTML content BEFORE we modify it
-                let currentContent = cell.innerHTML;
-                if (cell.dataset.processed && cell.dataset.originalHtml === currentContent) {
-                    // Skip processing this cell but continue with others
-                    // Don't use return here as it would skip the Action Plan column
+                // Always read the current content - don't skip based on processed flag
+                // This ensures we get new data when cycles change
+                const currentContent = cell.innerHTML;
+                
+                // Only skip if the content truly hasn't changed AND we're not switching cells
+                if (cell.dataset.fullText && 
+                    cell.classList.contains('has-content') && 
+                    currentContent === cell.dataset.originalHtml) {
+                    // Content hasn't changed, skip reprocessing
                 } else {
-                
-                // Store the original HTML for future comparison
-                cell.dataset.originalHtml = currentContent;
-                cell.dataset.processed = 'true';
-                
-                const cleanText = stripHtmlTags(currentContent);
-                
-                // Clear existing classes and handlers
-                cell.classList.remove('has-content', 'no-content');
-                cell.onclick = null;
-                
-                if (cleanText.trim()) {
-                    // Has content - show first sentence
-                    const truncated = getFirstSentence(cleanText);
-                    cell.textContent = truncated;
-                    cell.classList.add('has-content');
-                    cell.title = 'Click to read full response';
+                    // Process the cell - either new content or first time
+                    cell.dataset.originalHtml = currentContent;
                     
-                    // Store full text for modal
-                    cell.dataset.fullText = cleanText;
+                    const cleanText = stripHtmlTags(currentContent);
                     
-                    cell.onclick = () => {
-                        const studentName = cells[0] ? cells[0].textContent : 'Student';
-                        // Re-read the full text in case it changed
-                        const latestText = cell.dataset.fullText || cleanText;
-                        showModal(`${studentName} - Report Response`, latestText);
-                    };
-                } else {
-                    // No content - show indicator
-                    cell.textContent = 'No response added';
-                    cell.classList.add('no-content');
-                    cell.title = 'No response provided';
+                    // Debug: Log first 50 chars of content to verify it's changing with cycles
+                    if (CONFIG.debugMode && cleanText.trim()) {
+                        const studentName = cells[0] ? cells[0].textContent : 'Unknown';
+                        log(`Report Response for ${studentName} (first 50 chars): "${cleanText.substring(0, 50)}..."`);
+                    }
+                    
+                    // Clear existing classes and handlers
+                    cell.classList.remove('has-content', 'no-content');
+                    cell.onclick = null;
+                    
+                    if (cleanText.trim()) {
+                        // Has content - show first sentence
+                        const truncated = getFirstSentence(cleanText);
+                        cell.textContent = truncated;
+                        cell.classList.add('has-content');
+                        cell.title = 'Click to read full response';
+                        
+                        // Store full text for modal
+                        cell.dataset.fullText = cleanText;
+                        
+                        cell.onclick = () => {
+                            const studentName = cells[0] ? cells[0].textContent : 'Student';
+                            showModal(`${studentName} - Report Response`, cleanText);
+                        };
+                    } else {
+                        // No content - show indicator
+                        cell.textContent = 'No response added';
+                        cell.classList.add('no-content');
+                        cell.title = 'No response provided';
+                        cell.dataset.fullText = ''; // Clear stored text
+                    }
                 }
-                } // Close the else block for processing check
             }
             
             // Handle Action Plan column
             if (actionColumnIndex >= 0 && cells[actionColumnIndex]) {
                 const cell = cells[actionColumnIndex];
                 
-                // Skip if we've already processed this cell and content hasn't changed
-                let currentContent = cell.innerHTML;
-                if (cell.dataset.processed && cell.dataset.originalHtml === currentContent) {
-                    // Skip processing this cell
+                // Always read the current content - don't skip based on processed flag
+                const currentContent = cell.innerHTML;
+                
+                // Only skip if the content truly hasn't changed
+                if (cell.dataset.fullText && 
+                    cell.classList.contains('has-content') && 
+                    currentContent === cell.dataset.originalHtml) {
+                    // Content hasn't changed, skip reprocessing
                 } else {
-                
-                // Store the original HTML for future comparison
-                cell.dataset.originalHtml = currentContent;
-                cell.dataset.processed = 'true';
-                
-                const cleanText = stripHtmlTags(currentContent);
-                
-                // Clear existing classes and handlers
-                cell.classList.remove('has-content', 'no-content');
-                cell.onclick = null;
-                
-                if (cleanText.trim()) {
-                    // Has content - show first sentence
-                    const truncated = getFirstSentence(cleanText);
-                    cell.textContent = truncated;
-                    cell.classList.add('has-content');
-                    cell.title = 'Click to read full action plan';
+                    // Process the cell - either new content or first time
+                    cell.dataset.originalHtml = currentContent;
                     
-                    // Store full text for modal
-                    cell.dataset.fullText = cleanText;
+                    const cleanText = stripHtmlTags(currentContent);
                     
-                    cell.onclick = () => {
-                        const studentName = cells[0] ? cells[0].textContent : 'Student';
-                        // Re-read the full text in case it changed
-                        const latestText = cell.dataset.fullText || cleanText;
-                        showModal(`${studentName} - Action Plan`, latestText);
-                    };
-                } else {
-                    // No content - show indicator
-                    cell.textContent = 'No action plan added';
-                    cell.classList.add('no-content');
-                    cell.title = 'No action plan provided';
+                    // Clear existing classes and handlers
+                    cell.classList.remove('has-content', 'no-content');
+                    cell.onclick = null;
+                    
+                    if (cleanText.trim()) {
+                        // Has content - show first sentence
+                        const truncated = getFirstSentence(cleanText);
+                        cell.textContent = truncated;
+                        cell.classList.add('has-content');
+                        cell.title = 'Click to read full action plan';
+                        
+                        // Store full text for modal
+                        cell.dataset.fullText = cleanText;
+                        
+                        cell.onclick = () => {
+                            const studentName = cells[0] ? cells[0].textContent : 'Student';
+                            showModal(`${studentName} - Action Plan`, cleanText);
+                        };
+                    } else {
+                        // No content - show indicator
+                        cell.textContent = 'No action plan added';
+                        cell.classList.add('no-content');
+                        cell.title = 'No action plan provided';
+                        cell.dataset.fullText = ''; // Clear stored text
+                    }
                 }
-                } // Close the else block for processing check
             }
         });
         
@@ -1131,54 +1138,84 @@
                 // Filter table based on user connections (disabled - using separate pages)
                 // filterTableByUserConnections(table);
                 
-                // Watch for table updates - be more aggressive about detecting changes
+                // Track the current active cycle tab to detect changes
+                let currentCycleTab = null;
+                function detectCycleChange() {
+                    // Look for the active tab button
+                    const activeTab = document.querySelector(`${CONFIG.targetView} .p-tabview-nav li[aria-selected="true"], ${CONFIG.targetView} .p-button.p-button-primary, ${CONFIG.targetView} button.active`);
+                    const newCycleTab = activeTab ? activeTab.textContent.trim() : null;
+                    
+                    if (newCycleTab && newCycleTab !== currentCycleTab) {
+                        log(`Cycle changed from "${currentCycleTab}" to "${newCycleTab}"`);
+                        currentCycleTab = newCycleTab;
+                        return true;
+                    }
+                    return false;
+                }
+                
+                // Watch for table updates with better debouncing and cycle detection
+                let updatePending = false;
                 const observer = new MutationObserver((mutations) => {
+                    // Avoid processing if we're already scheduled
+                    if (updatePending) return;
+                    
                     let shouldUpdate = false;
                     
+                    // Check if this is a significant change
                     mutations.forEach((mutation) => {
-                        // Check for any changes in the table body or cells
-                        if (mutation.type === 'childList' || 
-                            mutation.type === 'characterData' ||
-                            (mutation.target && (mutation.target.tagName === 'TBODY' || 
-                             mutation.target.tagName === 'TD' || 
-                             mutation.target.tagName === 'TR'))) {
+                        // Only care about actual content changes in the table body
+                        if (mutation.target && mutation.target.tagName === 'TBODY') {
+                            shouldUpdate = true;
+                        }
+                        // Or if tab/filter buttons changed
+                        else if (mutation.target && (
+                            mutation.target.classList?.contains('p-tabview-nav') ||
+                            mutation.target.classList?.contains('p-button')
+                        )) {
                             shouldUpdate = true;
                         }
                     });
                     
                     if (shouldUpdate) {
-                        log('Table data updated, reapplying all enhancements...');
+                        updatePending = true;
+                        
+                        // Use a longer debounce to avoid race conditions
                         clearTimeout(window.tableUpdateTimeout);
                         window.tableUpdateTimeout = setTimeout(() => {
+                            updatePending = false;
+                            
                             const updatedTable = document.querySelector(`${CONFIG.targetView} table`);
-                            if (updatedTable) {
-                                // Check if info section was removed during update
-                                if (!document.querySelector('.cycle-filter-info')) {
-                                    setTimeout(() => addCycleFilterInfo(), 200);
-                                }
-                                // Re-process ALL text cells to capture new cycle data
-                                addTextCellHandlers(updatedTable);
-                                updateFilterPlaceholders();
-                                applyScoreRAGRating(updatedTable);
-                                filterTableByUserConnections(updatedTable);
+                            if (!updatedTable) return;
+                            
+                            // Check if the cycle actually changed
+                            const cycleChanged = detectCycleChange();
+                            
+                            if (cycleChanged) {
+                                log('Cycle changed - forcing full refresh of all cells');
                                 
-                                // Force refresh of text content in case Vue updated it
-                                const cells = updatedTable.querySelectorAll('td');
-                                cells.forEach(cell => {
-                                    if (cell.classList.contains('has-content') || cell.classList.contains('no-content')) {
-                                        // Force re-evaluation of cell content
-                                        cell.classList.remove('has-content', 'no-content');
-                                        // Clear the processed flag so content gets re-read
-                                        delete cell.dataset.processed;
-                                        delete cell.dataset.originalHtml;
-                                        delete cell.dataset.fullText;
-                                    }
+                                // Clear ALL processing flags when cycle changes
+                                const allCells = updatedTable.querySelectorAll('td');
+                                allCells.forEach(cell => {
+                                    delete cell.dataset.processed;
+                                    delete cell.dataset.originalHtml;
+                                    delete cell.dataset.fullText;
+                                    cell.classList.remove('has-content', 'no-content');
                                 });
-                                
-                                // Re-apply handlers after forcing refresh
-                                setTimeout(() => addTextCellHandlers(updatedTable), 50);
                             }
-                        }, 200); // Slightly longer delay to ensure Vue has finished updating
+                            
+                            // Check if info section was removed during update
+                            if (!document.querySelector('.cycle-filter-info')) {
+                                setTimeout(() => addCycleFilterInfo(), 100);
+                            }
+                            
+                            // Re-apply all enhancements
+                            log('Reapplying table enhancements...');
+                            addTextCellHandlers(updatedTable);
+                            updateFilterPlaceholders();
+                            applyScoreRAGRating(updatedTable);
+                            // filterTableByUserConnections(updatedTable); // Disabled
+                            
+                        }, 500); // Longer delay to let Vue finish all updates
                     }
                 });
                 
@@ -1187,6 +1224,27 @@
                     subtree: true,
                     characterData: true,
                     characterDataOldValue: true
+                });
+                
+                // Add click handlers to cycle/pagination buttons to force data refresh
+                const paginationButtons = document.querySelectorAll(`${CONFIG.targetView} .p-tabview-nav button, ${CONFIG.targetView} .p-button, ${CONFIG.targetView} button[aria-label*="Page"]`);
+                paginationButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        log('Pagination/cycle button clicked - clearing cell cache');
+                        // Clear all cell data to force refresh
+                        setTimeout(() => {
+                            const table = document.querySelector(`${CONFIG.targetView} table`);
+                            if (table) {
+                                const allCells = table.querySelectorAll('td');
+                                allCells.forEach(cell => {
+                                    delete cell.dataset.processed;
+                                    delete cell.dataset.originalHtml;
+                                    delete cell.dataset.fullText;
+                                    cell.classList.remove('has-content', 'no-content');
+                                });
+                            }
+                        }, 100);
+                    });
                 });
                 
                 // Mark table as enhanced for the loader
@@ -1292,3 +1350,4 @@
     }, CONFIG.checkInterval);
     
 })();
+
