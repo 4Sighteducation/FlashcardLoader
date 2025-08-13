@@ -138,39 +138,27 @@
             }
         });
         
-        // Text columns (Report Response, Action Plan) - dynamic sizing with multi-line display
+        // Text columns (Report Response, Action Plan) - simpler styling without box effect
         if (columnInfo['report response'] !== undefined) {
             columnStyles += `
                 #view_2772 th:nth-child(${columnInfo['report response'] + 1}) {
-                    min-width: 250px !important;
+                    min-width: 200px !important;
                 }
                 #view_2772 td:nth-child(${columnInfo['report response'] + 1}) {
-                    min-width: 250px !important;
-                    max-width: 350px !important;
+                    min-width: 200px !important;
+                    max-width: 300px !important;
                     white-space: normal !important;
                     word-wrap: break-word !important;
                     overflow-wrap: break-word !important;
-                    line-height: 1.4 !important;
-                    font-size: 12px !important;
-                    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif !important;
-                    color: #4a5568 !important;
-                    padding: 10px !important;
+                    line-height: 1.3 !important;
+                    font-size: 13px !important;
+                    color: #333 !important;
+                    padding: 12px 8px !important;
                     cursor: pointer !important;
-                    max-height: 80px !important;
-                    overflow-y: auto !important;
-                    display: -webkit-box !important;
-                    -webkit-line-clamp: 4 !important;
-                    -webkit-box-orient: vertical !important;
-                    overflow: hidden !important;
+                    vertical-align: top !important;
                 }
                 #view_2772 td:nth-child(${columnInfo['report response'] + 1}):hover {
                     background: rgba(7, 155, 170, 0.05) !important;
-                    -webkit-line-clamp: unset !important;
-                    max-height: none !important;
-                    overflow: visible !important;
-                    z-index: 100 !important;
-                    position: relative !important;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
                 }
             `;
         }
@@ -178,35 +166,23 @@
         if (columnInfo['action plan'] !== undefined) {
             columnStyles += `
                 #view_2772 th:nth-child(${columnInfo['action plan'] + 1}) {
-                    min-width: 250px !important;
+                    min-width: 200px !important;
                 }
                 #view_2772 td:nth-child(${columnInfo['action plan'] + 1}) {
-                    min-width: 250px !important;
-                    max-width: 350px !important;
+                    min-width: 200px !important;
+                    max-width: 300px !important;
                     white-space: normal !important;
                     word-wrap: break-word !important;
                     overflow-wrap: break-word !important;
-                    line-height: 1.4 !important;
-                    font-size: 12px !important;
-                    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif !important;
-                    color: #4a5568 !important;
-                    padding: 10px !important;
+                    line-height: 1.3 !important;
+                    font-size: 13px !important;
+                    color: #333 !important;
+                    padding: 12px 8px !important;
                     cursor: pointer !important;
-                    max-height: 80px !important;
-                    overflow-y: auto !important;
-                    display: -webkit-box !important;
-                    -webkit-line-clamp: 4 !important;
-                    -webkit-box-orient: vertical !important;
-                    overflow: hidden !important;
+                    vertical-align: top !important;
                 }
                 #view_2772 td:nth-child(${columnInfo['action plan'] + 1}):hover {
                     background: rgba(7, 155, 170, 0.05) !important;
-                    -webkit-line-clamp: unset !important;
-                    max-height: none !important;
-                    overflow: visible !important;
-                    z-index: 100 !important;
-                    position: relative !important;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
                 }
             `;
         }
@@ -435,12 +411,39 @@
         let responseColumnIndex = -1;
         let actionColumnIndex = -1;
         
-        // Find the actual column indices
+        // Find the actual column indices - be more flexible with naming
         headers.forEach((th, idx) => {
             const text = th.textContent.trim().toLowerCase();
-            if (text === 'report response') responseColumnIndex = idx;
-            if (text === 'action plan') actionColumnIndex = idx;
+            // Check for various possible names
+            if (text.includes('report response') || text === 'report response') {
+                responseColumnIndex = idx;
+            }
+            if (text.includes('action plan') || text === 'action plan' || text.includes('goal')) {
+                actionColumnIndex = idx;
+            }
         });
+        
+        // If we still haven't found them, look for the columns by position
+        // Based on your screenshot, Report Response seems to be around column 10-11
+        // and Action Plan around column 11-12
+        if (responseColumnIndex === -1 || actionColumnIndex === -1) {
+            log('Columns not found by name, checking by content patterns...');
+            const firstRow = table.querySelector('tbody tr');
+            if (firstRow) {
+                const cells = firstRow.querySelectorAll('td');
+                cells.forEach((cell, idx) => {
+                    const text = cell.textContent.trim();
+                    // Look for cells with longer text content
+                    if (text.length > 50) {
+                        if (responseColumnIndex === -1) {
+                            responseColumnIndex = idx;
+                        } else if (actionColumnIndex === -1 && idx !== responseColumnIndex) {
+                            actionColumnIndex = idx;
+                        }
+                    }
+                });
+            }
+        }
         
         log(`Found Report Response at column ${responseColumnIndex}, Action Plan at ${actionColumnIndex}`);
         
@@ -453,20 +456,44 @@
             if (responseColumnIndex >= 0 && cells[responseColumnIndex]) {
                 const cell = cells[responseColumnIndex];
                 const originalText = cell.innerHTML;
-                const cleanText = stripHtmlTags(originalText);
+                let cleanText = stripHtmlTags(originalText);
                 
-                // Only update if there's HTML to strip
-                if (originalText !== cleanText) {
+                // Check if this cell actually contains Action Plan text that was misplaced
+                if (cleanText.toLowerCase().includes('goal') || cleanText.toLowerCase().includes('action plan')) {
+                    // This is actually Action Plan content, move it to the right column if possible
+                    if (actionColumnIndex >= 0 && cells[actionColumnIndex]) {
+                        const actionCell = cells[actionColumnIndex];
+                        if (!actionCell.textContent.trim()) {
+                            // Action Plan cell is empty, move the content there
+                            actionCell.textContent = cleanText;
+                            cell.textContent = ''; // Clear from wrong column
+                            
+                            // Add click handler to the correct cell
+                            actionCell.title = 'Click to view full text';
+                            actionCell.style.cursor = 'pointer';
+                            actionCell.onclick = () => {
+                                const studentName = cells[0] ? cells[0].textContent : 'Student';
+                                showModal(`${studentName} - Action Plan`, cleanText);
+                            };
+                            return; // Skip processing this cell further
+                        }
+                    }
+                }
+                
+                // Process as Report Response
+                if (originalText !== cleanText && cleanText.trim()) {
                     cell.textContent = cleanText;
                 }
                 
-                cell.title = 'Click to view full text';
-                cell.style.cursor = 'pointer';
-                
-                cell.onclick = () => {
-                    const studentName = cells[0] ? cells[0].textContent : 'Student';
-                    showModal(`${studentName} - Report Response`, cleanText);
-                };
+                if (cleanText.trim()) {
+                    cell.title = 'Click to view full text';
+                    cell.style.cursor = 'pointer';
+                    
+                    cell.onclick = () => {
+                        const studentName = cells[0] ? cells[0].textContent : 'Student';
+                        showModal(`${studentName} - Report Response`, cleanText);
+                    };
+                }
             }
             
             // Handle Action Plan column
@@ -475,18 +502,20 @@
                 const originalText = cell.innerHTML;
                 const cleanText = stripHtmlTags(originalText);
                 
-                // Only update if there's HTML to strip
-                if (originalText !== cleanText) {
-                    cell.textContent = cleanText;
+                // Only process if there's content and we haven't already moved content here
+                if (cleanText.trim() && !cell.onclick) {
+                    if (originalText !== cleanText) {
+                        cell.textContent = cleanText;
+                    }
+                    
+                    cell.title = 'Click to view full text';
+                    cell.style.cursor = 'pointer';
+                    
+                    cell.onclick = () => {
+                        const studentName = cells[0] ? cells[0].textContent : 'Student';
+                        showModal(`${studentName} - Action Plan`, cleanText);
+                    };
                 }
-                
-                cell.title = 'Click to view full text';
-                cell.style.cursor = 'pointer';
-                
-                cell.onclick = () => {
-                    const studentName = cells[0] ? cells[0].textContent : 'Student';
-                    showModal(`${studentName} - Action Plan`, cleanText);
-                };
             }
         });
         
@@ -537,6 +566,12 @@
                     childList: true,
                     subtree: true
                 });
+                
+                // Mark table as enhanced for the loader
+                table.classList.add('enhanced');
+                
+                // Ensure table is visible
+                table.style.opacity = '1';
                 
                 log('✅ Vue table safely enhanced!');
                 clearInterval(checkAndEnhance);
