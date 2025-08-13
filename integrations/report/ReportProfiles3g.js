@@ -2,28 +2,23 @@
 // This script displays student profile data above individual VESPA reports
 // Adapted for Multi-App Loader system
 
-console.log('[ReportProfiles] Script loading, config:', window.REPORTPROFILE_CONFIG);
-
 // Conditionally define DEBUG_MODE to prevent re-declaration errors if script is loaded multiple times
-// Check if config was set by loader and use its debug mode setting
-if (window.REPORTPROFILE_CONFIG && typeof window.REPORTPROFILE_CONFIG.debugMode !== 'undefined') {
-  window.REPORT_PROFILES_DEBUG_MODE = window.REPORTPROFILE_CONFIG.debugMode;
-  console.log('[ReportProfiles] Debug mode set from config:', window.REPORTPROFILE_CONFIG.debugMode);
-} else if (typeof window.REPORT_PROFILES_DEBUG_MODE === 'undefined') {
+if (typeof window.REPORT_PROFILES_DEBUG_MODE === 'undefined') {
   window.REPORT_PROFILES_DEBUG_MODE = false; 
-  console.log('[ReportProfiles] Debug mode defaulting to false');
 }
 var DEBUG_MODE = window.REPORT_PROFILES_DEBUG_MODE; // CHANGED from const to var
 
 // Global config variable - will be set by loader
 // let REPORTPROFILE_CONFIG = null; // Moved to prevent re-declaration errors
 
-// Guard to prevent re-initialization - but allow re-init if scene changed
-// Note: We're moving this check INTO the initializeReportProfiles function
-// so it can be called multiple times for different scenes
-if (!window.reportProfilesScriptLoaded) {
-  window.reportProfilesScriptLoaded = true;
-  console.log('[ReportProfiles] Script code executing for first time');
+// Guard to prevent re-initialization
+if (window.reportProfilesInitialized) {
+  // console.warn("[ReportProfiles] Attempted to re-initialize, but already initialized. Skipping.");
+  if (DEBUG_MODE) console.warn("[ReportProfiles] Attempted to re-initialize, but already initialized. Skipping.");
+  // Potentially throw an error or just return to stop further execution if this script is loaded multiple times.
+  // For now, we'll rely on the loader to fix multiple loads, this just prevents re-running initialize.
+} else {
+  window.reportProfilesInitialized = true;
 
   // Moved REPORTPROFILE_CONFIG declaration here
   let REPORTPROFILE_CONFIG = null;
@@ -105,11 +100,11 @@ if (!window.reportProfilesScriptLoaded) {
 
   // Main initializer function that will be called by the loader
   function initializeReportProfiles() {
-    console.log("[ReportProfiles] initializeReportProfiles called");
+    debugLog("ReportProfiles initializing...");
     
     // Check if config was provided by the loader
     if (window.REPORTPROFILE_CONFIG) {
-      console.log("[ReportProfiles] Using config from loader:", window.REPORTPROFILE_CONFIG);
+      debugLog("Using config from loader:", window.REPORTPROFILE_CONFIG);
       REPORTPROFILE_CONFIG = window.REPORTPROFILE_CONFIG;
       
       // Update debug mode from config
@@ -118,24 +113,6 @@ if (!window.reportProfilesScriptLoaded) {
         window.REPORT_PROFILES_DEBUG_MODE = DEBUG_MODE;
       }
     }
-    
-    debugLog("ReportProfiles initializing...");
-    
-    // Check if already initialized for this scene
-    const currentScene = REPORTPROFILE_CONFIG ? REPORTPROFILE_CONFIG.sceneKey : null;
-    if (window.reportProfilesLastScene === currentScene && window.reportProfilesInitialized) {
-      debugLog(`Already initialized for scene ${currentScene}, skipping`);
-      return;
-    }
-    
-    // Clean up any existing observers/intervals from previous scene
-    if (window.reportProfilesCleanup) {
-      debugLog("Cleaning up previous scene initialization");
-      window.reportProfilesCleanup();
-    }
-    
-    window.reportProfilesInitialized = true;
-    window.reportProfilesLastScene = currentScene;
     
     // Add CSS styles
     addStyles();
@@ -222,18 +199,27 @@ if (!window.reportProfilesScriptLoaded) {
       }
       
       // Check if the report elements exist
-      // Handle multiple selectors (comma-separated) for scene_1014
       let reportContainer = null;
-      const reportSelectors = reportSelector.split(',').map(s => s.trim());
-      for (const selector of reportSelectors) {
-        reportContainer = document.querySelector(selector);
+      const profileContainer = document.querySelector(profileSelector);
+      
+      // For scene_1014, we need to watch view_2772 even if it currently shows the table
+      if (window.REPORTPROFILE_CONFIG && window.REPORTPROFILE_CONFIG.sceneKey === 'scene_1014') {
+        // For scene_1014, just find view_2772 - we'll watch for content changes
+        reportContainer = document.querySelector('#view_2772');
         if (reportContainer) {
-          debugLog(`Found report container using selector: ${selector}`);
-          break;
+          debugLog(`Found view_2772 for scene_1014 - will watch for report content`);
+        }
+      } else {
+        // For other scenes, use the standard selector logic
+        const reportSelectors = reportSelector.split(',').map(s => s.trim());
+        for (const selector of reportSelectors) {
+          reportContainer = document.querySelector(selector);
+          if (reportContainer) {
+            debugLog(`Found report container using selector: ${selector}`);
+            break;
+          }
         }
       }
-      
-      const profileContainer = document.querySelector(profileSelector);
       
       if (reportContainer && profileContainer) {
         // Elements found, clear the interval
@@ -246,8 +232,13 @@ if (!window.reportProfilesScriptLoaded) {
     // Set up MutationObserver to watch for changes
     setupObservers(reportContainer, profileContainer);
     
-    // Check immediately in case the report is already showing
-    checkForIndividualReport(reportContainer, profileContainer);
+    // For scene_1014, don't check immediately since it starts with the table
+    // For other scenes, check immediately in case the report is already showing
+    if (!window.REPORTPROFILE_CONFIG || window.REPORTPROFILE_CONFIG.sceneKey !== 'scene_1014') {
+      checkForIndividualReport(reportContainer, profileContainer);
+    } else {
+      debugLog("Scene 1014 - waiting for report to appear in view_2772");
+    }
     
     // Reset lastRenderedProfileHash to ensure a fresh render on page reload
     lastRenderedProfileHash = null;
@@ -260,24 +251,6 @@ if (!window.reportProfilesScriptLoaded) {
         }
       }
     }, CHECK_INTERVAL);
-    
-    // Store cleanup function
-    window.reportProfilesCleanup = function() {
-      clearInterval(checkInterval);
-      if (reportObserver) {
-        reportObserver.disconnect();
-        reportObserver = null;
-      }
-      if (activityButtonPollInterval) {
-        clearInterval(activityButtonPollInterval);
-        activityButtonPollInterval = null;
-      }
-      // Remove debug indicator
-      const indicator = document.getElementById('profile-debug-indicator');
-      if (indicator) {
-        indicator.remove();
-      }
-    };
   }
 
   // Debug logging helper
@@ -2082,14 +2055,6 @@ if (!window.reportProfilesScriptLoaded) {
 
   // Expose initializer to global scope so the Multi-App Loader can access it
   window.initializeReportProfiles = initializeReportProfiles;
-} // End of the main initialization guard
-
-// ALWAYS expose the initializer function, even if script was already loaded
-// This allows the loader to call it for different scenes
-if (!window.initializeReportProfiles) {
-  window.initializeReportProfiles = function() {
-    console.log('[ReportProfiles] Initializer called but script needs to be reloaded for new scene');
-  };
 
   // Helper function to check if the current user is NOT a "Student"
   function isEditableByStaff() {
