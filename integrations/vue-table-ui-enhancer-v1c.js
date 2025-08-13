@@ -284,72 +284,111 @@
                     border-radius: 2px !important;
                 }
                 
-                /* Info section for cycle filters */
+                /* Info section for cycle filters - compact version */
                 .cycle-filter-info {
-                    background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
-                    border: 1px solid #5eead4;
-                    border-radius: 10px;
-                    padding: 20px;
-                    margin: 20px auto;
-                    max-width: 900px;
-                    box-shadow: 0 2px 10px rgba(94, 234, 212, 0.1);
+                    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+                    border: 1px solid #d1d5db;
+                    border-radius: 8px;
+                    padding: 12px 16px;
+                    margin: 15px 0;
+                    width: 100%;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                    position: relative;
+                    z-index: 10;
+                    display: flex;
+                    align-items: center;
+                    gap: 20px;
+                    font-size: 13px;
                 }
                 
                 .cycle-filter-info h3 {
-                    color: #0f766e;
-                    margin: 0 0 12px 0;
-                    font-size: 18px;
+                    color: #1f2937;
+                    margin: 0;
+                    font-size: 14px;
                     font-weight: 600;
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
+                    white-space: nowrap;
                 }
                 
                 .cycle-filter-info h3::before {
                     content: 'ℹ️';
-                    font-size: 20px;
+                    font-size: 16px;
                 }
                 
                 .cycle-filter-info p {
-                    color: #134e4a;
-                    margin: 0 0 10px 0;
-                    line-height: 1.6;
-                    font-size: 14px;
+                    color: #4b5563;
+                    margin: 0;
+                    line-height: 1.4;
+                    font-size: 13px;
+                    flex: 1;
                 }
                 
                 .cycle-filter-info ul {
-                    margin: 10px 0 0 20px;
-                    padding: 0;
-                    list-style: none;
+                    display: none; /* Hide the list for compact view */
                 }
                 
-                .cycle-filter-info li {
-                    color: #134e4a;
-                    padding: 5px 0;
-                    position: relative;
-                    padding-left: 25px;
-                    font-size: 14px;
+                /* Tooltip on hover for more details */
+                .cycle-filter-info:hover {
+                    background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+                    border-color: #5eead4;
                 }
                 
-                .cycle-filter-info li::before {
-                    content: '▸';
+                .cycle-filter-info:hover::after {
+                    content: "Tab 1: ALL students | Tab 2+: ONLY students who completed that cycle's questionnaire";
                     position: absolute;
+                    top: 100%;
                     left: 0;
-                    color: #10b981;
-                    font-weight: bold;
+                    right: 0;
+                    background: #065f46;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    margin-top: 5px;
+                    z-index: 100;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 }
                 
-                /* Fix table positioning - ensure it stays in place */
+                /* Fix table positioning - remove all height constraints */
                 ${CONFIG.targetView} {
-                    min-height: 600px !important;
                     position: relative !important;
+                    height: auto !important;
+                    min-height: 0 !important;
+                    max-height: none !important;
                 }
                 
-                /* Prevent table from jumping when filtering */
-                ${CONFIG.targetView} .p-datatable-wrapper,
+                /* Aggressively reset any height issues from Vue app */
+                ${CONFIG.targetView} .p-datatable-wrapper {
+                    height: auto !important;
+                    min-height: 0 !important;
+                    max-height: none !important;
+                }
+                
                 ${CONFIG.targetView} [data-v-app] {
-                    min-height: 500px !important;
-                    transition: none !important;
+                    height: auto !important;
+                    min-height: 0 !important;
+                    max-height: none !important;
+                }
+                
+                /* Ensure table container doesn't expand unnecessarily */
+                ${CONFIG.targetView} .p-datatable {
+                    height: auto !important;
+                    min-height: 0 !important;
+                    display: block !important;
+                }
+                
+                /* Reset any virtual scrolling that might be causing issues */
+                ${CONFIG.targetView} .p-virtualscroller {
+                    height: auto !important;
+                    min-height: 0 !important;
+                }
+                
+                /* Force table to be compact */
+                ${CONFIG.targetView} tbody {
+                    height: auto !important;
+                    min-height: 0 !important;
                 }
                 
                 ${CONFIG.targetView} .p-paginator {
@@ -358,7 +397,7 @@
                     z-index: 5 !important;
                     padding: 10px !important;
                     border-top: 1px solid #e5e7eb !important;
-                    margin-top: 20px !important;
+                    margin-top: 10px !important;
                 }
                 
                 /* Table container */
@@ -699,18 +738,11 @@
             return;
         }
         
-        // Create the info section HTML
+        // Create the info section HTML (compact single line version)
         const infoHTML = `
             <div class="cycle-filter-info">
-                <h3>Understanding Cycle Filters</h3>
-                <p>The numbered tabs above filter students based on their questionnaire completion status:</p>
-                <ul>
-                    <li><strong>Tab "1":</strong> Shows ALL students (including those who haven't completed any questionnaires)</li>
-                    <li><strong>Tab "2":</strong> Shows ONLY students who have completed the Cycle 2 questionnaire</li>
-                    <li><strong>Tab "3":</strong> Shows ONLY students who have completed the Cycle 3 questionnaire</li>
-                    <li><strong>Tab "4+":</strong> Each subsequent tab shows students who have completed that specific cycle</li>
-                </ul>
-                <p><em>Note: Students must have completed the specific cycle's questionnaire to appear when that filter is selected.</em></p>
+                <h3>Cycle Filters:</h3>
+                <p><strong>Tab 1</strong> shows ALL students | <strong>Tabs 2+</strong> show ONLY students who completed that specific cycle's questionnaire</p>
             </div>
         `;
         
@@ -746,21 +778,28 @@
         let responseColumnIndex = -1;
         let actionColumnIndex = -1;
         
+        // Debug: log all header texts to understand column structure
+        log('Table headers:');
+        headers.forEach((th, idx) => {
+            log(`  Column ${idx}: "${th.textContent.trim()}"`);
+        });
+        
         // Find the actual column indices - be more flexible with naming
         headers.forEach((th, idx) => {
             const text = th.textContent.trim().toLowerCase();
             // Check for various possible names
-            if (text.includes('report response') || text === 'report response') {
+            if (text.includes('report response') || text === 'report response' || text.includes('response')) {
                 responseColumnIndex = idx;
+                log(`Report Response column found at index ${idx}`);
             }
-            if (text.includes('action plan') || text === 'action plan' || text.includes('goal')) {
+            if (text.includes('action plan') || text === 'action plan' || text.includes('goal') || text.includes('action')) {
                 actionColumnIndex = idx;
+                log(`Action Plan column found at index ${idx}`);
             }
         });
         
         // If we still haven't found them, look for the columns by position
-        // Based on your screenshot, Report Response seems to be around column 10-11
-        // and Action Plan around column 11-12
+        // Typically these are the last two text columns before any buttons
         if (responseColumnIndex === -1 || actionColumnIndex === -1) {
             log('Columns not found by name, checking by content patterns...');
             const firstRow = table.querySelector('tbody tr');
@@ -768,19 +807,21 @@
                 const cells = firstRow.querySelectorAll('td');
                 cells.forEach((cell, idx) => {
                     const text = cell.textContent.trim();
-                    // Look for cells with longer text content
-                    if (text.length > 50) {
+                    // Look for cells with longer text content (but not buttons)
+                    if (text.length > 30 && !cell.querySelector('button')) {
                         if (responseColumnIndex === -1) {
                             responseColumnIndex = idx;
+                            log(`Report Response column detected at index ${idx} by content`);
                         } else if (actionColumnIndex === -1 && idx !== responseColumnIndex) {
                             actionColumnIndex = idx;
+                            log(`Action Plan column detected at index ${idx} by content`);
                         }
                     }
                 });
             }
         }
         
-        log(`Found Report Response at column ${responseColumnIndex}, Action Plan at ${actionColumnIndex}`);
+        log(`Final column indices - Report Response: ${responseColumnIndex}, Action Plan: ${actionColumnIndex}`);
         
         // Add handlers to the cells
         const rows = table.querySelectorAll('tbody tr');
@@ -790,11 +831,24 @@
             // Handle Report Response column
             if (responseColumnIndex >= 0 && cells[responseColumnIndex]) {
                 const cell = cells[responseColumnIndex];
-                const originalText = cell.innerHTML;
-                const cleanText = stripHtmlTags(originalText);
                 
-                // Clear existing classes
+                // Skip if we've already processed this cell and content hasn't changed
+                // First, capture the current HTML content BEFORE we modify it
+                let currentContent = cell.innerHTML;
+                if (cell.dataset.processed && cell.dataset.originalHtml === currentContent) {
+                    // Skip processing this cell but continue with others
+                    // Don't use return here as it would skip the Action Plan column
+                } else {
+                
+                // Store the original HTML for future comparison
+                cell.dataset.originalHtml = currentContent;
+                cell.dataset.processed = 'true';
+                
+                const cleanText = stripHtmlTags(currentContent);
+                
+                // Clear existing classes and handlers
                 cell.classList.remove('has-content', 'no-content');
+                cell.onclick = null;
                 
                 if (cleanText.trim()) {
                     // Has content - show first sentence
@@ -808,25 +862,38 @@
                     
                     cell.onclick = () => {
                         const studentName = cells[0] ? cells[0].textContent : 'Student';
-                        showModal(`${studentName} - Report Response`, cleanText);
+                        // Re-read the full text in case it changed
+                        const latestText = cell.dataset.fullText || cleanText;
+                        showModal(`${studentName} - Report Response`, latestText);
                     };
                 } else {
                     // No content - show indicator
                     cell.textContent = 'No response added';
                     cell.classList.add('no-content');
                     cell.title = 'No response provided';
-                    cell.onclick = null;
                 }
+                } // Close the else block for processing check
             }
             
             // Handle Action Plan column
             if (actionColumnIndex >= 0 && cells[actionColumnIndex]) {
                 const cell = cells[actionColumnIndex];
-                const originalText = cell.innerHTML;
-                const cleanText = stripHtmlTags(originalText);
                 
-                // Clear existing classes
+                // Skip if we've already processed this cell and content hasn't changed
+                let currentContent = cell.innerHTML;
+                if (cell.dataset.processed && cell.dataset.originalHtml === currentContent) {
+                    // Skip processing this cell
+                } else {
+                
+                // Store the original HTML for future comparison
+                cell.dataset.originalHtml = currentContent;
+                cell.dataset.processed = 'true';
+                
+                const cleanText = stripHtmlTags(currentContent);
+                
+                // Clear existing classes and handlers
                 cell.classList.remove('has-content', 'no-content');
+                cell.onclick = null;
                 
                 if (cleanText.trim()) {
                     // Has content - show first sentence
@@ -840,15 +907,17 @@
                     
                     cell.onclick = () => {
                         const studentName = cells[0] ? cells[0].textContent : 'Student';
-                        showModal(`${studentName} - Action Plan`, cleanText);
+                        // Re-read the full text in case it changed
+                        const latestText = cell.dataset.fullText || cleanText;
+                        showModal(`${studentName} - Action Plan`, latestText);
                     };
                 } else {
                     // No content - show indicator
                     cell.textContent = 'No action plan added';
                     cell.classList.add('no-content');
                     cell.title = 'No action plan provided';
-                    cell.onclick = null;
                 }
+                } // Close the else block for processing check
             }
         });
         
@@ -1035,6 +1104,19 @@
                 // Add cycle filter info section (with slight delay to ensure DOM is ready)
                 setTimeout(() => {
                     addCycleFilterInfo();
+                    
+                    // Force reset any excessive heights created by Vue
+                    const wrapper = document.querySelector(`${CONFIG.targetView} .p-datatable-wrapper`);
+                    if (wrapper) {
+                        wrapper.style.setProperty('height', 'auto', 'important');
+                        wrapper.style.setProperty('min-height', '0', 'important');
+                    }
+                    
+                    const vueApp = document.querySelector(`${CONFIG.targetView} [data-v-app]`);
+                    if (vueApp) {
+                        vueApp.style.setProperty('height', 'auto', 'important');
+                        vueApp.style.setProperty('min-height', '0', 'important');
+                    }
                 }, 500);
                 
                 // Update filter placeholders
@@ -1049,31 +1131,62 @@
                 // Filter table based on user connections (disabled - using separate pages)
                 // filterTableByUserConnections(table);
                 
-                // Watch for table updates
+                // Watch for table updates - be more aggressive about detecting changes
                 const observer = new MutationObserver((mutations) => {
+                    let shouldUpdate = false;
+                    
                     mutations.forEach((mutation) => {
-                        if (mutation.type === 'childList' && mutation.target.tagName === 'TBODY') {
-                            log('Table data updated, reapplying handlers...');
-                            setTimeout(() => {
-                                const updatedTable = document.querySelector(`${CONFIG.targetView} table`);
-                                if (updatedTable) {
-                                    // Check if info section was removed during update
-                                    if (!document.querySelector('.cycle-filter-info')) {
-                                        setTimeout(() => addCycleFilterInfo(), 200);
-                                    }
-                                    addTextCellHandlers(updatedTable);
-                                    updateFilterPlaceholders();
-                                    applyScoreRAGRating(updatedTable);
-                                    filterTableByUserConnections(updatedTable);
-                                }
-                            }, 100);
+                        // Check for any changes in the table body or cells
+                        if (mutation.type === 'childList' || 
+                            mutation.type === 'characterData' ||
+                            (mutation.target && (mutation.target.tagName === 'TBODY' || 
+                             mutation.target.tagName === 'TD' || 
+                             mutation.target.tagName === 'TR'))) {
+                            shouldUpdate = true;
                         }
                     });
+                    
+                    if (shouldUpdate) {
+                        log('Table data updated, reapplying all enhancements...');
+                        clearTimeout(window.tableUpdateTimeout);
+                        window.tableUpdateTimeout = setTimeout(() => {
+                            const updatedTable = document.querySelector(`${CONFIG.targetView} table`);
+                            if (updatedTable) {
+                                // Check if info section was removed during update
+                                if (!document.querySelector('.cycle-filter-info')) {
+                                    setTimeout(() => addCycleFilterInfo(), 200);
+                                }
+                                // Re-process ALL text cells to capture new cycle data
+                                addTextCellHandlers(updatedTable);
+                                updateFilterPlaceholders();
+                                applyScoreRAGRating(updatedTable);
+                                filterTableByUserConnections(updatedTable);
+                                
+                                // Force refresh of text content in case Vue updated it
+                                const cells = updatedTable.querySelectorAll('td');
+                                cells.forEach(cell => {
+                                    if (cell.classList.contains('has-content') || cell.classList.contains('no-content')) {
+                                        // Force re-evaluation of cell content
+                                        cell.classList.remove('has-content', 'no-content');
+                                        // Clear the processed flag so content gets re-read
+                                        delete cell.dataset.processed;
+                                        delete cell.dataset.originalHtml;
+                                        delete cell.dataset.fullText;
+                                    }
+                                });
+                                
+                                // Re-apply handlers after forcing refresh
+                                setTimeout(() => addTextCellHandlers(updatedTable), 50);
+                            }
+                        }, 200); // Slightly longer delay to ensure Vue has finished updating
+                    }
                 });
                 
                 observer.observe(table, {
                     childList: true,
-                    subtree: true
+                    subtree: true,
+                    characterData: true,
+                    characterDataOldValue: true
                 });
                 
                 // Mark table as enhanced for the loader
