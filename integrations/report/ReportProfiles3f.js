@@ -2,23 +2,28 @@
 // This script displays student profile data above individual VESPA reports
 // Adapted for Multi-App Loader system
 
+console.log('[ReportProfiles] Script loading, config:', window.REPORTPROFILE_CONFIG);
+
 // Conditionally define DEBUG_MODE to prevent re-declaration errors if script is loaded multiple times
-if (typeof window.REPORT_PROFILES_DEBUG_MODE === 'undefined') {
+// Check if config was set by loader and use its debug mode setting
+if (window.REPORTPROFILE_CONFIG && typeof window.REPORTPROFILE_CONFIG.debugMode !== 'undefined') {
+  window.REPORT_PROFILES_DEBUG_MODE = window.REPORTPROFILE_CONFIG.debugMode;
+  console.log('[ReportProfiles] Debug mode set from config:', window.REPORTPROFILE_CONFIG.debugMode);
+} else if (typeof window.REPORT_PROFILES_DEBUG_MODE === 'undefined') {
   window.REPORT_PROFILES_DEBUG_MODE = false; 
+  console.log('[ReportProfiles] Debug mode defaulting to false');
 }
 var DEBUG_MODE = window.REPORT_PROFILES_DEBUG_MODE; // CHANGED from const to var
 
 // Global config variable - will be set by loader
 // let REPORTPROFILE_CONFIG = null; // Moved to prevent re-declaration errors
 
-// Guard to prevent re-initialization
-if (window.reportProfilesInitialized) {
-  // console.warn("[ReportProfiles] Attempted to re-initialize, but already initialized. Skipping.");
-  if (DEBUG_MODE) console.warn("[ReportProfiles] Attempted to re-initialize, but already initialized. Skipping.");
-  // Potentially throw an error or just return to stop further execution if this script is loaded multiple times.
-  // For now, we'll rely on the loader to fix multiple loads, this just prevents re-running initialize.
-} else {
-  window.reportProfilesInitialized = true;
+// Guard to prevent re-initialization - but allow re-init if scene changed
+// Note: We're moving this check INTO the initializeReportProfiles function
+// so it can be called multiple times for different scenes
+if (!window.reportProfilesScriptLoaded) {
+  window.reportProfilesScriptLoaded = true;
+  console.log('[ReportProfiles] Script code executing for first time');
 
   // Moved REPORTPROFILE_CONFIG declaration here
   let REPORTPROFILE_CONFIG = null;
@@ -100,13 +105,37 @@ if (window.reportProfilesInitialized) {
 
   // Main initializer function that will be called by the loader
   function initializeReportProfiles() {
-    debugLog("ReportProfiles initializing...");
+    console.log("[ReportProfiles] initializeReportProfiles called");
     
     // Check if config was provided by the loader
     if (window.REPORTPROFILE_CONFIG) {
-      debugLog("Using config from loader:", window.REPORTPROFILE_CONFIG);
+      console.log("[ReportProfiles] Using config from loader:", window.REPORTPROFILE_CONFIG);
       REPORTPROFILE_CONFIG = window.REPORTPROFILE_CONFIG;
+      
+      // Update debug mode from config
+      if (typeof REPORTPROFILE_CONFIG.debugMode !== 'undefined') {
+        DEBUG_MODE = REPORTPROFILE_CONFIG.debugMode;
+        window.REPORT_PROFILES_DEBUG_MODE = DEBUG_MODE;
+      }
     }
+    
+    debugLog("ReportProfiles initializing...");
+    
+    // Check if already initialized for this scene
+    const currentScene = REPORTPROFILE_CONFIG ? REPORTPROFILE_CONFIG.sceneKey : null;
+    if (window.reportProfilesLastScene === currentScene && window.reportProfilesInitialized) {
+      debugLog(`Already initialized for scene ${currentScene}, skipping`);
+      return;
+    }
+    
+    // Clean up any existing observers/intervals from previous scene
+    if (window.reportProfilesCleanup) {
+      debugLog("Cleaning up previous scene initialization");
+      window.reportProfilesCleanup();
+    }
+    
+    window.reportProfilesInitialized = true;
+    window.reportProfilesLastScene = currentScene;
     
     // Add CSS styles
     addStyles();
@@ -231,6 +260,24 @@ if (window.reportProfilesInitialized) {
         }
       }
     }, CHECK_INTERVAL);
+    
+    // Store cleanup function
+    window.reportProfilesCleanup = function() {
+      clearInterval(checkInterval);
+      if (reportObserver) {
+        reportObserver.disconnect();
+        reportObserver = null;
+      }
+      if (activityButtonPollInterval) {
+        clearInterval(activityButtonPollInterval);
+        activityButtonPollInterval = null;
+      }
+      // Remove debug indicator
+      const indicator = document.getElementById('profile-debug-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    };
   }
 
   // Debug logging helper
@@ -2035,6 +2082,14 @@ if (window.reportProfilesInitialized) {
 
   // Expose initializer to global scope so the Multi-App Loader can access it
   window.initializeReportProfiles = initializeReportProfiles;
+} // End of the main initialization guard
+
+// ALWAYS expose the initializer function, even if script was already loaded
+// This allows the loader to call it for different scenes
+if (!window.initializeReportProfiles) {
+  window.initializeReportProfiles = function() {
+    console.log('[ReportProfiles] Initializer called but script needs to be reloaded for new scene');
+  };
 
   // Helper function to check if the current user is NOT a "Student"
   function isEditableByStaff() {
