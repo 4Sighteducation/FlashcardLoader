@@ -15,7 +15,8 @@
     const CONFIG = {
         targetView: '#view_2772',
         checkInterval: 500,
-        maxAttempts: 20
+        maxAttempts: 30,  // Increased attempts
+        initialDelay: 2000  // Add 2 second initial delay
     };
     
     // Strip HTML tags from text - more aggressive
@@ -643,19 +644,54 @@
         }, CONFIG.checkInterval);
     }
     
-    // Initialize immediately since we're loaded after the scene
-    log('Starting enhancement process...');
+    // Initialize with better Vue app detection and loading screen coordination
+    log('Coordinating with loading screen...');
     
-    // Try immediately
-    enhanceVueTable();
+    // Check if we have a loading screen active
+    const hasLoadingScreen = document.querySelector('.vespa-loading-overlay');
+    if (hasLoadingScreen) {
+        log('Loading screen detected, enhancer will wait for Vue app');
+    }
     
-    // Also try after a delay as fallback
-    setTimeout(() => {
-        const table = document.querySelector('#view_2772 table');
-        if (table && !document.getElementById('vue-table-safe-styles')) {
-            log('Fallback enhancement triggered');
+    // Wait for Vue app to be ready
+    let initAttempts = 0;
+    const initInterval = setInterval(() => {
+        initAttempts++;
+        
+        // Check if the Vue app exists (look for Vue-specific attributes)
+        const vueApp = document.querySelector('#view_2772 [data-v-app], #view_2772 .p-datatable, #view_2772 table');
+        
+        if (vueApp) {
+            // Check if there's an error state
+            const hasError = document.querySelector('#view_2772 .error, #view_2772 .exception');
+            if (hasError) {
+                log('⚠️ Vue app has errors, waiting...');
+                if (initAttempts >= CONFIG.maxAttempts) {
+                    clearInterval(initInterval);
+                    log('❌ Vue app failed to recover from errors');
+                }
+                return;
+            }
+            
+            // Vue app found, try to enhance
+            clearInterval(initInterval);
+            log('Vue app detected, attempting enhancement...');
             enhanceVueTable();
+            
+            // Also try after a delay as fallback
+            setTimeout(() => {
+                const table = document.querySelector('#view_2772 table');
+                if (table && !document.getElementById('vue-table-safe-styles')) {
+                    log('Fallback enhancement triggered');
+                    enhanceVueTable();
+                }
+            }, 2000);
+        } else if (initAttempts >= CONFIG.maxAttempts) {
+            clearInterval(initInterval);
+            log('❌ Vue app not found after maximum attempts');
+        } else {
+            log(`Waiting for Vue app (attempt ${initAttempts}/${CONFIG.maxAttempts})`);
         }
-    }, 2000);
+    }, CONFIG.checkInterval);
     
 })();
