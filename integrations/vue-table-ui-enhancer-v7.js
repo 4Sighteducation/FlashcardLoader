@@ -273,25 +273,33 @@
                     box-shadow: 0 4px 12px rgba(7, 155, 170, 0.3) !important;
                 }
                 
-                /* Score coloring */
-                #view_2772 td:contains("10"),
-                #view_2772 td:contains("9"),
-                #view_2772 td:contains("8") {
-                    color: #22c55e !important;
+                /* RAG Score Background Colors - Applied via JavaScript */
+                #view_2772 td.score-null {
+                    background: transparent !important;
+                }
+                
+                #view_2772 td.score-low {
+                    background: #fee2e2 !important; /* Light red for 1-3 */
+                    color: #991b1b !important;
                     font-weight: 600 !important;
                 }
                 
-                #view_2772 td:contains("7"),
-                #view_2772 td:contains("6"),
-                #view_2772 td:contains("5") {
-                    color: #f59e0b !important;
+                #view_2772 td.score-medium {
+                    background: #fed7aa !important; /* Light orange for 4-5 */
+                    color: #9a3412 !important;
+                    font-weight: 600 !important;
                 }
                 
-                #view_2772 td:contains("4"),
-                #view_2772 td:contains("3"),
-                #view_2772 td:contains("2"),
-                #view_2772 td:contains("1") {
-                    color: #ef4444 !important;
+                #view_2772 td.score-good {
+                    background: #bbf7d0 !important; /* Light green for 6-7 */
+                    color: #14532d !important;
+                    font-weight: 600 !important;
+                }
+                
+                #view_2772 td.score-high {
+                    background: #86efac !important; /* Darker green for 8-10 */
+                    color: #14532d !important;
+                    font-weight: 700 !important;
                 }
                 
                 /* Modal styles */
@@ -522,6 +530,55 @@
         log('Text cell handlers added');
     }
     
+    // Apply RAG rating colors to VESPAO score cells
+    function applyScoreRAGRating(table) {
+        // Find VESPAO column indices
+        const headers = table.querySelectorAll('thead th');
+        const scoreColumns = [];
+        
+        headers.forEach((th, idx) => {
+            const text = th.textContent.trim().toUpperCase();
+            // Look for V, E, S, P, A, O columns
+            if (text === 'V' || text === 'E' || text === 'S' || text === 'P' || text === 'A' || text === 'O') {
+                scoreColumns.push(idx);
+            }
+        });
+        
+        log(`Found score columns at indices: ${scoreColumns.join(', ')}`);
+        
+        // Apply RAG classes to score cells
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            
+            scoreColumns.forEach(colIdx => {
+                if (cells[colIdx]) {
+                    const cell = cells[colIdx];
+                    const scoreText = cell.textContent.trim();
+                    const score = parseInt(scoreText, 10);
+                    
+                    // Remove any existing score classes
+                    cell.classList.remove('score-null', 'score-low', 'score-medium', 'score-good', 'score-high');
+                    
+                    // Apply appropriate class based on score
+                    if (isNaN(score) || score === 0 || scoreText === '' || scoreText === 'No') {
+                        cell.classList.add('score-null');
+                    } else if (score >= 1 && score <= 3) {
+                        cell.classList.add('score-low');
+                    } else if (score >= 4 && score <= 5) {
+                        cell.classList.add('score-medium');
+                    } else if (score >= 6 && score <= 7) {
+                        cell.classList.add('score-good');
+                    } else if (score >= 8 && score <= 10) {
+                        cell.classList.add('score-high');
+                    }
+                }
+            });
+        });
+        
+        log('RAG rating applied to score cells');
+    }
+    
     // Main enhancement function - NO DOM RESTRUCTURING
     async function enhanceVueTable() {
         let attempts = 0;
@@ -546,6 +603,9 @@
                 // Add text cell handlers
                 addTextCellHandlers(table);
                 
+                // Apply RAG rating to score cells
+                applyScoreRAGRating(table);
+                
                 // Watch for table updates
                 const observer = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
@@ -556,6 +616,7 @@
                                 if (updatedTable) {
                                     addTextCellHandlers(updatedTable);
                                     updateFilterPlaceholders();
+                                    applyScoreRAGRating(updatedTable);
                                 }
                             }, 100);
                         }
