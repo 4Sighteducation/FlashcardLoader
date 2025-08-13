@@ -351,38 +351,58 @@
                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 }
                 
-                /* Fix table positioning - remove all height constraints */
+                /* Fix table positioning - remove all height constraints and positioning issues */
                 ${CONFIG.targetView} {
                     position: relative !important;
+                    top: 0 !important;
                     height: auto !important;
                     min-height: 0 !important;
                     max-height: none !important;
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                    transform: none !important;
+                }
+                
+                /* Reset Vue app container to prevent massive spacing */
+                ${CONFIG.targetView} [data-v-app] {
+                    position: relative !important;
+                    top: 0 !important;
+                    height: auto !important;
+                    min-height: 0 !important;
+                    max-height: none !important;
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                    transform: none !important;
                 }
                 
                 /* Aggressively reset any height issues from Vue app */
                 ${CONFIG.targetView} .p-datatable-wrapper {
+                    position: relative !important;
+                    top: 0 !important;
                     height: auto !important;
                     min-height: 0 !important;
                     max-height: none !important;
-                }
-                
-                ${CONFIG.targetView} [data-v-app] {
-                    height: auto !important;
-                    min-height: 0 !important;
-                    max-height: none !important;
+                    margin-top: 0 !important;
+                    overflow: visible !important;
                 }
                 
                 /* Ensure table container doesn't expand unnecessarily */
                 ${CONFIG.targetView} .p-datatable {
+                    position: relative !important;
+                    top: 0 !important;
                     height: auto !important;
                     min-height: 0 !important;
                     display: block !important;
+                    margin-top: 0 !important;
                 }
                 
                 /* Reset any virtual scrolling that might be causing issues */
                 ${CONFIG.targetView} .p-virtualscroller {
+                    position: relative !important;
+                    top: 0 !important;
                     height: auto !important;
                     min-height: 0 !important;
+                    overflow: visible !important;
                 }
                 
                 /* Force table to be compact */
@@ -724,8 +744,12 @@
         log('Filter placeholders updated');
     }
     
-    // Add info section about cycle filters
+    // Add info section about cycle filters - TEMPORARILY DISABLED TO TEST POSITIONING
     function addCycleFilterInfo() {
+        // TEMPORARILY DISABLED - Testing if this causes positioning issues
+        return;
+        
+        /* Original code commented out for testing
         // Check if info section already exists
         if (document.querySelector('.cycle-filter-info')) {
             return;
@@ -770,6 +794,7 @@
             viewContainer.insertAdjacentHTML('afterbegin', infoHTML);
             log('Cycle filter info added at beginning of view');
         }
+        */
     }
     
     // Add click handlers to text cells WITHOUT moving them
@@ -832,52 +857,51 @@
             if (responseColumnIndex >= 0 && cells[responseColumnIndex]) {
                 const cell = cells[responseColumnIndex];
                 
-                // Always read the current content - don't skip based on processed flag
-                // This ensures we get new data when cycles change
+                // ALWAYS process the cell to ensure we get fresh cycle data
+                // The Vue app might reuse DOM elements but change their content
                 const currentContent = cell.innerHTML;
                 
-                // Only skip if the content truly hasn't changed AND we're not switching cells
-                if (cell.dataset.fullText && 
-                    cell.classList.contains('has-content') && 
-                    currentContent === cell.dataset.originalHtml) {
-                    // Content hasn't changed, skip reprocessing
-                } else {
-                    // Process the cell - either new content or first time
-                    cell.dataset.originalHtml = currentContent;
-                    
-                    const cleanText = stripHtmlTags(currentContent);
-                    
-                    // Debug: Log first 50 chars of content to verify it's changing with cycles
-                    if (CONFIG.debugMode && cleanText.trim()) {
-                        const studentName = cells[0] ? cells[0].textContent : 'Unknown';
-                        log(`Report Response for ${studentName} (first 50 chars): "${cleanText.substring(0, 50)}..."`);
-                    }
-                    
-                    // Clear existing classes and handlers
-                    cell.classList.remove('has-content', 'no-content');
-                    cell.onclick = null;
-                    
+                // Store the original HTML 
+                cell.dataset.originalHtml = currentContent;
+                
+                const cleanText = stripHtmlTags(currentContent);
+                
+                // Debug: Log content to verify it's changing with cycles
+                if (CONFIG.debugMode) {
+                    const studentName = cells[0] ? cells[0].textContent : 'Unknown';
+                    const activeTab = document.querySelector(`${CONFIG.targetView} .p-tabview-nav li[aria-selected="true"], ${CONFIG.targetView} button.p-highlight, ${CONFIG.targetView} button[class*="active"]`);
+                    const cycleNum = activeTab ? activeTab.textContent.trim() : 'Unknown';
                     if (cleanText.trim()) {
-                        // Has content - show first sentence
-                        const truncated = getFirstSentence(cleanText);
-                        cell.textContent = truncated;
-                        cell.classList.add('has-content');
-                        cell.title = 'Click to read full response';
-                        
-                        // Store full text for modal
-                        cell.dataset.fullText = cleanText;
-                        
-                        cell.onclick = () => {
-                            const studentName = cells[0] ? cells[0].textContent : 'Student';
-                            showModal(`${studentName} - Report Response`, cleanText);
-                        };
+                        log(`[Cycle ${cycleNum}] Report Response for ${studentName}: "${cleanText.substring(0, 80)}..."`);
                     } else {
-                        // No content - show indicator
-                        cell.textContent = 'No response added';
-                        cell.classList.add('no-content');
-                        cell.title = 'No response provided';
-                        cell.dataset.fullText = ''; // Clear stored text
+                        log(`[Cycle ${cycleNum}] Report Response for ${studentName}: EMPTY`);
                     }
+                }
+                
+                // Clear existing classes and handlers
+                cell.classList.remove('has-content', 'no-content');
+                cell.onclick = null;
+                
+                if (cleanText.trim()) {
+                    // Has content - show first sentence
+                    const truncated = getFirstSentence(cleanText);
+                    cell.textContent = truncated;
+                    cell.classList.add('has-content');
+                    cell.title = 'Click to read full response';
+                    
+                    // Store full text for modal
+                    cell.dataset.fullText = cleanText;
+                    
+                    cell.onclick = () => {
+                        const studentName = cells[0] ? cells[0].textContent : 'Student';
+                        showModal(`${studentName} - Report Response`, cleanText);
+                    };
+                } else {
+                    // No content - show indicator
+                    cell.textContent = 'No response added';
+                    cell.classList.add('no-content');
+                    cell.title = 'No response provided';
+                    cell.dataset.fullText = ''; // Clear stored text
                 }
             }
             
@@ -885,45 +909,38 @@
             if (actionColumnIndex >= 0 && cells[actionColumnIndex]) {
                 const cell = cells[actionColumnIndex];
                 
-                // Always read the current content - don't skip based on processed flag
+                // ALWAYS process the cell to ensure we get fresh cycle data
                 const currentContent = cell.innerHTML;
                 
-                // Only skip if the content truly hasn't changed
-                if (cell.dataset.fullText && 
-                    cell.classList.contains('has-content') && 
-                    currentContent === cell.dataset.originalHtml) {
-                    // Content hasn't changed, skip reprocessing
+                // Store the original HTML
+                cell.dataset.originalHtml = currentContent;
+                
+                const cleanText = stripHtmlTags(currentContent);
+                
+                // Clear existing classes and handlers
+                cell.classList.remove('has-content', 'no-content');
+                cell.onclick = null;
+                
+                if (cleanText.trim()) {
+                    // Has content - show first sentence
+                    const truncated = getFirstSentence(cleanText);
+                    cell.textContent = truncated;
+                    cell.classList.add('has-content');
+                    cell.title = 'Click to read full action plan';
+                    
+                    // Store full text for modal
+                    cell.dataset.fullText = cleanText;
+                    
+                    cell.onclick = () => {
+                        const studentName = cells[0] ? cells[0].textContent : 'Student';
+                        showModal(`${studentName} - Action Plan`, cleanText);
+                    };
                 } else {
-                    // Process the cell - either new content or first time
-                    cell.dataset.originalHtml = currentContent;
-                    
-                    const cleanText = stripHtmlTags(currentContent);
-                    
-                    // Clear existing classes and handlers
-                    cell.classList.remove('has-content', 'no-content');
-                    cell.onclick = null;
-                    
-                    if (cleanText.trim()) {
-                        // Has content - show first sentence
-                        const truncated = getFirstSentence(cleanText);
-                        cell.textContent = truncated;
-                        cell.classList.add('has-content');
-                        cell.title = 'Click to read full action plan';
-                        
-                        // Store full text for modal
-                        cell.dataset.fullText = cleanText;
-                        
-                        cell.onclick = () => {
-                            const studentName = cells[0] ? cells[0].textContent : 'Student';
-                            showModal(`${studentName} - Action Plan`, cleanText);
-                        };
-                    } else {
-                        // No content - show indicator
-                        cell.textContent = 'No action plan added';
-                        cell.classList.add('no-content');
-                        cell.title = 'No action plan provided';
-                        cell.dataset.fullText = ''; // Clear stored text
-                    }
+                    // No content - show indicator
+                    cell.textContent = 'No action plan added';
+                    cell.classList.add('no-content');
+                    cell.title = 'No action plan provided';
+                    cell.dataset.fullText = ''; // Clear stored text
                 }
             }
         });
@@ -1250,12 +1267,54 @@
                 // Mark table as enhanced for the loader
                 table.classList.add('enhanced');
                 
-                // Ensure table is visible and remove immediate hide
-                const viewContainer = document.querySelector(CONFIG.targetView);
-                if (viewContainer) {
-                    viewContainer.style.opacity = '1';
-                    viewContainer.style.visibility = 'visible';
+                // Fix positioning issues - force everything to top
+                function fixTablePosition() {
+                    const viewContainer = document.querySelector(CONFIG.targetView);
+                    if (viewContainer) {
+                        viewContainer.style.position = 'relative';
+                        viewContainer.style.top = '0';
+                        viewContainer.style.height = 'auto';
+                        viewContainer.style.minHeight = '0';
+                        viewContainer.style.marginTop = '0';
+                        viewContainer.style.paddingTop = '0';
+                        viewContainer.style.transform = 'none';
+                        viewContainer.style.opacity = '1';
+                        viewContainer.style.visibility = 'visible';
+                    }
+                    
+                    // Fix all Vue containers
+                    const vueContainers = document.querySelectorAll(`${CONFIG.targetView} [data-v-app], ${CONFIG.targetView} .p-datatable-wrapper, ${CONFIG.targetView} .p-datatable`);
+                    vueContainers.forEach(container => {
+                        container.style.position = 'relative';
+                        container.style.top = '0';
+                        container.style.height = 'auto';
+                        container.style.minHeight = '0';
+                        container.style.marginTop = '0';
+                        container.style.paddingTop = '0';
+                        container.style.transform = 'none';
+                    });
+                    
+                    // Check for any element with excessive top spacing
+                    const allElements = document.querySelectorAll(`${CONFIG.targetView} *`);
+                    allElements.forEach(el => {
+                        const computed = window.getComputedStyle(el);
+                        const marginTop = parseInt(computed.marginTop);
+                        const paddingTop = parseInt(computed.paddingTop);
+                        if (marginTop > 100) {
+                            log(`Fixing excessive marginTop on ${el.className}: ${marginTop}px`);
+                            el.style.marginTop = '20px';
+                        }
+                        if (paddingTop > 100) {
+                            log(`Fixing excessive paddingTop on ${el.className}: ${paddingTop}px`);
+                            el.style.paddingTop = '20px';
+                        }
+                    });
                 }
+                
+                // Apply positioning fixes
+                fixTablePosition();
+                setTimeout(fixTablePosition, 100);
+                setTimeout(fixTablePosition, 500);
                 
                 // Remove the immediate hide style once enhanced
                 const hideStyle = document.getElementById('vue-table-immediate-hide');
