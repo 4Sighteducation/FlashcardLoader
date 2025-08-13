@@ -18,11 +18,20 @@
         maxAttempts: 20
     };
     
-    // Strip HTML tags from text
+    // Strip HTML tags from text - more aggressive
     function stripHtmlTags(html) {
+        if (!html) return '';
+        
+        // First, replace <br> tags with spaces
+        let text = html.replace(/<br\s*\/?>/gi, ' ');
+        
+        // Then strip all other HTML tags
         const tmp = document.createElement('div');
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || '';
+        tmp.innerHTML = text;
+        text = tmp.textContent || tmp.innerText || '';
+        
+        // Clean up extra whitespace
+        return text.replace(/\s+/g, ' ').trim();
     }
     
     // Create modal HTML
@@ -129,31 +138,75 @@
             }
         });
         
-        // Text columns (Report Response, Action Plan) - make them wider
+        // Text columns (Report Response, Action Plan) - dynamic sizing with multi-line display
         if (columnInfo['report response'] !== undefined) {
             columnStyles += `
-                #view_2772 th:nth-child(${columnInfo['report response'] + 1}),
+                #view_2772 th:nth-child(${columnInfo['report response'] + 1}) {
+                    min-width: 250px !important;
+                }
                 #view_2772 td:nth-child(${columnInfo['report response'] + 1}) {
-                    min-width: 200px !important;
-                    max-width: 300px !important;
-                    white-space: nowrap !important;
-                    overflow: hidden !important;
-                    text-overflow: ellipsis !important;
+                    min-width: 250px !important;
+                    max-width: 350px !important;
+                    white-space: normal !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    line-height: 1.4 !important;
+                    font-size: 12px !important;
+                    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif !important;
+                    color: #4a5568 !important;
+                    padding: 10px !important;
                     cursor: pointer !important;
+                    max-height: 80px !important;
+                    overflow-y: auto !important;
+                    display: -webkit-box !important;
+                    -webkit-line-clamp: 4 !important;
+                    -webkit-box-orient: vertical !important;
+                    overflow: hidden !important;
+                }
+                #view_2772 td:nth-child(${columnInfo['report response'] + 1}):hover {
+                    background: rgba(7, 155, 170, 0.05) !important;
+                    -webkit-line-clamp: unset !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                    z-index: 100 !important;
+                    position: relative !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
                 }
             `;
         }
         
         if (columnInfo['action plan'] !== undefined) {
             columnStyles += `
-                #view_2772 th:nth-child(${columnInfo['action plan'] + 1}),
+                #view_2772 th:nth-child(${columnInfo['action plan'] + 1}) {
+                    min-width: 250px !important;
+                }
                 #view_2772 td:nth-child(${columnInfo['action plan'] + 1}) {
-                    min-width: 200px !important;
-                    max-width: 300px !important;
-                    white-space: nowrap !important;
-                    overflow: hidden !important;
-                    text-overflow: ellipsis !important;
+                    min-width: 250px !important;
+                    max-width: 350px !important;
+                    white-space: normal !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    line-height: 1.4 !important;
+                    font-size: 12px !important;
+                    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif !important;
+                    color: #4a5568 !important;
+                    padding: 10px !important;
                     cursor: pointer !important;
+                    max-height: 80px !important;
+                    overflow-y: auto !important;
+                    display: -webkit-box !important;
+                    -webkit-line-clamp: 4 !important;
+                    -webkit-box-orient: vertical !important;
+                    overflow: hidden !important;
+                }
+                #view_2772 td:nth-child(${columnInfo['action plan'] + 1}):hover {
+                    background: rgba(7, 155, 170, 0.05) !important;
+                    -webkit-line-clamp: unset !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                    z-index: 100 !important;
+                    position: relative !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
                 }
             `;
         }
@@ -357,6 +410,25 @@
         log('Adaptive styles injected');
     }
     
+    // Update filter placeholders
+    function updateFilterPlaceholders() {
+        // Find filter inputs
+        const filterInputs = document.querySelectorAll('#view_2772 input[placeholder*="FILTER"]');
+        filterInputs.forEach(input => {
+            input.placeholder = 'Filter';
+        });
+        
+        // Also check for dropdown filters
+        const filterDropdowns = document.querySelectorAll('#view_2772 .p-dropdown-label');
+        filterDropdowns.forEach(dropdown => {
+            if (dropdown.textContent.includes('FILTER')) {
+                dropdown.textContent = 'Filter';
+            }
+        });
+        
+        log('Filter placeholders updated');
+    }
+    
     // Add click handlers to text cells WITHOUT moving them
     function addTextCellHandlers(table) {
         const headers = table.querySelectorAll('thead th');
@@ -439,6 +511,9 @@
                 // Inject adaptive styles
                 injectAdaptiveStyles();
                 
+                // Update filter placeholders
+                updateFilterPlaceholders();
+                
                 // Add text cell handlers
                 addTextCellHandlers(table);
                 
@@ -451,6 +526,7 @@
                                 const updatedTable = document.querySelector(`${CONFIG.targetView} table`);
                                 if (updatedTable) {
                                     addTextCellHandlers(updatedTable);
+                                    updateFilterPlaceholders();
                                 }
                             }, 100);
                         }
