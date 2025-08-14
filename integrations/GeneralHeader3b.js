@@ -725,6 +725,12 @@
             // Debug log for resource type detection
             log(`Creating header for userType: ${userType}, isResource: ${userType.includes('Resource')}`);
             
+            // Mobile detection for debugging
+            const isMobile = /iPhone|iPod|iPad|Android|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent);
+            if (isMobile) {
+                log('MOBILE DEVICE DETECTED - applying mobile-specific rendering');
+            }
+            
             // Determine home page based on user type
             let homeHref, homeScene;
             if (userType === 'student') {
@@ -798,8 +804,12 @@
                             <nav class="header-navigation">
                                 ${navItemsHTML}
                             </nav>
-                            <button class="mobile-menu-toggle" aria-label="Toggle menu">
-                                <i class="fa fa-bars"></i>
+                            <button class="mobile-menu-toggle" type="button" aria-label="Toggle menu">
+                                <span class="hamburger-icon">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </span>
                             </button>
                         </div>
                     </div>
@@ -830,13 +840,16 @@
                     .vespa-general-header {
                         position: fixed;
                         top: 0;
-                        left: 0;
-                        right: 0;
+                        left: 0 !important; /* Force to prevent mobile issues */
+                        right: 0 !important; /* Force to prevent mobile issues */
+                        width: 100% !important; /* Explicit width for mobile */
                         background-color: ${navConfig.color};
                         color: white;
                         z-index: 9999;
                         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                         transition: all 0.3s ease;
+                        transform: translateZ(0); /* Force GPU acceleration */
+                        -webkit-transform: translateZ(0); /* iOS compatibility */
                     }
                     
                     .header-content {
@@ -885,6 +898,7 @@
                         justify-content: center;
                         max-width: 1100px;
                         margin: 0 20px;
+                        position: relative; /* Default position for desktop */
                     }
                     
                     .header-nav-button {
@@ -951,18 +965,57 @@
                     /* Mobile menu toggle */
                     .mobile-menu-toggle {
                         display: none;
-                        background: none;
-                        border: none;
+                        background: rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.2);
                         color: white;
-                        font-size: 22px;
+                        font-size: 24px;
                         cursor: pointer;
-                        padding: 8px;
+                        padding: 10px 12px;
                         border-radius: 6px;
-                        transition: background-color 0.2s ease;
+                        transition: all 0.2s ease;
+                        margin-left: auto; /* Push to right side */
+                        flex-shrink: 0; /* Prevent shrinking */
+                        min-width: 44px; /* Minimum touch target */
+                        min-height: 44px; /* Minimum touch target */
+                        line-height: 1;
                     }
                     
-                    .mobile-menu-toggle:hover {
-                        background-color: rgba(255,255,255,0.1);
+                    .mobile-menu-toggle:hover,
+                    .mobile-menu-toggle:active {
+                        background-color: rgba(255,255,255,0.2);
+                        transform: scale(0.95);
+                    }
+                    
+                    /* Hamburger icon styling */
+                    .hamburger-icon {
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-around;
+                        width: 24px;
+                        height: 20px;
+                        pointer-events: none;
+                    }
+                    
+                    .hamburger-icon span {
+                        display: block;
+                        height: 3px;
+                        width: 100%;
+                        background-color: white;
+                        border-radius: 2px;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    /* Animated hamburger when menu is open */
+                    .mobile-menu-toggle.active .hamburger-icon span:nth-child(1) {
+                        transform: translateY(7px) rotate(45deg);
+                    }
+                    
+                    .mobile-menu-toggle.active .hamburger-icon span:nth-child(2) {
+                        opacity: 0;
+                    }
+                    
+                    .mobile-menu-toggle.active .hamburger-icon span:nth-child(3) {
+                        transform: translateY(-7px) rotate(-45deg);
                     }
                     
                     /* Breadcrumb styles */
@@ -1011,34 +1064,133 @@
                         min-height: calc(100vh - 97px);
                     }
                     
-                    /* Mobile Styles */
-                    @media (max-width: 992px) {
+                    /* Intermediate styles for devices like Galaxy Fold when open (650-850px) */
+                    @media (min-width: 651px) and (max-width: 850px) {
+                        .header-nav-button {
+                            padding: 6px 10px;
+                            font-size: 12px;
+                            gap: 4px;
+                        }
+                        
+                        .header-nav-button i {
+                            font-size: 14px;
+                        }
+                        
+                        .header-brand {
+                            font-size: 16px;
+                        }
+                        
+                        .vespa-logo {
+                            height: 35px;
+                        }
+                        
                         .header-navigation {
                             gap: 4px;
                             margin: 0 10px;
                         }
                         
-                        .header-nav-button {
-                            padding: 5px 8px;
-                            font-size: 11px;
+                        /* Hide less important buttons on medium screens */
+                        .header-settings-button span,
+                        .header-logout-button span {
+                            display: none; /* Show only icons for settings/logout */
                         }
-                        
-                        .header-nav-button i {
-                            font-size: 12px;
+                    }
+                    
+                    /* Mobile menu for narrow screens (Galaxy Fold closed = 344px) */
+                    @media (max-width: 650px) {
+                        .header-top-row {
+                            height: 56px;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: space-between !important;
                         }
                         
                         .header-brand {
                             font-size: 18px;
+                            flex-shrink: 1; /* Allow brand to shrink if needed */
+                        }
+                        
+                        .header-brand span {
+                            font-size: 16px;
                         }
                         
                         .vespa-logo {
                             height: 40px;
                         }
                         
-
+                        /* Use mobile navigation for tablets too */
+                        .header-navigation {
+                            position: fixed !important;
+                            top: 56px !important;
+                            right: -280px !important;
+                            left: auto !important;
+                            width: 280px !important;
+                            height: calc(100vh - 56px);
+                            background-color: ${navConfig.color};
+                            flex-direction: column;
+                            justify-content: flex-start;
+                            padding: 16px;
+                            gap: 8px;
+                            transition: right 0.3s ease;
+                            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+                            margin: 0;
+                            overflow-y: auto;
+                            -webkit-overflow-scrolling: touch;
+                            transform: translateZ(0);
+                        }
+                        
+                        .header-navigation.mobile-open {
+                            right: 0 !important;
+                        }
+                        
+                        .header-nav-button {
+                            width: 100%;
+                            justify-content: flex-start;
+                            padding: 12px 16px;
+                            font-size: 15px;
+                            background: rgba(255,255,255,0.08);
+                            min-width: auto;
+                        }
+                        
+                        .header-nav-button i {
+                            font-size: 18px;
+                            width: 24px;
+                            text-align: center;
+                        }
+                        
+                        .mobile-menu-toggle {
+                            display: block !important;
+                            position: relative !important;
+                            z-index: 10000 !important;
+                        }
+                        
+                        .mobile-nav-overlay {
+                            display: none;
+                            position: fixed;
+                            top: 56px;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background-color: rgba(0,0,0,0.4);
+                            z-index: 9998;
+                            backdrop-filter: blur(2px);
+                        }
+                        
+                        .mobile-nav-overlay.active {
+                            display: block;
+                        }
                     }
                     
                     @media (max-width: 768px) {
+                        /* Ensure header stays on screen */
+                        .vespa-general-header {
+                            left: 0 !important;
+                            right: 0 !important;
+                            width: 100% !important;
+                            max-width: 100vw !important;
+                            overflow: hidden !important; /* Hide overflow to prevent scroll */
+                        }
+                        
                         .header-top-row {
                             height: 56px;
                         }
@@ -1052,10 +1204,11 @@
                         }
                         
                         .header-navigation {
-                            position: fixed;
-                            top: 56px;
-                            right: -280px;
-                            width: 280px;
+                            position: fixed !important;
+                            top: 56px !important;
+                            right: -280px !important;
+                            left: auto !important;
+                            width: 280px !important;
                             height: calc(100vh - 56px);
                             background-color: ${navConfig.color};
                             flex-direction: column;
@@ -1066,6 +1219,8 @@
                             box-shadow: -2px 0 10px rgba(0,0,0,0.2);
                             margin: 0;
                             overflow-y: auto;
+                            -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
+                            transform: translateZ(0); /* Force GPU acceleration */
                         }
                         
                         .header-navigation.mobile-open {
@@ -1094,7 +1249,9 @@
                         }
                         
                         .mobile-menu-toggle {
-                            display: block;
+                            display: block !important;
+                            position: relative !important;
+                            z-index: 10000 !important;
                         }
                         
                         .mobile-nav-overlay {
@@ -1271,6 +1428,8 @@
                 mobileToggle.addEventListener('click', function() {
                     navigation.classList.toggle('mobile-open');
                     overlay.classList.toggle('active');
+                    mobileToggle.classList.toggle('active'); // Add active class for animation
+                    log('Mobile menu toggled');
                 });
             }
             
@@ -1278,6 +1437,7 @@
                 overlay.addEventListener('click', function() {
                     navigation.classList.remove('mobile-open');
                     overlay.classList.remove('active');
+                    if (mobileToggle) mobileToggle.classList.remove('active');
                 });
             }
             
@@ -1321,6 +1481,7 @@
                         // Close mobile menu if open
                         navigation.classList.remove('mobile-open');
                         overlay.classList.remove('active');
+                        if (mobileToggle) mobileToggle.classList.remove('active');
                         // Navigate using Knack
                         window.location.hash = href;
                     }
