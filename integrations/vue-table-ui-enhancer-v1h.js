@@ -1,22 +1,27 @@
-// Vue Table UI Enhancer v1g - RACE CONDITION FIX
-// Fixes: positioning, column sizing, HTML stripping, cycle refresh, AND race conditions
-// Version: 1.7g STABLE
+// Vue Table UI Enhancer v1h - NAVIGATION FIX
+// Fixes: table reverting when navigating back from reports
+// Version: 1.8h STABLE
 
 (function() {
     'use strict';
     
     const DEBUG = true;
     const log = (msg, data) => {
-        if (DEBUG) console.log(`[VueTableV1G] ${msg}`, data || '');
+        if (DEBUG) console.log(`[VueTableV1H] ${msg}`, data || '');
     };
     
-    log('🚀 Vue Table Enhancer v1.7g Starting (with race condition fixes)...');
+    log('🚀 Vue Table Enhancer v1.8h Starting (with navigation fixes)...');
     
     // RACE CONDITION PREVENTION FLAGS
     let isProcessing = false;
     let fixSpacingTimeout = null;
     let lastFixSpacingTime = 0;
-    const MIN_SPACING_FIX_INTERVAL = 1000; // Don't fix spacing more than once per second
+    const MIN_SPACING_FIX_INTERVAL = 1000;
+    
+    // Track enhanced state
+    let isEnhanced = false;
+    let lastEnhancedTime = 0;
+    let enhancementCheckInterval = null;
     
     // Immediate hide to prevent flash
     const immediateHideStyle = document.createElement('style');
@@ -42,6 +47,7 @@
     // Track current cycle for change detection
     let currentCycle = null;
     let observerPaused = false;
+    let currentViewMode = 'unknown'; // 'table' or 'report'
     
     // Detect current scene
     function getCurrentScene() {
@@ -50,23 +56,53 @@
         return null;
     }
     
+    // Detect current view mode (table vs report)
+    function detectViewMode() {
+        const scene = getCurrentScene();
+        if (!scene) return 'unknown';
+        
+        // Check for report container
+        const reportContainer = document.querySelector('#view_3015 #report-container, #view_3204 #report-container');
+        const hasReportContent = reportContainer && reportContainer.children.length > 0;
+        
+        // Check for table
+        const table = document.querySelector(`${CONFIG.targetView} table`);
+        const hasTableData = table?.querySelector('tbody tr');
+        
+        if (hasReportContent && !hasTableData) {
+            return 'report';
+        } else if (hasTableData) {
+            return 'table';
+        }
+        
+        return 'unknown';
+    }
+    
+    // Check if table needs enhancement
+    function needsEnhancement() {
+        const table = document.querySelector(`${CONFIG.targetView} table`);
+        if (!table) return false;
+        
+        // Check if already enhanced by looking for our classes
+        const hasEnhancedCells = table.querySelector('td.has-content, td.no-content');
+        const hasEnhancedStyles = document.getElementById('vue-table-enhancement-styles');
+        
+        // If table exists but doesn't have our enhancements, it needs enhancement
+        return table.querySelector('tbody tr') && (!hasEnhancedCells || !hasEnhancedStyles);
+    }
+    
     // CRITICAL FIX with race condition prevention
     function fixViewSpacing(force = false) {
-        // Prevent re-entrant calls
         if (isProcessing && !force) {
             return false;
         }
         
-        // Throttle calls
         const now = Date.now();
         if (!force && (now - lastFixSpacingTime) < MIN_SPACING_FIX_INTERVAL) {
             return false;
         }
         
-        // Clear any pending fix
         clearTimeout(fixSpacingTimeout);
-        
-        // Set processing flag
         isProcessing = true;
         lastFixSpacingTime = now;
         
@@ -103,7 +139,6 @@
             const hasTableData = table?.querySelector('tbody tr');
             
             if (hasTableData) {
-                // Pause observer to prevent triggering during our changes
                 observerPaused = true;
                 
                 if (config.academicProfile) {
@@ -112,7 +147,6 @@
                         const hasContent = academicView.querySelector('#report-container')?.children.length > 0;
                         
                         if (!hasContent) {
-                            // Only modify if not already hidden
                             if (academicView.style.display !== 'none') {
                                 academicView.style.cssText = `
                                     display: none !important;
@@ -136,14 +170,12 @@
                     }
                 }
                 
-                // Resume observer after a short delay
                 setTimeout(() => {
                     observerPaused = false;
                 }, 100);
                 
                 const tableTop = table.getBoundingClientRect().top + window.pageYOffset;
                 
-                // Only log if position is problematic
                 if (tableTop > 400 || DEBUG === false) {
                     log(`Table position: ${tableTop}px from top`);
                 }
@@ -163,15 +195,7 @@
         }
     }
     
-    // Debounced version of fixViewSpacing
-    function debouncedFixViewSpacing() {
-        clearTimeout(fixSpacingTimeout);
-        fixSpacingTimeout = setTimeout(() => {
-            fixViewSpacing();
-        }, 200);
-    }
-    
-    // Strip ALL HTML tags aggressively
+    // Strip ALL HTML tags
     function stripHtmlTags(html) {
         if (!html) return '';
         
@@ -255,8 +279,10 @@
     
     // Inject comprehensive styles
     function injectTableStyles() {
-        if (document.getElementById('vue-table-enhancement-styles')) {
-            document.getElementById('vue-table-enhancement-styles').remove();
+        // Always remove and re-inject to ensure fresh styles
+        const existingStyles = document.getElementById('vue-table-enhancement-styles');
+        if (existingStyles) {
+            existingStyles.remove();
         }
         
         const styles = `
@@ -581,6 +607,7 @@
         `;
         
         document.head.insertAdjacentHTML('beforeend', styles);
+        log('Table styles injected');
     }
     
     // Process text cells
@@ -664,6 +691,8 @@
                 }
             }
         });
+        
+        log('Text cells processed');
     }
     
     // Apply RAG rating colors
@@ -705,6 +734,84 @@
         });
     }
     
+    // Apply all enhancements to table
+    function applyAllEnhancements() {
+        const table = document.querySelector(`${CONFIG.targetView} table`);
+        if (!table || !table.querySelector('tbody tr')) {
+            log('No table found to enhance');
+            return false;
+        }
+        
+        log('Applying all enhancements...');
+        
+        // Ensure modal exists
+        createModal();
+        
+        // Re-inject styles (in case they were lost)
+        injectTableStyles();
+        
+        // Process cells
+        processTextCells(table, true);
+        applyScoreRAGRating(table);
+        
+        // Fix spacing
+        fixViewSpacing(true);
+        
+        // Mark as enhanced
+        isEnhanced = true;
+        lastEnhancedTime = Date.now();
+        table.classList.add('enhanced');
+        
+        // Make view visible
+        const view = document.querySelector(CONFIG.targetView);
+        if (view) {
+            view.style.opacity = '1';
+            view.style.visibility = 'visible';
+        }
+        
+        // Remove hide style
+        const hideStyle = document.getElementById('vue-table-immediate-hide');
+        if (hideStyle) hideStyle.remove();
+        
+        log('✅ All enhancements applied');
+        return true;
+    }
+    
+    // Monitor for table needing re-enhancement
+    function startEnhancementMonitor() {
+        // Clear any existing interval
+        if (enhancementCheckInterval) {
+            clearInterval(enhancementCheckInterval);
+        }
+        
+        // Check every second if table needs enhancement
+        enhancementCheckInterval = setInterval(() => {
+            const viewMode = detectViewMode();
+            
+            // If we're in table view and table needs enhancement
+            if (viewMode === 'table' && needsEnhancement()) {
+                log('Table needs re-enhancement (likely returned from report)');
+                applyAllEnhancements();
+            }
+            
+            // Update current view mode
+            if (viewMode !== currentViewMode) {
+                log(`View mode changed: ${currentViewMode} → ${viewMode}`);
+                currentViewMode = viewMode;
+                
+                // If switching to table view, ensure it's enhanced
+                if (viewMode === 'table') {
+                    setTimeout(() => {
+                        if (needsEnhancement()) {
+                            log('Enhancing table after view mode change');
+                            applyAllEnhancements();
+                        }
+                    }, 500);
+                }
+            }
+        }, 1000);
+    }
+    
     // Main enhancement function
     async function enhanceVueTable() {
         let attempts = 0;
@@ -712,33 +819,31 @@
         const checkAndEnhance = setInterval(() => {
             attempts++;
             
-            // Fix spacing with force on first attempt
+            // Fix spacing
             fixViewSpacing(attempts === 1);
             
             const table = document.querySelector(`${CONFIG.targetView} table`);
             
             if (table && table.querySelector('tbody tr')) {
-                log('Vue table found with data, applying enhancements...');
+                log('Vue table found with data, applying initial enhancements...');
                 
                 clearInterval(checkAndEnhance);
                 
-                // Apply enhancements
-                createModal();
-                injectTableStyles();
-                processTextCells(table, true);
-                applyScoreRAGRating(table);
+                // Apply all enhancements
+                applyAllEnhancements();
                 
                 // Set up cycle detection
                 currentCycle = detectCurrentCycle();
                 log(`Initial cycle: ${currentCycle}`);
                 
-                // Set up SELECTIVE mutation observer
+                // Start monitoring for re-enhancement needs
+                startEnhancementMonitor();
+                
+                // Set up mutation observer for table updates
                 let updateTimeout;
                 const observer = new MutationObserver((mutations) => {
-                    // Skip if observer is paused
                     if (observerPaused) return;
                     
-                    // Check if this is a relevant change
                     let isRelevantChange = false;
                     mutations.forEach(mutation => {
                         if (mutation.type === 'childList' && 
@@ -763,27 +868,19 @@
                                 processTextCells(updatedTable, true);
                                 applyScoreRAGRating(updatedTable);
                             }
-                        } else {
-                            const updatedTable = document.querySelector(`${CONFIG.targetView} table`);
-                            if (updatedTable) {
-                                processTextCells(updatedTable, false);
-                                applyScoreRAGRating(updatedTable);
-                            }
                         }
-                        
-                        // Use debounced version
-                        debouncedFixViewSpacing();
                     }, 300);
                 });
                 
-                // Observe ONLY the table container, not the entire document
+                // Observe table container
                 const tableContainer = table.closest('.p-datatable') || table.parentElement;
-                observer.observe(tableContainer, {
-                    childList: true,
-                    subtree: true,
-                    // Don't observe attributes to reduce noise
-                    attributes: false
-                });
+                if (tableContainer) {
+                    observer.observe(tableContainer, {
+                        childList: true,
+                        subtree: true,
+                        attributes: false
+                    });
+                }
                 
                 // Click handler for cycle buttons
                 document.addEventListener('click', (e) => {
@@ -804,28 +901,14 @@
                     }
                 });
                 
-                // Mark as enhanced
-                table.classList.add('enhanced');
-                
-                // Final cleanup
-                setTimeout(() => {
-                    fixViewSpacing(true);
-                    
-                    const hideStyle = document.getElementById('vue-table-immediate-hide');
-                    if (hideStyle) hideStyle.remove();
-                    
-                    const view = document.querySelector(CONFIG.targetView);
-                    if (view) {
-                        view.style.opacity = '1';
-                        view.style.visibility = 'visible';
-                    }
-                }, 100);
-                
-                log('✅ Vue table enhanced successfully!');
+                log('✅ Initial enhancement complete');
                 
             } else if (attempts >= CONFIG.maxAttempts) {
                 log('❌ Table not found after maximum attempts');
                 clearInterval(checkAndEnhance);
+                
+                // Still start monitor in case table appears later
+                startEnhancementMonitor();
                 
                 const viewContainer = document.querySelector(CONFIG.targetView);
                 if (viewContainer) {
@@ -841,7 +924,7 @@
     
     // Initialize
     function initialize() {
-        log('Initializing Vue Table Enhancer v1.7g...');
+        log('Initializing Vue Table Enhancer v1.8h...');
         
         // Initial fix
         fixViewSpacing(true);
@@ -850,29 +933,50 @@
         setTimeout(() => {
             enhanceVueTable();
         }, CONFIG.initialDelay);
-        
-        // Position drift monitor - less aggressive
-        setInterval(() => {
-            const table = document.querySelector(`${CONFIG.targetView} table`);
-            if (table) {
-                const tableTop = table.getBoundingClientRect().top + window.pageYOffset;
-                if (tableTop > 600) {
-                    log(`Table drifted to ${tableTop}px - fixing...`);
-                    fixViewSpacing(true);
-                }
-            }
-        }, 10000); // Check every 10 seconds instead of 5
     }
     
-    // Handle Knack events if available
+    // Handle Knack events - MORE AGGRESSIVE
     if (window.Knack && window.$) {
+        // Listen for ANY view render
         $(document).on('knack-view-render.any', function(event, view) {
-            // Use debounced version for view renders
-            debouncedFixViewSpacing();
+            log(`Knack view rendered: ${view.key}`);
+            
+            // If it's our target view, force re-enhancement
+            if (view.key === 'view_2776' || view.key === 'view_2772') {
+                log('Target view rendered - checking for enhancement');
+                setTimeout(() => {
+                    if (needsEnhancement()) {
+                        log('Re-enhancing after view render');
+                        applyAllEnhancements();
+                    }
+                }, 500);
+            }
+            
+            // Always check spacing
+            setTimeout(() => {
+                fixViewSpacing();
+            }, 100);
         });
         
+        // Listen for scene renders
         $(document).on('knack-scene-render.any', function(event, scene) {
-            setTimeout(initialize, 500);
+            log(`Knack scene rendered: ${scene.key}`);
+            
+            if (scene.key === 'scene_1095' || scene.key === 'scene_1014') {
+                log('Target scene rendered - reinitializing');
+                setTimeout(initialize, 500);
+            }
+        });
+        
+        // Listen for page changes (back button, etc)
+        $(document).on('knack-page-render.any', function(event, page) {
+            log('Page rendered - checking if enhancement needed');
+            setTimeout(() => {
+                if (needsEnhancement()) {
+                    log('Re-enhancing after page render');
+                    applyAllEnhancements();
+                }
+            }, 500);
         });
     }
     
@@ -883,4 +987,16 @@
         setTimeout(initialize, 100);
     }
     
+    // Also listen for browser back/forward navigation
+    window.addEventListener('popstate', function() {
+        log('Browser navigation detected');
+        setTimeout(() => {
+            if (needsEnhancement()) {
+                log('Re-enhancing after browser navigation');
+                applyAllEnhancements();
+            }
+        }, 500);
+    });
+    
 })();
+
