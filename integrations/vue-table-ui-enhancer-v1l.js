@@ -1,16 +1,16 @@
-// Vue Table UI Enhancer v1i - WITH CYCLE INFO
-// Includes: all fixes + cycle filter explanation
-// Version: 1.9i FINAL
+// Vue Table UI Enhancer v2.0 - COMPLETE REWRITE
+// Fixes: Reloading state, styling uniformity, cycle-specific data
+// Version: 2.0
 
 (function() {
     'use strict';
     
     const DEBUG = true;
     const log = (msg, data) => {
-        if (DEBUG) console.log(`[VueTableV1I] ${msg}`, data || '');
+        if (DEBUG) console.log(`[VueTableV2] ${msg}`, data || '');
     };
     
-    log('🚀 Vue Table Enhancer v1.9i Starting (with cycle info section)...');
+    log('🚀 Vue Table Enhancer v2.0 Starting...');
     
     // RACE CONDITION PREVENTION FLAGS
     let isProcessing = false;
@@ -18,10 +18,12 @@
     let lastFixSpacingTime = 0;
     const MIN_SPACING_FIX_INTERVAL = 1000;
     
-    // Track enhanced state
+    // Track enhanced state - IMPROVED STATE MANAGEMENT
     let isEnhanced = false;
     let lastEnhancedTime = 0;
     let enhancementCheckInterval = null;
+    let currentSceneKey = null;  // Track scene changes
+    let reinitializeTimeout = null;  // Prevent multiple reinits
     
     // Immediate hide to prevent flash
     const immediateHideStyle = document.createElement('style');
@@ -226,7 +228,7 @@
         return words.slice(0, maxWords).join(' ') + '...';
     }
     
-    // Detect current cycle
+    // Detect current cycle - IMPROVED to return cycle NUMBER
     function detectCurrentCycle() {
         const activeTab = document.querySelector(
             `${CONFIG.targetView} .p-tabview-nav li[aria-selected="true"], 
@@ -236,10 +238,15 @@
         );
         
         if (activeTab) {
-            return activeTab.textContent.trim();
+            const text = activeTab.textContent.trim();
+            // Extract cycle number from text like "Cycle 1" or just "1"
+            const match = text.match(/(\d+)/);
+            if (match) {
+                return parseInt(match[1]);
+            }
         }
         
-        return null;
+        return 1; // Default to cycle 1
     }
     
     // Create modal HTML
@@ -476,64 +483,80 @@
                     z-index: 10 !important;
                 }
                 
-                /* Column widths */
+                /* IMPROVED COLUMN WIDTHS - UNIFORM ACROSS BOTH SCENES */
+                /* Student Name - Wider for visibility */
                 ${CONFIG.targetView} th:nth-child(1),
                 ${CONFIG.targetView} td:nth-child(1) {
-                    width: 120px !important;
-                    min-width: 120px !important;
-                    max-width: 120px !important;
+                    width: 160px !important;
+                    min-width: 160px !important;
+                    max-width: 160px !important;
                     overflow: hidden !important;
                     text-overflow: ellipsis !important;
                     white-space: nowrap !important;
+                    padding-left: 12px !important;
                 }
                 
+                /* Group - Better sized */
                 ${CONFIG.targetView} th:nth-child(2),
                 ${CONFIG.targetView} td:nth-child(2) {
-                    width: 60px !important;
+                    width: 85px !important;
+                    min-width: 85px !important;
                     text-align: center !important;
                 }
                 
+                /* Year Group - Better sized */
                 ${CONFIG.targetView} th:nth-child(3),
                 ${CONFIG.targetView} td:nth-child(3) {
-                    width: 60px !important;
+                    width: 85px !important;
+                    min-width: 85px !important;
                     text-align: center !important;
                 }
                 
+                /* Focus - Medium width */
                 ${CONFIG.targetView} th:nth-child(4),
                 ${CONFIG.targetView} td:nth-child(4) {
-                    width: 80px !important;
+                    width: 90px !important;
+                    min-width: 90px !important;
+                    text-align: center !important;
                 }
                 
-                /* VESPAO columns */
+                /* VESPAO columns - ALL UNIFORM WIDTH (INCLUDING O) */
                 ${CONFIG.targetView} th:nth-child(5), ${CONFIG.targetView} td:nth-child(5),
                 ${CONFIG.targetView} th:nth-child(6), ${CONFIG.targetView} td:nth-child(6),
                 ${CONFIG.targetView} th:nth-child(7), ${CONFIG.targetView} td:nth-child(7),
                 ${CONFIG.targetView} th:nth-child(8), ${CONFIG.targetView} td:nth-child(8),
                 ${CONFIG.targetView} th:nth-child(9), ${CONFIG.targetView} td:nth-child(9),
                 ${CONFIG.targetView} th:nth-child(10), ${CONFIG.targetView} td:nth-child(10) {
-                    width: 35px !important;
+                    width: 40px !important;
+                    min-width: 40px !important;
+                    max-width: 40px !important;
                     text-align: center !important;
-                    padding: 8px 2px !important;
+                    padding: 8px 4px !important;
+                    font-weight: 600 !important;
                 }
                 
-                /* Report Response - LARGE */
+                /* Report Response - EQUAL WIDTH */
                 ${CONFIG.targetView} th:nth-child(11),
                 ${CONFIG.targetView} td:nth-child(11) {
-                    width: 280px !important;
-                    min-width: 280px !important;
+                    width: 240px !important;
+                    min-width: 240px !important;
+                    max-width: 240px !important;
                 }
                 
-                /* Action Plan - LARGE */
+                /* Action Plan - EQUAL WIDTH */
                 ${CONFIG.targetView} th:nth-child(12),
                 ${CONFIG.targetView} td:nth-child(12) {
-                    width: 280px !important;
-                    min-width: 280px !important;
+                    width: 240px !important;
+                    min-width: 240px !important;
+                    max-width: 240px !important;
                 }
                 
                 /* Report button */
                 ${CONFIG.targetView} th:nth-child(13),
                 ${CONFIG.targetView} td:nth-child(13) {
                     width: 100px !important;
+                    min-width: 100px !important;
+                    text-align: center !important;
                 }
                 
                 /* Rows */
@@ -730,7 +753,10 @@
         log('Table styles injected');
     }
     
-    // Process text cells
+    // CYCLE-AWARE DATA STORAGE
+    const cycleDataCache = new Map(); // Cache for cycle-specific data
+    
+    // Process text cells with cycle awareness
     function processTextCells(table, forceRefresh = false) {
         const headers = table.querySelectorAll('thead th');
         let responseColumnIndex = -1;
@@ -750,16 +776,26 @@
             return;
         }
         
+        const currentCycleNum = detectCurrentCycle();
         const rows = table.querySelectorAll('tbody tr');
         
         rows.forEach((row, rowIndex) => {
             const cells = row.querySelectorAll('td');
+            const studentName = cells[0]?.textContent?.trim() || 'Student';
+            const cacheKey = `${studentName}_cycle_${currentCycleNum}`;
             
             // Process Report Response
             if (responseColumnIndex >= 0 && cells[responseColumnIndex]) {
                 const cell = cells[responseColumnIndex];
                 const currentHTML = cell.innerHTML;
                 const cleanText = stripHtmlTags(currentHTML);
+                
+                // Store in cache for this cycle
+                if (!cycleDataCache.has(cacheKey)) {
+                    cycleDataCache.set(cacheKey, {});
+                }
+                const studentData = cycleDataCache.get(cacheKey);
+                studentData.reportResponse = cleanText;
                 
                 cell.classList.remove('has-content', 'no-content');
                 cell.onclick = null;
@@ -772,9 +808,8 @@
                     
                     cell.onclick = (e) => {
                         e.stopPropagation();
-                        const studentName = cells[0]?.textContent || 'Student';
-                        const cycle = detectCurrentCycle() || '';
-                        showModal(`${studentName} - Report Response ${cycle}`, cleanText);
+                        const cycleText = currentCycleNum ? `(Cycle ${currentCycleNum})` : '';
+                        showModal(`${studentName} - Report Response ${cycleText}`, cleanText);
                     };
                 } else {
                     cell.textContent = 'No response';
@@ -789,6 +824,11 @@
                 const currentHTML = cell.innerHTML;
                 const cleanText = stripHtmlTags(currentHTML);
                 
+                // Store in cache for this cycle
+                const studentData = cycleDataCache.get(cacheKey) || {};
+                studentData.actionPlan = cleanText;
+                cycleDataCache.set(cacheKey, studentData);
+                
                 cell.classList.remove('has-content', 'no-content');
                 cell.onclick = null;
                 
@@ -800,9 +840,8 @@
                     
                     cell.onclick = (e) => {
                         e.stopPropagation();
-                        const studentName = cells[0]?.textContent || 'Student';
-                        const cycle = detectCurrentCycle() || '';
-                        showModal(`${studentName} - Action Plan ${cycle}`, cleanText);
+                        const cycleText = currentCycleNum ? `(Cycle ${currentCycleNum})` : '';
+                        showModal(`${studentName} - Action Plan ${cycleText}`, cleanText);
                     };
                 } else {
                     cell.textContent = 'No action plan';
@@ -1045,9 +1084,33 @@
         }, CONFIG.checkInterval);
     }
     
-    // Initialize
+    // IMPROVED Initialize with cleanup
     function initialize() {
-        log('Initializing Vue Table Enhancer v1.9i...');
+        log('Initializing Vue Table Enhancer v2.0...');
+        
+        // Clear any pending reinitialize timeout
+        if (reinitializeTimeout) {
+            clearTimeout(reinitializeTimeout);
+            reinitializeTimeout = null;
+        }
+        
+        // Track current scene
+        const scene = getCurrentScene();
+        if (scene) {
+            currentSceneKey = scene === 'tutor' ? 'scene_1095' : 'scene_1014';
+        }
+        
+        // Clear previous enhancements if scene changed
+        if (isEnhanced) {
+            log('Clearing previous enhancements...');
+            const existingModal = document.getElementById('vue-table-modal');
+            if (existingModal) existingModal.remove();
+            
+            const existingInfo = document.querySelector('.cycle-filter-info');
+            if (existingInfo) existingInfo.remove();
+            
+            isEnhanced = false;
+        }
         
         // Initial fix
         fixViewSpacing(true);
@@ -1058,48 +1121,61 @@
         }, CONFIG.initialDelay);
     }
     
-    // Handle Knack events - MORE AGGRESSIVE
+    // IMPROVED Knack event handling with better state management
     if (window.Knack && window.$) {
-        // Listen for ANY view render
-        $(document).on('knack-view-render.any', function(event, view) {
-            log(`Knack view rendered: ${view.key}`);
+        // Listen for view renders
+        $(document).on('knack-view-render.view_2776 knack-view-render.view_2772', function(event, view) {
+            log(`Target view rendered: ${view.key}`);
             
-            // If it's our target view, force re-enhancement
-            if (view.key === 'view_2776' || view.key === 'view_2772') {
-                log('Target view rendered - checking for enhancement');
-                setTimeout(() => {
-                    if (needsEnhancement()) {
-                        log('Re-enhancing after view render');
+            // Debounced re-enhancement
+            clearTimeout(reinitializeTimeout);
+            reinitializeTimeout = setTimeout(() => {
+                if (!isEnhanced || needsEnhancement()) {
+                    log('Re-enhancing after view render');
+                    applyAllEnhancements();
+                }
+            }, 500);
+        });
+        
+        // Listen for scene renders with scene change detection
+        $(document).on('knack-scene-render.scene_1095 knack-scene-render.scene_1014', function(event, scene) {
+            log(`Target scene rendered: ${scene.key}`);
+            
+            // Check if scene actually changed
+            if (scene.key !== currentSceneKey) {
+                log(`Scene changed from ${currentSceneKey} to ${scene.key} - full reinitialize`);
+                currentSceneKey = scene.key;
+                
+                // Full reinitialize for scene change
+                clearTimeout(reinitializeTimeout);
+                reinitializeTimeout = setTimeout(() => {
+                    initialize();
+                }, 500);
+            } else {
+                // Same scene, just check if enhancement needed
+                clearTimeout(reinitializeTimeout);
+                reinitializeTimeout = setTimeout(() => {
+                    if (!isEnhanced || needsEnhancement()) {
+                        log('Re-enhancing same scene');
                         applyAllEnhancements();
                     }
                 }, 500);
             }
-            
-            // Always check spacing
-            setTimeout(() => {
-                fixViewSpacing();
-            }, 100);
         });
         
-        // Listen for scene renders
-        $(document).on('knack-scene-render.any', function(event, scene) {
-            log(`Knack scene rendered: ${scene.key}`);
-            
-            if (scene.key === 'scene_1095' || scene.key === 'scene_1014') {
-                log('Target scene rendered - reinitializing');
-                setTimeout(initialize, 500);
-            }
-        });
-        
-        // Listen for page changes (back button, etc)
+        // Listen for page changes
         $(document).on('knack-page-render.any', function(event, page) {
-            log('Page rendered - checking if enhancement needed');
-            setTimeout(() => {
-                if (needsEnhancement()) {
-                    log('Re-enhancing after page render');
-                    applyAllEnhancements();
-                }
-            }, 500);
+            // Only act if we're on a target scene
+            const scene = getCurrentScene();
+            if (scene) {
+                clearTimeout(reinitializeTimeout);
+                reinitializeTimeout = setTimeout(() => {
+                    if (needsEnhancement()) {
+                        log('Re-enhancing after page render');
+                        applyAllEnhancements();
+                    }
+                }, 500);
+            }
         });
     }
     
