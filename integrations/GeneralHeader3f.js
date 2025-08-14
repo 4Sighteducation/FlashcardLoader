@@ -694,7 +694,7 @@
                 items: [
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
-                    { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
+                    { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
@@ -1056,7 +1056,7 @@
                             top: 56px;
                             right: -280px;
                             width: 280px;
-                            height: calc(100vh - 56px);
+                            max-height: calc(100vh - 56px);
                             background-color: ${navConfig.color};
                             flex-direction: column;
                             justify-content: flex-start;
@@ -1066,6 +1066,7 @@
                             box-shadow: -2px 0 10px rgba(0,0,0,0.2);
                             margin: 0;
                             overflow-y: auto;
+                            /* Remove fixed height to allow natural sizing */
                         }
                         
                         .header-navigation.mobile-open {
@@ -1087,10 +1088,39 @@
                             text-align: center;
                         }
                         
+                        /* Settings and Logout buttons - distinct styling on mobile */
                         .header-settings-button,
                         .header-logout-button {
                             margin-left: 0;
-                            margin-top: auto;
+                            margin-top: 16px; /* Small gap before these buttons */
+                            background: rgba(0,0,0,0.25); /* Darker background */
+                            border: 1px solid rgba(255,255,255,0.2);
+                        }
+                        
+                        .header-settings-button:hover,
+                        .header-logout-button:hover {
+                            background: rgba(0,0,0,0.35);
+                            border-color: rgba(255,255,255,0.3);
+                        }
+                        
+                        /* Add a separator before settings/logout on mobile */
+                        .header-settings-button {
+                            position: relative;
+                            padding-top: 24px;
+                        }
+                        
+                        .header-settings-button::before {
+                            content: '';
+                            position: absolute;
+                            top: 0;
+                            left: 20%;
+                            right: 20%;
+                            height: 1px;
+                            background: rgba(255,255,255,0.2);
+                        }
+                        
+                        .header-logout-button {
+                            margin-top: 8px; /* Smaller gap between settings and logout */
                         }
                         
                         .mobile-menu-toggle {
