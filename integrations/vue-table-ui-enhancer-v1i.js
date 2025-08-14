@@ -1,16 +1,16 @@
-// Vue Table UI Enhancer v1h - NAVIGATION FIX
-// Fixes: table reverting when navigating back from reports
-// Version: 1.8h STABLE
+// Vue Table UI Enhancer v1i - WITH CYCLE INFO
+// Includes: all fixes + cycle filter explanation
+// Version: 1.9i FINAL
 
 (function() {
     'use strict';
     
     const DEBUG = true;
     const log = (msg, data) => {
-        if (DEBUG) console.log(`[VueTableV1H] ${msg}`, data || '');
+        if (DEBUG) console.log(`[VueTableV1I] ${msg}`, data || '');
     };
     
-    log('🚀 Vue Table Enhancer v1.8h Starting (with navigation fixes)...');
+    log('🚀 Vue Table Enhancer v1.9i Starting (with cycle info section)...');
     
     // RACE CONDITION PREVENTION FLAGS
     let isProcessing = false;
@@ -277,6 +277,38 @@
         modal.classList.add('active');
     }
     
+    // Add cycle filter information section
+    function addCycleFilterInfo() {
+        // Check if info already exists
+        if (document.querySelector('.cycle-filter-info')) {
+            return;
+        }
+        
+        const tableView = document.querySelector(CONFIG.targetView);
+        if (!tableView) return;
+        
+        // Create the info section
+        const infoHTML = `
+            <div class="cycle-filter-info">
+                <div class="cycle-filter-info-icon">ℹ️</div>
+                <div class="cycle-filter-info-content">
+                    <h3>Understanding Cycle Filters</h3>
+                    <p><strong>Cycle 1:</strong> Shows ALL students (completed Cycle 1 or no cycles)</p>
+                    <p><strong>Cycles 2+:</strong> Shows ONLY students who completed that cycle's questionnaire</p>
+                    <p class="cycle-filter-note">💡 Students appear in each tab where they've completed questionnaires</p>
+                </div>
+            </div>
+        `;
+        
+        // Find the table or its container
+        const table = tableView.querySelector('table');
+        const tableParent = table?.parentElement || tableView;
+        
+        // Insert before the table
+        tableParent.insertAdjacentHTML('afterbegin', infoHTML);
+        log('Cycle filter info section added');
+    }
+    
     // Inject comprehensive styles
     function injectTableStyles() {
         // Always remove and re-inject to ensure fresh styles
@@ -287,6 +319,94 @@
         
         const styles = `
             <style id="vue-table-enhancement-styles">
+                /* Cycle Filter Info Section */
+                .cycle-filter-info {
+                    background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+                    border: 1px solid #5eead4;
+                    border-left: 4px solid #079baa;
+                    border-radius: 8px;
+                    padding: 16px 20px;
+                    margin: 20px 0 25px 0;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 15px;
+                    box-shadow: 0 2px 8px rgba(7, 155, 170, 0.08);
+                    animation: slideDown 0.3s ease-out;
+                }
+                
+                .cycle-filter-info-icon {
+                    font-size: 24px;
+                    line-height: 1;
+                    flex-shrink: 0;
+                }
+                
+                .cycle-filter-info-content {
+                    flex: 1;
+                }
+                
+                .cycle-filter-info h3 {
+                    margin: 0 0 10px 0;
+                    color: #23356f;
+                    font-size: 16px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .cycle-filter-info p {
+                    margin: 5px 0;
+                    color: #374151;
+                    font-size: 14px;
+                    line-height: 1.5;
+                }
+                
+                .cycle-filter-info p strong {
+                    color: #079baa;
+                    font-weight: 600;
+                }
+                
+                .cycle-filter-info .cycle-filter-note {
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    border-top: 1px solid rgba(7, 155, 170, 0.2);
+                    color: #065f46;
+                    font-style: italic;
+                    font-size: 13px;
+                }
+                
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                /* Responsive design for info section */
+                @media (max-width: 768px) {
+                    .cycle-filter-info {
+                        flex-direction: column;
+                        gap: 10px;
+                        padding: 14px;
+                        margin: 15px 10px;
+                    }
+                    
+                    .cycle-filter-info h3 {
+                        font-size: 14px;
+                    }
+                    
+                    .cycle-filter-info p {
+                        font-size: 12px;
+                    }
+                    
+                    .cycle-filter-info .cycle-filter-note {
+                        font-size: 11px;
+                    }
+                }
+                
                 /* Critical positioning fixes */
                 ${CONFIG.targetView} {
                     position: relative !important;
@@ -750,6 +870,9 @@
         // Re-inject styles (in case they were lost)
         injectTableStyles();
         
+        // Add cycle filter info section
+        addCycleFilterInfo();
+        
         // Process cells
         processTextCells(table, true);
         applyScoreRAGRating(table);
@@ -924,7 +1047,7 @@
     
     // Initialize
     function initialize() {
-        log('Initializing Vue Table Enhancer v1.8h...');
+        log('Initializing Vue Table Enhancer v1.9i...');
         
         // Initial fix
         fixViewSpacing(true);
