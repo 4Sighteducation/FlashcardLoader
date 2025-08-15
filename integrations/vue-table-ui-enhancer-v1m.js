@@ -38,13 +38,18 @@
     
     // Configuration
     const CONFIG = {
-        targetView: window.DYNAMIC_STAFF_TABLE_1014_CONFIG?.targetView || 
-                   (document.querySelector('#view_2772') ? '#view_2772' : '#view_2776'),
         checkInterval: 500,
         maxAttempts: 30,
         initialDelay: 500,
         maxPreviewWords: 8
     };
+    
+    // Get the correct view selector based on current scene
+    function getTargetView() {
+        if (document.querySelector('#view_2772')) return '#view_2772';
+        if (document.querySelector('#view_2776')) return '#view_2776';
+        return null;
+    }
     
     // Track current cycle for change detection
     let currentCycle = null;
@@ -68,7 +73,8 @@
         const hasReportContent = reportContainer && reportContainer.children.length > 0;
         
         // Check for table
-        const table = document.querySelector(`${CONFIG.targetView} table`);
+        const targetView = getTargetView();
+        const table = targetView ? document.querySelector(`${targetView} table`) : null;
         const hasTableData = table?.querySelector('tbody tr');
         
         if (hasReportContent && !hasTableData) {
@@ -82,7 +88,9 @@
     
     // Check if table needs enhancement
     function needsEnhancement() {
-        const table = document.querySelector(`${CONFIG.targetView} table`);
+        const targetView = getTargetView();
+        if (!targetView) return false;
+        const table = document.querySelector(`${targetView} table`);
         if (!table) return false;
         
         // Check if already enhanced by looking for our classes
@@ -230,11 +238,14 @@
     
     // Detect current cycle - IMPROVED to return cycle NUMBER
     function detectCurrentCycle() {
+        const targetView = getTargetView();
+        if (!targetView) return 1;
+        
         const activeTab = document.querySelector(
-            `${CONFIG.targetView} .p-tabview-nav li[aria-selected="true"], 
-             ${CONFIG.targetView} .p-button.p-highlight,
-             ${CONFIG.targetView} button.active,
-             ${CONFIG.targetView} .p-button-primary`
+            `${targetView} .p-tabview-nav li[aria-selected="true"], 
+             ${targetView} .p-button.p-highlight,
+             ${targetView} button.active,
+             ${targetView} .p-button-primary`
         );
         
         if (activeTab) {
@@ -291,7 +302,9 @@
             return;
         }
         
-        const tableView = document.querySelector(CONFIG.targetView);
+        const targetView = getTargetView();
+        if (!targetView) return;
+        const tableView = document.querySelector(targetView);
         if (!tableView) return;
         
         // Create the info section
@@ -415,7 +428,7 @@
                 }
                 
                 /* Critical positioning fixes */
-                ${CONFIG.targetView} {
+                #view_2772, #view_2776 {
                     position: relative !important;
                     top: 0 !important;
                     margin-top: 0 !important;
@@ -429,8 +442,8 @@
                 }
                 
                 /* Table title styling */
-                ${CONFIG.targetView} .kn-title h1,
-                ${CONFIG.targetView} .kn-title h2 {
+                #view_2772 .kn-title h1, #view_2772 .kn-title h2,
+                #view_2776 .kn-title h1, #view_2776 .kn-title h2 {
                     text-transform: uppercase !important;
                     letter-spacing: 2px !important;
                     font-weight: 700 !important;
@@ -442,8 +455,8 @@
                     padding-bottom: 15px !important;
                 }
                 
-                ${CONFIG.targetView} .kn-title h1:after,
-                ${CONFIG.targetView} .kn-title h2:after {
+                #view_2772 .kn-title h1:after, #view_2772 .kn-title h2:after,
+                #view_2776 .kn-title h1:after, #view_2776 .kn-title h2:after {
                     content: '' !important;
                     position: absolute !important;
                     bottom: 0 !important;
@@ -456,7 +469,7 @@
                 }
                 
                 /* Table base styles */
-                ${CONFIG.targetView} table {
+                #view_2772 table, #view_2776 table {
                     width: 100% !important;
                     table-layout: fixed !important;
                     border-collapse: separate !important;
@@ -469,7 +482,7 @@
                 }
                 
                 /* Headers */
-                ${CONFIG.targetView} thead th {
+                #view_2772 thead th, #view_2776 thead th {
                     background: linear-gradient(135deg, #079baa 0%, #00b8d4 100%) !important;
                     color: white !important;
                     padding: 12px 6px !important;
@@ -485,8 +498,8 @@
                 
                 /* IMPROVED COLUMN WIDTHS - UNIFORM ACROSS BOTH SCENES */
                 /* Student Name - Wider for visibility */
-                ${CONFIG.targetView} th:nth-child(1),
-                ${CONFIG.targetView} td:nth-child(1) {
+                #view_2772 th:nth-child(1), #view_2772 td:nth-child(1),
+                #view_2776 th:nth-child(1), #view_2776 td:nth-child(1) {
                     width: 160px !important;
                     min-width: 160px !important;
                     max-width: 160px !important;
@@ -497,36 +510,52 @@
                 }
                 
                 /* Group - Better sized */
-                ${CONFIG.targetView} th:nth-child(2),
-                ${CONFIG.targetView} td:nth-child(2) {
+                #view_2772 th:nth-child(2), #view_2772 td:nth-child(2),
+                #view_2776 th:nth-child(2), #view_2776 td:nth-child(2) {
                     width: 85px !important;
                     min-width: 85px !important;
                     text-align: center !important;
                 }
                 
                 /* Year Group - Better sized */
-                ${CONFIG.targetView} th:nth-child(3),
-                ${CONFIG.targetView} td:nth-child(3) {
+                #view_2772 th:nth-child(3), #view_2772 td:nth-child(3),
+                #view_2776 th:nth-child(3), #view_2776 td:nth-child(3) {
                     width: 85px !important;
                     min-width: 85px !important;
                     text-align: center !important;
                 }
                 
-                /* Focus - Medium width */
-                ${CONFIG.targetView} th:nth-child(4),
-                ${CONFIG.targetView} td:nth-child(4) {
-                    width: 90px !important;
-                    min-width: 90px !important;
+                /* Column 4 - Empty/checkbox column */
+                #view_2772 th:nth-child(4), #view_2772 td:nth-child(4),
+                #view_2776 th:nth-child(4), #view_2776 td:nth-child(4) {
+                    width: 50px !important;
+                    min-width: 50px !important;
+                    max-width: 50px !important;
                     text-align: center !important;
                 }
                 
-                /* VESPAO columns - ALL UNIFORM WIDTH (INCLUDING O) */
-                ${CONFIG.targetView} th:nth-child(5), ${CONFIG.targetView} td:nth-child(5),
-                ${CONFIG.targetView} th:nth-child(6), ${CONFIG.targetView} td:nth-child(6),
-                ${CONFIG.targetView} th:nth-child(7), ${CONFIG.targetView} td:nth-child(7),
-                ${CONFIG.targetView} th:nth-child(8), ${CONFIG.targetView} td:nth-child(8),
-                ${CONFIG.targetView} th:nth-child(9), ${CONFIG.targetView} td:nth-child(9),
-                ${CONFIG.targetView} th:nth-child(10), ${CONFIG.targetView} td:nth-child(10) {
+                /* Focus - Now at column 5 */
+                #view_2772 th:nth-child(5), #view_2772 td:nth-child(5),
+                #view_2776 th:nth-child(5), #view_2776 td:nth-child(5) {
+                    width: 90px !important;
+                    min-width: 90px !important;
+                    max-width: 90px !important;
+                    text-align: center !important;
+                }
+                
+                /* VESPAO columns - Shifted by 1 (columns 6-11) */
+                #view_2772 th:nth-child(6), #view_2772 td:nth-child(6),
+                #view_2772 th:nth-child(7), #view_2772 td:nth-child(7),
+                #view_2772 th:nth-child(8), #view_2772 td:nth-child(8),
+                #view_2772 th:nth-child(9), #view_2772 td:nth-child(9),
+                #view_2772 th:nth-child(10), #view_2772 td:nth-child(10),
+                #view_2772 th:nth-child(11), #view_2772 td:nth-child(11),
+                #view_2776 th:nth-child(6), #view_2776 td:nth-child(6),
+                #view_2776 th:nth-child(7), #view_2776 td:nth-child(7),
+                #view_2776 th:nth-child(8), #view_2776 td:nth-child(8),
+                #view_2776 th:nth-child(9), #view_2776 td:nth-child(9),
+                #view_2776 th:nth-child(10), #view_2776 td:nth-child(10),
+                #view_2776 th:nth-child(11), #view_2776 td:nth-child(11) {
                     width: 40px !important;
                     min-width: 40px !important;
                     max-width: 40px !important;
@@ -535,43 +564,43 @@
                     font-weight: 600 !important;
                 }
                 
-                /* Report Response - EQUAL WIDTH */
-                ${CONFIG.targetView} th:nth-child(11),
-                ${CONFIG.targetView} td:nth-child(11) {
+                /* Report Response - Now at column 12 */
+                #view_2772 th:nth-child(12), #view_2772 td:nth-child(12),
+                #view_2776 th:nth-child(12), #view_2776 td:nth-child(12) {
                     width: 240px !important;
                     min-width: 240px !important;
                     max-width: 240px !important;
                 }
                 
-                /* Action Plan - EQUAL WIDTH */
-                ${CONFIG.targetView} th:nth-child(12),
-                ${CONFIG.targetView} td:nth-child(12) {
+                /* Action Plan - Now at column 13 */
+                #view_2772 th:nth-child(13), #view_2772 td:nth-child(13),
+                #view_2776 th:nth-child(13), #view_2776 td:nth-child(13) {
                     width: 240px !important;
                     min-width: 240px !important;
                     max-width: 240px !important;
                 }
                 
-                /* Report button */
-                ${CONFIG.targetView} th:nth-child(13),
-                ${CONFIG.targetView} td:nth-child(13) {
+                /* Report button - Now at column 14 */
+                #view_2772 th:nth-child(14), #view_2772 td:nth-child(14),
+                #view_2776 th:nth-child(14), #view_2776 td:nth-child(14) {
                     width: 100px !important;
                     min-width: 100px !important;
                     text-align: center !important;
                 }
                 
                 /* Rows */
-                ${CONFIG.targetView} tbody tr {
+                #view_2772 tbody tr, #view_2776 tbody tr {
                     transition: all 0.2s ease !important;
                     border-bottom: 1px solid #f0f0f0 !important;
                 }
                 
-                ${CONFIG.targetView} tbody tr:hover {
+                #view_2772 tbody tr:hover, #view_2776 tbody tr:hover {
                     background-color: #f0f8ff !important;
                     box-shadow: 0 2px 8px rgba(7, 155, 170, 0.1) !important;
                 }
                 
                 /* Base cell styles */
-                ${CONFIG.targetView} td {
+                #view_2772 td, #view_2776 td {
                     padding: 10px 6px !important;
                     color: #333 !important;
                     font-size: 13px !important;
@@ -580,14 +609,14 @@
                 }
                 
                 /* Student name */
-                ${CONFIG.targetView} td:first-child {
+                #view_2772 td:first-child, #view_2776 td:first-child {
                     font-weight: 600 !important;
                     color: #23356f !important;
                     padding-left: 10px !important;
                 }
                 
                 /* Content cells with green */
-                ${CONFIG.targetView} td.has-content {
+                #view_2772 td.has-content, #view_2776 td.has-content {
                     background: linear-gradient(to right, #10b981 4px, rgba(16, 185, 129, 0.08) 4px) !important;
                     color: #065f46 !important;
                     cursor: pointer !important;
@@ -597,13 +626,13 @@
                     transition: all 0.2s ease !important;
                 }
                 
-                ${CONFIG.targetView} td.has-content:hover {
+                #view_2772 td.has-content:hover, #view_2776 td.has-content:hover {
                     background: linear-gradient(to right, #10b981 4px, rgba(16, 185, 129, 0.15) 4px) !important;
                     transform: translateX(2px) !important;
                 }
                 
                 /* No content cells with red */
-                ${CONFIG.targetView} td.no-content {
+                #view_2772 td.no-content, #view_2776 td.no-content {
                     background: linear-gradient(to right, #ef4444 4px, rgba(239, 68, 68, 0.08) 4px) !important;
                     color: #991b1b !important;
                     font-style: italic !important;
@@ -612,7 +641,7 @@
                 }
                 
                 /* Click indicator */
-                ${CONFIG.targetView} td.has-content::after {
+                #view_2772 td.has-content::after, #view_2776 td.has-content::after {
                     content: "📖";
                     position: absolute;
                     right: 8px;
@@ -621,32 +650,32 @@
                 }
                 
                 /* RAG Score colors */
-                ${CONFIG.targetView} td.score-low {
+                #view_2772 td.score-low, #view_2776 td.score-low {
                     background: #fee2e2 !important;
                     color: #991b1b !important;
                     font-weight: 700 !important;
                 }
                 
-                ${CONFIG.targetView} td.score-medium {
+                #view_2772 td.score-medium, #view_2776 td.score-medium {
                     background: #fed7aa !important;
                     color: #9a3412 !important;
                     font-weight: 600 !important;
                 }
                 
-                ${CONFIG.targetView} td.score-good {
+                #view_2772 td.score-good, #view_2776 td.score-good {
                     background: #bbf7d0 !important;
                     color: #14532d !important;
                     font-weight: 600 !important;
                 }
                 
-                ${CONFIG.targetView} td.score-high {
+                #view_2772 td.score-high, #view_2776 td.score-high {
                     background: #86efac !important;
                     color: #14532d !important;
                     font-weight: 700 !important;
                 }
                 
                 /* Buttons */
-                ${CONFIG.targetView} button {
+                #view_2772 button, #view_2776 button {
                     background: linear-gradient(135deg, #079baa 0%, #00e5db 100%) !important;
                     color: white !important;
                     border: none !important;
@@ -661,7 +690,7 @@
                     box-shadow: 0 2px 8px rgba(7, 155, 170, 0.2) !important;
                 }
                 
-                ${CONFIG.targetView} button:hover {
+                #view_2772 button:hover, #view_2776 button:hover {
                     transform: translateY(-2px) !important;
                     box-shadow: 0 4px 12px rgba(7, 155, 170, 0.3) !important;
                 }
@@ -895,7 +924,8 @@
     
     // Apply all enhancements to table
     function applyAllEnhancements() {
-        const table = document.querySelector(`${CONFIG.targetView} table`);
+        const targetView = getTargetView();
+        const table = targetView ? document.querySelector(`${targetView} table`) : null;
         if (!table || !table.querySelector('tbody tr')) {
             log('No table found to enhance');
             return false;
@@ -925,7 +955,7 @@
         table.classList.add('enhanced');
         
         // Make view visible
-        const view = document.querySelector(CONFIG.targetView);
+        const view = document.querySelector(targetView);
         if (view) {
             view.style.opacity = '1';
             view.style.visibility = 'visible';
@@ -984,7 +1014,8 @@
             // Fix spacing
             fixViewSpacing(attempts === 1);
             
-            const table = document.querySelector(`${CONFIG.targetView} table`);
+            const targetView = getTargetView();
+            const table = targetView ? document.querySelector(`${targetView} table`) : null;
             
             if (table && table.querySelector('tbody tr')) {
                 log('Vue table found with data, applying initial enhancements...');
@@ -1025,7 +1056,8 @@
                             log(`CYCLE CHANGED: ${currentCycle} → ${newCycle}`);
                             currentCycle = newCycle;
                             
-                            const updatedTable = document.querySelector(`${CONFIG.targetView} table`);
+                            const targetView = getTargetView();
+                            const updatedTable = targetView ? document.querySelector(`${targetView} table`) : null;
                             if (updatedTable) {
                                 processTextCells(updatedTable, true);
                                 applyScoreRAGRating(updatedTable);
@@ -1046,14 +1078,16 @@
                 
                 // Click handler for cycle buttons
                 document.addEventListener('click', (e) => {
-                    if (e.target.matches(`${CONFIG.targetView} button, ${CONFIG.targetView} .p-button, ${CONFIG.targetView} [role="tab"]`)) {
+                    const targetView = getTargetView();
+                    if (targetView && e.target.matches(`${targetView} button, ${targetView} .p-button, ${targetView} [role="tab"]`)) {
                         setTimeout(() => {
                             const newCycle = detectCurrentCycle();
                             if (newCycle !== currentCycle) {
                                 log(`Cycle changed via button: ${currentCycle} → ${newCycle}`);
                                 currentCycle = newCycle;
                                 
-                                const table = document.querySelector(`${CONFIG.targetView} table`);
+                                const targetView = getTargetView();
+            const table = targetView ? document.querySelector(`${targetView} table`) : null;
                                 if (table) {
                                     processTextCells(table, true);
                                     applyScoreRAGRating(table);
@@ -1072,7 +1106,8 @@
                 // Still start monitor in case table appears later
                 startEnhancementMonitor();
                 
-                const viewContainer = document.querySelector(CONFIG.targetView);
+                const targetView = getTargetView();
+                const viewContainer = targetView ? document.querySelector(targetView) : null;
                 if (viewContainer) {
                     viewContainer.style.opacity = '1';
                     viewContainer.style.visibility = 'visible';
