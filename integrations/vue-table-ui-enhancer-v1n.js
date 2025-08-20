@@ -497,6 +497,11 @@
                 }
                 
                 /* IMPROVED COLUMN WIDTHS - UNIFORM ACROSS BOTH SCENES */
+                /* Apply fixed layout to ensure widths are respected */
+                #view_2772 table, #view_2776 table {
+                    table-layout: fixed !important;
+                }
+                
                 /* Student Name - Wider for visibility */
                 #view_2772 th:nth-child(1), #view_2772 td:nth-child(1),
                 #view_2776 th:nth-child(1), #view_2776 td:nth-child(1) {
@@ -514,6 +519,7 @@
                 #view_2776 th:nth-child(2), #view_2776 td:nth-child(2) {
                     width: 85px !important;
                     min-width: 85px !important;
+                    max-width: 85px !important;
                     text-align: center !important;
                 }
                 
@@ -522,6 +528,7 @@
                 #view_2776 th:nth-child(3), #view_2776 td:nth-child(3) {
                     width: 85px !important;
                     min-width: 85px !important;
+                    max-width: 85px !important;
                     text-align: center !important;
                 }
                 
@@ -564,20 +571,26 @@
                     font-weight: 600 !important;
                 }
                 
-                /* Report Response - Now at column 12 */
+                /* Report Response - Now at column 12 - ENSURE CONSISTENCY */
                 #view_2772 th:nth-child(12), #view_2772 td:nth-child(12),
                 #view_2776 th:nth-child(12), #view_2776 td:nth-child(12) {
                     width: 240px !important;
                     min-width: 240px !important;
                     max-width: 240px !important;
+                    padding: 10px 8px !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
                 }
                 
-                /* Action Plan - Now at column 13 */
+                /* Action Plan - Now at column 13 - ENSURE CONSISTENCY */
                 #view_2772 th:nth-child(13), #view_2772 td:nth-child(13),
                 #view_2776 th:nth-child(13), #view_2776 td:nth-child(13) {
                     width: 240px !important;
                     min-width: 240px !important;
                     max-width: 240px !important;
+                    padding: 10px 8px !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
                 }
                 
                 /* Report button - Now at column 14 */
@@ -585,7 +598,34 @@
                 #view_2776 th:nth-child(14), #view_2776 td:nth-child(14) {
                     width: 100px !important;
                     min-width: 100px !important;
+                    max-width: 100px !important;
                     text-align: center !important;
+                }
+                
+                /* SPECIFIC TUTOR VIEW OVERRIDES for better consistency */
+                #view_2776 table {
+                    table-layout: fixed !important;
+                    width: 100% !important;
+                }
+                
+                /* Ensure tutor view respects column widths */
+                #view_2776 thead th,
+                #view_2776 tbody td {
+                    box-sizing: border-box !important;
+                }
+                
+                /* Prevent cell content from expanding columns in tutor view */
+                #view_2776 td {
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                }
+                
+                /* Special handling for text columns in tutor view */
+                #view_2776 td:nth-child(12),
+                #view_2776 td:nth-child(13) {
+                    white-space: normal !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
                 }
                 
                 /* Rows */
@@ -922,6 +962,59 @@
         });
     }
     
+    // Force column widths programmatically for consistency
+    function enforceColumnWidths(table) {
+        const scene = getCurrentScene();
+        if (!table) return;
+        
+        // Define consistent column widths (matching staff admin view)
+        const columnWidths = [
+            160,  // Student Name
+            85,   // Group
+            85,   // Year Group
+            50,   // Empty/checkbox
+            90,   // Focus
+            40,   // V
+            40,   // E
+            40,   // S
+            40,   // P
+            40,   // A
+            40,   // O
+            240,  // Report Response - increased for better visibility
+            240,  // Action Plan - increased for better visibility
+            100   // Report button
+        ];
+        
+        // Apply to header cells
+        const headerCells = table.querySelectorAll('thead th');
+        headerCells.forEach((cell, index) => {
+            if (index < columnWidths.length) {
+                cell.style.width = `${columnWidths[index]}px`;
+                cell.style.minWidth = `${columnWidths[index]}px`;
+                cell.style.maxWidth = `${columnWidths[index]}px`;
+            }
+        });
+        
+        // Apply to first row cells to ensure consistency
+        const firstRow = table.querySelector('tbody tr');
+        if (firstRow) {
+            const cells = firstRow.querySelectorAll('td');
+            cells.forEach((cell, index) => {
+                if (index < columnWidths.length) {
+                    cell.style.width = `${columnWidths[index]}px`;
+                    cell.style.minWidth = `${columnWidths[index]}px`;
+                    cell.style.maxWidth = `${columnWidths[index]}px`;
+                }
+            });
+        }
+        
+        // Force table layout
+        table.style.tableLayout = 'fixed';
+        table.style.width = '100%';
+        
+        log(`Column widths enforced for ${scene} view`);
+    }
+    
     // Apply all enhancements to table
     function applyAllEnhancements() {
         const targetView = getTargetView();
@@ -941,6 +1034,9 @@
         
         // Add cycle filter info section
         addCycleFilterInfo();
+        
+        // Enforce column widths programmatically for consistency
+        enforceColumnWidths(table);
         
         // Process cells
         processTextCells(table, true);
@@ -1059,8 +1155,16 @@
                             const targetView = getTargetView();
                             const updatedTable = targetView ? document.querySelector(`${targetView} table`) : null;
                             if (updatedTable) {
+                                enforceColumnWidths(updatedTable);  // Maintain consistent widths
                                 processTextCells(updatedTable, true);
                                 applyScoreRAGRating(updatedTable);
+                            }
+                        } else {
+                            // Even if cycle hasn't changed, ensure column widths remain consistent
+                            const targetView = getTargetView();
+                            const updatedTable = targetView ? document.querySelector(`${targetView} table`) : null;
+                            if (updatedTable) {
+                                enforceColumnWidths(updatedTable);
                             }
                         }
                     }, 300);
@@ -1087,8 +1191,9 @@
                                 currentCycle = newCycle;
                                 
                                 const targetView = getTargetView();
-            const table = targetView ? document.querySelector(`${targetView} table`) : null;
+                                const table = targetView ? document.querySelector(`${targetView} table`) : null;
                                 if (table) {
+                                    enforceColumnWidths(table);  // Ensure column widths remain consistent
                                     processTextCells(table, true);
                                     applyScoreRAGRating(table);
                                 }
