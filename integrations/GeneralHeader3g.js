@@ -660,7 +660,7 @@
                 accentColor: '#06206e',
                 items: [
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
-                    { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
+                    { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
                     { label: 'Activities', icon: 'fa-book', href: '#activity-manage', scene: 'scene_1256' },
                     { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
@@ -693,7 +693,7 @@
                 accentColor: '#06206e',
                 items: [
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
-                    { label: 'Results', icon: 'fa-bar-chart', href: '#mygroup-student-results', scene: 'scene_1094' },
+                    { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
