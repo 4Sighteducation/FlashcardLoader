@@ -967,52 +967,132 @@
         const scene = getCurrentScene();
         if (!table) return;
         
-        // Define consistent column widths (matching staff admin view)
-        const columnWidths = [
-            160,  // Student Name
-            85,   // Group
-            85,   // Year Group
-            50,   // Empty/checkbox
-            90,   // Focus
-            40,   // V
-            40,   // E
-            40,   // S
-            40,   // P
-            40,   // A
-            40,   // O
-            240,  // Report Response - increased for better visibility
-            240,  // Action Plan - increased for better visibility
-            100   // Report button
-        ];
+        // Detect column structure by looking for key columns
+        const headers = table.querySelectorAll('thead th');
+        let reportResponseIdx = -1;
+        let actionPlanIdx = -1;
+        let vespaStartIdx = -1;
         
-        // Apply to header cells
-        const headerCells = table.querySelectorAll('thead th');
-        headerCells.forEach((cell, index) => {
-            if (index < columnWidths.length) {
-                cell.style.width = `${columnWidths[index]}px`;
-                cell.style.minWidth = `${columnWidths[index]}px`;
-                cell.style.maxWidth = `${columnWidths[index]}px`;
+        // Find key columns
+        headers.forEach((th, idx) => {
+            const text = th.textContent.trim();
+            if (text.toLowerCase().includes('report') && text.toLowerCase().includes('response')) {
+                reportResponseIdx = idx;
+            }
+            if (text.toLowerCase().includes('action') && text.toLowerCase().includes('plan')) {
+                actionPlanIdx = idx;
+            }
+            if (text === 'V' && vespaStartIdx === -1) {
+                vespaStartIdx = idx;
             }
         });
         
-        // Apply to first row cells to ensure consistency
-        const firstRow = table.querySelector('tbody tr');
-        if (firstRow) {
-            const cells = firstRow.querySelectorAll('td');
+        log(`Column detection: Report Response at ${reportResponseIdx}, Action Plan at ${actionPlanIdx}, VESPA starts at ${vespaStartIdx}`);
+        
+        // Build dynamic column width map based on detected structure
+        const columnWidthMap = {};
+        
+        // For tutor view with duplicated columns
+        if (scene === 'tutor' && headers.length > 14) {
+            // First set of columns
+            columnWidthMap[0] = 160;  // Student Name
+            columnWidthMap[1] = 85;   // Group
+            columnWidthMap[2] = 85;   // Year Group (might be empty)
+            
+            // Adjust based on where we found Focus and VESPA columns
+            if (headers[3]?.textContent.trim() === 'Focus') {
+                // Focus is at position 3 (shifted structure)
+                columnWidthMap[3] = 90;   // Focus
+                columnWidthMap[4] = 40;   // V
+                columnWidthMap[5] = 40;   // E
+                columnWidthMap[6] = 40;   // S
+                columnWidthMap[7] = 40;   // P
+                columnWidthMap[8] = 40;   // A
+                columnWidthMap[9] = 40;   // O
+                columnWidthMap[10] = 240; // Report Response (at index 10)
+                columnWidthMap[11] = 240; // Action Plan (at index 11)
+            } else {
+                // Standard structure with checkbox column
+                columnWidthMap[3] = 50;   // Empty/checkbox
+                columnWidthMap[4] = 90;   // Focus
+                columnWidthMap[5] = 40;   // V
+                columnWidthMap[6] = 40;   // E
+                columnWidthMap[7] = 40;   // S
+                columnWidthMap[8] = 40;   // P
+                columnWidthMap[9] = 40;   // A
+                columnWidthMap[10] = 40;  // O
+                columnWidthMap[11] = 240; // Report Response
+                columnWidthMap[12] = 240; // Action Plan
+            }
+            
+            // Handle duplicate columns (if they exist)
+            if (headers.length > 12) {
+                for (let i = 12; i < headers.length; i++) {
+                    if (i < 24) {
+                        // Mirror the widths for duplicate columns
+                        columnWidthMap[i] = columnWidthMap[i - 12] || 100;
+                    }
+                }
+            }
+        } else {
+            // Standard structure for staff view
+            columnWidthMap[0] = 160;  // Student Name
+            columnWidthMap[1] = 85;   // Group
+            columnWidthMap[2] = 85;   // Year Group
+            columnWidthMap[3] = 50;   // Empty/checkbox
+            columnWidthMap[4] = 90;   // Focus
+            columnWidthMap[5] = 40;   // V
+            columnWidthMap[6] = 40;   // E
+            columnWidthMap[7] = 40;   // S
+            columnWidthMap[8] = 40;   // P
+            columnWidthMap[9] = 40;   // A
+            columnWidthMap[10] = 40;  // O
+            columnWidthMap[11] = 240; // Report Response
+            columnWidthMap[12] = 240; // Action Plan
+            columnWidthMap[13] = 100; // Report button
+        }
+        
+        // Special handling for detected Report Response and Action Plan columns
+        if (reportResponseIdx >= 0) {
+            columnWidthMap[reportResponseIdx] = 240;
+        }
+        if (actionPlanIdx >= 0) {
+            columnWidthMap[actionPlanIdx] = 240;
+        }
+        
+        // Apply widths to all headers
+        headers.forEach((cell, index) => {
+            const width = columnWidthMap[index];
+            if (width) {
+                cell.style.cssText = `
+                    width: ${width}px !important;
+                    min-width: ${width}px !important;
+                    max-width: ${width}px !important;
+                `;
+            }
+        });
+        
+        // Apply to all body cells for consistency
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
             cells.forEach((cell, index) => {
-                if (index < columnWidths.length) {
-                    cell.style.width = `${columnWidths[index]}px`;
-                    cell.style.minWidth = `${columnWidths[index]}px`;
-                    cell.style.maxWidth = `${columnWidths[index]}px`;
+                const width = columnWidthMap[index];
+                if (width) {
+                    cell.style.cssText += `
+                        width: ${width}px !important;
+                        min-width: ${width}px !important;
+                        max-width: ${width}px !important;
+                    `;
                 }
             });
-        }
+        });
         
         // Force table layout
         table.style.tableLayout = 'fixed';
         table.style.width = '100%';
         
-        log(`Column widths enforced for ${scene} view`);
+        log(`Column widths enforced for ${scene} view with ${headers.length} columns`);
     }
     
     // Apply all enhancements to table
