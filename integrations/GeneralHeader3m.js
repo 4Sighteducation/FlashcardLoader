@@ -1486,11 +1486,12 @@
                         gaTrack: false
                     }, 'google_translate_element');
                     
-                    // Aggressively remove banner
+                    // Aggressively remove banner and setup handlers
                     setTimeout(() => {
                         removeGoogleBanner();
                         setupTranslationHandlers();
                         restoreLanguagePreference();
+                        console.log('[Translation] Google Translate initialized successfully');
                     }, 100);
                     
                     // Keep removing banner continuously
@@ -1510,29 +1511,55 @@
         
         // Setup translation button and modal handlers
         function setupTranslationHandlers() {
+            log('Setting up translation handlers');
+            
+            // Remove any existing handlers first to prevent duplicates
+            $(document).off('click', '#translation-menu-button');
+            $(document).off('click', '.translation-modal-close');
+            $(document).off('click', '.translation-modal');
+            $(document).off('click', '.lang-select-btn');
+            
             // Handle translation button click
             $(document).on('click', '#translation-menu-button', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 log('Translation button clicked');
+                console.log('[Translation] Button clicked - opening modal');
                 const modal = document.getElementById('translation-modal');
                 if (modal) {
                     modal.style.display = 'block';
                     removeGoogleBanner(); // Remove banner when showing modal
+                    console.log('[Translation] Modal opened');
+                } else {
+                    console.error('[Translation] Modal not found!');
                 }
             });
             
             // Handle modal close
-            $(document).on('click', '.translation-modal-close, .translation-modal', function(e) {
-                if (e.target.className.includes('translation-modal') || e.target.className.includes('close')) {
-                    document.getElementById('translation-modal').style.display = 'none';
+            $(document).on('click', '.translation-modal-close', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                log('Close button clicked');
+                const modal = document.getElementById('translation-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Handle clicking outside modal to close
+            $(document).on('click', '.translation-modal', function(e) {
+                if (e.target === this) {
+                    this.style.display = 'none';
                 }
             });
             
             // Handle language button clicks
             $(document).on('click', '.lang-select-btn', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 const lang = $(this).data('lang');
                 log('Language selected:', lang);
+                console.log('[Translation] Language selected:', lang);
                 
                 const selector = document.querySelector('.goog-te-combo');
                 if (selector) {
@@ -1553,9 +1580,21 @@
                         document.getElementById('translation-modal').style.display = 'none';
                         removeGoogleBanner(); // Remove banner after translation
                     }, 500);
+                } else {
+                    console.error('[Translation] Google Translate selector not found!');
                 }
             });
+            
+            console.log('[Translation] Handlers setup complete');
         }
+        
+        // Expose functions globally for debugging
+        window.vespaTranslation = {
+            setupHandlers: setupTranslationHandlers,
+            removeGoogleBanner: removeGoogleBanner,
+            initialize: initializeTranslation,
+            addStyles: addTranslationStyles
+        };
         
         // Save and restore language preferences
         function saveLanguagePreference(language) {
@@ -1609,21 +1648,8 @@
             // Force fix body positioning
             document.body.style.cssText = document.body.style.cssText.replace(/top:\s*\d+px/gi, '') + '; top: 0 !important; position: relative !important; margin-top: 0 !important; transform: none !important;';
             
-            // Use MutationObserver to keep removing it if Google tries to add it back
-            if (!window._bannerObserver) {
-                window._bannerObserver = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.type === 'childList') {
-                            const banner = document.querySelector('.goog-te-banner-frame');
-                            if (banner) {
-                                banner.style.display = 'none';
-                                document.body.style.top = '0px';
-                            }
-                        }
-                    });
-                });
-                window._bannerObserver.observe(document.body, { childList: true, subtree: false });
-            }
+            // Disable MutationObserver to prevent infinite loops
+            // The aggressive CSS styling above should be sufficient
             
             log('Google Translate banner removed');
         }
@@ -2031,6 +2057,8 @@
                 setTimeout(() => {
                     addTranslationStyles();
                     initializeTranslation();
+                    // Ensure handlers are set up
+                    setTimeout(setupTranslationHandlers, 100);
                 }, 500);
             } else {
                 // For other scenes, slight delay to allow other apps to load
@@ -2041,6 +2069,8 @@
                     setTimeout(() => {
                         addTranslationStyles();
                         initializeTranslation();
+                        // Ensure handlers are set up
+                        setTimeout(setupTranslationHandlers, 100);
                     }, 500);
                 }, 250);
             }
@@ -2087,6 +2117,8 @@
                             setTimeout(() => {
                                 addTranslationStyles();
                                 initializeTranslation();
+                                // Ensure handlers are set up
+                                setTimeout(setupTranslationHandlers, 100);
                             }, 500);
                         }
                         }, 300);
@@ -2099,10 +2131,14 @@
                             log('Translation system not initialized, initializing now!');
                             addTranslationStyles();
                             initializeTranslation();
+                            // Ensure handlers are set up
+                            setTimeout(setupTranslationHandlers, 100);
                         } else {
                             log('Translation system already initialized');
                             // Force remove banner just in case
                             removeGoogleBanner();
+                            // Re-setup handlers in case they were lost
+                            setupTranslationHandlers();
                         }
                     }, 1000); // Give page time to settle
                 }
@@ -2151,3 +2187,4 @@
     
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
+
