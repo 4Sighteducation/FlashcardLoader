@@ -785,6 +785,29 @@
                 `;
             }).join('');
             
+            // Add Translation button before Settings
+            const translationButton = `
+                <button id="translation-menu-button" 
+                        class="header-nav-button header-translation-button"
+                        title="Translate page content">
+                    <i class="fa fa-globe"></i>
+                    <span>Translate</span>
+                </button>
+            `;
+            
+            // Insert translation button before settings in navigation
+            const settingsIndex = navItemsHTML.lastIndexOf('header-settings-button');
+            let finalNavHTML = navItemsHTML;
+            if (settingsIndex > -1) {
+                // Find where the settings button starts
+                const beforeSettings = navItemsHTML.substring(0, navItemsHTML.lastIndexOf('<a', settingsIndex));
+                const fromSettings = navItemsHTML.substring(navItemsHTML.lastIndexOf('<a', settingsIndex));
+                finalNavHTML = beforeSettings + translationButton + fromSettings;
+            } else {
+                // If no settings button, add before the last item
+                finalNavHTML = navItemsHTML + translationButton;
+            }
+            
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header ${userType}">
                     <div class="header-content">
@@ -796,7 +819,7 @@
                                 <span>${navConfig.brand}</span>
                             </div>
                             <nav class="header-navigation">
-                                ${navItemsHTML}
+                                ${finalNavHTML}
                             </nav>
                             <button class="mobile-menu-toggle" aria-label="Toggle menu">
                                 <i class="fa fa-bars"></i>
@@ -813,6 +836,26 @@
                     ` : ''}
                 </div>
                 <div class="mobile-nav-overlay"></div>
+                <!-- Hidden Translation Container -->
+                <div id="translation-modal" class="translation-modal" style="display: none;">
+                    <div class="translation-modal-content">
+                        <div class="translation-modal-header">
+                            <h3><i class="fa fa-globe"></i> Select Language</h3>
+                            <button class="translation-modal-close">&times;</button>
+                        </div>
+                        <div class="translation-modal-body">
+                            <div id="google_translate_element" style="display: none;"></div>
+                            <div class="language-buttons">
+                                <button class="lang-select-btn" data-lang="">🇬🇧 English</button>
+                                <button class="lang-select-btn" data-lang="cy">🏴󠁧󠁢󠁷󠁬󠁳󠁿 Cymraeg (Welsh)</button>
+                                <button class="lang-select-btn" data-lang="pl">🇵🇱 Polski (Polish)</button>
+                                <button class="lang-select-btn" data-lang="es">🇪🇸 Español (Spanish)</button>
+                                <button class="lang-select-btn" data-lang="fr">🇫🇷 Français (French)</button>
+                                <button class="lang-select-btn" data-lang="de">🇩🇪 Deutsch (German)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <style>
                     /* Hide entire Knack header */
                     .knHeader {
@@ -1413,127 +1456,48 @@
             log('Lightweight DOM cleanup completed');
         }
         
-        // Translation Widget Functions
-        function addTranslationWidget() {
-            // Don't add on login pages
+        // Translation Functions - Simplified modal-based approach
+        function initializeTranslation() {
+            // Don't initialize on login pages
             const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5'];
             if (loginScenes.includes(currentScene)) {
-                log('On login scene, not adding translation widget');
+                log('On login scene, not initializing translation');
                 return;
             }
             
-            // Check if already added
-            if (document.getElementById('google_translate_element')) {
-                log('Translation widget already exists');
+            // Check if already initialized
+            if (window._translationInitialized) {
+                log('Translation already initialized');
                 return;
             }
             
-            log('Adding translation widget to header');
+            log('Initializing translation system');
             
-            // Create container - positioning it in your header
-            const headerNav = document.querySelector('.header-navigation');
-            if (!headerNav) {
-                log('Header navigation not found, retrying in 500ms');
-                setTimeout(addTranslationWidget, 500);
-                return;
-            }
-            
-            // Create container for translation controls
-            const translationControlsContainer = document.createElement('div');
-            translationControlsContainer.className = 'translation-controls-container';
-            translationControlsContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
-            
-            // Create translate widget container
-            const translateContainer = document.createElement('div');
-            translateContainer.id = 'google_translate_element';
-            translateContainer.className = 'translate-widget-container';
-            translationControlsContainer.appendChild(translateContainer);
-            
-            // Create manual refresh button (visible for testing)
-            const refreshButton = document.createElement('button');
-            refreshButton.id = 'translation-refresh-btn';
-            refreshButton.className = 'translation-refresh-button';
-            refreshButton.innerHTML = '<i class="fa fa-sync-alt"></i><span class="refresh-text"> Refresh</span>';
-            refreshButton.title = 'Refresh translations - use after changing language or if content doesn\'t translate';
-            refreshButton.style.display = 'inline-flex'; // Visible by default now
-            refreshButton.onclick = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                log('Manual translation refresh button clicked');
-                console.log('[Translation] Manual refresh triggered by user');
-                // Add spinning animation
-                refreshButton.classList.add('refreshing');
-                // Call refresh
-                if (window.refreshTranslations && typeof window.refreshTranslations === 'function') {
-                    log('Calling window.refreshTranslations()');
-                    window.refreshTranslations();
-                } else {
-                    console.error('[Translation] refreshTranslations function not found!');
-                }
-                // Show success feedback
-                setTimeout(() => {
-                    refreshButton.classList.remove('refreshing');
-                    refreshButton.classList.add('success');
-                    setTimeout(() => {
-                        refreshButton.classList.remove('success');
-                    }, 1000);
-                }, 500);
-            };
-            translationControlsContainer.appendChild(refreshButton);
-            
-            // Insert before the settings button
-            const settingsButton = document.querySelector('.header-settings-button');
-            if (settingsButton) {
-                headerNav.insertBefore(translationControlsContainer, settingsButton);
-            } else {
-                headerNav.appendChild(translationControlsContainer);
-            }
-            
-            // Load Google Translate script
+            // Load Google Translate script silently
             if (!window.googleTranslateElementInit) {
                 window.googleTranslateElementInit = function() {
-                    log('Google Translate Element initializing');
+                    log('Google Translate Element initializing (hidden mode)');
                     new google.translate.TranslateElement({
                         pageLanguage: 'en',
-                        // FIXED: Using correct Welsh code and adding more languages
-                        includedLanguages: 'en,cy,pl,es,fr,de,it,pt,ar,ur,zh-CN,hi,ga', // Welsh (cy), Irish (ga) included
+                        includedLanguages: 'en,cy,pl,es,fr,de,it,pt,ar,ur,zh-CN,hi,ga',
                         layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
                         autoDisplay: false,
-                        multilanguagePage: true, // Important for dynamic content!
-                        gaTrack: false // Disable tracking
+                        multilanguagePage: true,
+                        gaTrack: false
                     }, 'google_translate_element');
                     
-                    log('Google Translate Element created, now styling and configuring');
-                    
-                    // Immediately start removing banner
-                    removeGoogleBanner();
-                    
-                    // Style the widget to match your header
+                    // Aggressively remove banner
                     setTimeout(() => {
-                        styleTranslateWidget();
-                        // Force hide the Google banner again
                         removeGoogleBanner();
-                        // Restore saved language preference
+                        setupTranslationHandlers();
                         restoreLanguagePreference();
-                        // Setup language change observer
-                        observeLanguageChanges();
-                        // Make refresh button visible immediately if needed
-                        checkRefreshButtonVisibility();
-                        log('Translation widget fully configured');
                     }, 100);
                     
-                    // Keep removing banner every 500ms for 5 seconds to be sure
-                    let bannerCheckCount = 0;
-                    const bannerInterval = setInterval(() => {
-                        removeGoogleBanner();
-                        bannerCheckCount++;
-                        if (bannerCheckCount > 10) {
-                            clearInterval(bannerInterval);
-                        }
-                    }, 500);
+                    // Keep removing banner continuously
+                    setInterval(removeGoogleBanner, 1000);
                     
-                    // Notify apps that translation is available
                     window.vespaTranslationAvailable = true;
+                    window._translationInitialized = true;
                     $(document).trigger('vespa-translation-ready');
                 };
                 
@@ -1542,6 +1506,55 @@
                 script.async = true;
                 document.head.appendChild(script);
             }
+        }
+        
+        // Setup translation button and modal handlers
+        function setupTranslationHandlers() {
+            // Handle translation button click
+            $(document).on('click', '#translation-menu-button', function(e) {
+                e.preventDefault();
+                log('Translation button clicked');
+                const modal = document.getElementById('translation-modal');
+                if (modal) {
+                    modal.style.display = 'block';
+                    removeGoogleBanner(); // Remove banner when showing modal
+                }
+            });
+            
+            // Handle modal close
+            $(document).on('click', '.translation-modal-close, .translation-modal', function(e) {
+                if (e.target.className.includes('translation-modal') || e.target.className.includes('close')) {
+                    document.getElementById('translation-modal').style.display = 'none';
+                }
+            });
+            
+            // Handle language button clicks
+            $(document).on('click', '.lang-select-btn', function(e) {
+                e.preventDefault();
+                const lang = $(this).data('lang');
+                log('Language selected:', lang);
+                
+                const selector = document.querySelector('.goog-te-combo');
+                if (selector) {
+                    selector.value = lang;
+                    const evt = document.createEvent('HTMLEvents');
+                    evt.initEvent('change', true, true);
+                    selector.dispatchEvent(evt);
+                    
+                    // Save preference
+                    saveLanguagePreference(lang);
+                    
+                    // Update button states
+                    $('.lang-select-btn').removeClass('active');
+                    $(this).addClass('active');
+                    
+                    // Close modal after selection
+                    setTimeout(() => {
+                        document.getElementById('translation-modal').style.display = 'none';
+                        removeGoogleBanner(); // Remove banner after translation
+                    }, 500);
+                }
+            });
         }
         
         // Save and restore language preferences
@@ -1572,53 +1585,29 @@
             }
         }
         
-        function observeLanguageChanges() {
-            const selector = document.querySelector('.goog-te-combo');
-            if (selector) {
-                selector.addEventListener('change', function() {
-                    const selectedLanguage = this.value;
-                    saveLanguagePreference(selectedLanguage);
-                    
-                    // Show/hide refresh button based on language
-                    const refreshBtn = document.getElementById('translation-refresh-btn');
-                    if (refreshBtn) {
-                        if (selectedLanguage && selectedLanguage !== 'en' && selectedLanguage !== '') {
-                            refreshBtn.style.display = 'block';
-                            // Add a pulse animation to draw attention
-                            refreshBtn.classList.add('pulse');
-                            setTimeout(() => refreshBtn.classList.remove('pulse'), 2000);
-                        } else {
-                            refreshBtn.style.display = 'none';
-                        }
-                    }
-                    
-                    // Always remove Google banner after language change
-                    setTimeout(removeGoogleBanner, 100);
-                    
-                    // Notify other parts of the app about language change
-                    $(document).trigger('vespa-language-changed', { language: selectedLanguage });
-                });
-            }
-        }
+
         
         // Force remove Google Translate banner
         function removeGoogleBanner() {
-            // Remove the banner frame
-            const bannerFrame = document.querySelector('.goog-te-banner-frame');
-            if (bannerFrame) {
-                bannerFrame.style.display = 'none';
-                bannerFrame.remove();
-            }
+            // Aggressively remove ALL Google Translate UI elements
+            const selectors = [
+                '.goog-te-banner-frame',
+                '.goog-te-banner',
+                'iframe.skiptranslate',
+                'body > .skiptranslate'
+            ];
             
-            // Fix body positioning
-            document.body.style.top = '0px';
-            document.body.style.position = 'relative';
+            selectors.forEach(selector => {
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el.id !== 'google_translate_element') {
+                        el.style.cssText = 'display: none !important; visibility: hidden !important; height: 0 !important; width: 0 !important;';
+                        el.remove();
+                    }
+                });
+            });
             
-            // Remove any Google Translate added styles on body
-            if (document.body.className.includes('translated-ltr')) {
-                document.body.style.top = '0px !important';
-                document.body.style.position = 'relative !important';
-            }
+            // Force fix body positioning
+            document.body.style.cssText = document.body.style.cssText.replace(/top:\s*\d+px/gi, '') + '; top: 0 !important; position: relative !important; margin-top: 0 !important; transform: none !important;';
             
             // Use MutationObserver to keep removing it if Google tries to add it back
             if (!window._bannerObserver) {
@@ -1639,152 +1628,128 @@
             log('Google Translate banner removed');
         }
         
-        // Check if refresh button should be visible
-        function checkRefreshButtonVisibility() {
-            const selector = document.querySelector('.goog-te-combo');
-            const refreshBtn = document.getElementById('translation-refresh-btn');
-            if (selector && refreshBtn) {
-                const currentLang = selector.value;
-                if (currentLang && currentLang !== 'en' && currentLang !== '') {
-                    refreshBtn.style.display = 'block';
-                    log('Refresh button made visible for language:', currentLang);
-                }
-            }
-        }
-        
-        function styleTranslateWidget() {
-            // Custom styling to match your header
-            if (document.getElementById('translation-widget-styles')) return;
+        function addTranslationStyles() {
+            // Add modal and translation styles
+            if (document.getElementById('translation-modal-styles')) return;
             
             const style = document.createElement('style');
-            style.id = 'translation-widget-styles';
+            style.id = 'translation-modal-styles';
             style.textContent = `
-                /* Container styling */
-                .translation-controls-container {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin: 0 8px;
-                }
-                
-                .translate-widget-container {
-                    display: inline-flex;
-                    align-items: center;
-                }
-                
-                /* Refresh button styling */
-                .translation-refresh-button {
-                    background: rgba(0, 229, 219, 0.2);
-                    border: 2px solid rgba(0, 229, 219, 0.5);
-                    border-radius: 6px;
-                    padding: 8px 14px;
-                    color: white;
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: inline-flex;
+                /* Translation Modal Styles */
+                .translation-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 100000;
+                    display: none;
                     align-items: center;
                     justify-content: center;
-                    gap: 6px;
-                    white-space: nowrap;
                 }
                 
-                .translation-refresh-button .refresh-text {
-                    display: inline;
-                }
-                
-                @media (max-width: 1200px) {
-                    .translation-refresh-button .refresh-text {
-                        display: none; /* Hide text on smaller screens */
-                    }
-                    .translation-refresh-button {
-                        min-width: 36px;
-                        padding: 8px 10px;
-                    }
-                }
-                
-                .translation-refresh-button:hover {
-                    background: rgba(255,255,255,0.25);
-                    transform: translateY(-1px);
-                    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-                }
-                
-                .translation-refresh-button:active {
-                    transform: translateY(0);
-                }
-                
-                /* Refresh button animations */
-                @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-                
-                @keyframes pulse {
-                    0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
-                    70% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
-                    100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-                }
-                
-                .translation-refresh-button.refreshing i {
-                    animation: spin 1s linear infinite;
-                }
-                
-                .translation-refresh-button.success {
-                    background: rgba(76, 175, 80, 0.3) !important;
-                    border-color: rgba(76, 175, 80, 0.5) !important;
-                }
-                
-                .translation-refresh-button.pulse {
-                    animation: pulse 2s;
-                }
-                
-                /* Hide Google's branding */
-                .goog-logo-link {
-                    display: none !important;
-                }
-                .goog-te-gadget {
-                    color: transparent !important;
-                    font-size: 0 !important;
-                }
-                
-                /* Style the dropdown */
-                .goog-te-gadget .goog-te-combo {
-                    background: rgba(255,255,255,0.15);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    border-radius: 6px;
-                    padding: 8px 14px;
-                    color: white;
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    min-width: 120px;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                }
-                
-                .goog-te-gadget .goog-te-combo:hover {
-                    background: rgba(255,255,255,0.25);
-                    transform: translateY(-1px);
-                    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-                }
-                
-                .goog-te-gadget .goog-te-combo option {
+                .translation-modal-content {
                     background: #2a3c7a;
+                    border-radius: 12px;
+                    width: 90%;
+                    max-width: 500px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
                     color: white;
                 }
                 
-                /* Aggressively hide the Google Translate banner */
+                .translation-modal-header {
+                    padding: 20px;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                .translation-modal-header h3 {
+                    margin: 0;
+                    font-size: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                
+                .translation-modal-close {
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 28px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 30px;
+                    height: 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    transition: background 0.2s;
+                }
+                
+                .translation-modal-close:hover {
+                    background: rgba(255,255,255,0.1);
+                }
+                
+                .translation-modal-body {
+                    padding: 20px;
+                }
+                
+                .language-buttons {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+                
+                .lang-select-btn {
+                    background: rgba(255,255,255,0.1);
+                    border: 2px solid rgba(255,255,255,0.2);
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    text-align: left;
+                }
+                
+                .lang-select-btn:hover {
+                    background: rgba(0, 229, 219, 0.2);
+                    border-color: rgba(0, 229, 219, 0.5);
+                    transform: translateY(-2px);
+                }
+                
+                .lang-select-btn.active {
+                    background: rgba(0, 229, 219, 0.3);
+                    border-color: rgba(0, 229, 219, 0.6);
+                }
+                
+                @media (max-width: 480px) {
+                    .language-buttons {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                
+                /* AGGRESSIVELY HIDE GOOGLE TRANSLATE BANNER */
                 .goog-te-banner-frame,
                 .goog-te-banner-frame.skiptranslate,
-                body > .skiptranslate:first-child {
+                body > .skiptranslate,
+                iframe.skiptranslate,
+                .goog-te-banner {
                     display: none !important;
                     visibility: hidden !important;
                     height: 0 !important;
                     width: 0 !important;
+                    line-height: 0 !important;
+                    font-size: 0 !important;
                     position: absolute !important;
                     top: -9999px !important;
                     left: -9999px !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
                 }
                 
                 /* Fix body positioning - FORCE it */
@@ -1810,69 +1775,14 @@
                 
 
                 
-                /* Mobile responsive */
-                @media (max-width: 992px) {
-                    .translation-controls-container {
-                        margin: 0 4px;
-                        gap: 4px;
-                    }
-                    .goog-te-gadget .goog-te-combo {
-                        min-width: 100px;
-                        padding: 5px 8px;
-                        font-size: 11px;
-                    }
-                    .translation-refresh-button {
-                        min-width: 32px;
-                        height: 32px;
-                        padding: 6px 8px;
-                        font-size: 12px;
-                    }
+                /* Hide Google Translate element since we're using modal */
+                #google_translate_element {
+                    display: none !important;
                 }
                 
-                @media (max-width: 768px) {
-                    .translation-controls-container {
-                        width: 100%;
-                        margin: 0 0 8px 0;
-                        order: -1; /* Move to top on mobile */
-                        gap: 8px;
-                    }
-                    .translate-widget-container {
-                        flex: 1;
-                    }
-                    .goog-te-gadget .goog-te-combo {
-                        width: 100%;
-                        padding: 12px 16px;
-                        font-size: 15px;
-                        background: rgba(255,255,255,0.08);
-                    }
-                    .translation-refresh-button {
-                        min-width: 44px;
-                        height: 44px;
-                        padding: 10px;
-                        font-size: 16px;
-                        background: rgba(255,255,255,0.08);
-                    }
-                }
-                
-                /* Fix for translation affecting header buttons */
-                .header-nav-button .notranslate {
-                    display: inline-block;
-                }
-                
-                /* Loading state */
-                .translating .kn-scene {
-                    opacity: 0.7;
-                    pointer-events: none;
-                }
-                
-                /* Translation complete animation */
-                @keyframes translationComplete {
-                    0% { opacity: 0.7; }
-                    100% { opacity: 1; }
-                }
-                
-                .translation-complete .kn-scene {
-                    animation: translationComplete 0.3s ease-out;
+                /* Style when modal is open */
+                .translation-modal[style*="display: block"] {
+                    display: flex !important;
                 }
             `;
             document.head.appendChild(style);
@@ -2116,21 +2026,21 @@
             if (currentScene === 'scene_1014' || currentScene === 'scene_1095') {
                 // For scenes with loading screen, inject immediately
                 injectHeader();
-                // Add translation widget after header
-                log('Scheduling translation widget for loading screen scene');
+                // Initialize translation system
+                log('Initializing translation system for loading screen scene');
                 setTimeout(() => {
-                    log('Now calling addTranslationWidget after delay');
-                    addTranslationWidget();
+                    addTranslationStyles();
+                    initializeTranslation();
                 }, 500);
             } else {
                 // For other scenes, slight delay to allow other apps to load
                 setTimeout(() => {
                     injectHeader();
-                    // Add translation widget after header
-                    log('Scheduling translation widget for regular scene');
+                    // Initialize translation system
+                    log('Initializing translation system for regular scene');
                     setTimeout(() => {
-                        log('Now calling addTranslationWidget after delay');
-                        addTranslationWidget();
+                        addTranslationStyles();
+                        initializeTranslation();
                     }, 500);
                 }, 250);
             }
@@ -2169,31 +2079,30 @@
                         log('Header missing and user logged in, re-injecting after delay');
                         // Longer delay for scene changes to ensure other apps load first
                         setTimeout(() => {
-                            // Double-check header is still missing before injecting
-                            if (!document.getElementById('vespaGeneralHeader')) {
-                                injectHeader();
-                                // Re-add translation widget after header re-injection
-                                log('Adding translation widget after header injection');
-                                setTimeout(() => {
-                                    addTranslationWidget();
-                                }, 500);
-                            }
+                                                    // Double-check header is still missing before injecting
+                        if (!document.getElementById('vespaGeneralHeader')) {
+                            injectHeader();
+                            // Initialize translation system after header re-injection
+                            log('Initializing translation system after header injection');
+                            setTimeout(() => {
+                                addTranslationStyles();
+                                initializeTranslation();
+                            }, 500);
+                        }
                         }, 300);
                     }
                 } else {
-                    log('Header exists, now ensuring translation widget is present');
-                    // ALWAYS ensure translation widget exists on non-login pages
+                    log('Header exists, checking translation system');
+                    // ALWAYS ensure translation system is initialized on non-login pages
                     setTimeout(() => {
-                        if (!document.getElementById('google_translate_element')) {
-                            log('Translation widget missing on non-login page, adding it now!');
-                            addTranslationWidget();
+                        if (!window._translationInitialized) {
+                            log('Translation system not initialized, initializing now!');
+                            addTranslationStyles();
+                            initializeTranslation();
                         } else {
-                            log('Translation widget already exists');
-                            // But check if Google Translate is actually loaded
-                            if (!document.querySelector('.goog-te-combo')) {
-                                log('Google Translate dropdown not found, re-initializing');
-                                addTranslationWidget();
-                            }
+                            log('Translation system already initialized');
+                            // Force remove banner just in case
+                            removeGoogleBanner();
                         }
                     }, 1000); // Give page time to settle
                 }
