@@ -1456,11 +1456,20 @@
             refreshButton.innerHTML = '<i class="fa fa-sync-alt"></i><span class="refresh-text"> Refresh</span>';
             refreshButton.title = 'Refresh translations - use after changing language or if content doesn\'t translate';
             refreshButton.style.display = 'inline-flex'; // Visible by default now
-            refreshButton.onclick = function() {
-                log('Manual translation refresh triggered');
+            refreshButton.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                log('Manual translation refresh button clicked');
+                console.log('[Translation] Manual refresh triggered by user');
                 // Add spinning animation
                 refreshButton.classList.add('refreshing');
-                window.refreshTranslations();
+                // Call refresh
+                if (window.refreshTranslations && typeof window.refreshTranslations === 'function') {
+                    log('Calling window.refreshTranslations()');
+                    window.refreshTranslations();
+                } else {
+                    console.error('[Translation] refreshTranslations function not found!');
+                }
                 // Show success feedback
                 setTimeout(() => {
                     refreshButton.classList.remove('refreshing');
@@ -1483,6 +1492,7 @@
             // Load Google Translate script
             if (!window.googleTranslateElementInit) {
                 window.googleTranslateElementInit = function() {
+                    log('Google Translate Element initializing');
                     new google.translate.TranslateElement({
                         pageLanguage: 'en',
                         // FIXED: Using correct Welsh code and adding more languages
@@ -1493,10 +1503,15 @@
                         gaTrack: false // Disable tracking
                     }, 'google_translate_element');
                     
+                    log('Google Translate Element created, now styling and configuring');
+                    
+                    // Immediately start removing banner
+                    removeGoogleBanner();
+                    
                     // Style the widget to match your header
                     setTimeout(() => {
                         styleTranslateWidget();
-                        // Force hide the Google banner immediately
+                        // Force hide the Google banner again
                         removeGoogleBanner();
                         // Restore saved language preference
                         restoreLanguagePreference();
@@ -1504,7 +1519,18 @@
                         observeLanguageChanges();
                         // Make refresh button visible immediately if needed
                         checkRefreshButtonVisibility();
+                        log('Translation widget fully configured');
                     }, 100);
+                    
+                    // Keep removing banner every 500ms for 5 seconds to be sure
+                    let bannerCheckCount = 0;
+                    const bannerInterval = setInterval(() => {
+                        removeGoogleBanner();
+                        bannerCheckCount++;
+                        if (bannerCheckCount > 10) {
+                            clearInterval(bannerInterval);
+                        }
+                    }, 500);
                     
                     // Notify apps that translation is available
                     window.vespaTranslationAvailable = true;
@@ -2091,13 +2117,21 @@
                 // For scenes with loading screen, inject immediately
                 injectHeader();
                 // Add translation widget after header
-                setTimeout(addTranslationWidget, 500);
+                log('Scheduling translation widget for loading screen scene');
+                setTimeout(() => {
+                    log('Now calling addTranslationWidget after delay');
+                    addTranslationWidget();
+                }, 500);
             } else {
                 // For other scenes, slight delay to allow other apps to load
                 setTimeout(() => {
                     injectHeader();
                     // Add translation widget after header
-                    setTimeout(addTranslationWidget, 500);
+                    log('Scheduling translation widget for regular scene');
+                    setTimeout(() => {
+                        log('Now calling addTranslationWidget after delay');
+                        addTranslationWidget();
+                    }, 500);
                 }, 250);
             }
             
@@ -2127,7 +2161,7 @@
                     return;
                 }
                 
-                // ONLY re-inject if header is actually missing and user is logged in
+                // ALWAYS check for translation widget on non-login pages
                 const existingHeader = document.getElementById('vespaGeneralHeader');
                 if (!existingHeader) {
                     const userType = getUserType();
@@ -2139,16 +2173,29 @@
                             if (!document.getElementById('vespaGeneralHeader')) {
                                 injectHeader();
                                 // Re-add translation widget after header re-injection
-                                setTimeout(addTranslationWidget, 500);
+                                log('Adding translation widget after header injection');
+                                setTimeout(() => {
+                                    addTranslationWidget();
+                                }, 500);
                             }
                         }, 300);
                     }
                 } else {
-                    log('Header exists, checking translation widget');
-                    // Check if translation widget needs to be re-added
-                    if (!document.getElementById('google_translate_element')) {
-                        setTimeout(addTranslationWidget, 500);
-                    }
+                    log('Header exists, now ensuring translation widget is present');
+                    // ALWAYS ensure translation widget exists on non-login pages
+                    setTimeout(() => {
+                        if (!document.getElementById('google_translate_element')) {
+                            log('Translation widget missing on non-login page, adding it now!');
+                            addTranslationWidget();
+                        } else {
+                            log('Translation widget already exists');
+                            // But check if Google Translate is actually loaded
+                            if (!document.querySelector('.goog-te-combo')) {
+                                log('Google Translate dropdown not found, re-initializing');
+                                addTranslationWidget();
+                            }
+                        }
+                    }, 1000); // Give page time to settle
                 }
             });
             
