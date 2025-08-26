@@ -1356,7 +1356,7 @@
             }
             
             // Navigation click handling
-            const navLinks = document.querySelectorAll('#vespaGeneralHeader .header-nav-button, #vespaGeneralHeader .breadcrumb-back');
+            const navLinks = document.querySelectorAll('#vespaGeneralHeader a.header-nav-button, #vespaGeneralHeader .breadcrumb-back');
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -1495,9 +1495,30 @@
             
             // Only load Google Translate if not already loading/loaded
             if (!window.googleTranslateElementInit && !document.querySelector('script[src*="translate.google.com"]')) {
+                function ensureTranslateHost() {
+                    let host = document.getElementById('google_translate_element');
+                    const modal = document.querySelector('.translation-modal');
+                    const modalHidden = modal && getComputedStyle(modal).display === 'none';
+                    if (!host) {
+                        host = document.createElement('div');
+                        host.id = 'google_translate_element';
+                        document.body.appendChild(host);
+                    } else if (modalHidden || host.offsetParent === null) {
+                        document.body.appendChild(host);
+                    }
+                    host.style.position = 'absolute';
+                    host.style.opacity = '0.01';
+                    host.style.height = '1px';
+                    host.style.width = '1px';
+                    host.style.overflow = 'hidden';
+                    host.style.pointerEvents = 'none';
+                    host.style.zIndex = '-1';
+                }
+
                 window.googleTranslateElementInit = function() {
                     console.log('[Translation] googleTranslateElementInit called (fallback)!');
                     log('Google Translate Element initializing (fallback mode)');
+                    try { ensureTranslateHost(); } catch(e) { /* no-op */ }
                     
                     try {
                         new google.translate.TranslateElement({
@@ -1551,7 +1572,7 @@
                 };
                 
                 const script = document.createElement('script');
-                script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+                script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
                 script.async = true;
                 
                 // Add load and error handlers
@@ -1581,9 +1602,9 @@
                         $(document).trigger('vespa-translation-ready');
                     }
                     checkCount++;
-                    if (checkCount > 20) { // Stop after 10 seconds
+                    if (checkCount > 30) { // Stop after 15 seconds
                         clearInterval(checkInterval);
-                        console.error('[Translation] Google Translate failed to initialize after 10 seconds');
+                        console.error('[Translation] Google Translate failed to initialize after 15 seconds');
                     }
                 }, 500);
             }
@@ -1619,6 +1640,9 @@
             $(document).on('click', '#translation-menu-button', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === 'function') {
+                    e.stopImmediatePropagation();
+                }
                 log('Translation button clicked');
                 console.log('[Translation] Button clicked - opening modal');
                 const modal = document.getElementById('translation-modal');
