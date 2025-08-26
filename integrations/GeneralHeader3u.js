@@ -1593,6 +1593,22 @@
         function setupTranslationHandlers() {
             log('Setting up translation handlers');
             
+            // CRITICAL FIX: Prevent Google Translate widget from causing page reloads
+            $(document).on('click', '.goog-te-gadget, .goog-te-gadget-simple, .goog-te-gadget-icon, .goog-te-menu-value, .goog-te-menu-frame', function(e) {
+                console.log('[Translation] Preventing Google Translate reload - intercepted click on:', e.target);
+                e.preventDefault();
+                e.stopPropagation();
+                // Let the event continue to Google's handlers
+                return true;
+            });
+            
+            // Also prevent form submission if Google Translate is in a form
+            $(document).on('submit', 'form:has(.goog-te-gadget)', function(e) {
+                console.log('[Translation] Preventing form submission from Google Translate');
+                e.preventDefault();
+                return false;
+            });
+            
             // Remove any existing handlers first to prevent duplicates
             $(document).off('click', '#translation-menu-button');
             $(document).off('click', '.translation-modal-close');
