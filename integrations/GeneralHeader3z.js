@@ -1449,13 +1449,13 @@
             translateContainer.className = 'translate-widget-container';
             translationControlsContainer.appendChild(translateContainer);
             
-            // Create manual refresh button (visible for testing)
+            // Create manual refresh button (hidden initially)
             const refreshButton = document.createElement('button');
             refreshButton.id = 'translation-refresh-btn';
             refreshButton.className = 'translation-refresh-button';
-            refreshButton.innerHTML = '<i class="fa fa-sync-alt"></i><span class="refresh-text"> Refresh</span>';
-            refreshButton.title = 'Refresh translations - use after changing language or if content doesn\'t translate';
-            refreshButton.style.display = 'inline-flex'; // Visible by default now
+            refreshButton.innerHTML = '<i class="fa fa-sync-alt"></i>';
+            refreshButton.title = 'Refresh translations';
+            refreshButton.style.display = 'none'; // Hidden initially
             refreshButton.onclick = function() {
                 log('Manual translation refresh triggered');
                 // Add spinning animation
@@ -1485,25 +1485,21 @@
                 window.googleTranslateElementInit = function() {
                     new google.translate.TranslateElement({
                         pageLanguage: 'en',
-                        // FIXED: Using correct Welsh code and adding more languages
-                        includedLanguages: 'en,cy,pl,es,fr,de,it,pt,ar,ur,zh-CN,hi,ga', // Welsh (cy), Irish (ga) included
+                        // Start with Welsh, English, Polish, Spanish, French
+                        // Add more as needed: ar (Arabic), ur (Urdu), zh-CN (Chinese)
+                        includedLanguages: 'cy,en,pl,es,fr,de', 
                         layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
                         autoDisplay: false,
                         multilanguagePage: true, // Important for dynamic content!
-                        gaTrack: false // Disable tracking
                     }, 'google_translate_element');
                     
                     // Style the widget to match your header
                     setTimeout(() => {
                         styleTranslateWidget();
-                        // Force hide the Google banner immediately
-                        removeGoogleBanner();
                         // Restore saved language preference
                         restoreLanguagePreference();
                         // Setup language change observer
                         observeLanguageChanges();
-                        // Make refresh button visible immediately if needed
-                        checkRefreshButtonVisibility();
                     }, 100);
                     
                     // Notify apps that translation is available
@@ -1566,63 +1562,9 @@
                         }
                     }
                     
-                    // Always remove Google banner after language change
-                    setTimeout(removeGoogleBanner, 100);
-                    
                     // Notify other parts of the app about language change
                     $(document).trigger('vespa-language-changed', { language: selectedLanguage });
                 });
-            }
-        }
-        
-        // Force remove Google Translate banner
-        function removeGoogleBanner() {
-            // Remove the banner frame
-            const bannerFrame = document.querySelector('.goog-te-banner-frame');
-            if (bannerFrame) {
-                bannerFrame.style.display = 'none';
-                bannerFrame.remove();
-            }
-            
-            // Fix body positioning
-            document.body.style.top = '0px';
-            document.body.style.position = 'relative';
-            
-            // Remove any Google Translate added styles on body
-            if (document.body.className.includes('translated-ltr')) {
-                document.body.style.top = '0px !important';
-                document.body.style.position = 'relative !important';
-            }
-            
-            // Use MutationObserver to keep removing it if Google tries to add it back
-            if (!window._bannerObserver) {
-                window._bannerObserver = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.type === 'childList') {
-                            const banner = document.querySelector('.goog-te-banner-frame');
-                            if (banner) {
-                                banner.style.display = 'none';
-                                document.body.style.top = '0px';
-                            }
-                        }
-                    });
-                });
-                window._bannerObserver.observe(document.body, { childList: true, subtree: false });
-            }
-            
-            log('Google Translate banner removed');
-        }
-        
-        // Check if refresh button should be visible
-        function checkRefreshButtonVisibility() {
-            const selector = document.querySelector('.goog-te-combo');
-            const refreshBtn = document.getElementById('translation-refresh-btn');
-            if (selector && refreshBtn) {
-                const currentLang = selector.value;
-                if (currentLang && currentLang !== 'en' && currentLang !== '') {
-                    refreshBtn.style.display = 'block';
-                    log('Refresh button made visible for language:', currentLang);
-                }
             }
         }
         
@@ -1648,34 +1590,19 @@
                 
                 /* Refresh button styling */
                 .translation-refresh-button {
-                    background: rgba(0, 229, 219, 0.2);
-                    border: 2px solid rgba(0, 229, 219, 0.5);
+                    background: rgba(255,255,255,0.15);
+                    border: 1px solid rgba(255,255,255,0.1);
                     border-radius: 6px;
-                    padding: 8px 14px;
+                    padding: 8px 10px;
                     color: white;
-                    font-size: 13px;
-                    font-weight: 500;
+                    font-size: 14px;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                    display: inline-flex;
+                    display: flex;
                     align-items: center;
                     justify-content: center;
-                    gap: 6px;
-                    white-space: nowrap;
-                }
-                
-                .translation-refresh-button .refresh-text {
-                    display: inline;
-                }
-                
-                @media (max-width: 1200px) {
-                    .translation-refresh-button .refresh-text {
-                        display: none; /* Hide text on smaller screens */
-                    }
-                    .translation-refresh-button {
-                        min-width: 36px;
-                        padding: 8px 10px;
-                    }
+                    min-width: 36px;
+                    height: 36px;
                 }
                 
                 .translation-refresh-button:hover {
@@ -1748,41 +1675,16 @@
                     color: white;
                 }
                 
-                /* Aggressively hide the Google Translate banner */
-                .goog-te-banner-frame,
-                .goog-te-banner-frame.skiptranslate,
-                body > .skiptranslate:first-child {
+                /* Hide the Google Translate banner */
+                .goog-te-banner-frame {
                     display: none !important;
-                    visibility: hidden !important;
-                    height: 0 !important;
-                    width: 0 !important;
-                    position: absolute !important;
-                    top: -9999px !important;
-                    left: -9999px !important;
                 }
                 
-                /* Fix body positioning - FORCE it */
-                body {
-                    top: 0 !important;
-                    position: relative !important;
-                    margin-top: 0 !important;
-                    padding-top: 65px !important; /* Keep our header spacing */
-                }
-                
-                body.translated-ltr,
-                body.translated-rtl,
+                /* Fix body positioning */
                 body.translated {
                     top: 0 !important;
                     position: relative !important;
-                    margin-top: 0 !important;
                 }
-                
-                /* Ensure our header stays on top */
-                .vespa-general-header {
-                    z-index: 99999 !important;
-                }
-                
-
                 
                 /* Mobile responsive */
                 @media (max-width: 992px) {
@@ -1881,10 +1783,6 @@
                     setTimeout(() => {
                         selector.value = currentLang;
                         selector.dispatchEvent(evt);
-                        // Also try to translate embedded content
-                        translateEmbeddedContent(currentLang);
-                        // Always remove banner after refresh
-                        removeGoogleBanner();
                         // Trigger event for apps that need to know
                         $(document).trigger('vespa-translation-refreshed', { language: currentLang });
                     }, 100);
@@ -1893,164 +1791,6 @@
                 }
             }
         };
-        
-        // Function to add translation notice for Slides.com embeds
-        function addSlidesTranslationNotice(iframe, targetLang) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'slides-translate-notice';
-            wrapper.style.cssText = `
-                position: relative;
-                display: inline-block;
-                width: 100%;
-            `;
-            
-            // Create notice overlay
-            const notice = document.createElement('div');
-            notice.className = 'translation-notice-overlay';
-            notice.innerHTML = `
-                <div style="
-                    position: absolute;
-                    top: 10px;
-                    right: 10px;
-                    background: rgba(0, 229, 219, 0.95);
-                    color: white;
-                    padding: 8px 12px;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    z-index: 1000;
-                    cursor: pointer;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                " onclick="this.style.display='none'">
-                    <i class="fa fa-info-circle"></i>
-                    <span>Slides cannot auto-translate</span>
-                    <i class="fa fa-times" style="margin-left: 8px; opacity: 0.8;"></i>
-                </div>
-            `;
-            
-            // Wrap the iframe
-            iframe.parentNode.insertBefore(wrapper, iframe);
-            wrapper.appendChild(iframe);
-            wrapper.appendChild(notice);
-            
-            // Language-specific messages
-            const messages = {
-                'cy': 'Ni all sleidiau gyfieithu\'n awtomatig', // Welsh
-                'pl': 'Slajdy nie mogą być automatycznie tłumaczone', // Polish
-                'es': 'Las diapositivas no se pueden traducir automáticamente', // Spanish
-                'fr': 'Les diapositives ne peuvent pas être traduites automatiquement', // French
-                'de': 'Folien können nicht automatisch übersetzt werden' // German
-            };
-            
-            if (messages[targetLang]) {
-                notice.querySelector('span').textContent = messages[targetLang];
-            }
-            
-            // Add option to open slides in new tab
-            const openButton = document.createElement('button');
-            openButton.style.cssText = `
-                position: absolute;
-                bottom: 10px;
-                right: 10px;
-                background: rgba(42, 60, 122, 0.9);
-                color: white;
-                border: none;
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-size: 11px;
-                cursor: pointer;
-                z-index: 1000;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            `;
-            openButton.innerHTML = '<i class="fa fa-external-link-alt"></i> Open in new tab for manual translation';
-            openButton.onclick = function() {
-                window.open(iframe.src, '_blank');
-            };
-            wrapper.appendChild(openButton);
-            
-            // Auto-hide notice after 10 seconds
-            setTimeout(() => {
-                if (notice.querySelector('div')) {
-                    notice.querySelector('div').style.display = 'none';
-                }
-            }, 10000);
-        }
-        
-        // Function to handle embedded content translation
-        function translateEmbeddedContent(targetLang) {
-            // Handle iframes (slides, embedded documents)
-            const iframes = document.querySelectorAll('iframe');
-            iframes.forEach(iframe => {
-                try {
-                    // Check if we can access the iframe (same-origin policy)
-                    if (iframe.contentDocument) {
-                        // Add Google Translate to the iframe
-                        const iframeDoc = iframe.contentDocument;
-                        if (!iframeDoc.querySelector('.goog-te-banner-frame')) {
-                            // Inject translate element into iframe
-                            const translateDiv = iframeDoc.createElement('div');
-                            translateDiv.id = 'google_translate_element_iframe';
-                            translateDiv.className = 'notranslate';
-                            iframeDoc.body.appendChild(translateDiv);
-                            
-                            // Try to trigger translation in iframe
-                            log('Attempting to translate iframe content');
-                        }
-                    }
-                } catch (e) {
-                    // Cross-origin iframe - try alternative approach
-                    // Add translate attribute to iframe
-                    iframe.setAttribute('translate', 'yes');
-                    iframe.className = iframe.className.replace('notranslate', '');
-                    
-                    // For Google Slides/Docs, try to append language parameter
-                    if (iframe.src && iframe.src.includes('docs.google.com')) {
-                        const langMap = {
-                            'cy': 'cy', // Welsh
-                            'pl': 'pl', // Polish
-                            'es': 'es', // Spanish
-                            'fr': 'fr', // French
-                            'de': 'de', // German
-                            'ar': 'ar', // Arabic
-                            'zh-CN': 'zh-CN' // Chinese
-                        };
-                        
-                        if (langMap[targetLang] && !iframe.src.includes('hl=')) {
-                            // Add language parameter to Google Docs/Slides URL
-                            const separator = iframe.src.includes('?') ? '&' : '?';
-                            iframe.src = iframe.src + separator + 'hl=' + langMap[targetLang];
-                            log('Updated Google Slides URL with language parameter:', targetLang);
-                        }
-                    }
-                    
-                    // Handle Slides.com embeds - limited options
-                    if (iframe.src && iframe.src.includes('slides.com')) {
-                        // Mark for special handling
-                        iframe.setAttribute('data-translate-attempt', 'true');
-                        iframe.setAttribute('data-target-lang', targetLang);
-                        
-                        // Add a translation notice/button overlay
-                        if (!iframe.parentElement.querySelector('.slides-translate-notice')) {
-                            addSlidesTranslationNotice(iframe, targetLang);
-                        }
-                        
-                        log('Slides.com embed detected - added translation notice');
-                    }
-                }
-            });
-            
-            // Handle embedded PDFs and other objects
-            const embeds = document.querySelectorAll('embed, object');
-            embeds.forEach(embed => {
-                // Remove notranslate class if present
-                embed.className = embed.className.replace('notranslate', '');
-            });
-        }
         
         // Initialize the header
         function init() {
