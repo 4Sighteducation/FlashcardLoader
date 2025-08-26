@@ -1762,13 +1762,17 @@
         
         // Force remove Google Translate banner
         function removeGoogleBanner() {
-            // Aggressively remove ALL Google Translate UI elements
+            // Aggressively remove Google banner UI elements, but delay removing body > .skiptranslate
+            // until the selector exists to avoid preventing widget initialization
             const selectors = [
                 '.goog-te-banner-frame',
                 '.goog-te-banner',
-                'iframe.skiptranslate',
-                'body > .skiptranslate'
+                'iframe.skiptranslate'
             ];
+            // Only remove the skiptranslate wrapper once the combo exists
+            if (document.querySelector('.goog-te-combo') || window.googleTranslateSelector) {
+                selectors.push('body > .skiptranslate');
+            }
             
             selectors.forEach(selector => {
                 document.querySelectorAll(selector).forEach(el => {
