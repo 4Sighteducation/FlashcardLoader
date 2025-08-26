@@ -837,7 +837,7 @@
                     ` : ''}
                 </div>
                 <div class="mobile-nav-overlay"></div>
-                <!-- Translation Modal -->
+                <!-- Hidden Translation Container -->
                 <div id="translation-modal" class="translation-modal" style="display: none;">
                     <div class="translation-modal-content">
                         <div class="translation-modal-header">
@@ -845,6 +845,7 @@
                             <button class="translation-modal-close">&times;</button>
                         </div>
                         <div class="translation-modal-body">
+                            <div id="google_translate_element" style="position: absolute; opacity: 0.01; height: 1px; width: 1px; overflow: hidden; pointer-events: none;"></div>
                             <div class="language-buttons">
                                 <button class="lang-select-btn" data-lang="">🇬🇧 English</button>
                                 <button class="lang-select-btn" data-lang="cy">🏴󠁧󠁢󠁷󠁬󠁳󠁿 Cymraeg (Welsh)</button>
@@ -853,9 +854,6 @@
                                 <button class="lang-select-btn" data-lang="fr">🇫🇷 Français (French)</button>
                                 <button class="lang-select-btn" data-lang="de">🇩🇪 Deutsch (German)</button>
                             </div>
-                            <p style="color: #999; font-size: 12px; margin-top: 15px; text-align: center;">
-                                Translation will apply to key navigation elements. For full page translation, use your browser's built-in translation feature.
-                            </p>
                         </div>
                     </div>
                 </div>
@@ -1459,7 +1457,7 @@
             log('Lightweight DOM cleanup completed');
         }
         
-        // Translation Functions - Simplified approach without Google Translate
+        // Translation Functions - Simplified modal-based approach
         function initializeTranslation() {
             // Don't initialize on login pages
             const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5'];
@@ -1474,28 +1472,81 @@
                 return;
             }
             
-            log('Initializing simplified translation system');
+            log('Initializing translation system');
             
-            // Load the simplified translation script instead of Google Translate
-            if (!window.VESPATranslation) {
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/SimplifiedTranslation1a.js';
-                script.async = true;
-                
-                script.onload = function() {
-                    console.log('[Translation] Simplified translation script loaded successfully');
+            // Load Google Translate script silently
+            if (!window.googleTranslateElementInit) {
+                window.googleTranslateElementInit = function() {
+                    console.log('[Translation] googleTranslateElementInit called!');
+                    log('Google Translate Element initializing (hidden mode)');
+                    
+                    try {
+                        new google.translate.TranslateElement({
+                            pageLanguage: 'en',
+                            includedLanguages: 'en,cy,pl,es,fr,de,it,pt,ar,ur,zh-CN,hi,ga',
+                            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                            autoDisplay: false,
+                            multilanguagePage: true,
+                            gaTrack: false
+                        }, 'google_translate_element');
+                        
+                        console.log('[Translation] Google Translate Element created successfully');
+                    } catch (error) {
+                        console.error('[Translation] Error creating Google Translate Element:', error);
+                    }
+                    
+                    // Aggressively remove banner and setup handlers
+                    setTimeout(() => {
+                        removeGoogleBanner();
+                        setupTranslationHandlers();
+                        restoreLanguagePreference();
+                        
+                        // Check if selector was created
+                        const selector = document.querySelector('.goog-te-combo');
+                        if (selector) {
+                            console.log('[Translation] SUCCESS - Google Translate selector found:', selector);
+                            console.log('[Translation] Selector options:', selector.options.length);
+                        } else {
+                            console.error('[Translation] WARNING - Google Translate selector NOT found after initialization');
+                            // Try to find any Google Translate elements
+                            const googleElements = document.querySelectorAll('[class*="goog"]');
+                            console.log('[Translation] Found Google elements:', googleElements.length, googleElements);
+                        }
+                        
+                        console.log('[Translation] Google Translate initialized successfully');
+                    }, 500); // Increased delay to give more time
+                    
+                    // Remove banner periodically but with a flag to prevent infinite loops
+                    let bannerCheckCount = 0;
+                    const bannerCheckInterval = setInterval(() => {
+                        removeGoogleBanner();
+                        bannerCheckCount++;
+                        if (bannerCheckCount > 10) { // Stop after 10 attempts (10 seconds)
+                            clearInterval(bannerCheckInterval);
+                        }
+                    }, 1000);
+                    
+                    window.vespaTranslationAvailable = true;
                     window._translationInitialized = true;
-                    setupTranslationHandlers();
-                    restoreLanguagePreference();
                     $(document).trigger('vespa-translation-ready');
                 };
                 
+                const script = document.createElement('script');
+                script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+                script.async = true;
+                
+                // Add load and error handlers
+                script.onload = function() {
+                    console.log('[Translation] Google Translate script loaded successfully');
+                };
+                
                 script.onerror = function() {
-                    console.error('[Translation] Failed to load translation script');
+                    console.error('[Translation] Failed to load Google Translate script');
+                    alert('Translation service failed to load. This might be due to network issues or browser restrictions.');
                 };
                 
                 document.head.appendChild(script);
-                console.log('[Translation] Translation script loading...');
+                console.log('[Translation] Google Translate script tag added to page');
             }
         }
         
@@ -1518,6 +1569,7 @@
                 const modal = document.getElementById('translation-modal');
                 if (modal) {
                     modal.style.display = 'block';
+                    removeGoogleBanner(); // Remove banner when showing modal
                     console.log('[Translation] Modal opened');
                 } else {
                     console.error('[Translation] Modal not found!');
@@ -1551,33 +1603,39 @@
                 log('Language selected:', lang);
                 console.log('[Translation] Language selected:', lang);
                 
-                // Use the simplified translation approach
-                console.log('[Translation] Using simplified translation for:', lang);
+                // Wait a moment for the selector to be available if it's not ready yet
+                const checkAndTranslate = (attempts = 0) => {
+                    const selector = document.querySelector('.goog-te-combo');
+                    if (selector) {
+                        selector.value = lang;
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', true, true);
+                        selector.dispatchEvent(evt);
+                        
+                        // Save preference
+                        saveLanguagePreference(lang);
+                        
+                        // Update button states
+                        $('.lang-select-btn').removeClass('active');
+                        $clickedButton.addClass('active');
+                        
+                        // Close modal after selection
+                        setTimeout(() => {
+                            document.getElementById('translation-modal').style.display = 'none';
+                            removeGoogleBanner(); // Remove banner after translation
+                        }, 500);
+                    } else if (attempts < 10) {
+                        // Try again after a short delay
+                        console.log(`[Translation] Waiting for Google Translate to initialize... attempt ${attempts + 1}`);
+                        setTimeout(() => checkAndTranslate(attempts + 1), 500);
+                    } else {
+                        console.error('[Translation] Google Translate selector not found after 10 attempts!');
+                        alert('Translation service is still loading. Please try again in a moment.');
+                    }
+                };
                 
-                // Close the modal
-                document.getElementById('translation-modal').style.display = 'none';
-                
-                // Check if SimplifiedTranslation is loaded
-                if (window.VESPATranslation && window.VESPATranslation.translate) {
-                    window.VESPATranslation.translate(lang);
-                } else {
-                    // Fallback: Load the simplified translation script
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/SimplifiedTranslation1a.js';
-                    script.onload = function() {
-                        if (window.VESPATranslation && window.VESPATranslation.translate) {
-                            window.VESPATranslation.translate(lang);
-                        }
-                    };
-                    document.head.appendChild(script);
-                }
-                
-                // Update button states
-                $('.lang-select-btn').removeClass('active');
-                $clickedButton.addClass('active');
-                
-                // Save preference
-                saveLanguagePreference(lang);
+                // Start checking for the selector
+                checkAndTranslate();
             });
             
             console.log('[Translation] Handlers setup complete');
@@ -1586,6 +1644,7 @@
         // Expose functions globally for debugging
         window.vespaTranslation = {
             setupHandlers: setupTranslationHandlers,
+            removeGoogleBanner: removeGoogleBanner,
             initialize: initializeTranslation,
             addStyles: addTranslationStyles
         };
@@ -1602,17 +1661,51 @@
             const savedLanguage = localStorage.getItem('vespaPreferredLanguage');
             if (savedLanguage && savedLanguage !== 'en') {
                 log('Restoring saved language preference:', savedLanguage);
-                // Use the simplified translation system
-                if (window.VESPATranslation && window.VESPATranslation.translate) {
+                const selector = document.querySelector('.goog-te-combo');
+                if (selector) {
+                    // Wait a bit for Google Translate to fully initialize
                     setTimeout(() => {
-                        window.VESPATranslation.translate(savedLanguage);
+                        selector.value = savedLanguage;
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', false, true);
+                        selector.dispatchEvent(evt);
+                        // Show refresh button for non-English languages
+                        const refreshBtn = document.getElementById('translation-refresh-btn');
+                        if (refreshBtn) refreshBtn.style.display = 'block';
                     }, 500);
                 }
             }
         }
         
 
-
+        
+        // Force remove Google Translate banner
+        function removeGoogleBanner() {
+            // Aggressively remove ALL Google Translate UI elements
+            const selectors = [
+                '.goog-te-banner-frame',
+                '.goog-te-banner',
+                'iframe.skiptranslate',
+                'body > .skiptranslate'
+            ];
+            
+            selectors.forEach(selector => {
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el.id !== 'google_translate_element') {
+                        el.style.cssText = 'display: none !important; visibility: hidden !important; height: 0 !important; width: 0 !important;';
+                        el.remove();
+                    }
+                });
+            });
+            
+            // Force fix body positioning
+            document.body.style.cssText = document.body.style.cssText.replace(/top:\s*\d+px/gi, '') + '; top: 0 !important; position: relative !important; margin-top: 0 !important; transform: none !important;';
+            
+            // Disable MutationObserver to prevent infinite loops
+            // The aggressive CSS styling above should be sufficient
+            
+            log('Google Translate banner removed');
+        }
         
         function addTranslationStyles() {
             // Add modal and translation styles
@@ -1719,9 +1812,58 @@
                     }
                 }
                 
+                /* AGGRESSIVELY HIDE GOOGLE TRANSLATE BANNER */
+                .goog-te-banner-frame,
+                .goog-te-banner-frame.skiptranslate,
+                body > .skiptranslate,
+                iframe.skiptranslate,
+                .goog-te-banner {
+                    display: none !important;
+                    visibility: hidden !important;
+                    height: 0 !important;
+                    width: 0 !important;
+                    line-height: 0 !important;
+                    font-size: 0 !important;
+                    position: absolute !important;
+                    top: -9999px !important;
+                    left: -9999px !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                }
+                
+                /* Fix body positioning - FORCE it */
+                body {
+                    top: 0 !important;
+                    position: relative !important;
+                    margin-top: 0 !important;
+                    padding-top: 65px !important; /* Keep our header spacing */
+                }
+                
+                body.translated-ltr,
+                body.translated-rtl,
+                body.translated {
+                    top: 0 !important;
+                    position: relative !important;
+                    margin-top: 0 !important;
+                }
+                
                 /* Ensure our header stays on top */
                 .vespa-general-header {
                     z-index: 99999 !important;
+                }
+                
+
+                
+                /* Make Google Translate element invisible but functional */
+                #google_translate_element {
+                    position: absolute !important;
+                    opacity: 0.01 !important;
+                    height: 1px !important;
+                    width: 1px !important;
+                    overflow: hidden !important;
+                    pointer-events: none !important;
+                    z-index: -1 !important;
+                    /* Tiny and nearly invisible but still exists in DOM for initialization */
                 }
                 
                 /* Style when modal is open */
@@ -1745,25 +1887,36 @@
         
         // Function to refresh translations after dynamic content loads
         // This is exposed globally so any app can call window.refreshTranslations()
-        // Used by: knackAppLoader (auto) and can be called by any app
+        // Used by: knackAppLoader (auto), manual refresh button, and can be called by any app
         window.refreshTranslations = function() {
-            const currentLang = localStorage.getItem('vespaPreferredLanguage');
-            if (currentLang && currentLang !== 'en') {
-                log(`Refreshing translations for language: ${currentLang}`);
-                // Use the simplified translation system
-                if (window.VESPATranslation && window.VESPATranslation.applySimple) {
-                    window.VESPATranslation.applySimple(currentLang);
-                    // Trigger event for apps that need to know
-                    $(document).trigger('vespa-translation-refreshed', { language: currentLang });
+            // Trigger Google Translate to re-scan the page
+            const evt = document.createEvent('HTMLEvents');
+            evt.initEvent('change', false, true);
+            const selector = document.querySelector('.goog-te-combo');
+            if (selector) {
+                const currentLang = selector.value;
+                if (currentLang && currentLang !== 'en' && currentLang !== '') {
+                    log(`Refreshing translations for language: ${currentLang}`);
+                    // Briefly switch to English and back to refresh
+                    selector.value = 'en';
+                    selector.dispatchEvent(evt);
+                    setTimeout(() => {
+                        selector.value = currentLang;
+                        selector.dispatchEvent(evt);
+                        // Also try to translate embedded content
+                        translateEmbeddedContent(currentLang);
+                        // Always remove banner after refresh
+                        removeGoogleBanner();
+                        // Trigger event for apps that need to know
+                        $(document).trigger('vespa-translation-refreshed', { language: currentLang });
+                    }, 100);
+                } else {
+                    log('No active translation to refresh (currently in English)');
                 }
-            } else {
-                log('No active translation to refresh (currently in English)');
             }
         };
         
-        // Removed Google Translate specific functions - using simplified translation instead
-        // Function to add translation notice for Slides.com embeds (kept for future use)
-        /*
+        // Function to add translation notice for Slides.com embeds
         function addSlidesTranslationNotice(iframe, targetLang) {
             const wrapper = document.createElement('div');
             wrapper.className = 'slides-translate-notice';
@@ -1920,7 +2073,6 @@
                 embed.className = embed.className.replace('notranslate', '');
             });
         }
-        */
         
         // Initialize the header
         function init() {
@@ -2043,6 +2195,8 @@
                             setTimeout(setupTranslationHandlers, 100);
                         } else {
                             log('Translation system already initialized');
+                            // Force remove banner just in case
+                            removeGoogleBanner();
                             // Re-setup handlers in case they were lost
                             setupTranslationHandlers();
                         }
@@ -2093,4 +2247,3 @@
     
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
-
