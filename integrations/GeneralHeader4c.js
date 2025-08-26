@@ -697,6 +697,7 @@
                     { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
@@ -785,6 +786,29 @@
                 `;
             }).join('');
             
+            // Add Translation button before Settings
+            const translationButton = `
+                <button id="translation-menu-button" 
+                        class="header-nav-button header-translation-button"
+                        title="Translate page content">
+                    <i class="fa fa-globe"></i>
+                    <span>Translate</span>
+                </button>
+            `;
+            
+            // Insert translation button before settings in navigation
+            const settingsIndex = navItemsHTML.lastIndexOf('header-settings-button');
+            let finalNavHTML = navItemsHTML;
+            if (settingsIndex > -1) {
+                // Find where the settings button starts
+                const beforeSettings = navItemsHTML.substring(0, navItemsHTML.lastIndexOf('<a', settingsIndex));
+                const fromSettings = navItemsHTML.substring(navItemsHTML.lastIndexOf('<a', settingsIndex));
+                finalNavHTML = beforeSettings + translationButton + fromSettings;
+            } else {
+                // If no settings button, add before the last item
+                finalNavHTML = navItemsHTML + translationButton;
+            }
+            
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header ${userType}">
                     <div class="header-content">
@@ -796,7 +820,7 @@
                                 <span>${navConfig.brand}</span>
                             </div>
                             <nav class="header-navigation">
-                                ${navItemsHTML}
+                                ${finalNavHTML}
                             </nav>
                             <button class="mobile-menu-toggle" aria-label="Toggle menu">
                                 <i class="fa fa-bars"></i>
@@ -813,6 +837,26 @@
                     ` : ''}
                 </div>
                 <div class="mobile-nav-overlay"></div>
+                <!-- Hidden Translation Container -->
+                <div id="translation-modal" class="translation-modal" style="display: none;">
+                    <div class="translation-modal-content">
+                        <div class="translation-modal-header">
+                            <h3><i class="fa fa-globe"></i> Select Language</h3>
+                            <button class="translation-modal-close">&times;</button>
+                        </div>
+                        <div class="translation-modal-body">
+                            <div id="google_translate_element" style="position: absolute; opacity: 0.01; height: 1px; width: 1px; overflow: hidden; pointer-events: none;"></div>
+                            <div class="language-buttons">
+                                <button class="lang-select-btn" data-lang="">🇬🇧 English</button>
+                                <button class="lang-select-btn" data-lang="cy">🏴󠁧󠁢󠁷󠁬󠁳󠁿 Cymraeg (Welsh)</button>
+                                <button class="lang-select-btn" data-lang="pl">🇵🇱 Polski (Polish)</button>
+                                <button class="lang-select-btn" data-lang="es">🇪🇸 Español (Spanish)</button>
+                                <button class="lang-select-btn" data-lang="fr">🇫🇷 Français (French)</button>
+                                <button class="lang-select-btn" data-lang="de">🇩🇪 Deutsch (German)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <style>
                     /* Hide entire Knack header */
                     .knHeader {
@@ -1312,7 +1356,7 @@
             }
             
             // Navigation click handling
-            const navLinks = document.querySelectorAll('#vespaGeneralHeader .header-nav-button, #vespaGeneralHeader .breadcrumb-back');
+            const navLinks = document.querySelectorAll('#vespaGeneralHeader a.header-nav-button, #vespaGeneralHeader .breadcrumb-back');
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -1413,6 +1457,693 @@
             log('Lightweight DOM cleanup completed');
         }
         
+        // Translation Functions - Simplified modal-based approach
+        function initializeTranslation() {
+            // Don't initialize on login pages
+            const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5'];
+            if (loginScenes.includes(currentScene)) {
+                log('On login scene, not initializing translation');
+                return;
+            }
+            
+            // Check if already initialized
+            if (window._translationInitialized) {
+                log('Translation already initialized');
+                return;
+            }
+            
+            log('Initializing translation system');
+            
+            // Check if Google Translate is already loaded by the separate loader
+            if (window.googleTranslateSelector) {
+                console.log('[Translation] Google Translate already loaded by external loader');
+                window._translationInitialized = true;
+                setupTranslationHandlers();
+                restoreLanguagePreference();
+                $(document).trigger('vespa-translation-ready');
+                return; // Exit early since it's already loaded
+            }
+            
+            // Listen for Google Translate to be ready from external loader
+            window.addEventListener('googleTranslateReady', function() {
+                console.log('[Translation] Google Translate ready event received from external loader');
+                window._translationInitialized = true;
+                setupTranslationHandlers();
+                restoreLanguagePreference();
+                $(document).trigger('vespa-translation-ready');
+            });
+            
+            // Disable GeneralHeader's fallback Google Translate loader to avoid conflicts
+            if (false && !window.googleTranslateElementInit && !document.querySelector('script[src*="translate.google.com"]')) {
+                function ensureTranslateHost() {
+                    let host = document.getElementById('google_translate_element');
+                    const modal = document.querySelector('.translation-modal');
+                    const modalHidden = modal && getComputedStyle(modal).display === 'none';
+                    if (!host) {
+                        host = document.createElement('div');
+                        host.id = 'google_translate_element';
+                        document.body.appendChild(host);
+                    } else if (modalHidden || host.offsetParent === null) {
+                        document.body.appendChild(host);
+                    }
+                    host.style.position = 'absolute';
+                    host.style.opacity = '0.01';
+                    host.style.height = '1px';
+                    host.style.width = '1px';
+                    host.style.overflow = 'hidden';
+                    host.style.pointerEvents = 'none';
+                    host.style.zIndex = '1';
+                }
+
+                window.googleTranslateElementInit = function() {
+                    console.log('[Translation] googleTranslateElementInit called (fallback)!');
+                    log('Google Translate Element initializing (fallback mode)');
+                    try { ensureTranslateHost(); } catch(e) { /* no-op */ }
+                    
+                    try {
+                        new google.translate.TranslateElement({
+                            pageLanguage: 'en',
+                            includedLanguages: 'en,cy,pl,es,fr,de,it,pt,ar,ur,zh-CN,hi,ga',
+                            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                            autoDisplay: false,
+                            multilanguagePage: true,
+                            gaTrack: false
+                        }, 'google_translate_element');
+                        
+                        console.log('[Translation] Google Translate Element created successfully (fallback)');
+                    } catch (error) {
+                        console.error('[Translation] Error creating Google Translate Element (fallback):', error);
+                    }
+                    
+                    // Aggressively remove banner and setup handlers
+                    setTimeout(() => {
+                        removeGoogleBanner();
+                        setupTranslationHandlers();
+                        restoreLanguagePreference();
+                        
+                        // Check if selector was created
+                        const selector = document.querySelector('.goog-te-combo');
+                        if (selector) {
+                            console.log('[Translation] SUCCESS - Google Translate selector found:', selector);
+                            console.log('[Translation] Selector options:', selector.options.length);
+                        } else {
+                            console.error('[Translation] WARNING - Google Translate selector NOT found after initialization');
+                            // Try to find any Google Translate elements
+                            const googleElements = document.querySelectorAll('[class*="goog"]');
+                            console.log('[Translation] Found Google elements:', googleElements.length, googleElements);
+                        }
+                        
+                        console.log('[Translation] Google Translate initialized successfully');
+                    }, 500); // Increased delay to give more time
+                    
+                    // Remove banner periodically but with a flag to prevent infinite loops
+                    let bannerCheckCount = 0;
+                    const bannerCheckInterval = setInterval(() => {
+                        removeGoogleBanner();
+                        bannerCheckCount++;
+                        if (bannerCheckCount > 10) { // Stop after 10 attempts (10 seconds)
+                            clearInterval(bannerCheckInterval);
+                        }
+                    }, 1000);
+                    
+                    window.vespaTranslationAvailable = true;
+                    window._translationInitialized = true;
+                    $(document).trigger('vespa-translation-ready');
+                };
+                
+                const script = document.createElement('script');
+                script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+                script.async = true;
+                
+                // Add load and error handlers
+                script.onload = function() {
+                    console.log('[Translation] Google Translate script loaded successfully');
+                };
+                
+                script.onerror = function() {
+                    console.error('[Translation] Failed to load Google Translate script');
+                    alert('Translation service failed to load. This might be due to network issues or browser restrictions.');
+                };
+                
+                document.head.appendChild(script);
+                console.log('[Translation] Google Translate script tag added to page (fallback)');
+            } else {
+                console.log('[Translation] Google Translate already loading or loaded, waiting for it...');
+                // Check periodically if selector becomes available
+                let checkCount = 0;
+                const checkInterval = setInterval(() => {
+                    const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
+                    if (selector) {
+                        console.log('[Translation] Google Translate selector found!');
+                        clearInterval(checkInterval);
+                        window._translationInitialized = true;
+                        setupTranslationHandlers();
+                        restoreLanguagePreference();
+                        $(document).trigger('vespa-translation-ready');
+                    }
+                    checkCount++;
+                    if (checkCount > 30) { // Stop after 15 seconds
+                        clearInterval(checkInterval);
+                        console.error('[Translation] Google Translate failed to initialize after 15 seconds');
+                    }
+                }, 500);
+            }
+        }
+        
+        // Setup translation button and modal handlers
+        function setupTranslationHandlers() {
+            log('Setting up translation handlers');
+            
+            // CRITICAL FIX: Prevent Google Translate widget from causing page reloads
+            $(document).on('click', '.goog-te-gadget, .goog-te-gadget-simple, .goog-te-gadget-icon, .goog-te-menu-value, .goog-te-menu-frame', function(e) {
+                console.log('[Translation] Preventing Google Translate reload - intercepted click on:', e.target);
+                e.preventDefault();
+                e.stopPropagation();
+                // Let the event continue to Google's handlers
+                return true;
+            });
+            
+            // Also prevent form submission if Google Translate is in a form
+            $(document).on('submit', 'form:has(.goog-te-gadget)', function(e) {
+                console.log('[Translation] Preventing form submission from Google Translate');
+                e.preventDefault();
+                return false;
+            });
+            
+            // Remove any existing handlers first to prevent duplicates
+            $(document).off('click', '#translation-menu-button');
+            $(document).off('click', '.translation-modal-close');
+            $(document).off('click', '.translation-modal');
+            $(document).off('click', '.lang-select-btn');
+            
+            // Handle translation button click
+            $(document).on('click', '#translation-menu-button', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === 'function') {
+                    e.stopImmediatePropagation();
+                }
+                log('Translation button clicked');
+                console.log('[Translation] Button clicked - opening modal');
+                const modal = document.getElementById('translation-modal');
+                if (modal) {
+                    modal.style.display = 'block';
+                    removeGoogleBanner(); // Remove banner when showing modal
+                    console.log('[Translation] Modal opened');
+                } else {
+                    console.error('[Translation] Modal not found!');
+                }
+            });
+            
+            // Handle modal close
+            $(document).on('click', '.translation-modal-close', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                log('Close button clicked');
+                const modal = document.getElementById('translation-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Handle clicking outside modal to close
+            $(document).on('click', '.translation-modal', function(e) {
+                if (e.target === this) {
+                    this.style.display = 'none';
+                }
+            });
+            
+            // Handle language button clicks
+            $(document).on('click', '.lang-select-btn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const $clickedButton = $(this); // Store reference to clicked button
+                const lang = $(this).data('lang');
+                log('Language selected:', lang);
+                console.log('[Translation] Language selected:', lang);
+                
+                // Wait a moment for the selector to be available if it's not ready yet
+                const checkAndTranslate = (attempts = 0) => {
+                    // Check both possible selectors (from external loader or local)
+                    const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
+                    if (selector) {
+                        selector.value = lang;
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', true, true);
+                        selector.dispatchEvent(evt);
+                        
+                        // Save preference
+                        saveLanguagePreference(lang);
+                        
+                        // Update button states
+                        $('.lang-select-btn').removeClass('active');
+                        $clickedButton.addClass('active');
+                        
+                        // Close modal after selection
+                        setTimeout(() => {
+                            document.getElementById('translation-modal').style.display = 'none';
+                            removeGoogleBanner(); // Remove banner after translation
+                        }, 500);
+                    } else if (attempts < 10) {
+                        // Try again after a short delay
+                        console.log(`[Translation] Waiting for Google Translate to initialize... attempt ${attempts + 1}`);
+                        setTimeout(() => checkAndTranslate(attempts + 1), 500);
+                    } else {
+                        console.error('[Translation] Google Translate selector not found after 10 attempts!');
+                        alert('Translation service is still loading. Please try again in a moment.');
+                    }
+                };
+                
+                // Start checking for the selector
+                checkAndTranslate();
+            });
+            
+            console.log('[Translation] Handlers setup complete');
+        }
+        
+        // Expose functions globally for debugging
+        window.vespaTranslation = {
+            setupHandlers: setupTranslationHandlers,
+            removeGoogleBanner: removeGoogleBanner,
+            initialize: initializeTranslation,
+            addStyles: addTranslationStyles
+        };
+        
+        // Save and restore language preferences
+        function saveLanguagePreference(language) {
+            if (language && language !== '') {
+                localStorage.setItem('vespaPreferredLanguage', language);
+                log('Saved language preference:', language);
+            }
+        }
+        
+        function restoreLanguagePreference() {
+            const savedLanguage = localStorage.getItem('vespaPreferredLanguage');
+            if (savedLanguage && savedLanguage !== 'en') {
+                log('Restoring saved language preference:', savedLanguage);
+                // Check both possible selectors (from external loader or local)
+                const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
+                if (selector) {
+                    // Wait a bit for Google Translate to fully initialize
+                    setTimeout(() => {
+                        selector.value = savedLanguage;
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', false, true);
+                        selector.dispatchEvent(evt);
+                        // Show refresh button for non-English languages
+                        const refreshBtn = document.getElementById('translation-refresh-btn');
+                        if (refreshBtn) refreshBtn.style.display = 'block';
+                    }, 500);
+                }
+            }
+        }
+        
+
+        
+        // Force remove Google Translate banner
+        function removeGoogleBanner() {
+            // Only hide visible banner frames; do not remove body > .skiptranslate
+            const selectors = [
+                '.goog-te-banner-frame',
+                '.goog-te-banner',
+                '.goog-te-balloon-frame'
+            ];
+            selectors.forEach(selector => {
+                document.querySelectorAll(selector).forEach(el => {
+                    try { el.style.display = 'none'; } catch(e) {}
+                });
+            });
+            log('Google Translate banner hidden');
+        }
+        
+        function addTranslationStyles() {
+            // Add modal and translation styles
+            if (document.getElementById('translation-modal-styles')) return;
+            
+            const style = document.createElement('style');
+            style.id = 'translation-modal-styles';
+            style.textContent = `
+                /* Translation Modal Styles */
+                .translation-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 100000;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .translation-modal-content {
+                    background: #2a3c7a;
+                    border-radius: 12px;
+                    width: 90%;
+                    max-width: 500px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+                    color: white;
+                }
+                
+                .translation-modal-header {
+                    padding: 20px;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                .translation-modal-header h3 {
+                    margin: 0;
+                    font-size: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                
+                .translation-modal-close {
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 28px;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 30px;
+                    height: 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    transition: background 0.2s;
+                }
+                
+                .translation-modal-close:hover {
+                    background: rgba(255,255,255,0.1);
+                }
+                
+                .translation-modal-body {
+                    padding: 20px;
+                }
+                
+                .language-buttons {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+                
+                .lang-select-btn {
+                    background: rgba(255,255,255,0.1);
+                    border: 2px solid rgba(255,255,255,0.2);
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    text-align: left;
+                }
+                
+                .lang-select-btn:hover {
+                    background: rgba(0, 229, 219, 0.2);
+                    border-color: rgba(0, 229, 219, 0.5);
+                    transform: translateY(-2px);
+                }
+                
+                .lang-select-btn.active {
+                    background: rgba(0, 229, 219, 0.3);
+                    border-color: rgba(0, 229, 219, 0.6);
+                }
+                
+                @media (max-width: 480px) {
+                    .language-buttons {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                
+                /* AGGRESSIVELY HIDE GOOGLE TRANSLATE BANNER */
+                .goog-te-banner-frame,
+                .goog-te-banner-frame.skiptranslate,
+                body > .skiptranslate,
+                iframe.skiptranslate,
+                .goog-te-banner {
+                    display: none !important;
+                    visibility: hidden !important;
+                    height: 0 !important;
+                    width: 0 !important;
+                    line-height: 0 !important;
+                    font-size: 0 !important;
+                    position: absolute !important;
+                    top: -9999px !important;
+                    left: -9999px !important;
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                }
+                
+                /* Fix body positioning - FORCE it */
+                body {
+                    top: 0 !important;
+                    position: relative !important;
+                    margin-top: 0 !important;
+                    padding-top: 65px !important; /* Keep our header spacing */
+                }
+                
+                body.translated-ltr,
+                body.translated-rtl,
+                body.translated {
+                    top: 0 !important;
+                    position: relative !important;
+                    margin-top: 0 !important;
+                }
+                
+                /* Ensure our header stays on top */
+                .vespa-general-header {
+                    z-index: 99999 !important;
+                }
+                
+
+                
+                /* Make Google Translate element invisible but functional */
+                #google_translate_element {
+                    position: absolute !important;
+                    opacity: 0.01 !important;
+                    height: 1px !important;
+                    width: 1px !important;
+                    overflow: hidden !important;
+                    pointer-events: none !important;
+                    z-index: -1 !important;
+                    /* Tiny and nearly invisible but still exists in DOM for initialization */
+                }
+                
+                /* Style when modal is open */
+                .translation-modal[style*="display: block"] {
+                    display: flex !important;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Remove Google Translate banner and fix body
+            setTimeout(() => {
+                const banner = document.querySelector('.goog-te-banner-frame');
+                if (banner) banner.style.display = 'none';
+                document.body.style.top = '0px';
+                document.body.style.position = 'relative';
+                document.body.classList.add('translated');
+            }, 100);
+            
+            log('Translation widget styled successfully');
+        }
+        
+        // Function to refresh translations after dynamic content loads
+        // This is exposed globally so any app can call window.refreshTranslations()
+        // Used by: knackAppLoader (auto), manual refresh button, and can be called by any app
+        window.refreshTranslations = function() {
+            // Trigger Google Translate to re-scan the page
+            const evt = document.createEvent('HTMLEvents');
+            evt.initEvent('change', false, true);
+            // Check both possible selectors (from external loader or local)
+            const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
+            if (selector) {
+                const currentLang = selector.value;
+                if (currentLang && currentLang !== 'en' && currentLang !== '') {
+                    log(`Refreshing translations for language: ${currentLang}`);
+                    // Briefly switch to English and back to refresh
+                    selector.value = 'en';
+                    selector.dispatchEvent(evt);
+                    setTimeout(() => {
+                        selector.value = currentLang;
+                        selector.dispatchEvent(evt);
+                        // Also try to translate embedded content
+                        translateEmbeddedContent(currentLang);
+                        // Always remove banner after refresh
+                        removeGoogleBanner();
+                        // Trigger event for apps that need to know
+                        $(document).trigger('vespa-translation-refreshed', { language: currentLang });
+                    }, 100);
+                } else {
+                    log('No active translation to refresh (currently in English)');
+                }
+            }
+        };
+        
+        // Function to add translation notice for Slides.com embeds
+        function addSlidesTranslationNotice(iframe, targetLang) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'slides-translate-notice';
+            wrapper.style.cssText = `
+                position: relative;
+                display: inline-block;
+                width: 100%;
+            `;
+            
+            // Create notice overlay
+            const notice = document.createElement('div');
+            notice.className = 'translation-notice-overlay';
+            notice.innerHTML = `
+                <div style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: rgba(0, 229, 219, 0.95);
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    z-index: 1000;
+                    cursor: pointer;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                " onclick="this.style.display='none'">
+                    <i class="fa fa-info-circle"></i>
+                    <span>Slides cannot auto-translate</span>
+                    <i class="fa fa-times" style="margin-left: 8px; opacity: 0.8;"></i>
+                </div>
+            `;
+            
+            // Wrap the iframe
+            iframe.parentNode.insertBefore(wrapper, iframe);
+            wrapper.appendChild(iframe);
+            wrapper.appendChild(notice);
+            
+            // Language-specific messages
+            const messages = {
+                'cy': 'Ni all sleidiau gyfieithu\'n awtomatig', // Welsh
+                'pl': 'Slajdy nie mogą być automatycznie tłumaczone', // Polish
+                'es': 'Las diapositivas no se pueden traducir automáticamente', // Spanish
+                'fr': 'Les diapositives ne peuvent pas être traduites automatiquement', // French
+                'de': 'Folien können nicht automatisch übersetzt werden' // German
+            };
+            
+            if (messages[targetLang]) {
+                notice.querySelector('span').textContent = messages[targetLang];
+            }
+            
+            // Add option to open slides in new tab
+            const openButton = document.createElement('button');
+            openButton.style.cssText = `
+                position: absolute;
+                bottom: 10px;
+                right: 10px;
+                background: rgba(42, 60, 122, 0.9);
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 11px;
+                cursor: pointer;
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            `;
+            openButton.innerHTML = '<i class="fa fa-external-link-alt"></i> Open in new tab for manual translation';
+            openButton.onclick = function() {
+                window.open(iframe.src, '_blank');
+            };
+            wrapper.appendChild(openButton);
+            
+            // Auto-hide notice after 10 seconds
+            setTimeout(() => {
+                if (notice.querySelector('div')) {
+                    notice.querySelector('div').style.display = 'none';
+                }
+            }, 10000);
+        }
+        
+        // Function to handle embedded content translation
+        function translateEmbeddedContent(targetLang) {
+            // Handle iframes (slides, embedded documents)
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                try {
+                    // Check if we can access the iframe (same-origin policy)
+                    if (iframe.contentDocument) {
+                        // Add Google Translate to the iframe
+                        const iframeDoc = iframe.contentDocument;
+                        if (!iframeDoc.querySelector('.goog-te-banner-frame')) {
+                            // Inject translate element into iframe
+                            const translateDiv = iframeDoc.createElement('div');
+                            translateDiv.id = 'google_translate_element_iframe';
+                            translateDiv.className = 'notranslate';
+                            iframeDoc.body.appendChild(translateDiv);
+                            
+                            // Try to trigger translation in iframe
+                            log('Attempting to translate iframe content');
+                        }
+                    }
+                } catch (e) {
+                    // Cross-origin iframe - try alternative approach
+                    // Add translate attribute to iframe
+                    iframe.setAttribute('translate', 'yes');
+                    iframe.className = iframe.className.replace('notranslate', '');
+                    
+                    // For Google Slides/Docs, try to append language parameter
+                    if (iframe.src && iframe.src.includes('docs.google.com')) {
+                        const langMap = {
+                            'cy': 'cy', // Welsh
+                            'pl': 'pl', // Polish
+                            'es': 'es', // Spanish
+                            'fr': 'fr', // French
+                            'de': 'de', // German
+                            'ar': 'ar', // Arabic
+                            'zh-CN': 'zh-CN' // Chinese
+                        };
+                        
+                        if (langMap[targetLang] && !iframe.src.includes('hl=')) {
+                            // Add language parameter to Google Docs/Slides URL
+                            const separator = iframe.src.includes('?') ? '&' : '?';
+                            iframe.src = iframe.src + separator + 'hl=' + langMap[targetLang];
+                            log('Updated Google Slides URL with language parameter:', targetLang);
+                        }
+                    }
+                    
+                    // Handle Slides.com embeds - limited options
+                    if (iframe.src && iframe.src.includes('slides.com')) {
+                        // Mark for special handling
+                        iframe.setAttribute('data-translate-attempt', 'true');
+                        iframe.setAttribute('data-target-lang', targetLang);
+                        
+                        // Add a translation notice/button overlay
+                        if (!iframe.parentElement.querySelector('.slides-translate-notice')) {
+                            addSlidesTranslationNotice(iframe, targetLang);
+                        }
+                        
+                        log('Slides.com embed detected - added translation notice');
+                    }
+                }
+            });
+            
+            // Handle embedded PDFs and other objects
+            const embeds = document.querySelectorAll('embed, object');
+            embeds.forEach(embed => {
+                // Remove notranslate class if present
+                embed.className = embed.className.replace('notranslate', '');
+            });
+        }
+        
         // Initialize the header
         function init() {
             log('Starting General Header initialization...');
@@ -1451,10 +2182,26 @@
             if (currentScene === 'scene_1014' || currentScene === 'scene_1095') {
                 // For scenes with loading screen, inject immediately
                 injectHeader();
+                // Initialize translation system
+                log('Initializing translation system for loading screen scene');
+                setTimeout(() => {
+                    addTranslationStyles();
+                    initializeTranslation();
+                    // Ensure handlers are set up
+                    setTimeout(setupTranslationHandlers, 100);
+                }, 500);
             } else {
                 // For other scenes, slight delay to allow other apps to load
                 setTimeout(() => {
                     injectHeader();
+                    // Initialize translation system
+                    log('Initializing translation system for regular scene');
+                    setTimeout(() => {
+                        addTranslationStyles();
+                        initializeTranslation();
+                        // Ensure handlers are set up
+                        setTimeout(setupTranslationHandlers, 100);
+                    }, 500);
                 }, 250);
             }
             
@@ -1484,7 +2231,7 @@
                     return;
                 }
                 
-                // ONLY re-inject if header is actually missing and user is logged in
+                // ALWAYS check for translation widget on non-login pages
                 const existingHeader = document.getElementById('vespaGeneralHeader');
                 if (!existingHeader) {
                     const userType = getUserType();
@@ -1492,14 +2239,38 @@
                         log('Header missing and user logged in, re-injecting after delay');
                         // Longer delay for scene changes to ensure other apps load first
                         setTimeout(() => {
-                            // Double-check header is still missing before injecting
-                            if (!document.getElementById('vespaGeneralHeader')) {
-                                injectHeader();
-                            }
+                                                    // Double-check header is still missing before injecting
+                        if (!document.getElementById('vespaGeneralHeader')) {
+                            injectHeader();
+                            // Initialize translation system after header re-injection
+                            log('Initializing translation system after header injection');
+                            setTimeout(() => {
+                                addTranslationStyles();
+                                initializeTranslation();
+                                // Ensure handlers are set up
+                                setTimeout(setupTranslationHandlers, 100);
+                            }, 500);
+                        }
                         }, 300);
                     }
                 } else {
-                    log('Header exists, no need to re-inject');
+                    log('Header exists, checking translation system');
+                    // ALWAYS ensure translation system is initialized on non-login pages
+                    setTimeout(() => {
+                        if (!window._translationInitialized) {
+                            log('Translation system not initialized, initializing now!');
+                            addTranslationStyles();
+                            initializeTranslation();
+                            // Ensure handlers are set up
+                            setTimeout(setupTranslationHandlers, 100);
+                        } else {
+                            log('Translation system already initialized');
+                            // Force remove banner just in case
+                            removeGoogleBanner();
+                            // Re-setup handlers in case they were lost
+                            setupTranslationHandlers();
+                        }
+                    }, 1000); // Give page time to settle
                 }
             });
             
@@ -1514,6 +2285,9 @@
                 window._generalHeaderLoaded = false;
                 // Clear session storage flag
                 sessionStorage.removeItem('_generalHeaderLoadedSession');
+                // Clear language preference on logout
+                localStorage.removeItem('vespaPreferredLanguage');
+                log('Cleared language preference on logout');
                 
                 // Since we navigate BEFORE logout, user should already be on home page
                 log('Logout complete - user should already be on home page');
