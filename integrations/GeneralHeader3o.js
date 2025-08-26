@@ -697,6 +697,7 @@
                     { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
@@ -844,7 +845,7 @@
                             <button class="translation-modal-close">&times;</button>
                         </div>
                         <div class="translation-modal-body">
-                            <div id="google_translate_element" style="display: none;"></div>
+                            <div id="google_translate_element" style="position: absolute; left: -9999px; top: -9999px; height: 0; overflow: hidden;"></div>
                             <div class="language-buttons">
                                 <button class="lang-select-btn" data-lang="">🇬🇧 English</button>
                                 <button class="lang-select-btn" data-lang="cy">🏴󠁧󠁢󠁷󠁬󠁳󠁿 Cymraeg (Welsh)</button>
@@ -1494,8 +1495,15 @@
                         console.log('[Translation] Google Translate initialized successfully');
                     }, 100);
                     
-                    // Keep removing banner continuously
-                    setInterval(removeGoogleBanner, 1000);
+                    // Remove banner periodically but with a flag to prevent infinite loops
+                    let bannerCheckCount = 0;
+                    const bannerCheckInterval = setInterval(() => {
+                        removeGoogleBanner();
+                        bannerCheckCount++;
+                        if (bannerCheckCount > 10) { // Stop after 10 attempts (10 seconds)
+                            clearInterval(bannerCheckInterval);
+                        }
+                    }, 1000);
                     
                     window.vespaTranslationAvailable = true;
                     window._translationInitialized = true;
@@ -1557,32 +1565,44 @@
             $(document).on('click', '.lang-select-btn', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                const $clickedButton = $(this); // Store reference to clicked button
                 const lang = $(this).data('lang');
                 log('Language selected:', lang);
                 console.log('[Translation] Language selected:', lang);
                 
-                const selector = document.querySelector('.goog-te-combo');
-                if (selector) {
-                    selector.value = lang;
-                    const evt = document.createEvent('HTMLEvents');
-                    evt.initEvent('change', true, true);
-                    selector.dispatchEvent(evt);
-                    
-                    // Save preference
-                    saveLanguagePreference(lang);
-                    
-                    // Update button states
-                    $('.lang-select-btn').removeClass('active');
-                    $(this).addClass('active');
-                    
-                    // Close modal after selection
-                    setTimeout(() => {
-                        document.getElementById('translation-modal').style.display = 'none';
-                        removeGoogleBanner(); // Remove banner after translation
-                    }, 500);
-                } else {
-                    console.error('[Translation] Google Translate selector not found!');
-                }
+                // Wait a moment for the selector to be available if it's not ready yet
+                const checkAndTranslate = (attempts = 0) => {
+                    const selector = document.querySelector('.goog-te-combo');
+                    if (selector) {
+                        selector.value = lang;
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', true, true);
+                        selector.dispatchEvent(evt);
+                        
+                        // Save preference
+                        saveLanguagePreference(lang);
+                        
+                        // Update button states
+                        $('.lang-select-btn').removeClass('active');
+                        $clickedButton.addClass('active');
+                        
+                        // Close modal after selection
+                        setTimeout(() => {
+                            document.getElementById('translation-modal').style.display = 'none';
+                            removeGoogleBanner(); // Remove banner after translation
+                        }, 500);
+                    } else if (attempts < 10) {
+                        // Try again after a short delay
+                        console.log(`[Translation] Waiting for Google Translate to initialize... attempt ${attempts + 1}`);
+                        setTimeout(() => checkAndTranslate(attempts + 1), 500);
+                    } else {
+                        console.error('[Translation] Google Translate selector not found after 10 attempts!');
+                        alert('Translation service is still loading. Please try again in a moment.');
+                    }
+                };
+                
+                // Start checking for the selector
+                checkAndTranslate();
             });
             
             console.log('[Translation] Handlers setup complete');
@@ -1801,9 +1821,14 @@
                 
 
                 
-                /* Hide Google Translate element since we're using modal */
+                /* Hide Google Translate element off-screen but keep it functional */
                 #google_translate_element {
-                    display: none !important;
+                    position: absolute !important;
+                    left: -9999px !important;
+                    top: -9999px !important;
+                    height: 0 !important;
+                    overflow: hidden !important;
+                    /* Not using display: none so the widget can initialize properly */
                 }
                 
                 /* Style when modal is open */
