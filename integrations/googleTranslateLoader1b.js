@@ -89,6 +89,3 @@
         }
     }
 })();
-
-    console.log('[VESPA Translation] System ready. Use VESPATranslation.translate(lang) to translate.');
-})();
