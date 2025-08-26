@@ -1474,11 +1474,30 @@
             
             log('Initializing translation system');
             
-            // Load Google Translate script silently
-            if (!window.googleTranslateElementInit) {
+            // Check if Google Translate is already loaded by the separate loader
+            if (window.googleTranslateSelector) {
+                console.log('[Translation] Google Translate already loaded by external loader');
+                window._translationInitialized = true;
+                setupTranslationHandlers();
+                restoreLanguagePreference();
+                $(document).trigger('vespa-translation-ready');
+                return; // Exit early since it's already loaded
+            }
+            
+            // Listen for Google Translate to be ready from external loader
+            window.addEventListener('googleTranslateReady', function() {
+                console.log('[Translation] Google Translate ready event received from external loader');
+                window._translationInitialized = true;
+                setupTranslationHandlers();
+                restoreLanguagePreference();
+                $(document).trigger('vespa-translation-ready');
+            });
+            
+            // Only load Google Translate if not already loading/loaded
+            if (!window.googleTranslateElementInit && !document.querySelector('script[src*="translate.google.com"]')) {
                 window.googleTranslateElementInit = function() {
-                    console.log('[Translation] googleTranslateElementInit called!');
-                    log('Google Translate Element initializing (hidden mode)');
+                    console.log('[Translation] googleTranslateElementInit called (fallback)!');
+                    log('Google Translate Element initializing (fallback mode)');
                     
                     try {
                         new google.translate.TranslateElement({
@@ -1490,9 +1509,9 @@
                             gaTrack: false
                         }, 'google_translate_element');
                         
-                        console.log('[Translation] Google Translate Element created successfully');
+                        console.log('[Translation] Google Translate Element created successfully (fallback)');
                     } catch (error) {
-                        console.error('[Translation] Error creating Google Translate Element:', error);
+                        console.error('[Translation] Error creating Google Translate Element (fallback):', error);
                     }
                     
                     // Aggressively remove banner and setup handlers
@@ -1546,7 +1565,27 @@
                 };
                 
                 document.head.appendChild(script);
-                console.log('[Translation] Google Translate script tag added to page');
+                console.log('[Translation] Google Translate script tag added to page (fallback)');
+            } else {
+                console.log('[Translation] Google Translate already loading or loaded, waiting for it...');
+                // Check periodically if selector becomes available
+                let checkCount = 0;
+                const checkInterval = setInterval(() => {
+                    const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
+                    if (selector) {
+                        console.log('[Translation] Google Translate selector found!');
+                        clearInterval(checkInterval);
+                        window._translationInitialized = true;
+                        setupTranslationHandlers();
+                        restoreLanguagePreference();
+                        $(document).trigger('vespa-translation-ready');
+                    }
+                    checkCount++;
+                    if (checkCount > 20) { // Stop after 10 seconds
+                        clearInterval(checkInterval);
+                        console.error('[Translation] Google Translate failed to initialize after 10 seconds');
+                    }
+                }, 500);
             }
         }
         
@@ -1605,7 +1644,8 @@
                 
                 // Wait a moment for the selector to be available if it's not ready yet
                 const checkAndTranslate = (attempts = 0) => {
-                    const selector = document.querySelector('.goog-te-combo');
+                    // Check both possible selectors (from external loader or local)
+                    const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
                     if (selector) {
                         selector.value = lang;
                         const evt = document.createEvent('HTMLEvents');
@@ -1661,7 +1701,8 @@
             const savedLanguage = localStorage.getItem('vespaPreferredLanguage');
             if (savedLanguage && savedLanguage !== 'en') {
                 log('Restoring saved language preference:', savedLanguage);
-                const selector = document.querySelector('.goog-te-combo');
+                // Check both possible selectors (from external loader or local)
+                const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
                 if (selector) {
                     // Wait a bit for Google Translate to fully initialize
                     setTimeout(() => {
@@ -1892,7 +1933,8 @@
             // Trigger Google Translate to re-scan the page
             const evt = document.createEvent('HTMLEvents');
             evt.initEvent('change', false, true);
-            const selector = document.querySelector('.goog-te-combo');
+            // Check both possible selectors (from external loader or local)
+            const selector = document.querySelector('.goog-te-combo') || window.googleTranslateSelector;
             if (selector) {
                 const currentLang = selector.value;
                 if (currentLang && currentLang !== 'en' && currentLang !== '') {
