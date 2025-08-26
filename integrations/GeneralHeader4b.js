@@ -1,4 +1,4 @@
-**
+/**
  * VESPA Universal Header System - Phase 1
  * Loads on all pages and provides context-aware navigation
  */
