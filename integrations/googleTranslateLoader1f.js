@@ -104,12 +104,45 @@
         console.log('[Google Translate Loader] Script tag added');
     } else {
         console.log('[Google Translate Loader] Script already loaded or Google Translate already available');
-        // If Google Translate is already available but selector not created yet, create immediately
-        if (window.google?.translate && !document.querySelector('.goog-te-combo')) {
-            console.log('[Google Translate Loader] Creating widget directly (google present, no selector)');
-            createOrInitWidget();
-        }
+        // Wait for google object if not yet available, then create the widget; re-inject if needed
+        let attempts = 0;
+        const waitForGoogle = setInterval(() => {
+            const hasGoogle = !!(window.google && window.google.translate);
+            const hasSelector = !!document.querySelector('.goog-te-combo');
+            if (hasSelector) {
+                clearInterval(waitForGoogle);
+                window.googleTranslateSelector = document.querySelector('.goog-te-combo');
+                window.dispatchEvent(new Event('googleTranslateReady'));
+                return;
+            }
+            if (hasGoogle) {
+                clearInterval(waitForGoogle);
+                console.log('[Google Translate Loader] google.translate available, creating widget now');
+                createOrInitWidget();
+                return;
+            }
+            attempts++;
+            if (attempts >= 30) { // 15s
+                clearInterval(waitForGoogle);
+                console.warn('[Google Translate Loader] google object not ready after 15s - re-injecting script');
+                const reinject = document.createElement('script');
+                reinject.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit&_=' + Date.now();
+                reinject.async = true;
+                reinject.onload = () => {
+                    console.log('[Google Translate Loader] Re-injected script loaded');
+                    if (typeof window.googleTranslateElementInit === 'function') {
+                        window.googleTranslateElementInit();
+                    }
+                };
+                reinject.onerror = () => {
+                    console.error('[Google Translate Loader] Failed to re-inject Google script');
+                    window.dispatchEvent(new Event('googleTranslateLoadFailed'));
+                };
+                document.head.appendChild(reinject);
+            }
+        }, 500);
     }
+})();
 /**
  * Google Translate Loader
  * Separate loader for Google Translate to ensure proper initialization timing
@@ -255,4 +288,3 @@
         }, 500);
     }
 })();
-
