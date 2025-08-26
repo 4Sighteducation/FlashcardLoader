@@ -845,7 +845,7 @@
                             <button class="translation-modal-close">&times;</button>
                         </div>
                         <div class="translation-modal-body">
-                            <div id="google_translate_element" style="position: absolute; left: -9999px; top: -9999px; height: 0; overflow: hidden;"></div>
+                            <div id="google_translate_element" style="position: absolute; opacity: 0.01; height: 1px; width: 1px; overflow: hidden; pointer-events: none;"></div>
                             <div class="language-buttons">
                                 <button class="lang-select-btn" data-lang="">🇬🇧 English</button>
                                 <button class="lang-select-btn" data-lang="cy">🏴󠁧󠁢󠁷󠁬󠁳󠁿 Cymraeg (Welsh)</button>
@@ -1477,23 +1477,44 @@
             // Load Google Translate script silently
             if (!window.googleTranslateElementInit) {
                 window.googleTranslateElementInit = function() {
+                    console.log('[Translation] googleTranslateElementInit called!');
                     log('Google Translate Element initializing (hidden mode)');
-                    new google.translate.TranslateElement({
-                        pageLanguage: 'en',
-                        includedLanguages: 'en,cy,pl,es,fr,de,it,pt,ar,ur,zh-CN,hi,ga',
-                        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-                        autoDisplay: false,
-                        multilanguagePage: true,
-                        gaTrack: false
-                    }, 'google_translate_element');
+                    
+                    try {
+                        new google.translate.TranslateElement({
+                            pageLanguage: 'en',
+                            includedLanguages: 'en,cy,pl,es,fr,de,it,pt,ar,ur,zh-CN,hi,ga',
+                            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                            autoDisplay: false,
+                            multilanguagePage: true,
+                            gaTrack: false
+                        }, 'google_translate_element');
+                        
+                        console.log('[Translation] Google Translate Element created successfully');
+                    } catch (error) {
+                        console.error('[Translation] Error creating Google Translate Element:', error);
+                    }
                     
                     // Aggressively remove banner and setup handlers
                     setTimeout(() => {
                         removeGoogleBanner();
                         setupTranslationHandlers();
                         restoreLanguagePreference();
+                        
+                        // Check if selector was created
+                        const selector = document.querySelector('.goog-te-combo');
+                        if (selector) {
+                            console.log('[Translation] SUCCESS - Google Translate selector found:', selector);
+                            console.log('[Translation] Selector options:', selector.options.length);
+                        } else {
+                            console.error('[Translation] WARNING - Google Translate selector NOT found after initialization');
+                            // Try to find any Google Translate elements
+                            const googleElements = document.querySelectorAll('[class*="goog"]');
+                            console.log('[Translation] Found Google elements:', googleElements.length, googleElements);
+                        }
+                        
                         console.log('[Translation] Google Translate initialized successfully');
-                    }, 100);
+                    }, 500); // Increased delay to give more time
                     
                     // Remove banner periodically but with a flag to prevent infinite loops
                     let bannerCheckCount = 0;
@@ -1513,7 +1534,19 @@
                 const script = document.createElement('script');
                 script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
                 script.async = true;
+                
+                // Add load and error handlers
+                script.onload = function() {
+                    console.log('[Translation] Google Translate script loaded successfully');
+                };
+                
+                script.onerror = function() {
+                    console.error('[Translation] Failed to load Google Translate script');
+                    alert('Translation service failed to load. This might be due to network issues or browser restrictions.');
+                };
+                
                 document.head.appendChild(script);
+                console.log('[Translation] Google Translate script tag added to page');
             }
         }
         
@@ -1821,14 +1854,16 @@
                 
 
                 
-                /* Hide Google Translate element off-screen but keep it functional */
+                /* Make Google Translate element invisible but functional */
                 #google_translate_element {
                     position: absolute !important;
-                    left: -9999px !important;
-                    top: -9999px !important;
-                    height: 0 !important;
+                    opacity: 0.01 !important;
+                    height: 1px !important;
+                    width: 1px !important;
                     overflow: hidden !important;
-                    /* Not using display: none so the widget can initialize properly */
+                    pointer-events: none !important;
+                    z-index: -1 !important;
+                    /* Tiny and nearly invisible but still exists in DOM for initialization */
                 }
                 
                 /* Style when modal is open */
