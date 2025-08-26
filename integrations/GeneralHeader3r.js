@@ -1518,7 +1518,6 @@
                 const modal = document.getElementById('translation-modal');
                 if (modal) {
                     modal.style.display = 'block';
-                    removeGoogleBanner(); // Remove banner when showing modal
                     console.log('[Translation] Modal opened');
                 } else {
                     console.error('[Translation] Modal not found!');
@@ -1587,7 +1586,6 @@
         // Expose functions globally for debugging
         window.vespaTranslation = {
             setupHandlers: setupTranslationHandlers,
-            removeGoogleBanner: removeGoogleBanner,
             initialize: initializeTranslation,
             addStyles: addTranslationStyles
         };
@@ -1763,7 +1761,9 @@
             }
         };
         
-        // Function to add translation notice for Slides.com embeds
+        // Removed Google Translate specific functions - using simplified translation instead
+        // Function to add translation notice for Slides.com embeds (kept for future use)
+        /*
         function addSlidesTranslationNotice(iframe, targetLang) {
             const wrapper = document.createElement('div');
             wrapper.className = 'slides-translate-notice';
@@ -1920,6 +1920,7 @@
                 embed.className = embed.className.replace('notranslate', '');
             });
         }
+        */
         
         // Initialize the header
         function init() {
@@ -2042,8 +2043,6 @@
                             setTimeout(setupTranslationHandlers, 100);
                         } else {
                             log('Translation system already initialized');
-                            // Force remove banner just in case
-                            removeGoogleBanner();
                             // Re-setup handlers in case they were lost
                             setupTranslationHandlers();
                         }
@@ -2094,3 +2093,4 @@
     
     console.log('[General Header] Script setup complete, initializer function ready');
 })();
+
