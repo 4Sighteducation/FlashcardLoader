@@ -1512,7 +1512,7 @@
                     host.style.width = '1px';
                     host.style.overflow = 'hidden';
                     host.style.pointerEvents = 'none';
-                    host.style.zIndex = '-1';
+                    host.style.zIndex = '1';
                 }
 
                 window.googleTranslateElementInit = function() {
