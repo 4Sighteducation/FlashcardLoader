@@ -1362,10 +1362,10 @@
                         const currentHash = window.location.hash;
                         log(`Navigation from ${currentHash} to ${href} (scene: ${targetScene})`);
                         
-                        // Force cleanup for specific problematic scenes before navigation
-                        const problematicScenes = ['scene_1270', 'scene_1095', 'scene_1014'];
-                        if (targetScene && problematicScenes.includes(targetScene)) {
-                            log(`Navigating to problematic scene ${targetScene}, forcing cleanup`);
+                        // UNIVERSAL CLEANUP: Force cleanup for all scene navigations
+                        // This ensures fresh app loads and prevents issues with cached states
+                        if (targetScene && targetScene !== currentScene) {
+                            log(`Navigating to ${targetScene}, forcing universal cleanup`);
                             
                             // Signal the loader to force reload for this scene
                             window._forceAppReload = targetScene;
@@ -1374,6 +1374,11 @@
                             if (window.cleanupAppsForScene && typeof window.cleanupAppsForScene === 'function') {
                                 window.cleanupAppsForScene(targetScene);
                             }
+                            
+                            // Also clear any background styles that might persist
+                            document.body.style.backgroundColor = '';
+                            document.body.style.background = '';
+                            document.body.style.backgroundImage = '';
                         }
                         
                         // Navigate using Knack with a small delay to ensure cleanup
