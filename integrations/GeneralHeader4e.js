@@ -1448,38 +1448,11 @@
             translateContainer.id = 'google_translate_element';
             translateContainer.className = 'translate-widget-container';
             translationControlsContainer.appendChild(translateContainer);
-            
-            // Create manual refresh button (visible for testing)
-            const refreshButton = document.createElement('button');
-            refreshButton.id = 'translation-refresh-btn';
-            refreshButton.className = 'translation-refresh-button';
-            refreshButton.innerHTML = '<i class="fa fa-sync-alt"></i><span class="refresh-text"> Refresh</span>';
-            refreshButton.title = 'Refresh translations - use after changing language or if content doesn\'t translate';
-            refreshButton.style.display = 'inline-flex'; // Visible by default now
-            refreshButton.onclick = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                log('Manual translation refresh button clicked');
-                console.log('[Translation] Manual refresh triggered by user');
-                // Add spinning animation
-                refreshButton.classList.add('refreshing');
-                // Call refresh
-                if (window.refreshTranslations && typeof window.refreshTranslations === 'function') {
-                    log('Calling window.refreshTranslations()');
-                    window.refreshTranslations();
-                } else {
-                    console.error('[Translation] refreshTranslations function not found!');
-                }
-                // Show success feedback
-                setTimeout(() => {
-                    refreshButton.classList.remove('refreshing');
-                    refreshButton.classList.add('success');
-                    setTimeout(() => {
-                        refreshButton.classList.remove('success');
-                    }, 1000);
-                }, 500);
-            };
-            translationControlsContainer.appendChild(refreshButton);
+
+            // Prevent navigation handlers from reacting to clicks inside the widget
+            translationControlsContainer.addEventListener('click', function(e) { e.stopPropagation(); }, true);
+            translationControlsContainer.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
+            translationControlsContainer.addEventListener('touchstart', function(e) { e.stopPropagation(); }, true);
             
             // Insert before the settings button
             const settingsButton = document.querySelector('.header-settings-button');
@@ -1517,8 +1490,6 @@
                         restoreLanguagePreference();
                         // Setup language change observer
                         observeLanguageChanges();
-                        // Make refresh button visible immediately if needed
-                        checkRefreshButtonVisibility();
                         log('Translation widget fully configured');
                     }, 100);
                     
@@ -1564,9 +1535,7 @@
                         const evt = document.createEvent('HTMLEvents');
                         evt.initEvent('change', false, true);
                         selector.dispatchEvent(evt);
-                        // Show refresh button for non-English languages
-                        const refreshBtn = document.getElementById('translation-refresh-btn');
-                        if (refreshBtn) refreshBtn.style.display = 'block';
+                        // No refresh button any more
                     }, 500);
                 }
             }
@@ -1579,18 +1548,7 @@
                     const selectedLanguage = this.value;
                     saveLanguagePreference(selectedLanguage);
                     
-                    // Show/hide refresh button based on language
-                    const refreshBtn = document.getElementById('translation-refresh-btn');
-                    if (refreshBtn) {
-                        if (selectedLanguage && selectedLanguage !== 'en' && selectedLanguage !== '') {
-                            refreshBtn.style.display = 'block';
-                            // Add a pulse animation to draw attention
-                            refreshBtn.classList.add('pulse');
-                            setTimeout(() => refreshBtn.classList.remove('pulse'), 2000);
-                        } else {
-                            refreshBtn.style.display = 'none';
-                        }
-                    }
+                    // No refresh button behaviour
                     
                     // Always remove Google banner after language change
                     setTimeout(removeGoogleBanner, 100);
@@ -1613,6 +1571,7 @@
             // Fix body positioning
             document.body.style.top = '0px';
             document.body.style.position = 'relative';
+            document.documentElement.style.top = '0px';
             
             // Remove any Google Translate added styles on body
             if (document.body.className.includes('translated-ltr')) {
@@ -1634,23 +1593,26 @@
                     });
                 });
                 window._bannerObserver.observe(document.body, { childList: true, subtree: false });
+                // Also watch the <html> element where Google sometimes injects styles/tooltips
+                if (!window._htmlBannerObserver) {
+                    window._htmlBannerObserver = new MutationObserver(function() {
+                        const banner = document.querySelector('.goog-te-banner-frame');
+                        if (banner) {
+                            banner.style.display = 'none';
+                            try { banner.remove(); } catch (e) {}
+                        }
+                        document.documentElement.style.top = '0px';
+                        const tt = document.getElementById('goog-gt-tt');
+                        if (tt) tt.style.display = 'none';
+                    });
+                    window._htmlBannerObserver.observe(document.documentElement, { childList: true, subtree: true });
+                }
             }
             
             log('Google Translate banner removed');
         }
         
-        // Check if refresh button should be visible
-        function checkRefreshButtonVisibility() {
-            const selector = document.querySelector('.goog-te-combo');
-            const refreshBtn = document.getElementById('translation-refresh-btn');
-            if (selector && refreshBtn) {
-                const currentLang = selector.value;
-                if (currentLang && currentLang !== 'en' && currentLang !== '') {
-                    refreshBtn.style.display = 'block';
-                    log('Refresh button made visible for language:', currentLang);
-                }
-            }
-        }
+        // (Refresh button removed)
         
         function styleTranslateWidget() {
             // Custom styling to match your header
@@ -1672,72 +1634,7 @@
                     align-items: center;
                 }
                 
-                /* Refresh button styling */
-                .translation-refresh-button {
-                    background: rgba(0, 229, 219, 0.2);
-                    border: 2px solid rgba(0, 229, 219, 0.5);
-                    border-radius: 6px;
-                    padding: 8px 14px;
-                    color: white;
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 6px;
-                    white-space: nowrap;
-                }
-                
-                .translation-refresh-button .refresh-text {
-                    display: inline;
-                }
-                
-                @media (max-width: 1200px) {
-                    .translation-refresh-button .refresh-text {
-                        display: none; /* Hide text on smaller screens */
-                    }
-                    .translation-refresh-button {
-                        min-width: 36px;
-                        padding: 8px 10px;
-                    }
-                }
-                
-                .translation-refresh-button:hover {
-                    background: rgba(255,255,255,0.25);
-                    transform: translateY(-1px);
-                    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-                }
-                
-                .translation-refresh-button:active {
-                    transform: translateY(0);
-                }
-                
-                /* Refresh button animations */
-                @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-                
-                @keyframes pulse {
-                    0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
-                    70% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
-                    100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-                }
-                
-                .translation-refresh-button.refreshing i {
-                    animation: spin 1s linear infinite;
-                }
-                
-                .translation-refresh-button.success {
-                    background: rgba(76, 175, 80, 0.3) !important;
-                    border-color: rgba(76, 175, 80, 0.5) !important;
-                }
-                
-                .translation-refresh-button.pulse {
-                    animation: pulse 2s;
-                }
+                /* (Refresh button styles removed) */
                 
                 /* Hide Google's branding */
                 .goog-logo-link {
@@ -1750,28 +1647,30 @@
                 
                 /* Style the dropdown */
                 .goog-te-gadget .goog-te-combo {
-                    background: rgba(255,255,255,0.15);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    border-radius: 6px;
+                    background: rgba(255,255,255,0.14);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 8px;
                     padding: 8px 14px;
-                    color: white;
+                    color: #ffffff;
                     font-size: 13px;
-                    font-weight: 500;
+                    font-weight: 600;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                    min-width: 120px;
+                    min-width: 140px;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    backdrop-filter: blur(3px);
+                    outline: none;
                 }
                 
                 .goog-te-gadget .goog-te-combo:hover {
-                    background: rgba(255,255,255,0.25);
+                    background: rgba(255,255,255,0.22);
                     transform: translateY(-1px);
                     box-shadow: 0 3px 12px rgba(0,0,0,0.2);
                 }
                 
                 .goog-te-gadget .goog-te-combo option {
                     background: #2a3c7a;
-                    color: white;
+                    color: #ffffff;
                 }
                 
                 /* Aggressively hide the Google Translate banner */
@@ -1786,6 +1685,9 @@
                     top: -9999px !important;
                     left: -9999px !important;
                 }
+                html { top: 0 !important; position: relative !important; }
+                iframe.goog-te-banner-frame { display: none !important; height: 0 !important; }
+                #goog-gt-tt, .goog-tooltip, .goog-te-balloon-frame { display: none !important; }
                 
                 /* Fix body positioning - FORCE it */
                 body {
@@ -1821,12 +1723,7 @@
                         padding: 5px 8px;
                         font-size: 11px;
                     }
-                    .translation-refresh-button {
-                        min-width: 32px;
-                        height: 32px;
-                        padding: 6px 8px;
-                        font-size: 12px;
-                    }
+                    /* (Refresh button responsive styles removed) */
                 }
                 
                 @media (max-width: 768px) {
@@ -1845,13 +1742,7 @@
                         font-size: 15px;
                         background: rgba(255,255,255,0.08);
                     }
-                    .translation-refresh-button {
-                        min-width: 44px;
-                        height: 44px;
-                        padding: 10px;
-                        font-size: 16px;
-                        background: rgba(255,255,255,0.08);
-                    }
+                    /* (Refresh button responsive styles removed) */
                 }
                 
                 /* Fix for translation affecting header buttons */
@@ -1884,6 +1775,7 @@
                 document.body.style.top = '0px';
                 document.body.style.position = 'relative';
                 document.body.classList.add('translated');
+                document.documentElement.style.top = '0px';
             }, 100);
             
             log('Translation widget styled successfully');
