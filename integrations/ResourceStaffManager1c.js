@@ -34,8 +34,44 @@
         // Get current user details
         const currentUser = Knack.getUserAttributes();
         const userEmail = currentUser.email;
-        const customerField = currentUser.values?.field_122 || currentUser.field_122;
+        
+        // Try multiple ways to get the customer field ID
+        let customerField = currentUser.values?.field_122 || currentUser.field_122;
+        
+        // Check if it's an array and extract the ID
+        if (Array.isArray(customerField) && customerField.length > 0) {
+            console.log('[Resource Staff Manager] Customer field is array:', customerField);
+            // If array contains IDs directly
+            customerField = customerField[0];
+        }
+        
+        // Check for raw field format (this is the correct ID)
+        if (currentUser.values?.field_122_raw) {
+            console.log('[Resource Staff Manager] Found field_122_raw:', currentUser.values.field_122_raw);
+            if (Array.isArray(currentUser.values.field_122_raw) && currentUser.values.field_122_raw.length > 0) {
+                const rawItem = currentUser.values.field_122_raw[0];
+                // The ID is what we need for filtering
+                customerField = rawItem.id || rawItem;
+            }
+        } else if (typeof customerField === 'string' && customerField.includes('class=')) {
+            // Extract ID from HTML: <span class="603e9f97cb8481001b31183d" ...>VESPA ACADEMY</span>
+            const match = customerField.match(/class="([^"]+)"/);
+            if (match) {
+                customerField = match[1];
+                console.log('[Resource Staff Manager] Extracted customer ID from HTML:', customerField);
+            }
+        }
+        
         const schoolId = currentUser.values?.field_126 || currentUser.field_126;
+        
+        // Debug: Log full user details to understand the structure
+        console.log('[Resource Staff Manager] === DEBUGGING CUSTOMER CONNECTION ===');
+        console.log('[Resource Staff Manager] Full user attributes:', currentUser);
+        console.log('[Resource Staff Manager] All user.values fields:', currentUser.values);
+        console.log('[Resource Staff Manager] Final customerField value:', customerField);
+        console.log('[Resource Staff Manager] Type of customerField:', typeof customerField);
+        console.log('[Resource Staff Manager] Is customerField an array?:', Array.isArray(customerField));
+        console.log('[Resource Staff Manager] School ID:', schoolId);
         
         log('Current user:', { email: userEmail, customer: customerField, schoolId: schoolId });
         
@@ -212,7 +248,12 @@
                                         <td>
                                             <div class="rsm-staff-name">
                                                 <strong>{{ staff.name }}</strong>
-                                                <span v-if="staff.group" class="rsm-badge">{{ staff.group }}</span>
+                                                <div class="rsm-badges">
+                                                    <span v-if="staff.group" class="rsm-badge">{{ staff.group }}</span>
+                                                    <span class="rsm-badge" :class="{'rsm-badge-resource': staff.isResourcePortal, 'rsm-badge-warning': !staff.isResourcePortal}">
+                                                        {{ staff.accountType }}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </td>
                                         <td>{{ staff.email }}</td>
@@ -411,29 +452,26 @@
                     // Load customer summary
                     async loadCustomerSummary() {
                         try {
-                            const filters = [
-                                {
-                                    field: 'field_44',
-                                    operator: 'is',
-                                    value: customerField
+                            // Try direct lookup using the customer ID
+                            const url = `objects/object_2/records/${customerField}`;
+                            
+                            try {
+                                const customer = await this.apiRequest('GET', url);
+                                
+                                if (customer && customer.id) {
+                                    this.summary = {
+                                        subscriptionStart: customer.field_2997,
+                                        renewalDate: customer.field_1622,
+                                        coordinator: this.formatName(customer.field_49_raw || customer.field_49),
+                                        accountsUsed: parseInt(customer.field_1564) || 0,
+                                        accountsRemaining: parseInt(customer.field_1508) || 0,
+                                        totalAccounts: (parseInt(customer.field_1564) || 0) + (parseInt(customer.field_1508) || 0),
+                                        limitReached: customer.field_1481 === 'Yes' || customer.field_1481 === true
+                                    };
+                                    console.log('[Resource Staff Manager] Customer summary loaded via direct ID lookup');
                                 }
-                            ];
-                            
-                            const response = await this.apiRequest('GET', 'objects/object_2/records', {
-                                filters: filters
-                            });
-                            
-                            if (response.records && response.records.length > 0) {
-                                const customer = response.records[0];
-                                this.summary = {
-                                    subscriptionStart: customer.field_2997,
-                                    renewalDate: customer.field_1622,
-                                    coordinator: this.formatName(customer.field_49_raw || customer.field_49),
-                                    accountsUsed: parseInt(customer.field_1564) || 0,
-                                    accountsRemaining: parseInt(customer.field_1508) || 0,
-                                    totalAccounts: (parseInt(customer.field_1564) || 0) + (parseInt(customer.field_1508) || 0),
-                                    limitReached: customer.field_1481 === 'Yes' || customer.field_1481 === true
-                                };
+                            } catch (directError) {
+                                console.log('[Resource Staff Manager] Direct customer lookup failed, error:', directError);
                             }
                         } catch (error) {
                             console.error('Error loading customer summary:', error);
@@ -443,45 +481,92 @@
                     // Load staff list
                     async loadStaffList() {
                         try {
+                            console.log('[Resource Staff Manager] === LOADING STAFF LIST ===');
+                            console.log('[Resource Staff Manager] CustomerField being used:', customerField);
+                            console.log('[Resource Staff Manager] CustomerField type:', typeof customerField);
+                            
+                            // Use profile_7 for Tutor role, and filter by customer ID
                             const filters = [
                                 {
                                     field: 'field_122',
                                     operator: 'is',
-                                    value: customerField
-                                },
-                                {
-                                    field: 'field_441',
-                                    operator: 'contains',
-                                    value: 'RESOURCE'
+                                    value: customerField  // This should be the customer record ID
                                 },
                                 {
                                     field: 'field_73',
                                     operator: 'contains',
-                                    value: 'Tutor'
+                                    value: 'profile_7'  // This is how Tutor role is stored
+                                },
+                                {
+                                    field: 'field_441',
+                                    operator: 'contains',
+                                    value: 'RESOURCE PORTAL'  // Full value you set
                                 }
                             ];
+                            
+                            // Note: Tutors need field_122 set to the customer ID to appear
+                            
+                            console.log('[Resource Staff Manager] Filters being used:', JSON.stringify(filters, null, 2));
                             
                             const response = await this.apiRequest('GET', 'objects/object_3/records', {
                                 filters: filters,
                                 rows_per_page: 1000
                             });
                             
+                            console.log('[Resource Staff Manager] Number of records found:', response.records?.length || 0);
+                            
+                            // If no records found, try without filters to test API
+                            if (!response.records || response.records.length === 0) {
+                                console.log('[Resource Staff Manager] No records found with filters. Testing API without filters...');
+                                const testResponse = await this.apiRequest('GET', 'objects/object_3/records', {
+                                    rows_per_page: 5 // Just get 5 records to test
+                                });
+                                console.log('[Resource Staff Manager] Test without filters found:', testResponse.records?.length || 0, 'records');
+                                if (testResponse.records && testResponse.records.length > 0) {
+                                    console.log('[Resource Staff Manager] Sample record from unfiltered test:', testResponse.records[0]);
+                                    console.log('[Resource Staff Manager] Sample field_122:', testResponse.records[0].field_122);
+                                    console.log('[Resource Staff Manager] Sample field_122_raw:', testResponse.records[0].field_122_raw);
+                                }
+                            }
+                            
+                            // Log first record details if any found
+                            if (response.records && response.records.length > 0) {
+                                console.log('[Resource Staff Manager] First record sample:', response.records[0]);
+                                console.log('[Resource Staff Manager] First record field_122:', response.records[0].field_122);
+                                console.log('[Resource Staff Manager] First record field_441:', response.records[0].field_441);
+                                console.log('[Resource Staff Manager] First record field_73:', response.records[0].field_73);
+                            }
+                            
                             if (response.records) {
-                                this.staffList = response.records.map(record => ({
-                                    id: record.id,
-                                    name: this.formatName(record.field_69_raw || record.field_69),
-                                    firstName: record.field_69_raw?.first || '',
-                                    lastName: record.field_69_raw?.last || '',
-                                    prefix: record.field_69_raw?.title || '',
-                                    email: record.field_70_raw?.[0]?.email || record.field_70,
-                                    hasLoggedIn: record.field_189 === 'Yes' || record.field_189 === true,
-                                    dateAdded: record.field_549,
-                                    lastLogin: record.field_575, // You'll need to confirm this field number
-                                    pageViews: parseInt(record.field_3201) || 0,
-                                    loginCount: parseInt(record.field_3208) || 0,
-                                    group: record.field_216 || '',
-                                    yearGroup: record.field_550 || ''
-                                }));
+                                this.staffList = response.records.map(record => {
+                                    // Extract email from HTML or raw field
+                                    let email = '';
+                                    if (record.field_70_raw?.email) {
+                                        email = record.field_70_raw.email;
+                                    } else if (record.field_70) {
+                                        // Extract from HTML like <a href="mailto:email@example.com">email@example.com</a>
+                                        const match = record.field_70.match(/mailto:([^"]+)"/);
+                                        email = match ? match[1] : record.field_70;
+                                    }
+                                    
+                                    return {
+                                        id: record.id,
+                                        name: this.formatName(record.field_69_raw || record.field_69),
+                                        firstName: record.field_69_raw?.first || '',
+                                        lastName: record.field_69_raw?.last || '',
+                                        prefix: record.field_69_raw?.title || '',
+                                        email: email,
+                                        hasLoggedIn: record.field_189 === 'Yes' || record.field_189 === true || record.field_189_raw === true,
+                                        dateAdded: record.field_549,
+                                        lastLogin: record.field_575, // You'll need to confirm this field number
+                                        pageViews: parseInt(record.field_3201) || 0,
+                                        loginCount: parseInt(record.field_3208) || 0,
+                                        group: record.field_216 || record.field_550 || '', // Try both fields
+                                        yearGroup: record.field_550 || '',
+                                        accountType: record.field_441 || 'Not Set', // Show account type
+                                        isResourcePortal: record.field_441 && record.field_441.toString().toUpperCase().includes('RESOURCE')
+                                    };
+                                });
                                 
                                 this.filteredStaffList = [...this.staffList];
                             }
@@ -509,16 +594,29 @@
                             if (data.rows_per_page) {
                                 url += `&rows_per_page=${data.rows_per_page}`;
                             }
+                            
+                            // Debug logging
+                            console.log('[Resource Staff Manager] API Request URL:', url);
+                            console.log('[Resource Staff Manager] Decoded filters:', data.filters);
                         } else if (method !== 'GET') {
                             options.body = JSON.stringify(data);
                         }
                         
                         const response = await fetch(url, options);
+                        
+                        // Log response status
+                        console.log('[Resource Staff Manager] API Response Status:', response.status, response.statusText);
+                        
                         if (!response.ok) {
-                            throw new Error(`API request failed: ${response.statusText}`);
+                            const errorBody = await response.text();
+                            console.error('[Resource Staff Manager] API Error Response:', errorBody);
+                            throw new Error(`API request failed: ${response.statusText} - ${errorBody}`);
                         }
                         
-                        return await response.json();
+                        const jsonResponse = await response.json();
+                        console.log('[Resource Staff Manager] API Response Data:', jsonResponse);
+                        
+                        return jsonResponse;
                     },
                     
                     // Format name from raw field
@@ -616,13 +714,13 @@
                         
                         // Create Object_3 record
                         const accountData = {
-                            field_122: [customerField], // Connected VESPA Customer
+                            field_122: [customerField], // Connected VESPA Customer - uses the customer record ID
                             field_69: {
                                 title: this.staffForm.prefix,
                                 first: this.staffForm.firstName,
                                 last: this.staffForm.lastName
                             },
-                            field_73: ['Tutor'], // User Role
+                            field_73: ['profile_7'], // User Role - use the profile ID not "Tutor"
                             field_216: this.staffForm.group, // Group
                             field_70: this.staffForm.email, // Email
                             field_441: 'RESOURCE PORTAL', // Account Type
@@ -1163,6 +1261,13 @@
                         gap: 4px;
                     }
                     
+                    .rsm-badges {
+                        display: flex;
+                        gap: 4px;
+                        flex-wrap: wrap;
+                        margin-top: 4px;
+                    }
+                    
                     .rsm-badge {
                         display: inline-block;
                         padding: 2px 8px;
@@ -1171,6 +1276,16 @@
                         border-radius: 4px;
                         font-size: 11px;
                         font-weight: 600;
+                    }
+                    
+                    .rsm-badge-resource {
+                        background: #d4edda;
+                        color: #155724;
+                    }
+                    
+                    .rsm-badge-warning {
+                        background: #fff3cd;
+                        color: #856404;
                     }
                     
                     .rsm-status-icon {
