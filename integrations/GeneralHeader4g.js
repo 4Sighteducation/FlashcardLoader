@@ -1386,6 +1386,22 @@
                 // Add offset on top of the current CSS padding (handles breadcrumb/mobile variants)
                 const basePadding = getCssPaddingTop();
                 document.body.style.paddingTop = (basePadding + FIXED_HEADER_OFFSET_PX) + 'px';
+                // Add a fixed top cover so content doesn't show in the 35px gap
+                let cover = document.getElementById('vespaHeaderTopCover');
+                const bg = window.getComputedStyle(header).backgroundColor || '#2a3c7a';
+                if (!cover) {
+                    cover = document.createElement('div');
+                    cover.id = 'vespaHeaderTopCover';
+                    cover.style.position = 'fixed';
+                    cover.style.top = '0';
+                    cover.style.left = '0';
+                    cover.style.right = '0';
+                    cover.style.zIndex = '9998';
+                    cover.style.pointerEvents = 'none';
+                    document.body.appendChild(cover);
+                }
+                cover.style.height = FIXED_HEADER_OFFSET_PX + 'px';
+                cover.style.background = bg;
                 log('Applied fixed header offset', { offset: FIXED_HEADER_OFFSET_PX, basePadding });
             } catch (e) {
                 console.warn('[General Header] Failed to apply fixed header offset', e);
