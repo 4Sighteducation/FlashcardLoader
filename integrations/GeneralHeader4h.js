@@ -1351,12 +1351,49 @@
                     }
                     
                     const href = this.getAttribute('href');
+                    const targetScene = this.getAttribute('data-scene');
+                    
                     if (href && href.startsWith('#')) {
                         // Close mobile menu if open
                         navigation.classList.remove('mobile-open');
                         overlay.classList.remove('active');
-                        // Navigate using Knack
-                        window.location.hash = href;
+                        
+                        // Store the navigation intent
+                        const currentHash = window.location.hash;
+                        log(`Navigation from ${currentHash} to ${href} (scene: ${targetScene})`);
+                        
+                        // Force cleanup for specific problematic scenes before navigation
+                        const problematicScenes = ['scene_1270', 'scene_1095', 'scene_1014'];
+                        if (targetScene && problematicScenes.includes(targetScene)) {
+                            log(`Navigating to problematic scene ${targetScene}, forcing cleanup`);
+                            
+                            // Signal the loader to force reload for this scene
+                            window._forceAppReload = targetScene;
+                            
+                            // Clear any cached app states for the target scene
+                            if (window.cleanupAppsForScene && typeof window.cleanupAppsForScene === 'function') {
+                                window.cleanupAppsForScene(targetScene);
+                            }
+                        }
+                        
+                        // Navigate using Knack with a small delay to ensure cleanup
+                        setTimeout(() => {
+                            window.location.hash = href;
+                            
+                            // For Results and Coaching tabs, ensure the scene renders properly
+                            if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
+                                log(`Forcing scene render for ${targetScene}`);
+                                // Trigger a manual scene render event if Knack doesn't fire it
+                                setTimeout(() => {
+                                    const currentScene = Knack.scene ? Knack.scene.key : null;
+                                    if (currentScene !== targetScene) {
+                                        log(`Scene didn't change properly, attempting force navigation`);
+                                        // Force a page reload as fallback
+                                        window.location.href = window.location.origin + window.location.pathname + href;
+                                    }
+                                }, 500);
+                            }
+                        }, 50);
                     }
                 });
             });
