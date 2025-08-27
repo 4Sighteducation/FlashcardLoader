@@ -78,9 +78,26 @@
         // Vue App Instance
         let app = null;
         
+        // Ensure Font Awesome is loaded
+        function ensureFontAwesome() {
+            if (!document.querySelector('link[href*="font-awesome"], link[href*="fontawesome"]')) {
+                const faLink = document.createElement('link');
+                faLink.rel = 'stylesheet';
+                faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+                faLink.crossOrigin = 'anonymous';
+                document.head.appendChild(faLink);
+                console.log('[Resource Staff Manager] Font Awesome CSS loaded');
+            } else {
+                console.log('[Resource Staff Manager] Font Awesome already loaded');
+            }
+        }
+        
         // Initialize the app
         async function init() {
             log('Starting initialization...');
+            
+            // Ensure Font Awesome is loaded
+            ensureFontAwesome();
             
             // Inject styles
             injectStyles();
@@ -988,10 +1005,22 @@
             
             const styles = `
                 <style id="resource-staff-manager-styles">
+                    /* Full Width Container Overrides for Knack */
+                    #kn-scene_1272 .kn-content {
+                        max-width: 100% !important;
+                        width: 100% !important;
+                    }
+                    
+                    #kn-scene_1272 .kn-view {
+                        max-width: 100% !important;
+                        width: 100% !important;
+                    }
+                    
                     /* Container */
                     .resource-staff-manager-container {
                         padding: 20px;
-                        max-width: 1400px;
+                        width: calc(100% - 40px);
+                        max-width: 1800px;
                         margin: 0 auto;
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     }
@@ -1183,23 +1212,35 @@
                     }
                     
                     .rsm-btn-icon {
-                        padding: 8px;
+                        padding: 8px 10px;
                         background: transparent;
-                        border: none;
+                        border: 1px solid #dee2e6;
                         color: #6c757d;
                         cursor: pointer;
                         transition: all 0.2s ease;
                         border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-width: 36px;
+                        height: 36px;
+                        font-size: 16px;
                     }
                     
                     .rsm-btn-icon:hover {
                         background: #f0f0f0;
                         color: #079baa;
+                        border-color: #079baa;
                     }
                     
                     .rsm-btn-icon-danger:hover {
                         background: #fee;
                         color: #dc3545;
+                        border-color: #dc3545;
+                    }
+                    
+                    .rsm-btn-icon i {
+                        font-size: 16px;
                     }
                     
                     /* Table */
@@ -1210,7 +1251,9 @@
                     
                     .rsm-table {
                         width: 100%;
+                        min-width: 1000px;
                         border-collapse: collapse;
+                        table-layout: auto;
                     }
                     
                     .rsm-table thead {
@@ -1226,11 +1269,27 @@
                         text-transform: uppercase;
                         letter-spacing: 0.5px;
                         border-bottom: 2px solid #dee2e6;
+                        white-space: nowrap;
+                    }
+                    
+                    .rsm-table th:last-child {
+                        min-width: 120px;
+                        text-align: center;
                     }
                     
                     .rsm-table td {
                         padding: 12px;
                         border-bottom: 1px solid #e9ecef;
+                    }
+                    
+                    .rsm-table td:last-child {
+                        padding: 8px;
+                    }
+                    
+                    .rsm-table td .rsm-actions {
+                        display: flex;
+                        gap: 8px;
+                        justify-content: center;
                     }
                     
                     .rsm-table tbody tr {
