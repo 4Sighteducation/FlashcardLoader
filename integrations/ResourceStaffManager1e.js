@@ -185,14 +185,14 @@
                                     <div class="rsm-card-icon"><i class="fas fa-calendar-alt"></i></div>
                                     <div class="rsm-card-content">
                                         <label>Subscription Start</label>
-                                        <span>{{ formatDate(summary.subscriptionStart) }}</span>
+                                        <span>{{ formatDate(summary.subscriptionStartRaw || summary.subscriptionStart, true) }}</span>
                                     </div>
                                 </div>
                                 <div class="rsm-card">
                                     <div class="rsm-card-icon"><i class="fas fa-calendar-check"></i></div>
                                     <div class="rsm-card-content">
                                         <label>Renewal Date</label>
-                                        <span>{{ formatDate(summary.renewalDate) }}</span>
+                                        <span>{{ formatDate(summary.renewalDateRaw || summary.renewalDate, true) }}</span>
                                     </div>
                                 </div>
                                 <div class="rsm-card">
@@ -223,6 +223,9 @@
                         <div class="rsm-actions">
                             <button @click="showAddStaffModal" class="rsm-btn rsm-btn-primary" :disabled="summary?.limitReached">
                                 <i class="fas fa-user-plus"></i> Add New Staff Member
+                            </button>
+                            <button @click="showCsvUploadModal" class="rsm-btn rsm-btn-primary" :disabled="summary?.limitReached" title="Upload multiple staff from CSV">
+                                <i class="fas fa-file-csv"></i> CSV Upload
                             </button>
                             <button @click="toggleBulkMode" class="rsm-btn rsm-btn-secondary" v-if="staffList.length > 0">
                                 <i class="fas fa-check-square"></i> {{ bulkMode ? 'Cancel Selection' : 'Select Multiple' }}
@@ -282,8 +285,8 @@
                                                 <i class="fas fa-times-circle"></i>
                                             </span>
                                         </td>
-                                        <td>{{ formatDate(staff.dateAdded) }}</td>
-                                        <td>{{ staff.lastLogin ? formatDate(staff.lastLogin) : 'Never' }}</td>
+                                        <td>{{ formatDate(staff.dateAddedRaw || staff.dateAdded, true) }}</td>
+                                        <td>{{ formatDate(staff.lastLoginRaw || staff.lastLogin, true) }}</td>
                                         <td class="text-center">{{ staff.pageViews || 0 }}</td>
                                         <td class="text-center">{{ staff.loginCount || 0 }}</td>
                                         <td class="text-center rsm-actions-cell">
@@ -407,6 +410,85 @@
                             </div>
                         </div>
                         
+                        <!-- CSV Upload Modal -->
+                        <div v-if="csvModalVisible" class="rsm-modal-overlay" @click.self="closeCsvModal">
+                            <div class="rsm-modal">
+                                <div class="rsm-modal-header">
+                                    <h3>Upload Staff from CSV</h3>
+                                    <button @click="closeCsvModal" class="rsm-modal-close">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="rsm-modal-body">
+                                    <div class="rsm-csv-info">
+                                        <p><strong>CSV Format Requirements:</strong></p>
+                                        <ul>
+                                            <li>Required: First Name, Last Name, Email</li>
+                                            <li>Optional: Title, Year Group, Group</li>
+                                            <li>Maximum {{ summary?.accountsRemaining || 0 }} staff can be imported</li>
+                                        </ul>
+                                        <button @click="downloadCsvTemplate" class="rsm-btn rsm-btn-secondary">
+                                            <i class="fas fa-download"></i> Download CSV Template
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="rsm-form-group" style="margin-top: 20px;">
+                                        <label>Select CSV File</label>
+                                        <input type="file" 
+                                               @change="handleCsvFile" 
+                                               accept=".csv" 
+                                               ref="csvFileInput"
+                                               class="rsm-form-control">
+                                    </div>
+                                    
+                                    <div v-if="csvData.length > 0" class="rsm-csv-preview">
+                                        <h4>Preview ({{ csvData.length }} staff to import)</h4>
+                                        <table class="rsm-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Title</th>
+                                                    <th>First Name</th>
+                                                    <th>Last Name</th>
+                                                    <th>Email</th>
+                                                    <th>Year Group</th>
+                                                    <th>Group</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(row, index) in csvData.slice(0, 5)" :key="index">
+                                                    <td>{{ row.title || '-' }}</td>
+                                                    <td>{{ row.firstName }}</td>
+                                                    <td>{{ row.lastName }}</td>
+                                                    <td>{{ row.email }}</td>
+                                                    <td>{{ row.yearGroup || '-' }}</td>
+                                                    <td>{{ row.group || '-' }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <p v-if="csvData.length > 5" style="margin: 10px 0; color: #666;">
+                                            ...and {{ csvData.length - 5 }} more staff members
+                                        </p>
+                                        
+                                        <div v-if="csvErrors.length > 0" class="rsm-alert rsm-alert-danger">
+                                            <strong>Validation Errors:</strong>
+                                            <ul style="margin-top: 10px;">
+                                                <li v-for="error in csvErrors" :key="error">{{ error }}</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="rsm-modal-footer">
+                                    <button @click="closeCsvModal" class="rsm-btn rsm-btn-secondary">Cancel</button>
+                                    <button @click="uploadCsvData" 
+                                            class="rsm-btn rsm-btn-primary" 
+                                            :disabled="csvData.length === 0 || csvErrors.length > 0 || csvUploading">
+                                        <i class="fas" :class="csvUploading ? 'fa-spinner fa-spin' : 'fa-upload'"></i>
+                                        {{ csvUploading ? 'Uploading (' + csvUploadProgress + '/' + csvData.length + ')...' : 'Import Staff' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Success/Error Messages -->
                         <div v-if="message" class="rsm-message" :class="'rsm-message-' + messageType">
                             <i :class="messageIcon"></i>
@@ -427,9 +509,14 @@
                         allSelected: false,
                         modalVisible: false,
                         deleteModalVisible: false,
+                        csvModalVisible: false,
                         editingStaff: null,
                         staffToDelete: null,
                         bulkDeleteMode: false,
+                        csvData: [],
+                        csvErrors: [],
+                        csvUploading: false,
+                        csvUploadProgress: 0,
                         staffForm: {
                             prefix: '',
                             firstName: '',
@@ -478,7 +565,9 @@
                                 if (customer && customer.id) {
                                     this.summary = {
                                         subscriptionStart: customer.field_2997,
+                                        subscriptionStartRaw: customer.field_2997_raw,
                                         renewalDate: customer.field_1622,
+                                        renewalDateRaw: customer.field_1622_raw,
                                         coordinator: this.formatName(customer.field_49_raw || customer.field_49),
                                         accountsUsed: parseInt(customer.field_1564) || 0,
                                         accountsRemaining: parseInt(customer.field_1508) || 0,
@@ -575,7 +664,9 @@
                                         email: email,
                                         hasLoggedIn: record.field_189 === 'Yes' || record.field_189 === true || record.field_189_raw === true,
                                         dateAdded: record.field_549,
-                                        lastLogin: record.field_575, // You'll need to confirm this field number
+                                        dateAddedRaw: record.field_549_raw,
+                                        lastLogin: record.field_575,
+                                        lastLoginRaw: record.field_575_raw,
                                         pageViews: parseInt(record.field_3201) || 0,
                                         loginCount: parseInt(record.field_3208) || 0,
                                         group: record.field_216 || record.field_550 || '', // Try both fields
@@ -648,14 +739,71 @@
                     },
                     
                     // Format date
-                    formatDate(dateString) {
-                        if (!dateString) return '';
+                    formatDate(dateInput, useRaw = false) {
+                        if (!dateInput) return 'Never';
+                        
+                        // If we have a raw date object with timestamp or date
+                        if (useRaw && typeof dateInput === 'object') {
+                            // Try timestamp first (includes time)
+                            if (dateInput.timestamp) {
+                                const date = new Date(dateInput.timestamp);
+                                if (!isNaN(date.getTime())) {
+                                    return date.toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    });
+                                }
+                            }
+                            // Try US format date (mm/dd/yyyy)
+                            if (dateInput.date) {
+                                const date = new Date(dateInput.date);
+                                if (!isNaN(date.getTime())) {
+                                    return date.toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    });
+                                }
+                            }
+                            // Try UK formatted date
+                            if (dateInput.date_formatted) {
+                                dateInput = dateInput.date_formatted;
+                            }
+                        }
+                        
+                        // Handle string dates
+                        let dateString = dateInput.toString();
+                        
+                        // Remove time suffix if present (e.g., "10:27am" from "27/08/2025 10:27am")
+                        dateString = dateString.replace(/\s+\d{1,2}:\d{2}[ap]m$/i, '');
+                        
+                        // Try UK format (dd/mm/yyyy)
+                        if (dateString.includes('/')) {
+                            const parts = dateString.split('/');
+                            if (parts.length === 3) {
+                                const date = new Date(parts[2], parts[1] - 1, parts[0]);
+                                if (!isNaN(date.getTime()) && date.getFullYear() > 2000) {
+                                    return date.toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // Try direct parse as last resort
                         const date = new Date(dateString);
-                        return date.toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                        });
+                        if (!isNaN(date.getTime()) && date.getFullYear() > 2000) {
+                            return date.toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                            });
+                        }
+                        
+                        return 'Never';
                     },
                     
                     // Toggle bulk mode
@@ -979,6 +1127,208 @@
                     async refreshData() {
                         await this.loadData();
                         this.showMessage('Data refreshed successfully.', 'success');
+                    },
+                    
+                    // CSV Upload Methods
+                    showCsvUploadModal() {
+                        this.csvModalVisible = true;
+                        this.csvData = [];
+                        this.csvErrors = [];
+                        this.csvUploadProgress = 0;
+                    },
+                    
+                    closeCsvModal() {
+                        this.csvModalVisible = false;
+                        this.csvData = [];
+                        this.csvErrors = [];
+                        this.csvUploadProgress = 0;
+                        if (this.$refs.csvFileInput) {
+                            this.$refs.csvFileInput.value = '';
+                        }
+                    },
+                    
+                    downloadCsvTemplate() {
+                        const template = 'Title,First Name,Last Name,Email,Year Group,Group\n' +
+                            'Mr,John,Smith,j.smith@school.edu,Year 12,Group A\n' +
+                            'Ms,Jane,Doe,j.doe@school.edu,Year 13,Group B';
+                        
+                        const blob = new Blob([template], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'staff_template.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    },
+                    
+                    handleCsvFile(event) {
+                        const file = event.target.files[0];
+                        if (!file) return;
+                        
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.parseCsv(e.target.result);
+                        };
+                        reader.readAsText(file);
+                    },
+                    
+                    parseCsv(csvText) {
+                        this.csvData = [];
+                        this.csvErrors = [];
+                        
+                        // Split into lines and remove empty lines
+                        const lines = csvText.split('\n').filter(line => line.trim());
+                        if (lines.length < 2) {
+                            this.csvErrors.push('CSV file must contain headers and at least one row of data');
+                            return;
+                        }
+                        
+                        // Parse headers
+                        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                        
+                        // Check for required columns
+                        const requiredColumns = ['first name', 'last name', 'email'];
+                        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+                        if (missingColumns.length > 0) {
+                            this.csvErrors.push(`Missing required columns: ${missingColumns.join(', ')}`);
+                            return;
+                        }
+                        
+                        // Find column indices
+                        const colIndex = {
+                            title: headers.indexOf('title'),
+                            firstName: headers.indexOf('first name'),
+                            lastName: headers.indexOf('last name'),
+                            email: headers.indexOf('email'),
+                            yearGroup: headers.indexOf('year group'),
+                            group: headers.indexOf('group')
+                        };
+                        
+                        // Parse data rows
+                        for (let i = 1; i < lines.length; i++) {
+                            const values = lines[i].split(',').map(v => v.trim());
+                            
+                            // Skip empty rows
+                            if (!values[colIndex.firstName] && !values[colIndex.lastName] && !values[colIndex.email]) {
+                                continue;
+                            }
+                            
+                            const row = {
+                                title: colIndex.title >= 0 ? values[colIndex.title] : '',
+                                firstName: values[colIndex.firstName] || '',
+                                lastName: values[colIndex.lastName] || '',
+                                email: values[colIndex.email] || '',
+                                yearGroup: colIndex.yearGroup >= 0 ? values[colIndex.yearGroup] : '',
+                                group: colIndex.group >= 0 ? values[colIndex.group] : ''
+                            };
+                            
+                            // Validate row
+                            if (!row.firstName || !row.lastName || !row.email) {
+                                this.csvErrors.push(`Row ${i}: Missing required fields (First Name, Last Name, or Email)`);
+                                continue;
+                            }
+                            
+                            // Validate email format
+                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                            if (!emailRegex.test(row.email)) {
+                                this.csvErrors.push(`Row ${i}: Invalid email format (${row.email})`);
+                                continue;
+                            }
+                            
+                            this.csvData.push(row);
+                        }
+                        
+                        // Check if too many staff
+                        if (this.csvData.length > this.summary?.accountsRemaining) {
+                            this.csvErrors.push(`Too many staff: ${this.csvData.length} in CSV but only ${this.summary.accountsRemaining} accounts remaining`);
+                        }
+                        
+                        if (this.csvData.length === 0 && this.csvErrors.length === 0) {
+                            this.csvErrors.push('No valid data found in CSV file');
+                        }
+                    },
+                    
+                    async uploadCsvData() {
+                        if (this.csvData.length === 0 || this.csvErrors.length > 0) return;
+                        
+                        this.csvUploading = true;
+                        this.csvUploadProgress = 0;
+                        
+                        const successfulUploads = [];
+                        const failedUploads = [];
+                        
+                        for (let i = 0; i < this.csvData.length; i++) {
+                            const staff = this.csvData[i];
+                            this.csvUploadProgress = i + 1;
+                            
+                            try {
+                                // Generate password for this staff member
+                                const tempPassword = this.generatePassword();
+                                
+                                // Create staff record
+                                const accountData = {
+                                    field_122: [customerField], // Connected VESPA Customer
+                                    field_69: {
+                                        title: staff.title,
+                                        first: staff.firstName,
+                                        last: staff.lastName
+                                    },
+                                    field_73: ['profile_7'], // User Role
+                                    field_216: staff.group, // Group
+                                    field_70: staff.email, // Email
+                                    field_441: 'RESOURCE PORTAL', // Account Type
+                                    field_1493: 'Level 2 & 3', // Account Level
+                                    field_126: schoolId, // School ID
+                                    field_71: tempPassword, // Password
+                                    field_550: staff.yearGroup // Year Group
+                                };
+                                
+                                const response = await this.apiRequest('POST', 'objects/object_3/records', accountData);
+                                
+                                if (response.id) {
+                                    successfulUploads.push(staff);
+                                    
+                                    // Update tutor record
+                                    await this.updateTutorRecord(staff.email);
+                                    
+                                    // Send welcome email
+                                    await this.sendWelcomeEmail({
+                                        name: `${staff.firstName} ${staff.lastName}`,
+                                        email: staff.email,
+                                        password: tempPassword
+                                    });
+                                }
+                            } catch (error) {
+                                console.error(`Failed to create staff ${staff.email}:`, error);
+                                failedUploads.push({
+                                    staff: staff,
+                                    error: error.message || 'Unknown error'
+                                });
+                            }
+                        }
+                        
+                        this.csvUploading = false;
+                        this.closeCsvModal();
+                        
+                        // Show results
+                        if (successfulUploads.length > 0) {
+                            this.showMessage(
+                                'Successfully imported ' + successfulUploads.length + ' staff members' + (failedUploads.length > 0 ? ', ' + failedUploads.length + ' failed' : '') + '.',
+                                failedUploads.length > 0 ? 'warning' : 'success'
+                            );
+                            
+                            // Reload staff list
+                            await this.loadStaffList();
+                        } else {
+                            this.showMessage('Failed to import staff. Please check your data and try again.', 'error');
+                        }
+                        
+                        // Log failures for debugging
+                        if (failedUploads.length > 0) {
+                            console.error('Failed uploads:', failedUploads);
+                        }
                     }
                 },
                 mounted() {
