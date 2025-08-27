@@ -696,6 +696,7 @@
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
@@ -1249,6 +1250,9 @@
             // Setup event listeners
             setupEventListeners();
             
+            // Apply permanent header offset
+            applyFixedHeaderOffset();
+
             // Track current page
             trackPageView(userType, currentScene);
             
@@ -1364,6 +1368,30 @@
             // You can add analytics tracking here if needed
         }
         
+        // Apply a permanent offset so the browser translation bar doesn't cover our header
+        const FIXED_HEADER_OFFSET_PX = 35; // Adjust as needed
+        function getCssPaddingTop() {
+            const previousInline = document.body.style.paddingTop;
+            document.body.style.paddingTop = '';
+            const cssPadding = parseFloat(window.getComputedStyle(document.body).paddingTop) || 0;
+            document.body.style.paddingTop = previousInline;
+            return cssPadding;
+        }
+        function applyFixedHeaderOffset() {
+            try {
+                const header = document.getElementById('vespaGeneralHeader');
+                if (!header) return;
+                // Set header top offset
+                header.style.top = FIXED_HEADER_OFFSET_PX + 'px';
+                // Add offset on top of the current CSS padding (handles breadcrumb/mobile variants)
+                const basePadding = getCssPaddingTop();
+                document.body.style.paddingTop = (basePadding + FIXED_HEADER_OFFSET_PX) + 'px';
+                log('Applied fixed header offset', { offset: FIXED_HEADER_OFFSET_PX, basePadding });
+            } catch (e) {
+                console.warn('[General Header] Failed to apply fixed header offset', e);
+            }
+        }
+
         // Lightweight DOM cleanup function - only clean up what's actually needed
         function cleanupPageContent(newScene) {
             log('Starting lightweight DOM cleanup for scene change to:', newScene);
@@ -2087,6 +2115,8 @@
                                 addTranslationWidget();
                             }
                         }
+                        // Re-apply permanent header offset after scene settles
+                        applyFixedHeaderOffset();
                     }, 1000); // Give page time to settle
                 }
             });
