@@ -99,6 +99,21 @@
         function initializeVueApp(container) {
             log('Initializing Vue app...');
             
+            // Check if Vue is available
+            if (typeof Vue === 'undefined') {
+                console.error('[Resource Staff Manager] Vue is not loaded! Please ensure Vue.js is loaded before this script.');
+                container.innerHTML = `
+                    <div class="rsm-error" style="padding: 40px; text-align: center; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px; display: block;"></i>
+                        <h2>Error: Required Library Not Loaded</h2>
+                        <p>Vue.js library is not available. Please refresh the page or contact support.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            log('Vue is available:', typeof Vue);
+            
             // Vue component definition
             const ResourceStaffManager = {
                 template: `
