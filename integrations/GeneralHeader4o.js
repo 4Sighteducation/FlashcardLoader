@@ -644,12 +644,12 @@
                 color: '#5899a8', // Muted blue-green - professional yet approachable
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
-                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' },
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings/', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
@@ -676,13 +676,13 @@
                 color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-manager', scene: 'scene_1272' },
-                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter', scene: 'scene_1214' },
-                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
-                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
+                    { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-manager/', scene: 'scene_1272' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' },
+                    { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' },
+                    { label: 'Settings', icon: 'fa-cog', href: '#account-settings/', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             },
@@ -1362,6 +1362,22 @@
                         const currentHash = window.location.hash;
                         log(`Navigation from ${currentHash} to ${href} (scene: ${targetScene})`);
                         
+                        // CRITICAL: Disable Universal Redirect for ALL navigation
+                        // This prevents redirect interference when clicking header buttons
+                        window._universalRedirectCompleted = true;
+                        window._bypassUniversalRedirect = true;
+                        window._navigationInProgress = true;
+                        sessionStorage.setItem('universalRedirectCompleted', 'true');
+                        sessionStorage.setItem('navigationTarget', targetScene);
+                        
+                        // Kill any Universal Redirect timers
+                        if (window._universalRedirectTimer) {
+                            clearInterval(window._universalRedirectTimer);
+                            clearTimeout(window._universalRedirectTimer);
+                            window._universalRedirectTimer = null;
+                            log('Killed Universal Redirect timer during navigation');
+                        }
+                        
                         // UNIVERSAL CLEANUP: Force cleanup for all scene navigations
                         // This ensures fresh app loads and prevents issues with cached states
                         if (targetScene && targetScene !== currentScene) {
@@ -1385,8 +1401,28 @@
                         setTimeout(() => {
                             window.location.hash = href;
                             
+                            // Special handling for Resource Portal scenes
+                            if (targetScene === 'scene_1272' || targetScene === 'scene_481') {
+                                log(`Special handling for Resource Portal scene ${targetScene}`);
+                                // Double-check that Universal Redirect is still disabled
+                                window._universalRedirectCompleted = true;
+                                window._bypassUniversalRedirect = true;
+                                
+                                // Force scene render if needed
+                                setTimeout(() => {
+                                    const currentScene = Knack.scene ? Knack.scene.key : null;
+                                    if (currentScene !== targetScene) {
+                                        log(`Scene didn't change properly for ${targetScene}, attempting force navigation`);
+                                        // Force a page reload as fallback
+                                        window.location.href = window.location.origin + window.location.pathname + href;
+                                    }
+                                    // Clear navigation flag after successful navigation
+                                    window._navigationInProgress = false;
+                                }, 500);
+                            }
+                            
                             // For Results and Coaching tabs, ensure the scene renders properly
-                            if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
+                            else if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
                                 log(`Forcing scene render for ${targetScene}`);
                                 // Trigger a manual scene render event if Knack doesn't fire it
                                 setTimeout(() => {
@@ -1396,6 +1432,13 @@
                                         // Force a page reload as fallback
                                         window.location.href = window.location.origin + window.location.pathname + href;
                                     }
+                                    // Clear navigation flag after successful navigation
+                                    window._navigationInProgress = false;
+                                }, 500);
+                            } else {
+                                // Clear navigation flag for other scenes
+                                setTimeout(() => {
+                                    window._navigationInProgress = false;
                                 }, 500);
                             }
                         }, 50);
@@ -2059,6 +2102,66 @@
         // Initialize the header
         function init() {
             log('Starting General Header initialization...');
+            
+            // ROBUST FIX: Disable Universal Redirect when user is logged in and navigating
+            // Check if user is logged in
+            const userType = getUserType();
+            const currentPath = window.location.hash;
+            
+            // If user is logged in and not on home/login page, disable Universal Redirect
+            if (userType && !currentPath.includes('#home/') && currentPath !== '#home' && currentPath !== '') {
+                // User is logged in and on a page other than login
+                window._universalRedirectCompleted = true;
+                window._bypassUniversalRedirect = true;
+                sessionStorage.setItem('universalRedirectCompleted', 'true');
+                
+                // Kill any Universal Redirect timers if they exist
+                if (window._universalRedirectTimer) {
+                    clearInterval(window._universalRedirectTimer);
+                    clearTimeout(window._universalRedirectTimer);
+                    window._universalRedirectTimer = null;
+                    log('Killed Universal Redirect timer - user is already logged in and navigated');
+                }
+                
+                // Set up a periodic check to keep Universal Redirect disabled
+                if (!window._universalRedirectKiller) {
+                    let checkCount = 0;
+                    window._universalRedirectKiller = setInterval(() => {
+                        checkCount++;
+                        
+                        // Kill timers if they exist
+                        if (window._universalRedirectTimer) {
+                            clearInterval(window._universalRedirectTimer);
+                            clearTimeout(window._universalRedirectTimer);
+                            window._universalRedirectTimer = null;
+                            log('Killed Universal Redirect timer (periodic check)');
+                        }
+                        
+                        // Ensure flags stay set
+                        window._universalRedirectCompleted = true;
+                        window._bypassUniversalRedirect = true;
+                        sessionStorage.setItem('universalRedirectCompleted', 'true');
+                        
+                        // Stop after 60 checks (60 seconds)
+                        if (checkCount >= 60) {
+                            clearInterval(window._universalRedirectKiller);
+                            window._universalRedirectKiller = null;
+                            log('Stopped Universal Redirect killer after 60 seconds');
+                        }
+                    }, 1000); // Check every second
+                }
+            }
+            
+            // Also disable Universal Redirect if we're on a Resource Portal specific page
+            if (currentPath.includes('#resource-staff-manager') || 
+                currentPath.includes('#tutor-activities/resources-levels') ||
+                currentPath.includes('scene_1272') || 
+                currentPath.includes('scene_481')) {
+                window._universalRedirectCompleted = true;
+                window._bypassUniversalRedirect = true;
+                sessionStorage.setItem('universalRedirectCompleted', 'true');
+                log('On Resource Portal specific page, disabled Universal Redirect');
+            }
             
             // Check if we're on a login page
             const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5']; // Add your actual login scene IDs
