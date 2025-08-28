@@ -1006,67 +1006,32 @@
                             const currentUser = Knack.getUserAttributes();
                             const adminEmail = currentUser.email;
                             
-                            // Find the Staff Admin record (object_5) by connected user account
+                            // Find the Staff Admin record (object_5) - USE EMAIL AS PRIMARY METHOD
                             let staffAdminRecordId = null;
                             try {
-                                // First try using the user account connection (field_119 in object_5 connects to object_3)
-                                const adminFilters = [
+                                // PRIMARY METHOD: Search by email (field_86) - THIS WORKS RELIABLY
+                                console.log('[Resource Staff Manager] Looking for Staff Admin record for email:', adminEmail);
+                                
+                                const emailFilters = [
                                     {
-                                        field: 'field_119', // User Account connection in object_5
+                                        field: 'field_86', // Email field in object_5 (Staff Admin)
                                         operator: 'is',
-                                        value: currentUser.id // Use the logged-in user's ID
+                                        value: adminEmail
                                     }
                                 ];
                                 
-                                console.log('[Resource Staff Manager] Looking for Staff Admin record for user ID:', currentUser.id, 'email:', adminEmail);
-                                
-                                const adminResponse = await this.apiRequest('GET', 'objects/object_5/records', {
-                                    filters: adminFilters
+                                const emailResponse = await this.apiRequest('GET', 'objects/object_5/records', {
+                                    filters: emailFilters
                                 });
                                 
-                                if (adminResponse.records && adminResponse.records.length > 0) {
-                                    staffAdminRecordId = adminResponse.records[0].id;
-                                    console.log('[Resource Staff Manager] Found Staff Admin record via user connection:', staffAdminRecordId);
+                                if (emailResponse.records && emailResponse.records.length > 0) {
+                                    // Should only be one record with this email
+                                    staffAdminRecordId = emailResponse.records[0].id;
+                                    console.log('[Resource Staff Manager] Found Staff Admin record via email lookup:', staffAdminRecordId);
+                                    console.log('[Resource Staff Manager] Staff Admin name:', emailResponse.records[0].field_87);
                                 } else {
-                                    // Fallback: try to find by email field (field_86)
-                                    console.log('[Resource Staff Manager] No Staff Admin found via user connection, trying email search...');
-                                    
-                                    const emailFilters = [
-                                        {
-                                            field: 'field_86', // Email field in object_5 (Staff Admin)
-                                            operator: 'is',
-                                            value: adminEmail
-                                        }
-                                    ];
-                                    
-                                    const emailResponse = await this.apiRequest('GET', 'objects/object_5/records', {
-                                        filters: emailFilters
-                                    });
-                                    
-                                    if (emailResponse.records && emailResponse.records.length > 0) {
-                                        // Find exact match
-                                        const exactMatch = emailResponse.records.find(record => {
-                                            const recordEmail = record.field_86_raw || record.field_86;
-                                            
-                                            if (typeof recordEmail === 'string') {
-                                                // Handle HTML formatted emails
-                                                if (recordEmail.includes('mailto:')) {
-                                                    const match = recordEmail.match(/mailto:([^"]+)"/);
-                                                    return match && match[1].toLowerCase() === adminEmail.toLowerCase();
-                                                }
-                                                // Direct comparison
-                                                return recordEmail.toLowerCase() === adminEmail.toLowerCase();
-                                            }
-                                            return false;
-                                        });
-                                        
-                                        if (exactMatch) {
-                                            staffAdminRecordId = exactMatch.id;
-                                            console.log('[Resource Staff Manager] Found Staff Admin record via email match:', staffAdminRecordId);
-                                        } else {
-                                            console.log('[Resource Staff Manager] No exact email match found. Records checked:', emailResponse.records.length);
-                                        }
-                                    }
+                                    console.log('[Resource Staff Manager] No Staff Admin record found for email:', adminEmail);
+                                    console.log('[Resource Staff Manager] This user may not have a Staff Admin role in the system');
                                 }
                                 
                                 if (!staffAdminRecordId) {
@@ -1310,7 +1275,25 @@
                         try {
                             console.log('[Resource Staff Manager] Sending password reset email to:', data.email);
                             
-                            // SendGrid API v3 format - using inline HTML instead of template
+                            // SendGrid API v3 format - using PASSWORD RESET TEMPLATE
+                            const emailData = {
+                                personalizations: [{
+                                    to: [{ email: data.email }],
+                                    dynamic_template_data: {
+                                        name: data.name.split(' ')[0], // First name only
+                                        email: data.email,
+                                        password: data.password,
+                                        loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
+                                    }
+                                }],
+                                from: {
+                                    email: 'noreply@vespa.academy',
+                                    name: 'VESPA Academy'
+                                },
+                                template_id: 'd-98ba667dd8f5421ca382c13c2f160f55' // PASSWORD RESET TEMPLATE
+                            };
+                            
+                            /* OLD INLINE HTML - KEEP FOR REFERENCE
                             const emailData = {
                                 personalizations: [{
                                     to: [{ email: data.email }]
@@ -1363,6 +1346,7 @@
                                     `
                                 }]
                             };
+                            */
                             
                             const response = await fetch('https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email', {
                                 method: 'POST',
