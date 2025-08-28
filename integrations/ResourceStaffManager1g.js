@@ -954,12 +954,36 @@
                     // Update tutor record
                     async updateTutorRecord(email, group = '', yearGroup = '') {
                         try {
-                            // Get current user's record ID for field_225 connection
-                            const currentUser = Knack.getUserAttributes();
-                            const staffAdminId = currentUser.id;
-                            
                             console.log('[Resource Staff Manager] Updating tutor record for:', email);
-                            console.log('[Resource Staff Manager] Staff Admin ID for field_225:', staffAdminId);
+                            
+                            // Get current user's email to find their Staff Admin record
+                            const currentUser = Knack.getUserAttributes();
+                            const adminEmail = currentUser.email;
+                            
+                            // Find the Staff Admin record (object_5) by email
+                            let staffAdminRecordId = null;
+                            try {
+                                const adminFilters = [
+                                    {
+                                        field: 'field_121', // Email field in object_5
+                                        operator: 'is',
+                                        value: adminEmail
+                                    }
+                                ];
+                                
+                                const adminResponse = await this.apiRequest('GET', 'objects/object_5/records', {
+                                    filters: adminFilters
+                                });
+                                
+                                if (adminResponse.records && adminResponse.records.length > 0) {
+                                    staffAdminRecordId = adminResponse.records[0].id;
+                                    console.log('[Resource Staff Manager] Found Staff Admin record ID:', staffAdminRecordId);
+                                } else {
+                                    console.log('[Resource Staff Manager] No Staff Admin record found for current user, skipping field_225');
+                                }
+                            } catch (adminError) {
+                                console.log('[Resource Staff Manager] Could not find Staff Admin record, skipping field_225:', adminError.message);
+                            }
                             
                             // Find the tutor record by email
                             const filters = [
@@ -977,13 +1001,17 @@
                             if (response.records && response.records.length > 0) {
                                 const tutorId = response.records[0].id;
                                 
-                                // Update tutor record with proper connections
+                                // Build update data
                                 const updateData = {
                                     field_220: [customerField], // VESPA Customer
-                                    field_225: [staffAdminId], // Staff Admin record ID (connection field)
                                     field_216: group || this.staffForm.group, // Group
                                     field_562: yearGroup || this.staffForm.yearGroup // Year Group
                                 };
+                                
+                                // Only add field_225 if we found a valid Staff Admin record
+                                if (staffAdminRecordId) {
+                                    updateData.field_225 = [staffAdminRecordId];
+                                }
                                 
                                 console.log('[Resource Staff Manager] Updating tutor record with data:', updateData);
                                 
@@ -1127,15 +1155,22 @@
                         try {
                             console.log('[Resource Staff Manager] Sending welcome email to:', data.email);
                             
+                            // SendGrid API v3 format with personalizations
                             const emailData = {
-                                to: data.email,
-                                templateId: 'd-29e82dfb3bd14de6815f4b225b9ef7b3',
-                                dynamicTemplateData: {
-                                    name: data.name.split(' ')[0], // First name only
-                                    email: data.email,
-                                    password: data.password,
-                                    loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
-                                }
+                                personalizations: [{
+                                    to: [{ email: data.email }],
+                                    dynamic_template_data: {
+                                        name: data.name.split(' ')[0], // First name only
+                                        email: data.email,
+                                        password: data.password,
+                                        loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
+                                    }
+                                }],
+                                from: {
+                                    email: 'noreply@vespa.academy',
+                                    name: 'VESPA Academy'
+                                },
+                                template_id: 'd-29e82dfb3bd14de6815f4b225b9ef7b3'
                             };
                             
                             const response = await fetch('https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email', {
@@ -1166,15 +1201,22 @@
                         try {
                             console.log('[Resource Staff Manager] Sending password reset email to:', data.email);
                             
+                            // SendGrid API v3 format with personalizations
                             const emailData = {
-                                to: data.email,
-                                templateId: 'd-29e82dfb3bd14de6815f4b225b9ef7b3',
-                                dynamicTemplateData: {
-                                    name: data.name.split(' ')[0], // First name only
-                                    email: data.email,
-                                    password: data.password,
-                                    loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
-                                }
+                                personalizations: [{
+                                    to: [{ email: data.email }],
+                                    dynamic_template_data: {
+                                        name: data.name.split(' ')[0], // First name only
+                                        email: data.email,
+                                        password: data.password,
+                                        loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
+                                    }
+                                }],
+                                from: {
+                                    email: 'noreply@vespa.academy',
+                                    name: 'VESPA Academy'
+                                },
+                                template_id: 'd-29e82dfb3bd14de6815f4b225b9ef7b3'
                             };
                             
                             const response = await fetch('https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email', {
@@ -1210,23 +1252,34 @@
                             const adminName = this.formatName(currentUser.values?.field_69_raw || currentUser.values?.field_69);
                             
                             // Prepare email list for notification
-                            const emailList = details.map(item => `• ${item}`).join('\n');
+                            const emailList = details.map(item => `• ${item}`).join('<br>');
                             
-                            // Send to staff admin
+                            // Send to staff admin - using SendGrid API v3 format
                             const adminEmailData = {
-                                to: adminEmail,
-                                cc: 'admin@vespa.academy', // Always CC admin@vespa.academy
+                                personalizations: [{
+                                    to: [{ email: adminEmail }],
+                                    cc: [{ email: 'admin@vespa.academy' }] // Always CC admin@vespa.academy
+                                }],
+                                from: {
+                                    email: 'noreply@vespa.academy',
+                                    name: 'VESPA Academy'
+                                },
                                 subject: `Resource Portal - ${action} Confirmation`,
-                                html: `
-                                    <p>Hi ${adminName.split(' ')[0] || 'Admin'},</p>
-                                    <p>This email confirms the following ${action.toLowerCase()} action(s) in the Resource Portal:</p>
-                                    <p><strong>Action Performed:</strong> ${action}</p>
-                                    <p><strong>Details:</strong></p>
-                                    <pre>${emailList}</pre>
-                                    <p>Time: ${new Date().toLocaleString('en-GB')}</p>
-                                    <p>If you have any questions, please contact support.</p>
-                                    <p>Best regards,<br>VESPA Academy Team</p>
-                                `
+                                content: [{
+                                    type: 'text/html',
+                                    value: `
+                                        <p>Hi ${adminName.split(' ')[0] || 'Admin'},</p>
+                                        <p>This email confirms the following ${action.toLowerCase()} action(s) in the Resource Portal:</p>
+                                        <p><strong>Action Performed:</strong> ${action}</p>
+                                        <p><strong>Details:</strong></p>
+                                        <div style="margin-left: 20px;">
+                                            ${emailList}
+                                        </div>
+                                        <p>Time: ${new Date().toLocaleString('en-GB')}</p>
+                                        <p>If you have any questions, please contact support.</p>
+                                        <p>Best regards,<br>VESPA Academy Team</p>
+                                    `
+                                }]
                             };
                             
                             const response = await fetch('https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email', {
@@ -1525,9 +1578,9 @@
                             this.showMessage('Failed to import staff. Please check your data and try again.', 'error');
                         }
                         
-                        // Log summary
+                        // Log summary  
                         console.log('[Resource Staff Manager] CSV Upload Summary:', {
-                            total: this.csvData.length,
+                            total: successfulUploads.length + failedUploads.length,
                             successful: successfulUploads.length,
                             failed: failedUploads.length,
                             emailResults: emailResults
@@ -2213,4 +2266,3 @@
     
     console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
 })();
-
