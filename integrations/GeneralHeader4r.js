@@ -6,7 +6,10 @@
 (function() {
     'use strict';
     
-    console.log('[General Header] Script loaded, waiting for initialization...');
+    // Only show script load message if debug mode is enabled
+    if (window.GENERAL_HEADER_CONFIG && window.GENERAL_HEADER_CONFIG.debugMode) {
+        console.log('[General Header] Script loaded, waiting for initialization...');
+    }
     
     function initializeGeneralHeader() {
         const config = window.GENERAL_HEADER_CONFIG;
@@ -2330,5 +2333,8 @@
     // Export the initializer function
     window.initializeGeneralHeader = initializeGeneralHeader;
     
-    console.log('[General Header] Script setup complete, initializer function ready');
+    // Only show setup complete message if debug mode is enabled
+    if (window.GENERAL_HEADER_CONFIG && window.GENERAL_HEADER_CONFIG.debugMode) {
+        console.log('[General Header] Script setup complete, initializer function ready');
+    }
 })();
