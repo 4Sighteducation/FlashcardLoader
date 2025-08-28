@@ -7,7 +7,21 @@
 (function() {
     'use strict';
     
-    console.log('[Scene 481 Fix v6] Script loaded');
+    // Debug mode flag - set to false for production
+    const DEBUG = false;
+    
+    // Helper function for logging
+    function log(message, data) {
+        if (DEBUG) {
+            if (data !== undefined) {
+                log(' ' + message, data);
+            } else {
+                log(' ' + message);
+            }
+        }
+    }
+    
+    log('Script loaded');
     
     let stylesApplied = false;
     
@@ -18,7 +32,7 @@
             return;
         }
         
-        console.log('[Scene 481 Fix v6] Applying layout fixes');
+        log(' Applying layout fixes');
         
         // Apply CSS fixes (only once)
         if (!stylesApplied) {
@@ -38,14 +52,14 @@
         const existingStyle = document.getElementById(styleId);
         if (existingStyle) {
             existingStyle.remove();
-            console.log('[Scene 481 Fix v6] Removed existing styles for refresh');
+            log(' Removed existing styles for refresh');
         }
         
         const style = document.createElement('style');
         style.id = styleId;
         
         // Log that we're applying styles
-        console.log('[Scene 481 Fix v6] Injecting enhanced CSS styles...');
+        log(' Injecting enhanced CSS styles...');
         
         style.textContent = `
                 /* Hide the specific view column groups that are taking up space */
@@ -477,15 +491,15 @@
         stylesApplied = true;
         
         // Log successful injection and verify
-        console.log('[Scene 481 Fix v6] Styles applied successfully!');
-        console.log('[Scene 481 Fix v6] Verify styles by checking for #scene-481-fixes-v6 in <head>');
+        log(' Styles applied successfully!');
+        log(' Verify styles by checking for #scene-481-fixes-v6 in <head>');
         
         // Debug: Check if specific styles are working
         setTimeout(() => {
             const testImg = document.querySelector('#kn-scene_481 .field_1439 img, #kn-scene_481 .field_2922 img, #kn-scene_481 .field_2924 img');
             if (testImg) {
                 const computedStyle = window.getComputedStyle(testImg);
-                console.log('[Scene 481 Fix v6] Book image computed styles:', {
+                log(' Book image computed styles:', {
                     border: computedStyle.border,
                     borderRadius: computedStyle.borderRadius,
                     position: computedStyle.position,
@@ -517,7 +531,7 @@
                 element.style.overflow = 'hidden';
                 element.style.margin = '0';
                 element.style.padding = '0';
-                console.log(`[Scene 481 Fix v6] Hidden ${selector}`);
+                log(`Hidden ${selector}`);
             });
         });
         
@@ -527,7 +541,7 @@
             const elements = document.querySelectorAll(`#kn-scene_481 ${selector}`);
             elements.forEach(element => {
                 element.style.display = 'none';
-                console.log(`[Scene 481 Fix v6] Hidden ${selector}`);
+                log(`Hidden ${selector}`);
             });
         });
         
@@ -554,14 +568,14 @@
     function enhanceBookImages() {
         const bookImages = document.querySelectorAll('#kn-scene_481 .field_1439 img, #kn-scene_481 .field_2922 img, #kn-scene_481 .field_2924 img, #kn-scene_481 .col-1 img, #kn-scene_481 .col-3 img, #kn-scene_481 .col-5 img, #kn-scene_481 .levels img');
         
-        console.log(`[Scene 481 Fix v6] Found ${bookImages.length} book images to enhance`);
+        log(`Found ${bookImages.length} book images to enhance`);
         
         // Debug: Check what selectors we're finding
         const allImagesInView = document.querySelectorAll('#kn-scene_481 img');
-        console.log(`[Scene 481 Fix v6] Total images in scene: ${allImagesInView.length}`);
+        log(`Total images in scene: ${allImagesInView.length}`);
         
         bookImages.forEach((img, index) => {
-            console.log(`[Scene 481 Fix v6] Enhancing book image ${index + 1}:`, img.src);
+            log(`Enhancing book image ${index + 1}:`, img.src);
             if (!img.hasAttribute('data-hover-handler-added')) {
                 img.style.cursor = 'pointer';
                 // DO NOT add click handlers - preserve original Knack navigation!
@@ -600,7 +614,7 @@
             }
         }
         
-        console.log(`[Scene 481 Fix v6] Enhanced ${bookImages.length} book images`);
+        log(`Enhanced ${bookImages.length} book images`);
     }
     
     // Initialize
@@ -609,13 +623,13 @@
         
         // Simply log that initialization is complete
         setTimeout(() => {
-            console.log('[Scene 481 Fix v6] Layout fixes applied - books centered');
+            log(' Layout fixes applied - books centered');
         }, 1000);
     }, 500);
     
     // Re-apply on scene render
     $(document).on('knack-scene-render.scene_481', function() {
-        console.log('[Scene 481 Fix v6] Scene rendered');
+        log(' Scene rendered');
         setTimeout(() => {
             fixScene481Layout();
         }, 300);
@@ -623,7 +637,7 @@
     
     // Re-apply on view render
     $(document).on('knack-view-render.view_1277', function() {
-        console.log('[Scene 481 Fix v6] Book view rendered');
+        log(' Book view rendered');
         setTimeout(() => {
             fixScene481Layout();
         }, 300);
@@ -632,14 +646,14 @@
     // Also check for any view render in scene_481
     $(document).on('knack-view-render.any', function(event, view) {
         if (window.location.hash.includes('scene_481')) {
-            console.log(`[Scene 481 Fix v6] View ${view.key} rendered in scene_481`);
+            log(`View ${view.key} rendered in scene_481`);
             setTimeout(() => {
                 applyDOMFixes(); // Just apply DOM fixes, don't re-apply styles
             }, 200);
         }
     });
     
-    console.log('[Scene 481 Fix v6] Initialization complete');
+    log(' Initialization complete');
     
     // Add global debugging function
     window.debugScene481Styles = function() {
@@ -707,7 +721,7 @@
         console.log('\n=== Debug complete. Check if styles are now visible ===');
     };
     
-    console.log('[Scene 481 Fix v6] Debug function available: window.debugScene481Styles()');
+    log(' Debug function available: window.debugScene481Styles()');
     
     // Add function to find the culprit element creating the border
     window.findBorderCulprit = function() {
@@ -759,7 +773,7 @@
         console.log('\nTo remove highlights, refresh the page');
     };
     
-    console.log('[Scene 481 Fix v6] Border detective available: window.findBorderCulprit()');
+    log(' Border detective available: window.findBorderCulprit()');
     
     // Add function to find what's causing horizontal scroll
     window.findScrollCulprit = function() {
@@ -803,6 +817,5 @@
         console.log('\nTo remove highlights, refresh the page');
     };
     
-    console.log('[Scene 481 Fix v6] Scroll detective available: window.findScrollCulprit()');
+    log(' Scroll detective available: window.findScrollCulprit()');
 })(); 
-
