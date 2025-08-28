@@ -489,6 +489,51 @@
                             </div>
                         </div>
                         
+                        <!-- Password Reset Success Modal -->
+                        <div v-if="passwordResetModal && passwordResetModal.visible" class="rsm-modal-overlay" @click.self="closePasswordResetModal">
+                            <div class="rsm-modal rsm-modal-small">
+                                <div class="rsm-modal-header" style="background: #28a745;">
+                                    <h3 style="color: white;"><i class="fas fa-check-circle"></i> Password Reset Successful</h3>
+                                    <button @click="closePasswordResetModal" class="rsm-modal-close">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="rsm-modal-body">
+                                    <div class="rsm-alert" style="background: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px;">
+                                        <p style="margin: 0 0 10px 0;"><strong>Password has been reset for:</strong></p>
+                                        <p style="margin: 5px 0;">{{ passwordResetModal.staff?.name }}</p>
+                                        <p style="margin: 5px 0;">{{ passwordResetModal.staff?.email }}</p>
+                                    </div>
+                                    
+                                    <div v-if="passwordResetModal.emailSent" style="margin: 20px 0;">
+                                        <p><i class="fas fa-envelope" style="color: #28a745;"></i> <strong>Email Sent Successfully</strong></p>
+                                        <p style="color: #666; font-size: 14px;">The staff member has received an email with their new login credentials.</p>
+                                    </div>
+                                    
+                                    <div v-else style="margin: 20px 0;">
+                                        <div class="rsm-alert rsm-alert-warning">
+                                            <p style="margin: 0 0 10px 0;"><strong>⚠️ Email delivery failed</strong></p>
+                                            <p style="margin: 5px 0;">Please provide these credentials manually:</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Always show password for admin reference -->
+                                    <div style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                                        <p style="margin: 5px 0;"><strong>New Password:</strong></p>
+                                        <code style="background: white; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; display: block; font-family: monospace; user-select: all;">{{ passwordResetModal.password }}</code>
+                                        <button @click="copyPassword" class="rsm-btn rsm-btn-secondary" style="margin-top: 10px;">
+                                            <i class="fas fa-copy"></i> Copy Password
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="rsm-modal-footer">
+                                    <button @click="closePasswordResetModal" class="rsm-btn rsm-btn-primary">
+                                        <i class="fas fa-check"></i> Done
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Success/Error Messages -->
                         <div v-if="message" class="rsm-message" :class="'rsm-message-' + messageType">
                             <i :class="messageIcon"></i>
@@ -517,6 +562,7 @@
                         csvErrors: [],
                         csvUploading: false,
                         csvUploadProgress: 0,
+                        passwordResetModal: null,
                         staffForm: {
                             prefix: '',
                             firstName: '',
@@ -960,53 +1006,74 @@
                             const currentUser = Knack.getUserAttributes();
                             const adminEmail = currentUser.email;
                             
-                            // Find the Staff Admin record (object_5) by email - must match EXACTLY
+                            // Find the Staff Admin record (object_5) by connected user account
                             let staffAdminRecordId = null;
                             try {
+                                // First try using the user account connection (field_119 in object_5 connects to object_3)
                                 const adminFilters = [
                                     {
-                                        field: 'field_121', // Email field in object_5
+                                        field: 'field_119', // User Account connection in object_5
                                         operator: 'is',
-                                        value: adminEmail
+                                        value: currentUser.id // Use the logged-in user's ID
                                     }
                                 ];
                                 
+                                console.log('[Resource Staff Manager] Looking for Staff Admin record for user ID:', currentUser.id, 'email:', adminEmail);
+                                
                                 const adminResponse = await this.apiRequest('GET', 'objects/object_5/records', {
-                                    filters: adminFilters,
-                                    rows_per_page: 1000  // Get more records to search through
+                                    filters: adminFilters
                                 });
                                 
                                 if (adminResponse.records && adminResponse.records.length > 0) {
-                                    // Find the exact match by verifying the email field
-                                    const exactMatch = adminResponse.records.find(record => {
-                                        // Check both raw and formatted email fields
-                                        const recordEmail = record.field_121_raw || record.field_121;
-                                        
-                                        // Handle HTML formatted emails
-                                        if (typeof recordEmail === 'string' && recordEmail.includes('mailto:')) {
-                                            const match = recordEmail.match(/mailto:([^"]+)"/);
-                                            return match && match[1].toLowerCase() === adminEmail.toLowerCase();
+                                    staffAdminRecordId = adminResponse.records[0].id;
+                                    console.log('[Resource Staff Manager] Found Staff Admin record via user connection:', staffAdminRecordId);
+                                } else {
+                                    // Fallback: try to find by email field (field_86)
+                                    console.log('[Resource Staff Manager] No Staff Admin found via user connection, trying email search...');
+                                    
+                                    const emailFilters = [
+                                        {
+                                            field: 'field_86', // Email field in object_5 (Staff Admin)
+                                            operator: 'is',
+                                            value: adminEmail
                                         }
-                                        
-                                        // Direct string comparison
-                                        return recordEmail && recordEmail.toLowerCase() === adminEmail.toLowerCase();
+                                    ];
+                                    
+                                    const emailResponse = await this.apiRequest('GET', 'objects/object_5/records', {
+                                        filters: emailFilters
                                     });
                                     
-                                    if (exactMatch) {
-                                        staffAdminRecordId = exactMatch.id;
-                                        console.log('[Resource Staff Manager] Found exact Staff Admin record for', adminEmail, 'ID:', staffAdminRecordId);
-                                    } else {
-                                        console.log('[Resource Staff Manager] No exact match found for', adminEmail, 'in', adminResponse.records.length, 'records');
-                                        console.log('[Resource Staff Manager] First few records checked:', adminResponse.records.slice(0, 3).map(r => ({
-                                            id: r.id,
-                                            email: r.field_121_raw || r.field_121
-                                        })));
+                                    if (emailResponse.records && emailResponse.records.length > 0) {
+                                        // Find exact match
+                                        const exactMatch = emailResponse.records.find(record => {
+                                            const recordEmail = record.field_86_raw || record.field_86;
+                                            
+                                            if (typeof recordEmail === 'string') {
+                                                // Handle HTML formatted emails
+                                                if (recordEmail.includes('mailto:')) {
+                                                    const match = recordEmail.match(/mailto:([^"]+)"/);
+                                                    return match && match[1].toLowerCase() === adminEmail.toLowerCase();
+                                                }
+                                                // Direct comparison
+                                                return recordEmail.toLowerCase() === adminEmail.toLowerCase();
+                                            }
+                                            return false;
+                                        });
+                                        
+                                        if (exactMatch) {
+                                            staffAdminRecordId = exactMatch.id;
+                                            console.log('[Resource Staff Manager] Found Staff Admin record via email match:', staffAdminRecordId);
+                                        } else {
+                                            console.log('[Resource Staff Manager] No exact email match found. Records checked:', emailResponse.records.length);
+                                        }
                                     }
-                                } else {
-                                    console.log('[Resource Staff Manager] No Staff Admin records found for email:', adminEmail);
+                                }
+                                
+                                if (!staffAdminRecordId) {
+                                    console.log('[Resource Staff Manager] Could not find Staff Admin record for current user, field_225 will not be set');
                                 }
                             } catch (adminError) {
-                                console.log('[Resource Staff Manager] Could not find Staff Admin record, skipping field_225:', adminError.message);
+                                console.log('[Resource Staff Manager] Error finding Staff Admin record:', adminError.message);
                             }
                             
                             // Find the tutor record by email
@@ -1134,15 +1201,33 @@
                             visible: true,
                             staff: staff,
                             emailSent: emailSent,
-                            password: password
+                            password: password  // Always show password for reference
                         };
-                        
-                        this.showMessage(
-                            emailSent 
-                                ? 'Password reset successfully. Email sent to staff member.' 
-                                : 'Password reset but email failed. Please provide credentials manually.',
-                            emailSent ? 'success' : 'warning'
-                        );
+                    },
+                    
+                    // Close password reset modal
+                    closePasswordResetModal() {
+                        this.passwordResetModal = null;
+                    },
+                    
+                    // Copy password to clipboard
+                    copyPassword() {
+                        if (this.passwordResetModal && this.passwordResetModal.password) {
+                            navigator.clipboard.writeText(this.passwordResetModal.password).then(() => {
+                                this.showMessage('Password copied to clipboard', 'success');
+                            }).catch(() => {
+                                // Fallback for older browsers
+                                const textArea = document.createElement('textarea');
+                                textArea.value = this.passwordResetModal.password;
+                                textArea.style.position = 'fixed';
+                                textArea.style.left = '-999999px';
+                                document.body.appendChild(textArea);
+                                textArea.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(textArea);
+                                this.showMessage('Password copied to clipboard', 'success');
+                            });
+                        }
                     },
                     
                     // Bulk reset passwords
@@ -1225,22 +1310,58 @@
                         try {
                             console.log('[Resource Staff Manager] Sending password reset email to:', data.email);
                             
-                            // SendGrid API v3 format with personalizations
+                            // SendGrid API v3 format - using inline HTML instead of template
                             const emailData = {
                                 personalizations: [{
-                                    to: [{ email: data.email }],
-                                    dynamic_template_data: {
-                                        name: data.name.split(' ')[0], // First name only
-                                        email: data.email,
-                                        password: data.password,
-                                        loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
-                                    }
+                                    to: [{ email: data.email }]
                                 }],
                                 from: {
                                     email: 'noreply@vespa.academy',
                                     name: 'VESPA Academy'
                                 },
-                                template_id: 'd-29e82dfb3bd14de6815f4b225b9ef7b3'
+                                subject: 'Your VESPA Academy Password Has Been Reset',
+                                content: [{
+                                    type: 'text/html',
+                                    value: `
+                                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                            <div style="background: linear-gradient(135deg, #2a3c7a 0%, #5899a8 100%); padding: 30px; text-align: center;">
+                                                <h1 style="color: white; margin: 0;">VESPA Academy</h1>
+                                                <p style="color: white; opacity: 0.9; margin: 10px 0 0 0;">Resource Portal</p>
+                                            </div>
+                                            <div style="padding: 40px; background: white;">
+                                                <h2 style="color: #2a3c7a; margin-top: 0;">Password Reset</h2>
+                                                <p style="font-size: 16px; color: #333;">Hi ${data.name.split(' ')[0]},</p>
+                                                <p style="color: #333;">Your VESPA Academy Resource Portal password has been reset by your administrator.</p>
+                                                
+                                                <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 30px 0;">
+                                                    <h3 style="color: #2a3c7a; margin-top: 0;">Your New Login Details</h3>
+                                                    <p style="margin: 10px 0;"><strong>Email:</strong> ${data.email}</p>
+                                                    <p style="margin: 10px 0;"><strong>New Password:</strong> <code style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-family: monospace; font-size: 14px;">${data.password}</code></p>
+                                                </div>
+                                                
+                                                <div style="text-align: center; margin: 30px 0;">
+                                                    <a href="https://vespaacademy.knack.com/vespa-academy#home/" 
+                                                       style="display: inline-block; background: linear-gradient(135deg, #079baa 0%, #00e5db 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold;">
+                                                        Login to Resource Portal
+                                                    </a>
+                                                </div>
+                                                
+                                                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 30px 0;">
+                                                    <p style="margin: 0; color: #856404;">
+                                                        <strong>⚠️ Security Note:</strong> Please change your password after logging in. 
+                                                        Keep this email secure and do not share your login details.
+                                                    </p>
+                                                </div>
+                                                
+                                                <p style="color: #666; font-size: 14px;">If you did not request this password reset or have any questions, please contact your administrator.</p>
+                                            </div>
+                                            <div style="background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px;">
+                                                <p style="margin: 0;">This is an automated email from VESPA Academy</p>
+                                                <p style="margin: 5px 0;">© ${new Date().getFullYear()} VESPA Academy. All rights reserved.</p>
+                                            </div>
+                                        </div>
+                                    `
+                                }]
                             };
                             
                             const response = await fetch('https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email', {
@@ -1278,11 +1399,11 @@
                             // Prepare email list for notification
                             const emailList = details.map(item => `• ${item}`).join('<br>');
                             
-                            // Send to staff admin - using plain content (no template)
+                            // Send to staff admin - proper SendGrid API format without template
                             const adminEmailData = {
                                 personalizations: [{
                                     to: [{ email: adminEmail }],
-                                    cc: [{ email: 'admin@vespa.academy' }] // Always CC admin@vespa.academy
+                                    cc: [{ email: 'admin@vespa.academy' }]
                                 }],
                                 from: {
                                     email: 'noreply@vespa.academy',
@@ -2304,4 +2425,3 @@
     
     console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
 })();
-
