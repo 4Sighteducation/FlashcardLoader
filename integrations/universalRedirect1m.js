@@ -168,6 +168,19 @@ console.log('[Universal Redirect] Script loaded!');
     function redirectUser(userType) {
         console.log('[Universal Redirect] redirectUser called with userType:', userType);
         
+        // CRITICAL: Check if navigation is in progress or redirect is bypassed
+        if (window._bypassUniversalRedirect || window._universalRedirectCompleted || window._navigationInProgress) {
+            console.log('[Universal Redirect] Redirect bypassed due to navigation flags');
+            return;
+        }
+        
+        // Check if there's a navigation target in session
+        const navigationTarget = sessionStorage.getItem('navigationTarget');
+        if (navigationTarget) {
+            console.log('[Universal Redirect] Navigation target exists:', navigationTarget, '- skipping redirect');
+            return;
+        }
+        
         // Prevent multiple redirects
         if (hasRedirected) {
             console.log('[Universal Redirect] Already redirected, skipping');
@@ -253,6 +266,24 @@ console.log('[Universal Redirect] Script loaded!');
     
     function initializeUniversalRedirect() {
         console.log('[Universal Redirect] initializeUniversalRedirect called!');
+        
+        // CRITICAL: Check if Universal Redirect is bypassed
+        if (window._bypassUniversalRedirect || window._universalRedirectCompleted) {
+            console.log('[Universal Redirect] Bypass flag set, skipping redirect');
+            return;
+        }
+        
+        // Check if navigation is in progress
+        if (window._navigationInProgress) {
+            console.log('[Universal Redirect] Navigation in progress, skipping redirect');
+            return;
+        }
+        
+        // Check session storage flags
+        if (sessionStorage.getItem('universalRedirectCompleted') === 'true') {
+            console.log('[Universal Redirect] Session flag indicates redirect completed, skipping');
+            return;
+        }
         
         // Don't run if we've already redirected
         if (hasRedirected) {
@@ -341,6 +372,14 @@ console.log('[Universal Redirect] Script loaded!');
     // Auto-initialize on scene render
     $(document).on('knack-scene-render.scene_1', function(event, scene) {
         console.log('[Universal Redirect] Scene 1 render event fired!', scene);
+        
+        // Check if we should skip
+        if (window._bypassUniversalRedirect || window._universalRedirectCompleted || 
+            window._navigationInProgress || sessionStorage.getItem('universalRedirectCompleted') === 'true') {
+            console.log('[Universal Redirect] Skipping auto-initialize due to bypass flags');
+            return;
+        }
+        
         log('Scene 1 rendered, checking for redirect...');
         
         // Add a delay here too to ensure everything is ready
