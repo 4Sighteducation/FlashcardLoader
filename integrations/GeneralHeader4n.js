@@ -2060,50 +2060,6 @@
         function init() {
             log('Starting General Header initialization...');
             
-            // SIMPLE FIX: Once user is logged in and NOT on login page, disable Universal Redirect permanently
-            // This prevents it from interfering with ANY navigation
-            const currentPath = window.location.hash;
-            if (!currentPath.includes('#home/') && currentPath !== '#home' && currentPath !== '') {
-                // User is logged in and on a page other than login
-                window._universalRedirectCompleted = true;
-                
-                // Kill any Universal Redirect timers if they exist
-                if (window._universalRedirectTimer) {
-                    clearInterval(window._universalRedirectTimer);
-                    clearTimeout(window._universalRedirectTimer);
-                    window._universalRedirectTimer = null;
-                    log('Killed Universal Redirect timer - user is already logged in and navigated');
-                }
-                
-                // Set multiple flags to ensure Universal Redirect doesn't run
-                window._bypassUniversalRedirect = true;
-                sessionStorage.setItem('universalRedirectCompleted', 'true');
-                
-                // Set up a periodic check to keep killing Universal Redirect if it tries to restart
-                if (!window._universalRedirectKiller) {
-                    window._universalRedirectKiller = setInterval(() => {
-                        if (window._universalRedirectTimer) {
-                            clearInterval(window._universalRedirectTimer);
-                            clearTimeout(window._universalRedirectTimer);
-                            window._universalRedirectTimer = null;
-                            log('Killed Universal Redirect timer (periodic check)');
-                        }
-                        // Also ensure flags stay set
-                        window._universalRedirectCompleted = true;
-                        window._bypassUniversalRedirect = true;
-                    }, 1000); // Check every second
-                    
-                    // Stop the killer after 30 seconds (should be more than enough)
-                    setTimeout(() => {
-                        if (window._universalRedirectKiller) {
-                            clearInterval(window._universalRedirectKiller);
-                            window._universalRedirectKiller = null;
-                            log('Stopped Universal Redirect killer - should be safe now');
-                        }
-                    }, 30000);
-                }
-            }
-            
             // Check if we're on a login page
             const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5']; // Add your actual login scene IDs
             const loginPages = ['login', 'sign-in', 'register', 'forgot-password'];
