@@ -7,17 +7,19 @@
 (function() {
     'use strict';
     
-    console.log('[Resource Staff Manager] Script loaded, waiting for initialization...');
+    // Initial load message - always show
+    if (typeof console !== 'undefined') {
+        console.log('[Resource Staff Manager] Script loaded, waiting for initialization...');
+    }
     
     function initializeResourceStaffManager() {
         const config = window.RESOURCE_STAFF_MANAGER_CONFIG;
         
         if (!config) {
+            // Critical error - always show
             console.error('[Resource Staff Manager] Configuration not found');
             return;
         }
-        
-        console.log('[Resource Staff Manager] Initializing with config:', config);
         
         const DEBUG = config.debugMode || false;
         const API_URL = 'https://api.knack.com/v1';
@@ -31,6 +33,15 @@
             }
         }
         
+        // Helper function for error logging
+        function logError(message, error) {
+            if (DEBUG) {
+                console.error(`[Resource Staff Manager] ${message}`, error || '');
+            }
+        }
+        
+        log('Initializing with config:', config);
+        
         // Get current user details
         const currentUser = Knack.getUserAttributes();
         const userEmail = currentUser.email;
@@ -40,14 +51,14 @@
         
         // Check if it's an array and extract the ID
         if (Array.isArray(customerField) && customerField.length > 0) {
-            console.log('[Resource Staff Manager] Customer field is array:', customerField);
+            log('Customer field is array:', customerField);
             // If array contains IDs directly
             customerField = customerField[0];
         }
         
         // Check for raw field format (this is the correct ID)
         if (currentUser.values?.field_122_raw) {
-            console.log('[Resource Staff Manager] Found field_122_raw:', currentUser.values.field_122_raw);
+            log('Found field_122_raw:', currentUser.values.field_122_raw);
             if (Array.isArray(currentUser.values.field_122_raw) && currentUser.values.field_122_raw.length > 0) {
                 const rawItem = currentUser.values.field_122_raw[0];
                 // The ID is what we need for filtering
@@ -58,20 +69,20 @@
             const match = customerField.match(/class="([^"]+)"/);
             if (match) {
                 customerField = match[1];
-                console.log('[Resource Staff Manager] Extracted customer ID from HTML:', customerField);
+                log('Extracted customer ID from HTML:', customerField);
             }
         }
         
         const schoolId = currentUser.values?.field_126 || currentUser.field_126;
         
         // Debug: Log full user details to understand the structure
-        console.log('[Resource Staff Manager] === DEBUGGING CUSTOMER CONNECTION ===');
-        console.log('[Resource Staff Manager] Full user attributes:', currentUser);
-        console.log('[Resource Staff Manager] All user.values fields:', currentUser.values);
-        console.log('[Resource Staff Manager] Final customerField value:', customerField);
-        console.log('[Resource Staff Manager] Type of customerField:', typeof customerField);
-        console.log('[Resource Staff Manager] Is customerField an array?:', Array.isArray(customerField));
-        console.log('[Resource Staff Manager] School ID:', schoolId);
+        log('=== DEBUGGING CUSTOMER CONNECTION ===');
+        log('Full user attributes:', currentUser);
+        log('All user.values fields:', currentUser.values);
+        log('Final customerField value:', customerField);
+        log('Type of customerField:', typeof customerField);
+        log('Is customerField an array?:', Array.isArray(customerField));
+        log('School ID:', schoolId);
         
         log('Current user:', { email: userEmail, customer: customerField, schoolId: schoolId });
         
@@ -86,9 +97,9 @@
                 faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
                 faLink.crossOrigin = 'anonymous';
                 document.head.appendChild(faLink);
-                console.log('[Resource Staff Manager] Font Awesome CSS loaded');
+                log('Font Awesome CSS loaded');
             } else {
-                console.log('[Resource Staff Manager] Font Awesome already loaded');
+                log('Font Awesome already loaded');
             }
         }
         
@@ -105,6 +116,7 @@
             // Create container
             const container = createContainer();
             if (!container) {
+                // Critical error - always show
                 console.error('[Resource Staff Manager] Failed to create container');
                 return;
             }
@@ -154,6 +166,7 @@
             
             // Check if Vue is available
             if (typeof Vue === 'undefined') {
+                // Critical error - always show
                 console.error('[Resource Staff Manager] Vue is not loaded! Please ensure Vue.js is loaded before this script.');
                 container.innerHTML = `
                     <div class="rsm-error" style="padding: 40px; text-align: center; color: #dc3545;">
@@ -620,22 +633,22 @@
                                         totalAccounts: (parseInt(customer.field_1564) || 0) + (parseInt(customer.field_1508) || 0),
                                         limitReached: customer.field_1481 === 'Yes' || customer.field_1481 === true
                                     };
-                                    console.log('[Resource Staff Manager] Customer summary loaded via direct ID lookup');
+                                    log('Customer summary loaded via direct ID lookup');
                                 }
                             } catch (directError) {
-                                console.log('[Resource Staff Manager] Direct customer lookup failed, error:', directError);
+                                log('Direct customer lookup failed, error:', directError);
                             }
                         } catch (error) {
-                            console.error('Error loading customer summary:', error);
+                            log('Error loading customer summary:', error);
                         }
                     },
                     
                     // Load staff list
                     async loadStaffList() {
                         try {
-                            console.log('[Resource Staff Manager] === LOADING STAFF LIST ===');
-                            console.log('[Resource Staff Manager] CustomerField being used:', customerField);
-                            console.log('[Resource Staff Manager] CustomerField type:', typeof customerField);
+                            log('=== LOADING STAFF LIST ===');
+                            log('CustomerField being used:', customerField);
+                            log('CustomerField type:', typeof customerField);
                             
                             // Use profile_7 for Tutor role, and filter by customer ID
                             const filters = [
@@ -658,35 +671,35 @@
                             
                             // Note: Tutors need field_122 set to the customer ID to appear
                             
-                            console.log('[Resource Staff Manager] Filters being used:', JSON.stringify(filters, null, 2));
+                            log(' Filters being used:', JSON.stringify(filters, null, 2));
                             
                             const response = await this.apiRequest('GET', 'objects/object_3/records', {
                                 filters: filters,
                                 rows_per_page: 1000
                             });
                             
-                            console.log('[Resource Staff Manager] Number of records found:', response.records?.length || 0);
+                            log(' Number of records found:', response.records?.length || 0);
                             
                             // If no records found, try without filters to test API
                             if (!response.records || response.records.length === 0) {
-                                console.log('[Resource Staff Manager] No records found with filters. Testing API without filters...');
+                                log(' No records found with filters. Testing API without filters...');
                                 const testResponse = await this.apiRequest('GET', 'objects/object_3/records', {
                                     rows_per_page: 5 // Just get 5 records to test
                                 });
-                                console.log('[Resource Staff Manager] Test without filters found:', testResponse.records?.length || 0, 'records');
+                                log(' Test without filters found:', testResponse.records?.length || 0, 'records');
                                 if (testResponse.records && testResponse.records.length > 0) {
-                                    console.log('[Resource Staff Manager] Sample record from unfiltered test:', testResponse.records[0]);
-                                    console.log('[Resource Staff Manager] Sample field_122:', testResponse.records[0].field_122);
-                                    console.log('[Resource Staff Manager] Sample field_122_raw:', testResponse.records[0].field_122_raw);
+                                    log(' Sample record from unfiltered test:', testResponse.records[0]);
+                                    log(' Sample field_122:', testResponse.records[0].field_122);
+                                    log(' Sample field_122_raw:', testResponse.records[0].field_122_raw);
                                 }
                             }
                             
                             // Log first record details if any found
                             if (response.records && response.records.length > 0) {
-                                console.log('[Resource Staff Manager] First record sample:', response.records[0]);
-                                console.log('[Resource Staff Manager] First record field_122:', response.records[0].field_122);
-                                console.log('[Resource Staff Manager] First record field_441:', response.records[0].field_441);
-                                console.log('[Resource Staff Manager] First record field_73:', response.records[0].field_73);
+                                log(' First record sample:', response.records[0]);
+                                log(' First record field_122:', response.records[0].field_122);
+                                log(' First record field_441:', response.records[0].field_441);
+                                log(' First record field_73:', response.records[0].field_73);
                             }
                             
                             if (response.records) {
@@ -725,7 +738,7 @@
                                 this.filteredStaffList = [...this.staffList];
                             }
                         } catch (error) {
-                            console.error('Error loading staff list:', error);
+                            logError('Error loading staff list:', error);
                         }
                     },
                     
@@ -750,8 +763,8 @@
                             }
                             
                             // Debug logging
-                            console.log('[Resource Staff Manager] API Request URL:', url);
-                            console.log('[Resource Staff Manager] Decoded filters:', data.filters);
+                            log(' API Request URL:', url);
+                            log(' Decoded filters:', data.filters);
                         } else if (method !== 'GET') {
                             options.body = JSON.stringify(data);
                         }
@@ -759,16 +772,16 @@
                         const response = await fetch(url, options);
                         
                         // Log response status
-                        console.log('[Resource Staff Manager] API Response Status:', response.status, response.statusText);
+                        log(' API Response Status:', response.status, response.statusText);
                         
                         if (!response.ok) {
                             const errorBody = await response.text();
-                            console.error('[Resource Staff Manager] API Error Response:', errorBody);
+                            logError(' API Error Response:', errorBody);
                             throw new Error(`API request failed: ${response.statusText} - ${errorBody}`);
                         }
                         
                         const jsonResponse = await response.json();
-                        console.log('[Resource Staff Manager] API Response Data:', jsonResponse);
+                        log(' API Response Data:', jsonResponse);
                         
                         return jsonResponse;
                     },
@@ -926,40 +939,41 @@
                         const staffEmail = this.staffForm.email;
                         
                         try {
-                            // Create Object_3 record
-                            const accountData = {
-                                field_122: [customerField], // Connected VESPA Customer - uses the customer record ID
-                                field_69: {
-                                    title: this.staffForm.prefix,
-                                    first: this.staffForm.firstName,
-                                    last: this.staffForm.lastName
-                                },
-                                field_73: ['profile_7'], // User Role - use the profile ID not "Tutor"
-                                field_216: this.staffForm.group, // Group
+                        // Create Object_3 record
+                        const accountData = {
+                            field_122: [customerField], // Connected VESPA Customer - uses the customer record ID
+                            field_69: {
+                                title: this.staffForm.prefix,
+                                first: this.staffForm.firstName,
+                                last: this.staffForm.lastName
+                            },
+                            field_73: ['profile_7'], // User Role - use the profile ID not "Tutor"
+                            field_216: this.staffForm.group, // Group
                                 field_70: staffEmail, // Email
-                                field_441: 'RESOURCE PORTAL', // Account Type
-                                field_1493: 'Level 2 & 3', // Account Level
-                                field_126: schoolId, // School ID
-                                field_71: tempPassword, // Password
-                                field_550: this.staffForm.yearGroup // Year Group
-                            };
-                            
-                            const response = await this.apiRequest('POST', 'objects/object_3/records', accountData);
-                            
-                            // Update the auto-created Tutor record
+                            field_441: 'RESOURCE PORTAL', // Account Type
+                            field_1493: 'Level 2 & 3', // Account Level
+                            field_126: schoolId, // School ID
+                            field_71: tempPassword, // Password
+                            field_550: this.staffForm.yearGroup, // Year Group
+                            field_539: false // "Has Password Been Reset?" - Set to No for new accounts to trigger reset modal
+                        };
+                        
+                        const response = await this.apiRequest('POST', 'objects/object_3/records', accountData);
+                        
+                        // Update the auto-created Tutor record
                             await this.updateTutorRecord(staffEmail, this.staffForm.group, this.staffForm.yearGroup);
-                            
-                            // Send welcome email
+                        
+                        // Send welcome email
                             let emailSent = false;
                             try {
-                                await this.sendWelcomeEmail({
+                        await this.sendWelcomeEmail({
                                     email: staffEmail,
                                     name: staffName,
-                                    password: tempPassword
-                                });
+                            password: tempPassword
+                        });
                                 emailSent = true;
                             } catch (emailError) {
-                                console.error('[Resource Staff Manager] Failed to send welcome email:', emailError);
+                                logError(' Failed to send welcome email:', emailError);
                             }
                             
                             // Send admin confirmation email
@@ -976,7 +990,7 @@
                                 emailSent ? 'success' : 'warning'
                             );
                         } catch (error) {
-                            console.error('[Resource Staff Manager] Error creating staff:', error);
+                            logError(' Error creating staff:', error);
                             throw error;
                         }
                     },
@@ -1000,7 +1014,7 @@
                     // Update tutor record
                     async updateTutorRecord(email, group = '', yearGroup = '') {
                         try {
-                            console.log('[Resource Staff Manager] Updating tutor record for:', email);
+                            log(' Updating tutor record for:', email);
                             
                             // Get current user's email to find their Staff Admin record
                             const currentUser = Knack.getUserAttributes();
@@ -1010,7 +1024,7 @@
                             let staffAdminRecordId = null;
                             try {
                                 // PRIMARY METHOD: Search by email (field_86) - THIS WORKS RELIABLY
-                                console.log('[Resource Staff Manager] Looking for Staff Admin record for email:', adminEmail);
+                                log(' Looking for Staff Admin record for email:', adminEmail);
                                 
                                 const emailFilters = [
                                     {
@@ -1027,18 +1041,18 @@
                                 if (emailResponse.records && emailResponse.records.length > 0) {
                                     // Should only be one record with this email
                                     staffAdminRecordId = emailResponse.records[0].id;
-                                    console.log('[Resource Staff Manager] Found Staff Admin record via email lookup:', staffAdminRecordId);
-                                    console.log('[Resource Staff Manager] Staff Admin name:', emailResponse.records[0].field_87);
+                                    log(' Found Staff Admin record via email lookup:', staffAdminRecordId);
+                                    log(' Staff Admin name:', emailResponse.records[0].field_87);
                                 } else {
-                                    console.log('[Resource Staff Manager] No Staff Admin record found for email:', adminEmail);
-                                    console.log('[Resource Staff Manager] This user may not have a Staff Admin role in the system');
+                                    log(' No Staff Admin record found for email:', adminEmail);
+                                    log(' This user may not have a Staff Admin role in the system');
                                 }
                                 
                                 if (!staffAdminRecordId) {
-                                    console.log('[Resource Staff Manager] Could not find Staff Admin record for current user, field_225 will not be set');
+                                    log(' Could not find Staff Admin record for current user, field_225 will not be set');
                                 }
                             } catch (adminError) {
-                                console.log('[Resource Staff Manager] Error finding Staff Admin record:', adminError.message);
+                                log(' Error finding Staff Admin record:', adminError.message);
                             }
                             
                             // Find the tutor record by email
@@ -1064,20 +1078,27 @@
                                     field_562: yearGroup || this.staffForm.yearGroup // Year Group
                                 };
                                 
+                                // Add School ID (field_126 from user account to field_218 in tutor record)
+                                const currentUser = Knack.getUserAttributes();
+                                if (currentUser.values && currentUser.values.field_126) {
+                                    updateData.field_218 = currentUser.values.field_126;
+                                    log(' Adding School ID to tutor record:', currentUser.values.field_126);
+                                }
+                                
                                 // Only add field_225 if we found a valid Staff Admin record
                                 if (staffAdminRecordId) {
                                     updateData.field_225 = [staffAdminRecordId];
                                 }
                                 
-                                console.log('[Resource Staff Manager] Updating tutor record with data:', updateData);
+                                log(' Updating tutor record with data:', updateData);
                                 
                                 await this.apiRequest('PUT', `objects/object_7/records/${tutorId}`, updateData);
-                                console.log('[Resource Staff Manager] Tutor record updated successfully');
+                                log(' Tutor record updated successfully');
                             } else {
-                                console.log('[Resource Staff Manager] No tutor record found for email:', email);
+                                log(' No tutor record found for email:', email);
                             }
                         } catch (error) {
-                            console.error('[Resource Staff Manager] Error updating tutor record:', error);
+                            logError(' Error updating tutor record:', error);
                         }
                     },
                     
@@ -1128,21 +1149,25 @@
                         try {
                             const newPassword = this.generatePassword();
                             
+                            // Update password and set field_539 to "No" to trigger password reset modal
                             await this.apiRequest('PUT', `objects/object_3/records/${staff.id}`, {
-                                field_71: newPassword
+                                field_71: newPassword,
+                                field_539: false // "Has Password Been Reset?" - Set to No to trigger modal
                             });
+                            
+                            log(' Password reset and field_539 set to No for:', staff.email);
                             
                             // Send password reset email
                             let emailSent = false;
                             try {
-                                await this.sendPasswordResetEmail({
-                                    email: staff.email,
-                                    name: staff.name,
-                                    password: newPassword
-                                });
+                            await this.sendPasswordResetEmail({
+                                email: staff.email,
+                                name: staff.name,
+                                password: newPassword
+                            });
                                 emailSent = true;
                             } catch (emailError) {
-                                console.error('[Resource Staff Manager] Failed to send password reset email:', emailError);
+                                logError(' Failed to send password reset email:', emailError);
                             }
                             
                             // Send admin confirmation email
@@ -1227,18 +1252,18 @@
                     // Send welcome email
                     async sendWelcomeEmail(data) {
                         try {
-                            console.log('[Resource Staff Manager] Sending welcome email to:', data.email);
+                            log(' Sending welcome email to:', data.email);
                             
                             // SendGrid API v3 format with personalizations
                             const emailData = {
                                 personalizations: [{
                                     to: [{ email: data.email }],
                                     dynamic_template_data: {
-                                        name: data.name.split(' ')[0], // First name only
-                                        email: data.email,
-                                        password: data.password,
-                                        loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
-                                    }
+                                    name: data.name.split(' ')[0], // First name only
+                                    email: data.email,
+                                    password: data.password,
+                                    loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
+                                }
                                 }],
                                 from: {
                                     email: 'noreply@vespa.academy',
@@ -1258,14 +1283,14 @@
                             const responseData = await response.text();
                             
                             if (!response.ok) {
-                                console.error('[Resource Staff Manager] Email send failed. Status:', response.status, 'Response:', responseData);
+                                logError(' Email send failed. Status:', response.status, 'Response:', responseData);
                                 throw new Error(`Failed to send email: ${response.status} - ${responseData}`);
                             }
                             
-                            console.log('[Resource Staff Manager] Welcome email sent successfully to:', data.email);
+                            log(' Welcome email sent successfully to:', data.email);
                             return true;
                         } catch (error) {
-                            console.error('[Resource Staff Manager] Error sending welcome email:', error);
+                            logError(' Error sending welcome email:', error);
                             throw error; // Re-throw to handle at calling level
                         }
                     },
@@ -1273,7 +1298,7 @@
                     // Send password reset email
                     async sendPasswordResetEmail(data) {
                         try {
-                            console.log('[Resource Staff Manager] Sending password reset email to:', data.email);
+                            log(' Sending password reset email to:', data.email);
                             
                             // SendGrid API v3 format - using PASSWORD RESET TEMPLATE
                             const emailData = {
@@ -1359,14 +1384,14 @@
                             const responseData = await response.text();
                             
                             if (!response.ok) {
-                                console.error('[Resource Staff Manager] Password reset email failed. Status:', response.status, 'Response:', responseData);
+                                logError(' Password reset email failed. Status:', response.status, 'Response:', responseData);
                                 throw new Error(`Failed to send password reset email: ${response.status} - ${responseData}`);
                             }
                             
-                            console.log('[Resource Staff Manager] Password reset email sent successfully to:', data.email);
+                            log(' Password reset email sent successfully to:', data.email);
                             return true;
                         } catch (error) {
-                            console.error('[Resource Staff Manager] Error sending password reset email:', error);
+                            logError(' Error sending password reset email:', error);
                             throw error;
                         }
                     },
@@ -1374,7 +1399,7 @@
                     // Send confirmation email to staff admin
                     async sendAdminConfirmationEmail(action, details) {
                         try {
-                            console.log('[Resource Staff Manager] Sending admin confirmation for:', action);
+                            log(' Sending admin confirmation for:', action);
                             
                             const currentUser = Knack.getUserAttributes();
                             const adminEmail = currentUser.email;
@@ -1435,13 +1460,13 @@
                             
                             if (!response.ok) {
                                 const responseData = await response.text();
-                                console.error('[Resource Staff Manager] Admin confirmation email failed:', responseData);
+                                logError(' Admin confirmation email failed:', responseData);
                                 // Don't throw - this is a non-critical failure
                             } else {
-                                console.log('[Resource Staff Manager] Admin confirmation email sent successfully');
+                                log(' Admin confirmation email sent successfully');
                             }
                         } catch (error) {
-                            console.error('[Resource Staff Manager] Error sending admin confirmation:', error);
+                            logError(' Error sending admin confirmation:', error);
                             // Don't throw - this is a non-critical failure
                         }
                     },
@@ -1617,7 +1642,7 @@
                         const failedUploads = [];
                         const emailResults = [];
                         
-                        console.log('[Resource Staff Manager] Starting CSV upload for', this.csvData.length, 'staff members');
+                        log(' Starting CSV upload for', this.csvData.length, 'staff members');
                         
                         for (let i = 0; i < this.csvData.length; i++) {
                             const staff = this.csvData[i];
@@ -1628,7 +1653,7 @@
                                 const tempPassword = this.generatePassword();
                                 const staffName = `${staff.firstName} ${staff.lastName}`;
                                 
-                                console.log(`[Resource Staff Manager] Creating account ${i + 1}/${this.csvData.length} for:`, staff.email);
+                                log(`Creating account ${i + 1}/${this.csvData.length} for:`, staff.email);
                                 
                                 // Create staff record
                                 const accountData = {
@@ -1645,7 +1670,8 @@
                                     field_1493: 'Level 2 & 3', // Account Level
                                     field_126: schoolId, // School ID
                                     field_71: tempPassword, // Password
-                                    field_550: staff.yearGroup // Year Group
+                                    field_550: staff.yearGroup, // Year Group
+                                    field_539: false // "Has Password Been Reset?" - Set to No for bulk uploads to trigger reset modal
                                 };
                                 
                                 const response = await this.apiRequest('POST', 'objects/object_3/records', accountData);
@@ -1658,15 +1684,15 @@
                                     
                                     // Send welcome email
                                     try {
-                                        await this.sendWelcomeEmail({
+                                    await this.sendWelcomeEmail({
                                             name: staffName,
-                                            email: staff.email,
-                                            password: tempPassword
+                                        email: staff.email,
+                                        password: tempPassword
                                         });
                                         emailSent = true;
                                         emailResults.push(`✓ ${staff.email} - Welcome email sent`);
                                     } catch (emailError) {
-                                        console.error(`[Resource Staff Manager] Failed to send email to ${staff.email}:`, emailError);
+                                        logError(`Failed to send email to ${staff.email}:`, emailError);
                                         emailResults.push(`✗ ${staff.email} - Email failed: ${emailError.message}`);
                                     }
                                     
@@ -1677,7 +1703,7 @@
                                     });
                                 }
                             } catch (error) {
-                                console.error(`[Resource Staff Manager] Failed to create staff ${staff.email}:`, error);
+                                logError(`Failed to create staff ${staff.email}:`, error);
                                 failedUploads.push({
                                     staff: staff,
                                     error: error.message || 'Unknown error'
@@ -1722,7 +1748,7 @@
                         }
                         
                         // Log summary  
-                        console.log('[Resource Staff Manager] CSV Upload Summary:', {
+                        log(' CSV Upload Summary:', {
                             total: successfulUploads.length + failedUploads.length,
                             successful: successfulUploads.length,
                             failed: failedUploads.length,
@@ -1731,7 +1757,7 @@
                         
                         // Log failures for debugging
                         if (failedUploads.length > 0) {
-                            console.error('[Resource Staff Manager] Failed uploads:', failedUploads);
+                            logError(' Failed uploads:', failedUploads);
                         }
                     }
                 },
@@ -2407,5 +2433,8 @@
     // Export the initializer function
     window.initializeResourceStaffManager = initializeResourceStaffManager;
     
-    console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
+    // This log is outside the function scope, so check DEBUG mode directly
+    if (typeof console !== 'undefined' && window.RESOURCE_STAFF_MANAGER_CONFIG?.debugMode) {
+        console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
+    }
 })();
