@@ -676,7 +676,7 @@
                 color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-manager/', scene: 'scene_1272' },
+                    { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-management/', scene: 'scene_1272' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' },
@@ -2153,7 +2153,7 @@
             }
             
             // Also disable Universal Redirect if we're on a Resource Portal specific page
-            if (currentPath.includes('#resource-staff-manager') || 
+            if (currentPath.includes('#resource-staff-management') || 
                 currentPath.includes('#tutor-activities/resources-levels') ||
                 currentPath.includes('scene_1272') || 
                 currentPath.includes('scene_481')) {
