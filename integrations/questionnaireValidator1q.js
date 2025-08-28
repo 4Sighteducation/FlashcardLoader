@@ -7,7 +7,7 @@
 (function() {
     'use strict';
     
-    const DEBUG_MODE = true;
+    const DEBUG_MODE = false;
     const VIDEO_URL = 'https://muse.ai/embed/BtVw4Dd';
     
     // Configuration
