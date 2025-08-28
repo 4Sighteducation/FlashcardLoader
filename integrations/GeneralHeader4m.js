@@ -1362,24 +1362,6 @@
                         const currentHash = window.location.hash;
                         log(`Navigation from ${currentHash} to ${href} (scene: ${targetScene})`);
                         
-                        // PREVENT UNIVERSAL REDIRECT INTERFERENCE for staff admin navigation
-                        const userType = getUserType();
-                        if (userType === 'staffAdminResource' && targetScene === 'scene_1272') {
-                            log('Preventing Universal Redirect interference for staff admin navigation to scene_1272');
-                            // Set a flag that Universal Redirect should check
-                            window._bypassUniversalRedirect = true;
-                            sessionStorage.setItem('_bypassRedirectUntil', Date.now() + 5000); // Bypass for 5 seconds
-                            
-                            // Also disable any active Universal Redirect timers
-                            if (window._universalRedirectTimer) {
-                                clearInterval(window._universalRedirectTimer);
-                                window._universalRedirectTimer = null;
-                                log('Cleared Universal Redirect timer');
-                            }
-                            // Set a flag to prevent Universal Redirect from restarting
-                            window._universalRedirectDisabled = true;
-                        }
-                        
                         // UNIVERSAL CLEANUP: Force cleanup for all scene navigations
                         // This ensures fresh app loads and prevents issues with cached states
                         if (targetScene && targetScene !== currentScene) {
@@ -1401,14 +1383,6 @@
                         
                         // Navigate using Knack with a small delay to ensure cleanup
                         setTimeout(() => {
-                            // For staff admin navigating to scene_1272, use a more forceful approach
-                            if (userType === 'staffAdminResource' && targetScene === 'scene_1272') {
-                                log('Using forceful navigation for staff admin to scene_1272');
-                                // Use location.href to force a full navigation that Universal Redirect can't intercept as easily
-                                window.location.href = window.location.origin + window.location.pathname + '#resource-staff-manager/';
-                                return;
-                            }
-                            
                             window.location.hash = href;
                             
                             // For Results and Coaching tabs, ensure the scene renders properly
@@ -2086,21 +2060,48 @@
         function init() {
             log('Starting General Header initialization...');
             
-            // DISABLE UNIVERSAL REDIRECT FOR STAFF ADMIN RESOURCE USERS
-            // This prevents the redirect from interfering with navigation to scene_1272
-            const userType = getUserType();
-            if (userType === 'staffAdminResource' && currentScene !== 'scene_1') {
-                // If we're not on the login page and user is staffAdminResource, disable Universal Redirect
+            // SIMPLE FIX: Once user is logged in and NOT on login page, disable Universal Redirect permanently
+            // This prevents it from interfering with ANY navigation
+            const currentPath = window.location.hash;
+            if (!currentPath.includes('#home/') && currentPath !== '#home' && currentPath !== '') {
+                // User is logged in and on a page other than login
+                window._universalRedirectCompleted = true;
+                
+                // Kill any Universal Redirect timers if they exist
                 if (window._universalRedirectTimer) {
                     clearInterval(window._universalRedirectTimer);
+                    clearTimeout(window._universalRedirectTimer);
                     window._universalRedirectTimer = null;
-                    log('Disabled Universal Redirect timer for staffAdminResource user');
+                    log('Killed Universal Redirect timer - user is already logged in and navigated');
                 }
-                window._universalRedirectDisabled = true;
-                window._bypassUniversalRedirect = true;
                 
-                // Also set a permanent session flag
-                sessionStorage.setItem('_disableUniversalRedirectForStaffAdmin', 'true');
+                // Set multiple flags to ensure Universal Redirect doesn't run
+                window._bypassUniversalRedirect = true;
+                sessionStorage.setItem('universalRedirectCompleted', 'true');
+                
+                // Set up a periodic check to keep killing Universal Redirect if it tries to restart
+                if (!window._universalRedirectKiller) {
+                    window._universalRedirectKiller = setInterval(() => {
+                        if (window._universalRedirectTimer) {
+                            clearInterval(window._universalRedirectTimer);
+                            clearTimeout(window._universalRedirectTimer);
+                            window._universalRedirectTimer = null;
+                            log('Killed Universal Redirect timer (periodic check)');
+                        }
+                        // Also ensure flags stay set
+                        window._universalRedirectCompleted = true;
+                        window._bypassUniversalRedirect = true;
+                    }, 1000); // Check every second
+                    
+                    // Stop the killer after 30 seconds (should be more than enough)
+                    setTimeout(() => {
+                        if (window._universalRedirectKiller) {
+                            clearInterval(window._universalRedirectKiller);
+                            window._universalRedirectKiller = null;
+                            log('Stopped Universal Redirect killer - should be safe now');
+                        }
+                    }, 30000);
+                }
             }
             
             // Check if we're on a login page
