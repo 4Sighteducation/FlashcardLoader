@@ -10,7 +10,7 @@ console.log('[Universal Redirect] Script loaded!');
     let hasRedirected = false;
     
     const REDIRECT_CONFIG = {
-        debugMode: true, // TEMPORARILY ENABLED for debugging
+        debugMode: false, // TEMPORARILY ENABLED for debugging
         scenes: {
             student: 'scene_1210',
             staffCoaching: 'scene_1215', 
