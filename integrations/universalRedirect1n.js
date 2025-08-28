@@ -353,9 +353,9 @@ console.log('[Universal Redirect] Script loaded!');
             // Don't redirect if user is already on their correct page
             if ((userType === 'student' && currentUrl.includes('#landing-page')) ||
                 (userType === 'staffCoaching' && currentUrl.includes('#staff-landing-page')) ||
-                (userType === 'staffResource' && currentUrl.includes('#resources-home')) ||
+                (userType === 'staffResource' && (currentUrl.includes('#resources-home') || currentUrl.includes('#resource-staff-management'))) ||
                 (userType === 'staffAdminCoaching' && currentUrl.includes('#staff-landing-page')) ||
-                (userType === 'staffAdminResource' && currentUrl.includes('#resources-home')) ||
+                (userType === 'staffAdminResource' && (currentUrl.includes('#resources-home') || currentUrl.includes('#resource-staff-management'))) ||
                 (userType === 'superUser' && currentUrl.includes('#oversight-page'))) {
                 console.log('[Universal Redirect] User already on correct page, no redirect needed');
                 return;
