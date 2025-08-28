@@ -960,7 +960,7 @@
                             const currentUser = Knack.getUserAttributes();
                             const adminEmail = currentUser.email;
                             
-                            // Find the Staff Admin record (object_5) by email
+                            // Find the Staff Admin record (object_5) by email - must match EXACTLY
                             let staffAdminRecordId = null;
                             try {
                                 const adminFilters = [
@@ -972,14 +972,38 @@
                                 ];
                                 
                                 const adminResponse = await this.apiRequest('GET', 'objects/object_5/records', {
-                                    filters: adminFilters
+                                    filters: adminFilters,
+                                    rows_per_page: 1000  // Get more records to search through
                                 });
                                 
                                 if (adminResponse.records && adminResponse.records.length > 0) {
-                                    staffAdminRecordId = adminResponse.records[0].id;
-                                    console.log('[Resource Staff Manager] Found Staff Admin record ID:', staffAdminRecordId);
+                                    // Find the exact match by verifying the email field
+                                    const exactMatch = adminResponse.records.find(record => {
+                                        // Check both raw and formatted email fields
+                                        const recordEmail = record.field_121_raw || record.field_121;
+                                        
+                                        // Handle HTML formatted emails
+                                        if (typeof recordEmail === 'string' && recordEmail.includes('mailto:')) {
+                                            const match = recordEmail.match(/mailto:([^"]+)"/);
+                                            return match && match[1].toLowerCase() === adminEmail.toLowerCase();
+                                        }
+                                        
+                                        // Direct string comparison
+                                        return recordEmail && recordEmail.toLowerCase() === adminEmail.toLowerCase();
+                                    });
+                                    
+                                    if (exactMatch) {
+                                        staffAdminRecordId = exactMatch.id;
+                                        console.log('[Resource Staff Manager] Found exact Staff Admin record for', adminEmail, 'ID:', staffAdminRecordId);
+                                    } else {
+                                        console.log('[Resource Staff Manager] No exact match found for', adminEmail, 'in', adminResponse.records.length, 'records');
+                                        console.log('[Resource Staff Manager] First few records checked:', adminResponse.records.slice(0, 3).map(r => ({
+                                            id: r.id,
+                                            email: r.field_121_raw || r.field_121
+                                        })));
+                                    }
                                 } else {
-                                    console.log('[Resource Staff Manager] No Staff Admin record found for current user, skipping field_225');
+                                    console.log('[Resource Staff Manager] No Staff Admin records found for email:', adminEmail);
                                 }
                             } catch (adminError) {
                                 console.log('[Resource Staff Manager] Could not find Staff Admin record, skipping field_225:', adminError.message);
@@ -1254,7 +1278,7 @@
                             // Prepare email list for notification
                             const emailList = details.map(item => `• ${item}`).join('<br>');
                             
-                            // Send to staff admin - using SendGrid API v3 format
+                            // Send to staff admin - using plain content (no template)
                             const adminEmailData = {
                                 personalizations: [{
                                     to: [{ email: adminEmail }],
@@ -1268,16 +1292,30 @@
                                 content: [{
                                     type: 'text/html',
                                     value: `
-                                        <p>Hi ${adminName.split(' ')[0] || 'Admin'},</p>
-                                        <p>This email confirms the following ${action.toLowerCase()} action(s) in the Resource Portal:</p>
-                                        <p><strong>Action Performed:</strong> ${action}</p>
-                                        <p><strong>Details:</strong></p>
-                                        <div style="margin-left: 20px;">
-                                            ${emailList}
+                                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                            <div style="background: linear-gradient(135deg, #2a3c7a 0%, #5899a8 100%); padding: 20px; text-align: center;">
+                                                <h1 style="color: white; margin: 0;">VESPA Academy</h1>
+                                            </div>
+                                            <div style="padding: 30px; background: white;">
+                                                <p style="font-size: 16px;">Hi ${adminName.split(' ')[0] || 'Admin'},</p>
+                                                <p>This email confirms the following ${action.toLowerCase()} action(s) in the Resource Portal:</p>
+                                                <div style="background: #f8f9fa; border-left: 4px solid #079baa; padding: 15px; margin: 20px 0;">
+                                                    <p style="margin: 0 0 10px 0;"><strong>Action Performed:</strong> ${action}</p>
+                                                    <p style="margin: 0;"><strong>Time:</strong> ${new Date().toLocaleString('en-GB')}</p>
+                                                </div>
+                                                <div style="margin: 20px 0;">
+                                                    <p><strong>Details:</strong></p>
+                                                    <div style="background: #f0f0f0; padding: 15px; border-radius: 5px; margin-left: 20px;">
+                                                        ${emailList}
+                                                    </div>
+                                                </div>
+                                                <p style="margin-top: 30px; color: #666;">If you have any questions, please contact support.</p>
+                                                <p style="color: #666;">Best regards,<br>VESPA Academy Team</p>
+                                            </div>
+                                            <div style="background: #f8f9fa; padding: 15px; text-align: center; color: #666; font-size: 12px;">
+                                                <p style="margin: 0;">This is an automated email from VESPA Academy Resource Portal</p>
+                                            </div>
                                         </div>
-                                        <p>Time: ${new Date().toLocaleString('en-GB')}</p>
-                                        <p>If you have any questions, please contact support.</p>
-                                        <p>Best regards,<br>VESPA Academy Team</p>
                                     `
                                 }]
                             };
@@ -2266,3 +2304,4 @@
     
     console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
 })();
+
