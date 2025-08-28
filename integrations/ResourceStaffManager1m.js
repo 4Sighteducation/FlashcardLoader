@@ -7,9 +7,9 @@
 (function() {
     'use strict';
     
-    // Initial load message - always show
-    if (typeof console !== 'undefined') {
-        console.log('[Resource Staff Manager] Script loaded, waiting for initialization...');
+    // Initial load message - only show if debug mode is enabled
+    if (typeof console !== 'undefined' && window.RESOURCE_STAFF_MANAGER_CONFIG && window.RESOURCE_STAFF_MANAGER_CONFIG.debugMode) {
+    console.log('[Resource Staff Manager] Script loaded, waiting for initialization...');
     }
     
     function initializeResourceStaffManager() {
@@ -2435,6 +2435,6 @@
     
     // This log is outside the function scope, so check DEBUG mode directly
     if (typeof console !== 'undefined' && window.RESOURCE_STAFF_MANAGER_CONFIG?.debugMode) {
-        console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
+    console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
     }
 })();
