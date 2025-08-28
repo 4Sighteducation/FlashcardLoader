@@ -16,8 +16,6 @@
             return;
         }
         
-        console.log('[General Header] Initializing with config:', config);
-        
         // Configuration
         const DEBUG = false; // Disabled to reduce log spam
         const currentScene = config.sceneKey;
@@ -34,6 +32,15 @@
                 console.log(`[General Header] ${message}`, data || '');
             }
         }
+        
+        // Helper function for warning logging
+        function logWarn(message, data) {
+            if (DEBUG) {
+                console.warn(`[General Header] ${message}`, data || '');
+            }
+        }
+        
+        log('Initializing with config:', config);
         
         // Detect user type
         // Helper function to determine available roles for super users
@@ -104,7 +111,7 @@
             return new Promise((resolve) => {
                 // Check if modal already exists
                 if (document.getElementById('roleSelectionModal')) {
-                    console.log('[General Header] DEBUG - Modal already exists, not creating another');
+                    log('DEBUG - Modal already exists, not creating another');
                     return;
                 }
                 
@@ -343,10 +350,10 @@
                     const modal = document.getElementById('roleSelectionModal');
                     const roleButtons = modal.querySelectorAll('.role-option.available');
                 
-                    console.log('[General Header] DEBUG - Found role buttons:', roleButtons.length);
+                    log('DEBUG - Found role buttons:', roleButtons.length);
                     
                     roleButtons.forEach((button, index) => {
-                        console.log('[General Header] DEBUG - Setting up button', index, button.getAttribute('data-role'));
+                        log('DEBUG - Setting up button', index, button.getAttribute('data-role'));
                         
                         // Add multiple event types to ensure click is captured
                         const handleClick = (e) => {
@@ -354,7 +361,7 @@
                             e.stopPropagation();
                             
                             const selectedRole = button.getAttribute('data-role');
-                            console.log('[General Header] DEBUG - Button clicked, selected role:', selectedRole);
+                            log('DEBUG - Button clicked, selected role:', selectedRole);
                             
                             // Clean up
                             modal.remove();
@@ -471,10 +478,10 @@
             let hasStaffAdminRole = false;
             let hasSuperUserRole = false;
             
-            console.log('[General Header] DEBUG - Raw field_73:', userAttributes.values?.field_73);
-            console.log('[General Header] DEBUG - Raw profile_keys:', userAttributes.values?.profile_keys);
-            console.log('[General Header] DEBUG - Profile mapping check for profile_21:', profileMapping['profile_21']);
-            console.log('[General Header] DEBUG - Profile mapping check for object_21:', profileMapping['object_21']);
+            log('DEBUG - Raw field_73:', userAttributes.values?.field_73);
+            log('DEBUG - Raw profile_keys:', userAttributes.values?.profile_keys);
+            log('DEBUG - Profile mapping check for profile_21:', profileMapping['profile_21']);
+            log('DEBUG - Profile mapping check for object_21:', profileMapping['object_21']);
             
             // Check both field_73 and profile_keys
             const field73Roles = userAttributes.values?.field_73 ? (Array.isArray(userAttributes.values.field_73) ? userAttributes.values.field_73 : [userAttributes.values.field_73]) : [];
@@ -488,7 +495,7 @@
                 
                 for (const role of allRoles) {
                     const roleStr = role.toString();
-                    console.log('[General Header] DEBUG - Checking role:', roleStr, 'maps to:', profileMapping[roleStr]);
+                    log('DEBUG - Checking role:', roleStr, 'maps to:', profileMapping[roleStr]);
                     
                     if (profileMapping[roleStr] === 'staff') {
                         hasStaffRole = true;
@@ -497,7 +504,7 @@
                     } else if (profileMapping[roleStr] === 'staffAdmin') {
                         hasStaffAdminRole = true;
                     } else if (profileMapping[roleStr] === 'superUser') {
-                        console.log('[General Header] DEBUG - Found super user role!');
+                        log('DEBUG - Found super user role!');
                         hasSuperUserRole = true;
                     }
                 }
@@ -510,7 +517,7 @@
             // Check if account type contains "RESOURCE" (case-insensitive)
             const isResourceOnly = accountType && accountType.toString().toUpperCase().includes('RESOURCE');
             
-            console.log('[General Header] DEBUG - Final role detection results:', {
+            log('DEBUG - Final role detection results:', {
                 hasStaffRole,
                 hasStudentRole,
                 hasStaffAdminRole,
@@ -521,12 +528,12 @@
             
             // PRIORITY: Super User gets role selection modal, then Staff Admin, then regular staff, then student
             if (hasSuperUserRole) {
-                console.log('[General Header] DEBUG - Super user role detected!');
+                log('DEBUG - Super user role detected!');
                 log('User has super user role - checking for role selection');
                 
                 // Check if user has already selected a role in this session
                 const selectedRole = sessionStorage.getItem('selectedUserRole');
-                console.log('[General Header] DEBUG - Selected role from session:', selectedRole);
+                log('DEBUG - Selected role from session:', selectedRole);
                 
                 if (selectedRole) {
                     log('Using previously selected role:', selectedRole);
@@ -535,7 +542,7 @@
                 
                 // Prevent multiple modals
                 if (window._roleModalShowing) {
-                    console.log('[General Header] DEBUG - Role modal already showing, returning superUser');
+                    log('DEBUG - Role modal already showing, returning superUser');
                     return 'superUser';
                 }
                 window._roleModalShowing = true;
@@ -1489,7 +1496,7 @@
                 cover.style.background = bg;
                 log('Applied fixed header offset', { offset: FIXED_HEADER_OFFSET_PX, basePadding });
             } catch (e) {
-                console.warn('[General Header] Failed to apply fixed header offset', e);
+                logWarn('Failed to apply fixed header offset', e);
             }
         }
 
