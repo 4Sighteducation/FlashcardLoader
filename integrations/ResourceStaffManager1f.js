@@ -876,38 +876,63 @@
                     async createStaff() {
                         // Generate temporary password
                         const tempPassword = this.generatePassword();
+                        const staffName = `${this.staffForm.firstName} ${this.staffForm.lastName}`;
+                        const staffEmail = this.staffForm.email;
                         
-                        // Create Object_3 record
-                        const accountData = {
-                            field_122: [customerField], // Connected VESPA Customer - uses the customer record ID
-                            field_69: {
-                                title: this.staffForm.prefix,
-                                first: this.staffForm.firstName,
-                                last: this.staffForm.lastName
-                            },
-                            field_73: ['profile_7'], // User Role - use the profile ID not "Tutor"
-                            field_216: this.staffForm.group, // Group
-                            field_70: this.staffForm.email, // Email
-                            field_441: 'RESOURCE PORTAL', // Account Type
-                            field_1493: 'Level 2 & 3', // Account Level
-                            field_126: schoolId, // School ID
-                            field_71: tempPassword, // Password
-                            field_550: this.staffForm.yearGroup // Year Group
-                        };
-                        
-                        const response = await this.apiRequest('POST', 'objects/object_3/records', accountData);
-                        
-                        // Update the auto-created Tutor record
-                        await this.updateTutorRecord(this.staffForm.email);
-                        
-                        // Send welcome email
-                        await this.sendWelcomeEmail({
-                            email: this.staffForm.email,
-                            name: `${this.staffForm.firstName} ${this.staffForm.lastName}`,
-                            password: tempPassword
-                        });
-                        
-                        this.showMessage('Staff member added successfully. Welcome email sent.', 'success');
+                        try {
+                            // Create Object_3 record
+                            const accountData = {
+                                field_122: [customerField], // Connected VESPA Customer - uses the customer record ID
+                                field_69: {
+                                    title: this.staffForm.prefix,
+                                    first: this.staffForm.firstName,
+                                    last: this.staffForm.lastName
+                                },
+                                field_73: ['profile_7'], // User Role - use the profile ID not "Tutor"
+                                field_216: this.staffForm.group, // Group
+                                field_70: staffEmail, // Email
+                                field_441: 'RESOURCE PORTAL', // Account Type
+                                field_1493: 'Level 2 & 3', // Account Level
+                                field_126: schoolId, // School ID
+                                field_71: tempPassword, // Password
+                                field_550: this.staffForm.yearGroup // Year Group
+                            };
+                            
+                            const response = await this.apiRequest('POST', 'objects/object_3/records', accountData);
+                            
+                            // Update the auto-created Tutor record
+                            await this.updateTutorRecord(staffEmail, this.staffForm.group, this.staffForm.yearGroup);
+                            
+                            // Send welcome email
+                            let emailSent = false;
+                            try {
+                                await this.sendWelcomeEmail({
+                                    email: staffEmail,
+                                    name: staffName,
+                                    password: tempPassword
+                                });
+                                emailSent = true;
+                            } catch (emailError) {
+                                console.error('[Resource Staff Manager] Failed to send welcome email:', emailError);
+                            }
+                            
+                            // Send admin confirmation email
+                            await this.sendAdminConfirmationEmail('Staff Account Created', [
+                                `Staff Name: ${staffName}`,
+                                `Email: ${staffEmail}`,
+                                `Welcome Email: ${emailSent ? 'Sent successfully' : 'Failed to send - manual intervention required'}`
+                            ]);
+                            
+                            this.showMessage(
+                                emailSent 
+                                    ? 'Staff member added successfully. Welcome email sent.' 
+                                    : 'Staff member added but welcome email failed. Please send credentials manually.',
+                                emailSent ? 'success' : 'warning'
+                            );
+                        } catch (error) {
+                            console.error('[Resource Staff Manager] Error creating staff:', error);
+                            throw error;
+                        }
                     },
                     
                     // Update existing staff
@@ -927,8 +952,15 @@
                     },
                     
                     // Update tutor record
-                    async updateTutorRecord(email) {
+                    async updateTutorRecord(email, group = '', yearGroup = '') {
                         try {
+                            // Get current user's record ID for field_225 connection
+                            const currentUser = Knack.getUserAttributes();
+                            const staffAdminId = currentUser.id;
+                            
+                            console.log('[Resource Staff Manager] Updating tutor record for:', email);
+                            console.log('[Resource Staff Manager] Staff Admin ID for field_225:', staffAdminId);
+                            
                             // Find the tutor record by email
                             const filters = [
                                 {
@@ -945,18 +977,23 @@
                             if (response.records && response.records.length > 0) {
                                 const tutorId = response.records[0].id;
                                 
-                                // Update tutor record
+                                // Update tutor record with proper connections
                                 const updateData = {
                                     field_220: [customerField], // VESPA Customer
-                                    field_225: [userEmail], // Staff Admin email
-                                    field_216: this.staffForm.group, // Group
-                                    field_562: this.staffForm.yearGroup // Year Group
+                                    field_225: [staffAdminId], // Staff Admin record ID (connection field)
+                                    field_216: group || this.staffForm.group, // Group
+                                    field_562: yearGroup || this.staffForm.yearGroup // Year Group
                                 };
                                 
+                                console.log('[Resource Staff Manager] Updating tutor record with data:', updateData);
+                                
                                 await this.apiRequest('PUT', `objects/object_7/records/${tutorId}`, updateData);
+                                console.log('[Resource Staff Manager] Tutor record updated successfully');
+                            } else {
+                                console.log('[Resource Staff Manager] No tutor record found for email:', email);
                             }
                         } catch (error) {
-                            console.error('Error updating tutor record:', error);
+                            console.error('[Resource Staff Manager] Error updating tutor record:', error);
                         }
                     },
                     
@@ -1012,16 +1049,48 @@
                             });
                             
                             // Send password reset email
-                            await this.sendPasswordResetEmail({
-                                email: staff.email,
-                                name: staff.name,
-                                password: newPassword
-                            });
+                            let emailSent = false;
+                            try {
+                                await this.sendPasswordResetEmail({
+                                    email: staff.email,
+                                    name: staff.name,
+                                    password: newPassword
+                                });
+                                emailSent = true;
+                            } catch (emailError) {
+                                console.error('[Resource Staff Manager] Failed to send password reset email:', emailError);
+                            }
                             
-                            this.showMessage('Password reset successfully. Email sent to staff member.', 'success');
+                            // Send admin confirmation email
+                            await this.sendAdminConfirmationEmail('Password Reset', [
+                                `Staff Name: ${staff.name}`,
+                                `Email: ${staff.email}`,
+                                `Reset Email: ${emailSent ? 'Sent successfully' : 'Failed to send - please provide password manually'}`
+                            ]);
+                            
+                            // Show success modal with details
+                            this.showPasswordResetModal(staff, emailSent, newPassword);
                         } catch (error) {
                             this.showMessage('Error resetting password: ' + error.message, 'error');
                         }
+                    },
+                    
+                    // Show password reset success modal
+                    showPasswordResetModal(staff, emailSent, password) {
+                        // Create a temporary modal for password reset confirmation
+                        this.passwordResetModal = {
+                            visible: true,
+                            staff: staff,
+                            emailSent: emailSent,
+                            password: password
+                        };
+                        
+                        this.showMessage(
+                            emailSent 
+                                ? 'Password reset successfully. Email sent to staff member.' 
+                                : 'Password reset but email failed. Please provide credentials manually.',
+                            emailSent ? 'success' : 'warning'
+                        );
                     },
                     
                     // Bulk reset passwords
@@ -1056,6 +1125,8 @@
                     // Send welcome email
                     async sendWelcomeEmail(data) {
                         try {
+                            console.log('[Resource Staff Manager] Sending welcome email to:', data.email);
+                            
                             const emailData = {
                                 to: data.email,
                                 templateId: 'd-29e82dfb3bd14de6815f4b225b9ef7b3',
@@ -1075,18 +1146,108 @@
                                 body: JSON.stringify(emailData)
                             });
                             
+                            const responseData = await response.text();
+                            
                             if (!response.ok) {
-                                throw new Error('Failed to send email');
+                                console.error('[Resource Staff Manager] Email send failed. Status:', response.status, 'Response:', responseData);
+                                throw new Error(`Failed to send email: ${response.status} - ${responseData}`);
                             }
+                            
+                            console.log('[Resource Staff Manager] Welcome email sent successfully to:', data.email);
+                            return true;
                         } catch (error) {
-                            console.error('Error sending welcome email:', error);
+                            console.error('[Resource Staff Manager] Error sending welcome email:', error);
+                            throw error; // Re-throw to handle at calling level
                         }
                     },
                     
                     // Send password reset email
                     async sendPasswordResetEmail(data) {
-                        // Similar to sendWelcomeEmail but with different template if needed
-                        await this.sendWelcomeEmail(data);
+                        try {
+                            console.log('[Resource Staff Manager] Sending password reset email to:', data.email);
+                            
+                            const emailData = {
+                                to: data.email,
+                                templateId: 'd-29e82dfb3bd14de6815f4b225b9ef7b3',
+                                dynamicTemplateData: {
+                                    name: data.name.split(' ')[0], // First name only
+                                    email: data.email,
+                                    password: data.password,
+                                    loginUrl: 'https://vespaacademy.knack.com/vespa-academy#home/'
+                                }
+                            };
+                            
+                            const response = await fetch('https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(emailData)
+                            });
+                            
+                            const responseData = await response.text();
+                            
+                            if (!response.ok) {
+                                console.error('[Resource Staff Manager] Password reset email failed. Status:', response.status, 'Response:', responseData);
+                                throw new Error(`Failed to send password reset email: ${response.status} - ${responseData}`);
+                            }
+                            
+                            console.log('[Resource Staff Manager] Password reset email sent successfully to:', data.email);
+                            return true;
+                        } catch (error) {
+                            console.error('[Resource Staff Manager] Error sending password reset email:', error);
+                            throw error;
+                        }
+                    },
+                    
+                    // Send confirmation email to staff admin
+                    async sendAdminConfirmationEmail(action, details) {
+                        try {
+                            console.log('[Resource Staff Manager] Sending admin confirmation for:', action);
+                            
+                            const currentUser = Knack.getUserAttributes();
+                            const adminEmail = currentUser.email;
+                            const adminName = this.formatName(currentUser.values?.field_69_raw || currentUser.values?.field_69);
+                            
+                            // Prepare email list for notification
+                            const emailList = details.map(item => `• ${item}`).join('\n');
+                            
+                            // Send to staff admin
+                            const adminEmailData = {
+                                to: adminEmail,
+                                cc: 'admin@vespa.academy', // Always CC admin@vespa.academy
+                                subject: `Resource Portal - ${action} Confirmation`,
+                                html: `
+                                    <p>Hi ${adminName.split(' ')[0] || 'Admin'},</p>
+                                    <p>This email confirms the following ${action.toLowerCase()} action(s) in the Resource Portal:</p>
+                                    <p><strong>Action Performed:</strong> ${action}</p>
+                                    <p><strong>Details:</strong></p>
+                                    <pre>${emailList}</pre>
+                                    <p>Time: ${new Date().toLocaleString('en-GB')}</p>
+                                    <p>If you have any questions, please contact support.</p>
+                                    <p>Best regards,<br>VESPA Academy Team</p>
+                                `
+                            };
+                            
+                            const response = await fetch('https://vespa-sendgrid-proxy-660b8a5a8d51.herokuapp.com/api/send-email', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(adminEmailData)
+                            });
+                            
+                            if (!response.ok) {
+                                const responseData = await response.text();
+                                console.error('[Resource Staff Manager] Admin confirmation email failed:', responseData);
+                                // Don't throw - this is a non-critical failure
+                            } else {
+                                console.log('[Resource Staff Manager] Admin confirmation email sent successfully');
+                            }
+                        } catch (error) {
+                            console.error('[Resource Staff Manager] Error sending admin confirmation:', error);
+                            // Don't throw - this is a non-critical failure
+                        }
                     },
                     
                     // Close modal
@@ -1258,6 +1419,9 @@
                         
                         const successfulUploads = [];
                         const failedUploads = [];
+                        const emailResults = [];
+                        
+                        console.log('[Resource Staff Manager] Starting CSV upload for', this.csvData.length, 'staff members');
                         
                         for (let i = 0; i < this.csvData.length; i++) {
                             const staff = this.csvData[i];
@@ -1266,6 +1430,9 @@
                             try {
                                 // Generate password for this staff member
                                 const tempPassword = this.generatePassword();
+                                const staffName = `${staff.firstName} ${staff.lastName}`;
+                                
+                                console.log(`[Resource Staff Manager] Creating account ${i + 1}/${this.csvData.length} for:`, staff.email);
                                 
                                 // Create staff record
                                 const accountData = {
@@ -1288,36 +1455,69 @@
                                 const response = await this.apiRequest('POST', 'objects/object_3/records', accountData);
                                 
                                 if (response.id) {
-                                    successfulUploads.push(staff);
+                                    let emailSent = false;
                                     
                                     // Update tutor record
-                                    await this.updateTutorRecord(staff.email);
+                                    await this.updateTutorRecord(staff.email, staff.group, staff.yearGroup);
                                     
                                     // Send welcome email
-                                    await this.sendWelcomeEmail({
-                                        name: `${staff.firstName} ${staff.lastName}`,
-                                        email: staff.email,
-                                        password: tempPassword
+                                    try {
+                                        await this.sendWelcomeEmail({
+                                            name: staffName,
+                                            email: staff.email,
+                                            password: tempPassword
+                                        });
+                                        emailSent = true;
+                                        emailResults.push(`✓ ${staff.email} - Welcome email sent`);
+                                    } catch (emailError) {
+                                        console.error(`[Resource Staff Manager] Failed to send email to ${staff.email}:`, emailError);
+                                        emailResults.push(`✗ ${staff.email} - Email failed: ${emailError.message}`);
+                                    }
+                                    
+                                    successfulUploads.push({
+                                        ...staff,
+                                        emailSent: emailSent,
+                                        password: emailSent ? null : tempPassword // Only store password if email failed
                                     });
                                 }
                             } catch (error) {
-                                console.error(`Failed to create staff ${staff.email}:`, error);
+                                console.error(`[Resource Staff Manager] Failed to create staff ${staff.email}:`, error);
                                 failedUploads.push({
                                     staff: staff,
                                     error: error.message || 'Unknown error'
                                 });
+                                emailResults.push(`✗ ${staff.email} - Account creation failed: ${error.message}`);
                             }
                         }
                         
                         this.csvUploading = false;
                         this.closeCsvModal();
                         
+                        // Send admin confirmation email with detailed results
+                        const summaryDetails = [
+                            `Total Processed: ${this.csvData.length}`,
+                            `Successfully Created: ${successfulUploads.length}`,
+                            `Failed: ${failedUploads.length}`,
+                            '',
+                            'Email Results:'
+                        ].concat(emailResults);
+                        
+                        await this.sendAdminConfirmationEmail('CSV Staff Upload', summaryDetails);
+                        
                         // Show results
                         if (successfulUploads.length > 0) {
-                            this.showMessage(
-                                'Successfully imported ' + successfulUploads.length + ' staff members' + (failedUploads.length > 0 ? ', ' + failedUploads.length + ' failed' : '') + '.',
-                                failedUploads.length > 0 ? 'warning' : 'success'
-                            );
+                            const emailsFailedCount = successfulUploads.filter(s => !s.emailSent).length;
+                            let message = `Successfully imported ${successfulUploads.length} staff members`;
+                            
+                            if (emailsFailedCount > 0) {
+                                message += ` (${emailsFailedCount} email(s) failed - check admin email for details)`;
+                            }
+                            
+                            if (failedUploads.length > 0) {
+                                message += `, ${failedUploads.length} failed`;
+                            }
+                            
+                            this.showMessage(message + '.', failedUploads.length > 0 || emailsFailedCount > 0 ? 'warning' : 'success');
                             
                             // Reload staff list
                             await this.loadStaffList();
@@ -1325,9 +1525,17 @@
                             this.showMessage('Failed to import staff. Please check your data and try again.', 'error');
                         }
                         
+                        // Log summary
+                        console.log('[Resource Staff Manager] CSV Upload Summary:', {
+                            total: this.csvData.length,
+                            successful: successfulUploads.length,
+                            failed: failedUploads.length,
+                            emailResults: emailResults
+                        });
+                        
                         // Log failures for debugging
                         if (failedUploads.length > 0) {
-                            console.error('Failed uploads:', failedUploads);
+                            console.error('[Resource Staff Manager] Failed uploads:', failedUploads);
                         }
                     }
                 },
@@ -2005,3 +2213,4 @@
     
     console.log('[Resource Staff Manager] Script setup complete, initializer function ready');
 })();
+
