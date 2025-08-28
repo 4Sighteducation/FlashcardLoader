@@ -1362,6 +1362,24 @@
                         const currentHash = window.location.hash;
                         log(`Navigation from ${currentHash} to ${href} (scene: ${targetScene})`);
                         
+                        // PREVENT UNIVERSAL REDIRECT INTERFERENCE for staff admin navigation
+                        const userType = getUserType();
+                        if (userType === 'staffAdminResource' && targetScene === 'scene_1272') {
+                            log('Preventing Universal Redirect interference for staff admin navigation to scene_1272');
+                            // Set a flag that Universal Redirect should check
+                            window._bypassUniversalRedirect = true;
+                            sessionStorage.setItem('_bypassRedirectUntil', Date.now() + 5000); // Bypass for 5 seconds
+                            
+                            // Also disable any active Universal Redirect timers
+                            if (window._universalRedirectTimer) {
+                                clearInterval(window._universalRedirectTimer);
+                                window._universalRedirectTimer = null;
+                                log('Cleared Universal Redirect timer');
+                            }
+                            // Set a flag to prevent Universal Redirect from restarting
+                            window._universalRedirectDisabled = true;
+                        }
+                        
                         // UNIVERSAL CLEANUP: Force cleanup for all scene navigations
                         // This ensures fresh app loads and prevents issues with cached states
                         if (targetScene && targetScene !== currentScene) {
@@ -1383,6 +1401,14 @@
                         
                         // Navigate using Knack with a small delay to ensure cleanup
                         setTimeout(() => {
+                            // For staff admin navigating to scene_1272, use a more forceful approach
+                            if (userType === 'staffAdminResource' && targetScene === 'scene_1272') {
+                                log('Using forceful navigation for staff admin to scene_1272');
+                                // Use location.href to force a full navigation that Universal Redirect can't intercept as easily
+                                window.location.href = window.location.origin + window.location.pathname + '#resource-staff-manager/';
+                                return;
+                            }
+                            
                             window.location.hash = href;
                             
                             // For Results and Coaching tabs, ensure the scene renders properly
@@ -2059,6 +2085,23 @@
         // Initialize the header
         function init() {
             log('Starting General Header initialization...');
+            
+            // DISABLE UNIVERSAL REDIRECT FOR STAFF ADMIN RESOURCE USERS
+            // This prevents the redirect from interfering with navigation to scene_1272
+            const userType = getUserType();
+            if (userType === 'staffAdminResource' && currentScene !== 'scene_1') {
+                // If we're not on the login page and user is staffAdminResource, disable Universal Redirect
+                if (window._universalRedirectTimer) {
+                    clearInterval(window._universalRedirectTimer);
+                    window._universalRedirectTimer = null;
+                    log('Disabled Universal Redirect timer for staffAdminResource user');
+                }
+                window._universalRedirectDisabled = true;
+                window._bypassUniversalRedirect = true;
+                
+                // Also set a permanent session flag
+                sessionStorage.setItem('_disableUniversalRedirectForStaffAdmin', 'true');
+            }
             
             // Check if we're on a login page
             const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5']; // Add your actual login scene IDs
