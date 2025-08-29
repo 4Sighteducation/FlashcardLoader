@@ -1422,50 +1422,15 @@
                             }
                         }
                         
-                        // Navigate using Knack with a small delay to ensure cleanup
+                        // Navigate using full URL reload to ensure proper scene loading
+                        // This forces Knack to reload and properly initialize the new scene
                         setTimeout(() => {
-                            window.location.hash = href;
+                            const fullUrl = window.location.origin + window.location.pathname + href;
+                            log(`Navigating to full URL: ${fullUrl}`);
+                            window.location.href = fullUrl;
                             
-                            // Special handling for Resource Portal scenes
-                            if (targetScene === 'scene_1272' || targetScene === 'scene_481') {
-                                log(`Special handling for Resource Portal scene ${targetScene}`);
-                                // Double-check that Universal Redirect is still disabled
-                                window._universalRedirectCompleted = true;
-                                window._bypassUniversalRedirect = true;
-                                
-                                // Force scene render if needed
-                                setTimeout(() => {
-                                    const currentScene = Knack.scene ? Knack.scene.key : null;
-                                    if (currentScene !== targetScene) {
-                                        log(`Scene didn't change properly for ${targetScene}, attempting force navigation`);
-                                        // Force a page reload as fallback
-                                        window.location.href = window.location.origin + window.location.pathname + href;
-                                    }
-                                    // Clear navigation flag after successful navigation
-                                    window._navigationInProgress = false;
-                                }, 500);
-                            }
-                            
-                            // For Results and Coaching tabs, ensure the scene renders properly
-                            else if (targetScene === 'scene_1270' || targetScene === 'scene_1095' || targetScene === 'scene_1014') {
-                                log(`Ensuring proper scene render for ${targetScene}`);
-                                // Trigger a manual scene render event if Knack doesn't fire it
-                                setTimeout(() => {
-                                    const currentScene = Knack.scene ? Knack.scene.key : null;
-                                    if (currentScene !== targetScene) {
-                                        log(`Scene didn't change properly, forcing reload`);
-                                        // Force a page reload as fallback
-                                        window.location.href = window.location.origin + window.location.pathname + href;
-                                    }
-                                    // Clear navigation flag after successful navigation
-                                    window._navigationInProgress = false;
-                                }, 500);
-                            } else {
-                                // Clear navigation flag for other scenes
-                                setTimeout(() => {
-                                    window._navigationInProgress = false;
-                                }, 500);
-                            }
+                            // Navigation will cause page reload, so no need for special handling
+                            // The navigation flag will be cleared on the new page load
                         }, 50);
                     }
                 });
