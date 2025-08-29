@@ -315,6 +315,23 @@
     
     // Unified navigation function that coordinates with GeneralHeader.js and knackAppLoader.js
     window.navigateToScene = function(scene, url, featureName) {
+        // CRITICAL: Disable Universal Redirect IMMEDIATELY - must be first!
+        window._bypassUniversalRedirect = true;
+        window._universalRedirectCompleted = true;
+        window._navigationInProgress = true;
+        window._resourceDashboardNavigationInProgress = true;
+        sessionStorage.setItem('universalRedirectCompleted', 'true');
+        sessionStorage.setItem('navigationInProgress', 'true');
+        sessionStorage.setItem('navigationTarget', scene);
+        
+        // Kill any pending redirect timers IMMEDIATELY
+        if (window._universalRedirectTimer) {
+            clearInterval(window._universalRedirectTimer);
+            clearTimeout(window._universalRedirectTimer);
+            window._universalRedirectTimer = null;
+            log('Killed Universal Redirect timer at start of navigation');
+        }
+        
         // Trigger event to notify other components about navigation
         $(document).trigger('vespa-navigation-started', {
             from: window.location.hash,
@@ -322,24 +339,6 @@
             targetScene: scene,
             source: 'resource-dashboard'
         });
-        
-        // CRITICAL: Coordinate with GeneralHeader.js navigation system
-        // This ensures same cleanup and state management as header navigation
-        
-        // 1. Disable Universal Redirect (matching GeneralHeader.js behavior)
-        window._bypassUniversalRedirect = true;
-        window._universalRedirectCompleted = true;
-        sessionStorage.setItem('universalRedirectCompleted', 'true');
-        
-        // 2. Kill any pending redirect timers
-        if (window._universalRedirectTimer) {
-            clearTimeout(window._universalRedirectTimer);
-            window._universalRedirectTimer = null;
-        }
-        
-        // 3. Set navigation flags (matching header behavior)
-        window._navigationInProgress = true;
-        window._resourceDashboardNavigationInProgress = true;
         
         // 4. Signal the loader to force reload for target scene
         window._forceAppReload = scene;
@@ -412,9 +411,11 @@
             container.innerHTML = '';
         }
         
-        // Reset navigation flags
-        window._resourceDashboardNavigationInProgress = false;
-        window._resourceDashboardActive = false;
+        // Note: Don't clear navigation flags immediately - let them persist through navigation
+        setTimeout(() => {
+            window._resourceDashboardActive = false;
+            // Navigation flag will be cleared by universal redirect or next page load
+        }, 1000);
         
         // Clear any loading indicators
         const loadingIndicators = document.querySelectorAll('.loading-state, .pdf-loading');
