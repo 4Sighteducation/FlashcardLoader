@@ -1372,6 +1372,14 @@
                         const currentHash = window.location.hash;
                         log(`Navigation from ${currentHash} to ${href} (scene: ${targetScene})`);
                         
+                        // Trigger event to notify other components about navigation
+                        $(document).trigger('vespa-navigation-started', {
+                            from: currentHash,
+                            to: href,
+                            targetScene: targetScene,
+                            source: 'header'
+                        });
+                        
                         // CRITICAL: Disable Universal Redirect for ALL navigation
                         // This prevents redirect interference when clicking header buttons
                         window._universalRedirectCompleted = true;
@@ -1405,6 +1413,13 @@
                             document.body.style.backgroundColor = '';
                             document.body.style.background = '';
                             document.body.style.backgroundImage = '';
+                            document.body.classList.remove('staff-homepage-scene', 'landing-page-scene', 'dashboard-scene');
+                            
+                            // Handle loading screens for special scenes (coordinating with knackAppLoader.js)
+                            if (targetScene === 'scene_1014' || targetScene === 'scene_1095') {
+                                log(`Navigating to ${targetScene}, loader will handle loading screen`);
+                                document.body.classList.add('navigation-initiated');
+                            }
                         }
                         
                         // Navigate using Knack with a small delay to ensure cleanup
@@ -1432,13 +1447,13 @@
                             }
                             
                             // For Results and Coaching tabs, ensure the scene renders properly
-                            else if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
-                                log(`Forcing scene render for ${targetScene}`);
+                            else if (targetScene === 'scene_1270' || targetScene === 'scene_1095' || targetScene === 'scene_1014') {
+                                log(`Ensuring proper scene render for ${targetScene}`);
                                 // Trigger a manual scene render event if Knack doesn't fire it
                                 setTimeout(() => {
                                     const currentScene = Knack.scene ? Knack.scene.key : null;
                                     if (currentScene !== targetScene) {
-                                        log(`Scene didn't change properly, attempting force navigation`);
+                                        log(`Scene didn't change properly, forcing reload`);
                                         // Force a page reload as fallback
                                         window.location.href = window.location.origin + window.location.pathname + href;
                                     }
