@@ -1666,6 +1666,114 @@
     }
   }
 
+  // --- Navigation Functions ---
+  // Unified navigation function that coordinates with GeneralHeader.js and knackAppLoader.js
+  window.navigateToScene = function(scene, url, featureName) {
+    // Trigger event to notify other components about navigation
+    $(document).trigger('vespa-navigation-started', {
+      from: window.location.hash,
+      to: url,
+      targetScene: scene,
+      source: 'student-homepage'
+    });
+    
+    // CRITICAL: Coordinate with GeneralHeader.js navigation system
+    // This ensures same cleanup and state management as header navigation
+    
+    // 1. Disable Universal Redirect
+    window._bypassUniversalRedirect = true;
+    window._universalRedirectCompleted = true;
+    sessionStorage.setItem('universalRedirectCompleted', 'true');
+    
+    // 2. Kill any pending redirect timers
+    if (window._universalRedirectTimer) {
+      clearTimeout(window._universalRedirectTimer);
+      window._universalRedirectTimer = null;
+    }
+    
+    // 3. Set navigation flags
+    window._navigationInProgress = true;
+    window._studentHomepageNavigationInProgress = true;
+    
+    // 4. Signal the loader to force reload for target scene
+    window._forceAppReload = scene;
+    
+    // 5. Cleanup current homepage before navigation
+    cleanupStudentHomepage();
+    
+    // 6. Clear background styles and classes
+    document.body.classList.remove('student-homepage-scene', 'landing-page-scene');
+    const existingBackground = document.querySelector('.kn-content');
+    if (existingBackground) {
+      existingBackground.style.removeProperty('background');
+      existingBackground.style.removeProperty('background-image');
+    }
+    
+    // 7. Handle special scenes that need loading screens
+    if (scene === 'scene_1014' || scene === 'scene_1095') {
+      document.body.classList.add('navigation-initiated');
+    }
+    
+    // 8. Track feature usage (if tracking functions exist)
+    if (featureName && typeof trackPageView === 'function') {
+      trackPageView(featureName).catch(err => 
+        console.warn(`[Student Homepage] Feature tracking failed for ${featureName}:`, err)
+      );
+    }
+    
+    // 9. Build full URL if needed
+    const fullUrl = url.startsWith('#') ? 
+      `https://vespaacademy.knack.com/vespa-academy${url}` : 
+      url;
+    
+    // 10. Navigate using the full URL
+    window.location.href = fullUrl;
+    
+    // Log navigation for debugging
+    debugLog('Student Homepage navigation', {
+      scene: scene,
+      url: url,
+      feature: featureName,
+      fullUrl: fullUrl
+    });
+  };
+  
+  // Cleanup function for Student Homepage
+  function cleanupStudentHomepage() {
+    debugLog('Cleaning up Student Homepage...');
+    
+    // Remove styles
+    const styleIds = ['academic-profile-styles-link', 'homepage-scene-level-overrides'];
+    styleIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) element.remove();
+    });
+    
+    // Remove tooltips
+    cleanupTooltips();
+    
+    // Remove modals
+    const modalIds = ['pdfModal', 'verification-modal-overlay', 'profileGradeInfoTooltip', 'megInfoTooltip'];
+    modalIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) element.remove();
+    });
+    
+    // Clear container
+    const container = document.querySelector(window.HOMEPAGE_CONFIG?.elementSelector);
+    if (container) {
+      container.innerHTML = '';
+    }
+    
+    // Reset navigation flags
+    window._studentHomepageNavigationInProgress = false;
+    window._studentHomepageActive = false;
+    window._homepageInitializing = false;
+    window._homepageInitialized = false;
+    
+    debugLog('Student Homepage cleanup complete');
+  }
+  
   // --- UI Rendering ---
   // Render the main homepage UI
   function renderHomepage(userProfile, flashcardReviewCounts, studyPlannerData, taskboardData, vespaScoresData, activityData = null) {
@@ -2956,10 +3064,27 @@
                                data-doing-titles=\'${JSON.stringify(taskboardData.doingTaskTitles)}\'`;
       }
 
+      // Extract scene from URL
+      let scene = '';
+      let hash = '';
+      if (app.url) {
+        const hashMatch = app.url.match(/#(.+)/);
+        hash = hashMatch ? hashMatch[1] : '';
+        
+        // Map URLs to scenes for student apps
+        if (app.url.includes('#add-q')) scene = 'scene_855';
+        else if (app.url.includes('#vespa-results')) scene = 'scene_1270';
+        else if (app.url.includes('#my-vespa')) scene = 'scene_1256';
+        else if (app.url.includes('#studyplanner')) scene = 'scene_1258';
+        else if (app.url.includes('#flashcards')) scene = 'scene_1259';
+        else if (app.url.includes('#task-board')) scene = 'scene_1260';
+      }
+      
       // Ensure no title attribute on the link to prevent default browser tooltip
       appsHTML += `
         <div class="app-card"${cardDataAttributes}>
-          <a href="${app.url}" class="app-card-link"> 
+          <a href="javascript:void(0);" class="app-card-link" 
+             onclick="navigateToScene('${scene}', '#${hash}', '${sanitizeField(app.name)}')"> 
             <div class="app-card-header">
               ${notificationBadgeHTML}
               <div class="app-icon-container">
@@ -3565,6 +3690,7 @@
       return;
     }
     window._homepageInitializing = true;
+    window._studentHomepageActive = true;
     
     debugLog("Initializing Homepage...");
     
@@ -3799,6 +3925,24 @@
     window._privacyHandlersSetup = false;
     window._homepageInitializing = false;
     window._homepageInitialized = false;
+  });
+  
+  // Listen for scene changes to cleanup when navigating away
+  $(document).on('knack-scene-render.any', function(event, scene) {
+    // If we're navigating away from scene_1210 (student homepage), cleanup
+    if (scene && scene.key !== 'scene_1210') {
+      if (window._studentHomepageActive) {
+        cleanupStudentHomepage();
+      }
+    }
+  });
+  
+  // Listen for navigation events to coordinate with other components
+  $(document).on('vespa-navigation-started', function(event, data) {
+    // If navigation is from another source and we're active, cleanup
+    if (data.source !== 'student-homepage' && window._studentHomepageActive) {
+      cleanupStudentHomepage();
+    }
   });
 
   // NEW: Setup for profile information tooltip
