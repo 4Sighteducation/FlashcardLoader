@@ -168,7 +168,14 @@ console.log('[Universal Redirect] Script loaded!');
     function redirectUser(userType) {
         console.log('[Universal Redirect] redirectUser called with userType:', userType);
         
-        // CRITICAL: Check if navigation is in progress or redirect is bypassed
+        // CRITICAL: Check sessionStorage FIRST for bypass flags
+        if (sessionStorage.getItem('bypassRedirect') === 'true') {
+            console.log('[Universal Redirect] Bypass flag found in sessionStorage, skipping redirect');
+            sessionStorage.removeItem('bypassRedirect'); // Clear it after checking
+            return;
+        }
+        
+        // Check if navigation is in progress or redirect is bypassed
         if (window._bypassUniversalRedirect || window._universalRedirectCompleted || window._navigationInProgress) {
             console.log('[Universal Redirect] Redirect bypassed due to navigation flags');
             return;
@@ -182,8 +189,15 @@ console.log('[Universal Redirect] Script loaded!');
         
         // Check if there's a navigation target in session
         const navigationTarget = sessionStorage.getItem('navigationTarget');
-        if (navigationTarget) {
-            console.log('[Universal Redirect] Navigation target exists:', navigationTarget, '- skipping redirect');
+        const navigationTargetUrl = sessionStorage.getItem('targetUrl');
+        if (navigationTarget || navigationTargetUrl) {
+            console.log('[Universal Redirect] Navigation target exists:', navigationTarget, navigationTargetUrl, '- skipping redirect');
+            // Check if we're already at the target URL
+            if (navigationTargetUrl && window.location.hash === navigationTargetUrl) {
+                console.log('[Universal Redirect] Already at target URL, clearing flags');
+                sessionStorage.removeItem('navigationTarget');
+                sessionStorage.removeItem('targetUrl');
+            }
             return;
         }
         
@@ -273,7 +287,13 @@ console.log('[Universal Redirect] Script loaded!');
     function initializeUniversalRedirect() {
         console.log('[Universal Redirect] initializeUniversalRedirect called!');
         
-        // CRITICAL: Check ALL bypass flags immediately
+        // CRITICAL: Check sessionStorage bypass FIRST
+        if (sessionStorage.getItem('bypassRedirect') === 'true') {
+            console.log('[Universal Redirect] bypassRedirect flag in sessionStorage, skipping initialization');
+            return;
+        }
+        
+        // Check ALL bypass flags immediately
         if (window._bypassUniversalRedirect || 
             window._universalRedirectCompleted || 
             window._navigationInProgress ||
@@ -295,11 +315,13 @@ console.log('[Universal Redirect] Script loaded!');
         // Check session storage flags
         if (sessionStorage.getItem('universalRedirectCompleted') === 'true' ||
             sessionStorage.getItem('navigationInProgress') === 'true' ||
-            sessionStorage.getItem('navigationTarget')) {
+            sessionStorage.getItem('navigationTarget') ||
+            sessionStorage.getItem('targetUrl')) {
             console.log('[Universal Redirect] Session flag indicates bypass, skipping', {
                 universalRedirectCompleted: sessionStorage.getItem('universalRedirectCompleted'),
                 navigationInProgress: sessionStorage.getItem('navigationInProgress'),
-                navigationTarget: sessionStorage.getItem('navigationTarget')
+                navigationTarget: sessionStorage.getItem('navigationTarget'),
+                targetUrl: sessionStorage.getItem('targetUrl')
             });
             return;
         }
