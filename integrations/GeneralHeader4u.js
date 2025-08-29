@@ -1385,8 +1385,12 @@
                         window._universalRedirectCompleted = true;
                         window._bypassUniversalRedirect = true;
                         window._navigationInProgress = true;
+                        
+                        // Set multiple bypass flags in sessionStorage for redundancy
+                        sessionStorage.setItem('bypassRedirect', 'true');
                         sessionStorage.setItem('universalRedirectCompleted', 'true');
                         sessionStorage.setItem('navigationTarget', targetScene);
+                        sessionStorage.setItem('targetUrl', href);
                         
                         // Kill any Universal Redirect timers
                         if (window._universalRedirectTimer) {
@@ -1422,16 +1426,27 @@
                             }
                         }
                         
-                        // Navigate using full URL reload to ensure proper scene loading
-                        // This forces Knack to reload and properly initialize the new scene
-                        setTimeout(() => {
-                            const fullUrl = window.location.origin + window.location.pathname + href;
-                            log(`Navigating to full URL: ${fullUrl}`);
-                            window.location.href = fullUrl;
-                            
-                            // Navigation will cause page reload, so no need for special handling
-                            // The navigation flag will be cleared on the new page load
-                        }, 50);
+                        // Special handling for admin-coaching which has issues
+                        if (targetScene === 'scene_1014' || href === '#admin-coaching') {
+                            log('Special handling for Admin Coaching navigation');
+                            // Use location.replace for cleaner navigation
+                            const targetUrl = 'https://vespaacademy.knack.com/vespa-academy#admin-coaching';
+                            log(`Direct navigation to: ${targetUrl}`);
+                            setTimeout(() => {
+                                window.location.replace(targetUrl);
+                            }, 50);
+                        } else {
+                            // Navigate using full URL reload to ensure proper scene loading
+                            // This forces Knack to reload and properly initialize the new scene
+                            setTimeout(() => {
+                                const fullUrl = window.location.origin + window.location.pathname + href;
+                                log(`Navigating to full URL: ${fullUrl}`);
+                                window.location.href = fullUrl;
+                                
+                                // Navigation will cause page reload, so no need for special handling
+                                // The navigation flag will be cleared on the new page load
+                            }, 50);
+                        }
                     }
                 });
             });
