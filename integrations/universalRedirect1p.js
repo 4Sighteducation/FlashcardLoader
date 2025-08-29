@@ -174,6 +174,12 @@ console.log('[Universal Redirect] Script loaded!');
             return;
         }
         
+        // Check if homepage navigation is in progress
+        if (window._homepageNavigationInProgress || window._staffHomepageActive) {
+            console.log('[Universal Redirect] Homepage navigation in progress, skipping redirect');
+            return;
+        }
+        
         // Check if there's a navigation target in session
         const navigationTarget = sessionStorage.getItem('navigationTarget');
         if (navigationTarget) {
@@ -369,21 +375,47 @@ console.log('[Universal Redirect] Script loaded!');
     // Make function globally available BEFORE the IIFE closes
     window.initializeUniversalRedirect = initializeUniversalRedirect;
     
+    // Listen for navigation events from homepages and header
+    $(document).on('vespa-navigation-started', function(event, data) {
+        console.log('[Universal Redirect] Navigation event detected:', data);
+        
+        // Set bypass flags
+        window._bypassUniversalRedirect = true;
+        window._navigationInProgress = true;
+        
+        // Clear any pending redirect timers
+        if (window._universalRedirectTimer) {
+            clearTimeout(window._universalRedirectTimer);
+            window._universalRedirectTimer = null;
+            console.log('[Universal Redirect] Cleared pending redirect timer due to navigation');
+        }
+        
+        // Set a session flag to prevent redirect on next scene render
+        sessionStorage.setItem('navigationInProgress', 'true');
+        
+        // Clear the flag after navigation completes (with timeout)
+        setTimeout(() => {
+            sessionStorage.removeItem('navigationInProgress');
+            window._navigationInProgress = false;
+        }, 3000);
+    });
+    
     // Auto-initialize on scene render
     $(document).on('knack-scene-render.scene_1', function(event, scene) {
         console.log('[Universal Redirect] Scene 1 render event fired!', scene);
         
         // Check if we should skip
         if (window._bypassUniversalRedirect || window._universalRedirectCompleted || 
-            window._navigationInProgress || sessionStorage.getItem('universalRedirectCompleted') === 'true') {
-            console.log('[Universal Redirect] Skipping auto-initialize due to bypass flags');
+            window._navigationInProgress || sessionStorage.getItem('universalRedirectCompleted') === 'true' ||
+            sessionStorage.getItem('navigationInProgress') === 'true') {
+            console.log('[Universal Redirect] Skipping auto-initialize due to bypass flags or navigation');
             return;
         }
         
         log('Scene 1 rendered, checking for redirect...');
         
-        // Add a delay here too to ensure everything is ready
-        setTimeout(() => {
+        // Store timer reference so it can be cancelled if needed
+        window._universalRedirectTimer = setTimeout(() => {
             initializeUniversalRedirect();
         }, 500);
     });
