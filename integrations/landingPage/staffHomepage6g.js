@@ -42,7 +42,7 @@ const IS_DEVELOPMENT = window.location.hostname === 'localhost' ||
                      window.location.hostname.includes('staging');
 const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
 
-(function() {
+// Begin console override section
   // Save original console methods
   const originalConsole = {
     log: console.log,
@@ -149,7 +149,7 @@ const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
       originalConsole.error.apply(console, sanitizeArgs(arguments));
     };
   }
-})();
+// End console override section
 
 // Add data sanitization function for logging
 function sanitizeDataForLogging(data) {
@@ -2809,45 +2809,14 @@ window.navigateToScene = function(scene, url, featureName) {
   // 4. Clean up homepage-specific elements
   cleanupHomepageBeforeNavigation();
   
-  // 5. Navigate using hash (same as GeneralHeader.js)
-  window.location.hash = url;
+  // 5. Navigate using full URL reload to ensure proper scene loading
+  // This forces Knack to reload and properly initialize the new scene
+  const fullUrl = window.location.origin + window.location.pathname + url;
+  debugLog('Navigating to full URL:', fullUrl);
+  window.location.href = fullUrl;
   
-  // 6. Post-navigation handling (matching GeneralHeader.js special cases)
-  setTimeout(() => {
-    // Special handling for Resource Portal scenes
-    if (scene === 'scene_1272' || scene === 'scene_481') {
-      debugLog(`Special handling for Resource Portal scene ${scene}`);
-      window._universalRedirectCompleted = true;
-      window._bypassUniversalRedirect = true;
-      
-      // Verify navigation succeeded
-      setTimeout(() => {
-        const currentScene = Knack.scene ? Knack.scene.key : null;
-        if (currentScene !== scene) {
-          debugLog(`Scene didn't change properly for ${scene}, forcing reload`);
-          window.location.href = window.location.origin + window.location.pathname + url;
-        }
-        window._navigationInProgress = false;
-      }, 500);
-    }
-    // Special handling for Results and Coaching tabs
-    else if (scene === 'scene_1270' || scene === 'scene_1095' || scene === 'scene_1014') {
-      debugLog(`Ensuring proper scene render for ${scene}`);
-      setTimeout(() => {
-        const currentScene = Knack.scene ? Knack.scene.key : null;
-        if (currentScene !== scene) {
-          debugLog(`Scene didn't change properly, forcing reload`);
-          window.location.href = window.location.origin + window.location.pathname + url;
-        }
-        window._navigationInProgress = false;
-      }, 500);
-    } else {
-      // Clear navigation flag for other scenes
-      setTimeout(() => {
-        window._navigationInProgress = false;
-      }, 500);
-    }
-  }, 50);
+  // Navigation will cause page reload, so no need for post-navigation handling
+  return;
 };
 
 // Enhanced cleanup function that coordinates with knackAppLoader.js
@@ -6825,27 +6794,33 @@ window.staffHomepageInitQueue.push(loadStudentEmulationSetup);
 
 // Enhanced scene change listener that coordinates with knackAppLoader.js
 $(document).on('knack-scene-render.any', function(event, scene) {
-  // If we're navigating away from scene_1215 (staff homepage), cleanup
-  if (scene && scene.key !== 'scene_1215') {
-    cleanupHomepageBeforeNavigation();
-    
-    // Additional coordination with loader
-    // Clear any homepage-specific flags
-    // Note: Don't clear navigation flags immediately - let them persist through navigation
-    setTimeout(() => {
-      window._staffHomepageActive = false;
-      // Navigation flag will be cleared by universal redirect or next page load
-    }, 1000);
-    
-    // Ensure loading indicators are cleared
-    setTimeout(() => {
-      const anyIndicator = document.querySelector('.api-loading-indicator, #api-loading-indicator');
-      if (anyIndicator) {
-        anyIndicator.remove();
-        debugLog('Removed stuck loading indicator on scene change');
-      }
-    }, 100);
-  } else if (scene && scene.key === 'scene_1215') {
+  // Only proceed if we were previously on the homepage
+  if (window._staffHomepageActive) {
+    // If we're navigating away from scene_1215 (staff homepage), cleanup
+    if (scene && scene.key !== 'scene_1215') {
+      cleanupHomepageBeforeNavigation();
+      
+      // Additional coordination with loader
+      // Clear any homepage-specific flags
+      // Note: Don't clear navigation flags immediately - let them persist through navigation
+      setTimeout(() => {
+        window._staffHomepageActive = false;
+        // Navigation flag will be cleared by universal redirect or next page load
+      }, 1000);
+      
+      // Ensure loading indicators are cleared
+      setTimeout(() => {
+        const anyIndicator = document.querySelector('.api-loading-indicator, #api-loading-indicator');
+        if (anyIndicator) {
+          anyIndicator.remove();
+          debugLog('Removed stuck loading indicator on scene change');
+        }
+      }, 100);
+    }
+  }
+  
+  // Only activate homepage if we're on scene_1215 and it's not already active
+  if (scene && scene.key === 'scene_1215' && !window._staffHomepageActive) {
     // We're on the homepage scene
     window._staffHomepageActive = true;
     
