@@ -2744,96 +2744,50 @@ function renderAppSection(title, apps) {
 
 // Unified navigation function that coordinates with GeneralHeader.js and knackAppLoader.js
 window.navigateToScene = function(scene, url, featureName) {
-  // CRITICAL: Disable Universal Redirect IMMEDIATELY - must be first!
-  window._bypassUniversalRedirect = true;
-  window._universalRedirectCompleted = true;
-  window._navigationInProgress = true;
-  window._homepageNavigationInProgress = true;
-  sessionStorage.setItem('universalRedirectCompleted', 'true');
-  sessionStorage.setItem('navigationInProgress', 'true');
-  sessionStorage.setItem('navigationTarget', scene);
+  console.log('[Staff Homepage] navigateToScene called:', { scene, url, featureName });
   
-  // Kill any pending redirect timers IMMEDIATELY
-  if (window._universalRedirectTimer) {
-    clearInterval(window._universalRedirectTimer);
-    clearTimeout(window._universalRedirectTimer);
-    window._universalRedirectTimer = null;
-    debugLog('Killed Universal Redirect timer at start of navigation');
+  // Special handling for admin-coaching which has specific issues
+  if (scene === 'scene_1014' || url === '#admin-coaching') {
+    console.log('[Staff Homepage] Navigating to Admin Coaching page');
+    
+    // Set a flag that persists across reload to bypass redirect
+    sessionStorage.setItem('bypassRedirect', 'true');
+    sessionStorage.setItem('navigationTarget', 'scene_1014');
+    sessionStorage.setItem('targetUrl', '#admin-coaching');
+    
+    // Navigate directly to the admin coaching page
+    const targetUrl = 'https://vespaacademy.knack.com/vespa-academy#admin-coaching';
+    console.log('[Staff Homepage] Direct navigation to:', targetUrl);
+    
+    // Use location.replace to prevent back button issues
+    window.location.replace(targetUrl);
+    return;
   }
   
-  // Trigger event to notify other components about navigation
-  $(document).trigger('vespa-navigation-started', {
-    from: window.location.hash,
-    to: url,
-    targetScene: scene,
-    source: 'homepage'
-  });
+  // For all other scenes, use the standard approach
+  // Set bypass flags in session storage that will persist
+  sessionStorage.setItem('bypassRedirect', 'true');
+  sessionStorage.setItem('navigationTarget', scene);
+  sessionStorage.setItem('targetUrl', url);
   
-  // Track the feature usage (after flags are set)
+  // Track the feature usage
   if (featureName) {
     trackPageView(featureName).catch(err => 
       console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
     );
   }
   
-  // Log navigation for debugging
-  debugLog('Homepage button navigation', {
-    scene: scene,
-    url: url,
-    feature: featureName,
-    currentScene: window.Knack?.scene?.key,
-    bypassFlags: {
-      _bypassUniversalRedirect: window._bypassUniversalRedirect,
-      _universalRedirectCompleted: window._universalRedirectCompleted,
-      _navigationInProgress: window._navigationInProgress
-    }
-  });
-  
-  // Signal knackAppLoader.js to force reload for target scene
-  const currentScene = window.Knack?.scene?.key;
-  if (scene && scene !== currentScene) {
-    debugLog(`Navigating from ${currentScene} to ${scene}, triggering app cleanup`);
-    
-    // Signal the loader to force reload (matching GeneralHeader.js)
-    window._forceAppReload = scene;
-    
-    // Clean up current scene apps (coordinating with knackAppLoader.js)
-    if (window.cleanupAppsForScene && typeof window.cleanupAppsForScene === 'function') {
-      window.cleanupAppsForScene(scene);
-    }
-    
-    // Clear background styles (matching knackAppLoader.js cleanup)
-    document.body.style.backgroundColor = '';
-    document.body.style.background = '';
-    document.body.style.backgroundImage = '';
-    document.body.classList.remove('staff-homepage-scene');
-    
-    // Handle loading screens for special scenes (coordinating with knackAppLoader.js)
-    if (scene === 'scene_1014' || scene === 'scene_1095') {
-      debugLog(`Navigating to ${scene}, loader will handle loading screen`);
-      document.body.classList.add('navigation-initiated');
-    }
-  }
-  
-  // 4. Clean up homepage-specific elements
+  // Clean up current page
   cleanupHomepageBeforeNavigation();
   
-  // 5. Navigate using full URL reload to ensure proper scene loading
-  // This forces Knack to reload and properly initialize the new scene
-  // Make sure the URL includes the hash
-  const baseUrl = window.location.origin + window.location.pathname;
+  // Build and navigate to full URL
+  const baseUrl = 'https://vespaacademy.knack.com/vespa-academy';
   const fullUrl = url.startsWith('#') ? baseUrl + url : baseUrl + '#' + url;
   
-  debugLog('Navigating to full URL:', fullUrl);
-  console.log('[Staff Homepage] Full navigation URL:', fullUrl, 'Scene:', scene);
+  console.log('[Staff Homepage] Navigating to:', fullUrl);
   
-  // Small delay to ensure cleanup completes
-  setTimeout(() => {
-    // Force immediate navigation
-    window.location.href = fullUrl;
-  }, 50);
-  
-  // Navigation will cause page reload, so no need for post-navigation handling
+  // Use location.replace for cleaner navigation
+  window.location.replace(fullUrl);
   return;
 };
 
