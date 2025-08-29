@@ -1669,6 +1669,23 @@
   // --- Navigation Functions ---
   // Unified navigation function that coordinates with GeneralHeader.js and knackAppLoader.js
   window.navigateToScene = function(scene, url, featureName) {
+    // CRITICAL: Disable Universal Redirect IMMEDIATELY - must be first!
+    window._bypassUniversalRedirect = true;
+    window._universalRedirectCompleted = true;
+    window._navigationInProgress = true;
+    window._studentHomepageNavigationInProgress = true;
+    sessionStorage.setItem('universalRedirectCompleted', 'true');
+    sessionStorage.setItem('navigationInProgress', 'true');
+    sessionStorage.setItem('navigationTarget', scene);
+    
+    // Kill any pending redirect timers IMMEDIATELY
+    if (window._universalRedirectTimer) {
+      clearInterval(window._universalRedirectTimer);
+      clearTimeout(window._universalRedirectTimer);
+      window._universalRedirectTimer = null;
+      debugLog('Killed Universal Redirect timer at start of navigation');
+    }
+    
     // Trigger event to notify other components about navigation
     $(document).trigger('vespa-navigation-started', {
       from: window.location.hash,
@@ -1676,24 +1693,6 @@
       targetScene: scene,
       source: 'student-homepage'
     });
-    
-    // CRITICAL: Coordinate with GeneralHeader.js navigation system
-    // This ensures same cleanup and state management as header navigation
-    
-    // 1. Disable Universal Redirect
-    window._bypassUniversalRedirect = true;
-    window._universalRedirectCompleted = true;
-    sessionStorage.setItem('universalRedirectCompleted', 'true');
-    
-    // 2. Kill any pending redirect timers
-    if (window._universalRedirectTimer) {
-      clearTimeout(window._universalRedirectTimer);
-      window._universalRedirectTimer = null;
-    }
-    
-    // 3. Set navigation flags
-    window._navigationInProgress = true;
-    window._studentHomepageNavigationInProgress = true;
     
     // 4. Signal the loader to force reload for target scene
     window._forceAppReload = scene;
@@ -1765,11 +1764,13 @@
       container.innerHTML = '';
     }
     
-    // Reset navigation flags
-    window._studentHomepageNavigationInProgress = false;
-    window._studentHomepageActive = false;
-    window._homepageInitializing = false;
-    window._homepageInitialized = false;
+    // Note: Don't clear navigation flags immediately - let them persist through navigation
+    setTimeout(() => {
+      window._studentHomepageActive = false;
+      window._homepageInitializing = false;
+      window._homepageInitialized = false;
+      // Navigation flag will be cleared by universal redirect or next page load
+    }, 1000);
     
     debugLog('Student Homepage cleanup complete');
   }
