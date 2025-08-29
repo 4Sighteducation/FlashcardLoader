@@ -273,21 +273,34 @@ console.log('[Universal Redirect] Script loaded!');
     function initializeUniversalRedirect() {
         console.log('[Universal Redirect] initializeUniversalRedirect called!');
         
-        // CRITICAL: Check if Universal Redirect is bypassed
-        if (window._bypassUniversalRedirect || window._universalRedirectCompleted) {
-            console.log('[Universal Redirect] Bypass flag set, skipping redirect');
-            return;
-        }
-        
-        // Check if navigation is in progress
-        if (window._navigationInProgress) {
-            console.log('[Universal Redirect] Navigation in progress, skipping redirect');
+        // CRITICAL: Check ALL bypass flags immediately
+        if (window._bypassUniversalRedirect || 
+            window._universalRedirectCompleted || 
+            window._navigationInProgress ||
+            window._homepageNavigationInProgress ||
+            window._studentHomepageNavigationInProgress ||
+            window._resourceDashboardNavigationInProgress ||
+            window._staffHomepageActive ||
+            window._studentHomepageActive ||
+            window._resourceDashboardActive) {
+            console.log('[Universal Redirect] Bypass flag detected, skipping redirect', {
+                _bypassUniversalRedirect: window._bypassUniversalRedirect,
+                _universalRedirectCompleted: window._universalRedirectCompleted,
+                _navigationInProgress: window._navigationInProgress,
+                _homepageNavigationInProgress: window._homepageNavigationInProgress
+            });
             return;
         }
         
         // Check session storage flags
-        if (sessionStorage.getItem('universalRedirectCompleted') === 'true') {
-            console.log('[Universal Redirect] Session flag indicates redirect completed, skipping');
+        if (sessionStorage.getItem('universalRedirectCompleted') === 'true' ||
+            sessionStorage.getItem('navigationInProgress') === 'true' ||
+            sessionStorage.getItem('navigationTarget')) {
+            console.log('[Universal Redirect] Session flag indicates bypass, skipping', {
+                universalRedirectCompleted: sessionStorage.getItem('universalRedirectCompleted'),
+                navigationInProgress: sessionStorage.getItem('navigationInProgress'),
+                navigationTarget: sessionStorage.getItem('navigationTarget')
+            });
             return;
         }
         
@@ -404,10 +417,19 @@ console.log('[Universal Redirect] Script loaded!');
     $(document).on('knack-scene-render.scene_1', function(event, scene) {
         console.log('[Universal Redirect] Scene 1 render event fired!', scene);
         
-        // Check if we should skip
-        if (window._bypassUniversalRedirect || window._universalRedirectCompleted || 
-            window._navigationInProgress || sessionStorage.getItem('universalRedirectCompleted') === 'true' ||
-            sessionStorage.getItem('navigationInProgress') === 'true') {
+        // Check ALL bypass flags immediately
+        if (window._bypassUniversalRedirect || 
+            window._universalRedirectCompleted || 
+            window._navigationInProgress ||
+            window._homepageNavigationInProgress ||
+            window._studentHomepageNavigationInProgress ||
+            window._resourceDashboardNavigationInProgress ||
+            window._staffHomepageActive ||
+            window._studentHomepageActive ||
+            window._resourceDashboardActive ||
+            sessionStorage.getItem('universalRedirectCompleted') === 'true' ||
+            sessionStorage.getItem('navigationInProgress') === 'true' ||
+            sessionStorage.getItem('navigationTarget')) {
             console.log('[Universal Redirect] Skipping auto-initialize due to bypass flags or navigation');
             return;
         }
@@ -416,7 +438,12 @@ console.log('[Universal Redirect] Script loaded!');
         
         // Store timer reference so it can be cancelled if needed
         window._universalRedirectTimer = setTimeout(() => {
-            initializeUniversalRedirect();
+            // Double-check flags before actually running
+            if (!window._bypassUniversalRedirect && !window._navigationInProgress) {
+                initializeUniversalRedirect();
+            } else {
+                console.log('[Universal Redirect] Timer fired but bypass flags now set, skipping');
+            }
         }, 500);
     });
     
