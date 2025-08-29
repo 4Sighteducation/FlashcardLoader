@@ -2735,7 +2735,32 @@ function renderAppSection(title, apps) {
 
 // Unified navigation function that coordinates with GeneralHeader.js and knackAppLoader.js
 window.navigateToScene = function(scene, url, featureName) {
-  // Track the feature usage
+  // CRITICAL: Disable Universal Redirect IMMEDIATELY - must be first!
+  window._bypassUniversalRedirect = true;
+  window._universalRedirectCompleted = true;
+  window._navigationInProgress = true;
+  window._homepageNavigationInProgress = true;
+  sessionStorage.setItem('universalRedirectCompleted', 'true');
+  sessionStorage.setItem('navigationInProgress', 'true');
+  sessionStorage.setItem('navigationTarget', scene);
+  
+  // Kill any pending redirect timers IMMEDIATELY
+  if (window._universalRedirectTimer) {
+    clearInterval(window._universalRedirectTimer);
+    clearTimeout(window._universalRedirectTimer);
+    window._universalRedirectTimer = null;
+    debugLog('Killed Universal Redirect timer at start of navigation');
+  }
+  
+  // Trigger event to notify other components about navigation
+  $(document).trigger('vespa-navigation-started', {
+    from: window.location.hash,
+    to: url,
+    targetScene: scene,
+    source: 'homepage'
+  });
+  
+  // Track the feature usage (after flags are set)
   if (featureName) {
     trackPageView(featureName).catch(err => 
       console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
@@ -2747,36 +2772,15 @@ window.navigateToScene = function(scene, url, featureName) {
     scene: scene,
     url: url,
     feature: featureName,
-    currentScene: window.Knack?.scene?.key
+    currentScene: window.Knack?.scene?.key,
+    bypassFlags: {
+      _bypassUniversalRedirect: window._bypassUniversalRedirect,
+      _universalRedirectCompleted: window._universalRedirectCompleted,
+      _navigationInProgress: window._navigationInProgress
+    }
   });
   
-  // Trigger event to notify other components about navigation
-  $(document).trigger('vespa-navigation-started', {
-    from: window.location.hash,
-    to: url,
-    targetScene: scene,
-    source: 'homepage'
-  });
-  
-  // CRITICAL: Coordinate with GeneralHeader.js navigation system
-  // This ensures same cleanup and state management as header navigation
-  
-  // 1. Disable Universal Redirect (matching GeneralHeader.js behavior)
-  window._universalRedirectCompleted = true;
-  window._bypassUniversalRedirect = true;
-  window._navigationInProgress = true;
-  sessionStorage.setItem('universalRedirectCompleted', 'true');
-  sessionStorage.setItem('navigationTarget', scene);
-  
-  // 2. Kill any Universal Redirect timers (matching GeneralHeader.js)
-  if (window._universalRedirectTimer) {
-    clearInterval(window._universalRedirectTimer);
-    clearTimeout(window._universalRedirectTimer);
-    window._universalRedirectTimer = null;
-    debugLog('Killed Universal Redirect timer during navigation');
-  }
-  
-  // 3. Signal knackAppLoader.js to force reload for target scene
+  // Signal knackAppLoader.js to force reload for target scene
   const currentScene = window.Knack?.scene?.key;
   if (scene && scene !== currentScene) {
     debugLog(`Navigating from ${currentScene} to ${scene}, triggering app cleanup`);
@@ -2849,6 +2853,9 @@ window.navigateToScene = function(scene, url, featureName) {
 // Enhanced cleanup function that coordinates with knackAppLoader.js
 function cleanupHomepageBeforeNavigation() {
   debugLog('Starting homepage cleanup before navigation');
+  
+  // IMPORTANT: Don't clear navigation flags here - they need to persist!
+  // Only clear visual/DOM elements
   
   // 1. Remove homepage-specific classes
   document.body.classList.remove('staff-homepage-scene', 'landing-page-scene');
@@ -6824,8 +6831,11 @@ $(document).on('knack-scene-render.any', function(event, scene) {
     
     // Additional coordination with loader
     // Clear any homepage-specific flags
-    window._staffHomepageActive = false;
-    window._homepageNavigationInProgress = false;
+    // Note: Don't clear navigation flags immediately - let them persist through navigation
+    setTimeout(() => {
+      window._staffHomepageActive = false;
+      // Navigation flag will be cleared by universal redirect or next page load
+    }, 1000);
     
     // Ensure loading indicators are cleared
     setTimeout(() => {
