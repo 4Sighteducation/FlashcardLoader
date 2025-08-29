@@ -1,6 +1,14 @@
 // Staff Homepage Integration Script for Knack - v1.0
 
 (function() {
+  // CRITICAL: Only run this script on the staff homepage scene
+  // This prevents it from loading on other scenes
+  const currentScene = window.Knack?.scene?.key || window.location.hash;
+  if (!currentScene || (!currentScene.includes('scene_1215') && !window.location.hash.includes('staff-landing-page'))) {
+    console.log('[Staff Homepage] Not on scene_1215, script will not initialize');
+    return; // Exit early if not on the correct scene
+  }
+  
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -2705,12 +2713,13 @@ function renderAppSection(title, apps) {
     
     // Build the onclick handler to properly navigate using scene
     const onclickHandler = app.scene ? 
-      `event.preventDefault(); navigateToScene('${app.scene}', '${app.url}', '${sanitizeField(app.name)}');` :
-      `event.preventDefault(); window.location.href='${app.url}'; window.trackFeatureUse('${sanitizeField(app.name)}');`;
+      `event.preventDefault(); event.stopPropagation(); window.navigateToScene('${app.scene}', '${app.url}', '${sanitizeField(app.name)}'); return false;` :
+      `event.preventDefault(); event.stopPropagation(); window.location.href='${app.url}'; window.trackFeatureUse('${sanitizeField(app.name)}'); return false;`;
     
     appsHTML += `
-    <a href="${app.url}" class="app-card" title="${sanitizeField(app.name)}" 
+    <a href="#" class="app-card" title="${sanitizeField(app.name)}" 
        data-scene="${app.scene || ''}"
+       data-url="${app.url}"
        onclick="${onclickHandler}">
       <div class="app-card-header">
         <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
@@ -2811,9 +2820,18 @@ window.navigateToScene = function(scene, url, featureName) {
   
   // 5. Navigate using full URL reload to ensure proper scene loading
   // This forces Knack to reload and properly initialize the new scene
-  const fullUrl = window.location.origin + window.location.pathname + url;
+  // Make sure the URL includes the hash
+  const baseUrl = window.location.origin + window.location.pathname;
+  const fullUrl = url.startsWith('#') ? baseUrl + url : baseUrl + '#' + url;
+  
   debugLog('Navigating to full URL:', fullUrl);
-  window.location.href = fullUrl;
+  console.log('[Staff Homepage] Full navigation URL:', fullUrl, 'Scene:', scene);
+  
+  // Small delay to ensure cleanup completes
+  setTimeout(() => {
+    // Force immediate navigation
+    window.location.href = fullUrl;
+  }, 50);
   
   // Navigation will cause page reload, so no need for post-navigation handling
   return;
@@ -3893,8 +3911,10 @@ async function updateSchoolLogo(schoolId, logoUrl) {
 function getStyleCSS() {
     return `
   /* Scoped styles for staff homepage only */
+  /* All styles are scoped to .staff-homepage-scene to prevent bleeding */
+  
   /* Main Container - Staff Theme */
-  #staff-homepage {
+  .staff-homepage-scene #staff-homepage {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   max-width: 1200px;
   margin: 0 auto;
@@ -5120,6 +5140,17 @@ canvas {
   .emulator-header h3 {
     font-size: 16px;
   }
+}
+
+/* Body background for staff homepage only */
+.staff-homepage-scene {
+  background-color: #072769 !important;
+  min-height: 100vh;
+}
+
+/* Reset body background when not on homepage */
+body:not(.staff-homepage-scene) {
+  background-color: initial !important;
 }
 
     `;
@@ -6824,8 +6855,7 @@ $(document).on('knack-scene-render.any', function(event, scene) {
     // We're on the homepage scene
     window._staffHomepageActive = true;
     
-    // Ensure proper background is set (coordinating with loader)
-    document.body.style.backgroundColor = '#072769';
+    // Add classes for styling but don't set direct styles
     document.body.classList.add('staff-homepage-scene', 'landing-page-scene');
   }
 });
