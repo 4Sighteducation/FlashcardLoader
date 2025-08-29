@@ -396,111 +396,131 @@ const KnackAPIQueue = (function() {
     resultsSchool: 'field_133'
   };
 
-  // App hub configurations
+  // App hub configurations - Aligned with GeneralHeader.js navigation
   const APP_SECTIONS = {
+    // For normal staff (coaching) - matches staffCoaching navigation
     group: [
       {
-        name: "VESPA Results",
-        url: "https://vespaacademy.knack.com/vespa-academy#mygroup-student-results/",
-        icon: "https://www.vespa.academy/Icons/survey-results.png",
-        description: "View detailed results from your students' VESPA questionnaires"
-      },
-      {
-        name: "Coaching Reports",
-        url: "https://vespaacademy.knack.com/vespa-academy#mygroup/mygroup-vespa-results2/",
-        icon: "https://www.vespa.academy/Icons/conversation.png",
+        name: "Coaching",
+        url: "#mygroup-vespa-results2/",
+        scene: "scene_1095",
+        icon: "fa-comments",
         description: "Access coaching reports and feedback for your student group"
       },
       {
-        name: "Student Activities",
-        url: "https://vespaacademy.knack.com/vespa-academy#my-vespa2/",
-        icon: "https://www.vespa.academy/Icons/activities.png",
-        description: "Browse and assign activities tailored to your students' needs"
+        name: "Results",
+        url: "#vesparesults",
+        scene: "scene_1270",
+        icon: "fa-bar-chart",
+        description: "View detailed VESPA results and analytics"
       },
       {
-        name: "Study Sessions",
-        url: "https://vespaacademy.knack.com/vespa-academy#student-revision/",
-        icon: "https://www.vespa.academy/Icons/study%20plans.png",
+        name: "Activities",
+        url: "#activity-manage",
+        scene: "scene_1256",
+        icon: "fa-book",
+        description: "Browse and manage student activities"
+      },
+      {
+        name: "Study Plans",
+        url: "#student-revision",
+        scene: "scene_855",
+        icon: "fa-graduation-cap",
         description: "Monitor and manage student study sessions and revision plans"
       }
     ],
     resources: [
       {
-        name: "Slide Decks",
-        url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/",
-        icon: "https://www.vespa.academy/Icons/slidedecks.png",
-        description: "Access ready-to-use slide decks for classroom presentations"
-      },
-      {
-        name: "Newsletter",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-newsletter/",
-        icon: "https://www.vespa.academy/Icons/newsletter%20(1).png",
-        description: "Read the latest VESPA newsletters with updates and best practices"
-      },
-      {
-        name: "Curriculum",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/",
-        icon: "https://www.vespa.academy/Icons/curriculum.png",
-        description: "Explore the VESPA curriculum and implementation guides"
+        name: "Resources",
+        url: "#tutor-activities/resources-levels",
+        scene: "scene_481",
+        icon: "fa-folder-open",
+        description: "Access teaching resources and materials"
       },
       {
         name: "Worksheets",
-        url: "https://vespaacademy.knack.com/vespa-academy#worksheets/",
-        icon: "https://www.vespa.academy/Icons/pdf%20(1).png",
-        description: "Download printable worksheets and activities for your students"
+        url: "#worksheets",
+        scene: "scene_1169",
+        icon: "fa-files-o",
+        description: "Download printable worksheets and activities"
+      },
+      {
+        name: "Videos",
+        url: "#vespa-videos",
+        scene: "scene_1266",
+        icon: "fa-book-open",
+        description: "Watch VESPA instructional and training videos"
+      },
+      {
+        name: "Curriculum",
+        url: "#suggested-curriculum2",
+        scene: "scene_1234",
+        icon: "fa-calendar",
+        description: "Explore the VESPA curriculum and implementation guides"
       }
     ],
+    // For staff admins - matches staffAdminCoaching navigation
     admin: [
       {
-        name: "Account Management",
-        url: "https://vespaacademy.knack.com/vespa-academy#upload-manager",
-        icon: "https://www.vespa.academy/Icons/education.png",
-        description: "Upload Staff & Students, Manage user accounts"
+        name: "Dashboard",
+        url: "#dashboard",
+        scene: "scene_1225",
+        icon: "fa-tachometer-alt",
+        description: "View comprehensive VESPA dashboard and analytics"
       },
       {
-        name: "Results Dashboard",
-        url: "https://vespaacademy.knack.com/vespa-academy#dashboard/",
-        icon: "https://www.vespa.academy/Icons/classroom.png",
-        description: "Detailed Results Analysis"
+        name: "Results",
+        url: "#vesparesults",
+        scene: "scene_1270",
+        icon: "fa-bar-chart",
+        description: "Detailed results analysis for all students"
       },
       {
-        name: "Questionnaire",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/manage-questionnaire/manage-questionnaire-cycles",
-        icon: "https://www.vespa.academy/Icons/teacher-day.png",
-        description: "Configure and customize VESPA questionnaires"
+        name: "Coaching",
+        url: "#admin-coaching",
+        scene: "scene_1014",
+        icon: "fa-comments",
+        description: "Admin coaching tools and reports"
       },
       {
-        name: "VESPA Account",
-        url: "https://vespaacademy.knack.com/vespa-academy#manage/account-details2/",
-        icon: "https://www.vespa.academy/Icons/university.png",
-        description: "Manage school account details and subscription"
+        name: "Manage",
+        url: "#upload-manager",
+        scene: "scene_1212",
+        icon: "fa-cog",
+        description: "Upload and manage staff & student accounts"
+      },
+      {
+        name: "Print Reports",
+        url: "#report-printing",
+        scene: "scene_1227",
+        icon: "fa-print",
+        description: "Generate and print student reports"
       }
     ]
   };
 
-  // Professional icon mapping using Font Awesome classes
-const ICON_MAPPING = {
-  // Group section
-  "VESPA Results": "fa-solid fa-chart-column",
-  "Coaching Reports": "fa-solid fa-comments",
-  "Student Activities": "fa-solid fa-list-check",
-  "Study Sessions": "fa-solid fa-calendar-check",
-  
-  // Resources section
-  "Slide Decks": "fa-solid fa-display", // Changed to fa-display which exists in Font Awesome
-  "Newsletter": "fa-solid fa-newspaper",
-  "Curriculum": "fa-solid fa-book-open",
-  "Worksheets": "fa-solid fa-file-pdf",
-  
-  // Admin section
-  "Students": "fa-solid fa-user-graduate",
-  "Staff": "fa-solid fa-chalkboard-teacher",
-  "Questionnaire": "fa-solid fa-clipboard-question",
-  "Account": "fa-solid fa-building-user",
-  
-  // Default fallback
-  "default": "fa-solid fa-circle-info"
-};
+  // Icon mapping - Now directly using icons from the navigation config
+  const ICON_MAPPING = {
+    // Group section - matching header icons
+    "Coaching": "fa fa-comments",
+    "Results": "fa fa-bar-chart",
+    "Activities": "fa fa-book",
+    "Study Plans": "fa fa-graduation-cap",
+    
+    // Resources section - matching header icons
+    "Resources": "fa fa-folder-open",
+    "Worksheets": "fa fa-files-o",
+    "Videos": "fa fa-book-open",
+    "Curriculum": "fa fa-calendar",
+    
+    // Admin section - matching header icons
+    "Dashboard": "fa fa-tachometer-alt",
+    "Manage": "fa fa-cog",
+    "Print Reports": "fa fa-print",
+    
+    // Default fallback
+    "default": "fa fa-circle-info"
+  };
 
 // --- Helper Functions ---
 // Debug logging helper
@@ -2666,12 +2686,18 @@ function renderAppSection(title, apps) {
   
   let appsHTML = '';
   apps.forEach(app => {
-    // Get Font Awesome icon or use default
-    const iconClass = ICON_MAPPING[app.name] || ICON_MAPPING.default;
+    // Use icon directly from app config, fallback to ICON_MAPPING if needed
+    const iconClass = app.icon ? `fa ${app.icon}` : (ICON_MAPPING[app.name] || ICON_MAPPING.default);
+    
+    // Build the onclick handler to properly navigate using scene
+    const onclickHandler = app.scene ? 
+      `event.preventDefault(); navigateToScene('${app.scene}', '${app.url}', '${sanitizeField(app.name)}');` :
+      `event.preventDefault(); window.location.href='${app.url}'; window.trackFeatureUse('${sanitizeField(app.name)}');`;
     
     appsHTML += `
     <a href="${app.url}" class="app-card" title="${sanitizeField(app.name)}" 
-       onclick="window.trackFeatureUse('${sanitizeField(app.name)}')">
+       data-scene="${app.scene || ''}"
+       onclick="${onclickHandler}">
       <div class="app-card-header">
         <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
         <div class="app-icon-container">
@@ -2693,11 +2719,36 @@ function renderAppSection(title, apps) {
   `;
 }
 
+// Add navigation function that matches header behavior
+window.navigateToScene = function(scene, url, featureName) {
+  // Track the feature usage
+  if (featureName) {
+    trackPageView(featureName).catch(err => 
+      console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
+    );
+  }
+  
+  // Log navigation for debugging
+  debugLog('Homepage button navigation', {
+    scene: scene,
+    url: url,
+    feature: featureName
+  });
+  
+  // Build full URL if needed
+  const fullUrl = url.startsWith('#') ? 
+    `https://vespaacademy.knack.com/vespa-academy${url}` : 
+    url;
+  
+  // Navigate using the full URL
+  window.location.href = fullUrl;
+};
+
 // Add this global function for tracking feature usage
 window.trackFeatureUse = function(featureName) {
-trackPageView(featureName).catch(err => 
-  console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
-);
+  trackPageView(featureName).catch(err => 
+    console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
+  );
 };
 
 // Render the VESPA dashboard
@@ -4950,18 +5001,8 @@ const loadingIndicator = `
   </div>
 </div>`;
 
-// Welcome banner HTML
-const welcomeBanner = `
-<div id="welcome-banner" class="welcome-banner">
-  <div class="banner-content">
-    <h3>Welcome to our brand new home page!</h3>
-    <p>If you are seeing this you have been selected at random to test this. 
-    All the VESPA Portal pages can be accessed at the click of a button below.</p>
-    <p>Please let us have any feedback or any issues you face using the form below. 
-    If you would like to return to the old login page please let us know.</p>
-  </div>
-  <button class="banner-close" aria-label="Close banner">×</button>
-</div>`;
+// Welcome banner removed - going live for all users
+const welcomeBanner = ``;
 
 // Student Emulator Modal HTML
 const studentEmulatorModal = `
@@ -6579,30 +6620,32 @@ if (feedbackRequest.screenshot) {
 }
 
 // --- Student Emulation Module Loader ---
-function loadStudentEmulationModule() {
-  // Set the API credentials for the module to use
-  if (window.Knack && window.Knack.application_id) {
-    window.KNACK_APP_ID = window.Knack.application_id;
-    window.KNACK_API_KEY = window.Knack.api_key;
-  }
+// Load the comprehensive student role setup module
+function loadStudentEmulationSetup() {
+  console.log('[Staff Homepage] Loading student emulation setup module...');
+  
+  // Pass configuration to the module
+  window.STAFFHOMEPAGE_CONFIG = window.STAFFHOMEPAGE_CONFIG || {};
+  window.STAFFHOMEPAGE_CONFIG.knackAppId = window.Knack?.application_id;
+  window.STAFFHOMEPAGE_CONFIG.knackApiKey = '8f733aa5-dd35-4464-8348-64824d1f5f0d'; // Your API key
   
   const script = document.createElement('script');
-  // Using the CDN URL for the student emulation setup module
-  script.src = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/landingPage/staff-homepage-integration-snippet1c.js';
+  // Load the local comprehensive module
+  script.src = 'staff-homepage-integration-snippet.js';
   script.async = true;
   script.onload = function() {
-    console.log('[Staff Homepage] Student emulation setup module loaded successfully from CDN');
+    console.log('[Staff Homepage] Student emulation setup module loaded successfully');
   };
   script.onerror = function() {
-    console.error('[Staff Homepage] Failed to load student emulation setup module from CDN');
+    console.error('[Staff Homepage] Failed to load student emulation setup module');
   };
   document.head.appendChild(script);
 }
 
-// Add to an initialization queue to ensure all required resources are loaded
+// Initialize module loading queue
 if (!window.staffHomepageInitQueue) {
   window.staffHomepageInitQueue = [];
 }
-window.staffHomepageInitQueue.push(loadStudentEmulationModule);
+window.staffHomepageInitQueue.push(loadStudentEmulationSetup);
 
 })(); // Close main IIFE
