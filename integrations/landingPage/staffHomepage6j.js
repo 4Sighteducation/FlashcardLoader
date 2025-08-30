@@ -1,14 +1,6 @@
 // Staff Homepage Integration Script for Knack - v1.0
 
 (function() {
-  // CRITICAL: Only run this script on the staff homepage scene
-  // This prevents it from loading on other scenes
-  const currentScene = window.Knack?.scene?.key || window.location.hash;
-  if (!currentScene || (!currentScene.includes('scene_1215') && !window.location.hash.includes('staff-landing-page'))) {
-    console.log('[Staff Homepage] Not on scene_1215, script will not initialize');
-    return; // Exit early if not on the correct scene
-  }
-  
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -50,7 +42,7 @@ const IS_DEVELOPMENT = window.location.hostname === 'localhost' ||
                      window.location.hostname.includes('staging');
 const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
 
-// Begin console override section
+(function() {
   // Save original console methods
   const originalConsole = {
     log: console.log,
@@ -157,7 +149,7 @@ const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
       originalConsole.error.apply(console, sanitizeArgs(arguments));
     };
   }
-// End console override section
+})();
 
 // Add data sanitization function for logging
 function sanitizeDataForLogging(data) {
@@ -344,29 +336,19 @@ const KnackAPIQueue = (function() {
       const queueLength = queue.length;
       const stats = this.getStats();
       
-      // Only log in debug mode to reduce console noise
-      if (DEBUG_MODE) {
-        console.log(`[Staff Homepage] Queue status: ${queueLength} in queue, ${requestsThisSecond} requests this second`);
-      }
+      // Log current state for debugging
+      console.log(`[Staff Homepage] Queue status: ${queueLength} in queue, ${requestsThisSecond} requests this second`);
       
-      // Show indicator only if there are items in queue
-      if (queueLength > 0) {
+      if (queueLength > 0 || requestsThisSecond > 0) {
         indicator.style.display = 'flex';
         const countElement = indicator.querySelector('.queue-count');
         if (countElement) {
-          countElement.textContent = `(${queueLength} in queue)`;
+          countElement.textContent = queueLength > 0 ? `(${queueLength} in queue)` : '';
         }
-        
-        // Auto-hide after 5 seconds if stuck
-        setTimeout(() => {
-          const currentIndicator = document.getElementById('api-loading-indicator');
-          if (currentIndicator && queue.length === 0) {
-            currentIndicator.style.display = 'none';
-          }
-        }, 5000);
       } else {
-        // Hide immediately when queue is empty
+        // Ensure the indicator is hidden when no requests are active
         indicator.style.display = 'none';
+        console.log('[Staff Homepage] Hiding loading indicator - no active requests');
       }
     },
     
@@ -416,19 +398,14 @@ const KnackAPIQueue = (function() {
 
   // App hub configurations - Aligned with GeneralHeader.js navigation
   const APP_SECTIONS = {
-    // For all staff - shared group section with role-based coaching logic
+    // For normal staff (coaching) - matches staffCoaching navigation
     group: [
       {
         name: "Coaching",
-        // These will be overridden by role logic in renderGroupSection
         url: "#mygroup-vespa-results2/",
         scene: "scene_1095",
-        staffUrl: "#mygroup-vespa-results2/",
-        staffScene: "scene_1095",
-        adminUrl: "#admin-coaching",
-        adminScene: "scene_1014",
         icon: "fa-comments",
-        description: "Access coaching reports and feedback"
+        description: "Access coaching reports and feedback for your student group"
       },
       {
         name: "Results",
@@ -482,7 +459,7 @@ const KnackAPIQueue = (function() {
         description: "Explore the VESPA curriculum and implementation guides"
       }
     ],
-    // For staff admins only - administrative tools (no duplicate coaching)
+    // For staff admins - matches staffAdminCoaching navigation
     admin: [
       {
         name: "Dashboard",
@@ -490,6 +467,20 @@ const KnackAPIQueue = (function() {
         scene: "scene_1225",
         icon: "fa-tachometer-alt",
         description: "View comprehensive VESPA dashboard and analytics"
+      },
+      {
+        name: "Results",
+        url: "#vesparesults",
+        scene: "scene_1270",
+        icon: "fa-bar-chart",
+        description: "Detailed results analysis for all students"
+      },
+      {
+        name: "Coaching",
+        url: "#admin-coaching",
+        scene: "scene_1014",
+        icon: "fa-comments",
+        description: "Admin coaching tools and reports"
       },
       {
         name: "Manage",
@@ -2674,22 +2665,9 @@ function renderProfileSection(profileData, hasAdminRole) {
   `;
 }
 
-// Render the group section with role-based coaching logic
-function renderGroupSection(hasAdminRole = false) {
-  // Clone the group apps and adjust coaching based on role
-  const groupApps = APP_SECTIONS.group.map(app => {
-    if (app.name === "Coaching") {
-      // Use admin or staff URLs based on role
-      return {
-        ...app,
-        url: hasAdminRole ? app.adminUrl : app.staffUrl,
-        scene: hasAdminRole ? app.adminScene : app.staffScene
-      };
-    }
-    return app;
-  });
-  
-  return renderAppSection("MY GROUP", groupApps);
+// Render the group section
+function renderGroupSection() {
+  return renderAppSection("MY GROUP", APP_SECTIONS.group);
 }
 
 // Render the resources section
@@ -2713,13 +2691,12 @@ function renderAppSection(title, apps) {
     
     // Build the onclick handler to properly navigate using scene
     const onclickHandler = app.scene ? 
-      `event.preventDefault(); event.stopPropagation(); window.navigateToScene('${app.scene}', '${app.url}', '${sanitizeField(app.name)}'); return false;` :
-      `event.preventDefault(); event.stopPropagation(); window.location.href='${app.url}'; window.trackFeatureUse('${sanitizeField(app.name)}'); return false;`;
+      `event.preventDefault(); navigateToScene('${app.scene}', '${app.url}', '${sanitizeField(app.name)}');` :
+      `event.preventDefault(); window.location.href='${app.url}'; window.trackFeatureUse('${sanitizeField(app.name)}');`;
     
     appsHTML += `
-    <a href="#" class="app-card" title="${sanitizeField(app.name)}" 
+    <a href="${app.url}" class="app-card" title="${sanitizeField(app.name)}" 
        data-scene="${app.scene || ''}"
-       data-url="${app.url}"
        onclick="${onclickHandler}">
       <div class="app-card-header">
         <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
@@ -2742,34 +2719,8 @@ function renderAppSection(title, apps) {
   `;
 }
 
-// Unified navigation function that coordinates with GeneralHeader.js and knackAppLoader.js
+// Add navigation function that matches header behavior
 window.navigateToScene = function(scene, url, featureName) {
-  console.log('[Staff Homepage] navigateToScene called:', { scene, url, featureName });
-  
-  // Special handling for admin-coaching which has specific issues
-  if (scene === 'scene_1014' || url === '#admin-coaching') {
-    console.log('[Staff Homepage] Navigating to Admin Coaching page');
-    
-    // Set a flag that persists across reload to bypass redirect
-    sessionStorage.setItem('bypassRedirect', 'true');
-    sessionStorage.setItem('navigationTarget', 'scene_1014');
-    sessionStorage.setItem('targetUrl', '#admin-coaching');
-    
-    // Navigate directly to the admin coaching page
-    const targetUrl = 'https://vespaacademy.knack.com/vespa-academy#admin-coaching';
-    console.log('[Staff Homepage] Direct navigation to:', targetUrl);
-    
-    // Use location.replace to prevent back button issues
-    window.location.replace(targetUrl);
-    return;
-  }
-  
-  // For all other scenes, use the standard approach
-  // Set bypass flags in session storage that will persist
-  sessionStorage.setItem('bypassRedirect', 'true');
-  sessionStorage.setItem('navigationTarget', scene);
-  sessionStorage.setItem('targetUrl', url);
-  
   // Track the feature usage
   if (featureName) {
     trackPageView(featureName).catch(err => 
@@ -2777,83 +2728,20 @@ window.navigateToScene = function(scene, url, featureName) {
     );
   }
   
-  // Clean up current page
-  cleanupHomepageBeforeNavigation();
-  
-  // Build and navigate to full URL
-  const baseUrl = 'https://vespaacademy.knack.com/vespa-academy';
-  const fullUrl = url.startsWith('#') ? baseUrl + url : baseUrl + '#' + url;
-  
-  console.log('[Staff Homepage] Navigating to:', fullUrl);
-  
-  // Use location.replace for cleaner navigation
-  window.location.replace(fullUrl);
-  return;
-};
-
-// Enhanced cleanup function that coordinates with knackAppLoader.js
-function cleanupHomepageBeforeNavigation() {
-  debugLog('Starting homepage cleanup before navigation');
-  
-  // IMPORTANT: Don't clear navigation flags here - they need to persist!
-  // Only clear visual/DOM elements
-  
-  // 1. Remove homepage-specific classes
-  document.body.classList.remove('staff-homepage-scene', 'landing-page-scene');
-  
-  // 2. Clear loading indicator (with force hide)
-  const indicator = document.getElementById('api-loading-indicator');
-  if (indicator) {
-    indicator.style.display = 'none';
-    indicator.style.opacity = '0';
-    // Also remove it completely to prevent persistence
-    setTimeout(() => {
-      if (indicator.parentNode) {
-        indicator.remove();
-      }
-    }, 100);
-  }
-  
-  // 3. Force reset the API queue
-  if (window.KnackAPIQueue && window.KnackAPIQueue.forceReset) {
-    window.KnackAPIQueue.forceReset();
-  }
-  
-  // 4. Clear any stuck loading states
-  if (window.apiRequestManager) {
-    window.apiRequestManager.queue = [];
-    window.apiRequestManager.requestsThisSecond = 0;
-  }
-  
-  // 5. Reset body styles (coordinating with knackAppLoader.js)
-  document.body.style.backgroundColor = '';
-  document.body.style.background = '';
-  document.body.style.backgroundImage = '';
-  document.body.style.backgroundAttachment = '';
-  document.body.style.minHeight = '';
-  
-  // 6. Clear scene-level containers (matching loader's cleanup)
-  const sceneContainers = document.querySelectorAll('[id^="scene-level-container"]');
-  sceneContainers.forEach(container => {
-    debugLog('Removing scene container:', container.id);
-    container.remove();
+  // Log navigation for debugging
+  debugLog('Homepage button navigation', {
+    scene: scene,
+    url: url,
+    feature: featureName
   });
   
-  // 7. Clear homepage-specific styles
-  const homepageStyles = document.querySelectorAll('style[id*="staff-homepage"]');
-  homepageStyles.forEach(style => {
-    debugLog('Removing homepage style:', style.id);
-    style.remove();
-  });
+  // Build full URL if needed
+  const fullUrl = url.startsWith('#') ? 
+    `https://vespaacademy.knack.com/vespa-academy${url}` : 
+    url;
   
-  // 8. Clear any modals
-  const modals = document.querySelectorAll('.modal, .modal-backdrop, .student-emulator-container');
-  modals.forEach(modal => modal.remove());
-  
-  // 9. Signal to loader that we've cleaned up
-  window._homepageCleanupComplete = true;
-  
-  debugLog('Homepage cleanup complete');
+  // Navigate using the full URL
+  window.location.href = fullUrl;
 };
 
 // Add this global function for tracking feature usage
@@ -3861,14 +3749,11 @@ async function updateSchoolLogo(schoolId, logoUrl) {
 
 
 
-// Get CSS styles for the homepage with improved UI  
+// Get CSS styles for the homepage with improved UI
 function getStyleCSS() {
     return `
-  /* Scoped styles for staff homepage only */
-  /* All styles are scoped to .staff-homepage-scene to prevent bleeding */
-  
   /* Main Container - Staff Theme */
-  .staff-homepage-scene #staff-homepage {
+#staff-homepage {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   max-width: 1200px;
   margin: 0 auto;
@@ -5096,17 +4981,6 @@ canvas {
   }
 }
 
-/* Body background for staff homepage only */
-.staff-homepage-scene {
-  background-color: #072769 !important;
-  min-height: 100vh;
-}
-
-/* Reset body background when not on homepage */
-body:not(.staff-homepage-scene) {
-  background-color: initial !important;
-}
-
     `;
     }
 // Render the main homepage UI
@@ -5324,7 +5198,7 @@ try {
         </div>
       </div>
       <div class="group-resources-container">
-        ${renderGroupSection(hasAdminRole)}
+        ${renderGroupSection()}
         ${renderResourcesSection()}
       </div>
       ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
@@ -5335,9 +5209,6 @@ try {
 document.body.insertAdjacentHTML('beforeend', loadingIndicator);
 document.body.insertAdjacentHTML('beforeend', studentEmulatorModal);
 document.body.insertAdjacentHTML('beforeend', feedbackSystem);
-  
-  // Add staff-homepage class to body for CSS scoping
-  document.body.classList.add('staff-homepage-scene');
   
   // Add the CSS
   const styleElement = document.createElement('style');
@@ -6776,58 +6647,5 @@ if (!window.staffHomepageInitQueue) {
   window.staffHomepageInitQueue = [];
 }
 window.staffHomepageInitQueue.push(loadStudentEmulationSetup);
-
-// Enhanced scene change listener that coordinates with knackAppLoader.js
-$(document).on('knack-scene-render.any', function(event, scene) {
-  // Only proceed if we were previously on the homepage
-  if (window._staffHomepageActive) {
-    // If we're navigating away from scene_1215 (staff homepage), cleanup
-    if (scene && scene.key !== 'scene_1215') {
-      cleanupHomepageBeforeNavigation();
-      
-      // Additional coordination with loader
-      // Clear any homepage-specific flags
-      // Note: Don't clear navigation flags immediately - let them persist through navigation
-      setTimeout(() => {
-        window._staffHomepageActive = false;
-        // Navigation flag will be cleared by universal redirect or next page load
-      }, 1000);
-      
-      // Ensure loading indicators are cleared
-      setTimeout(() => {
-        const anyIndicator = document.querySelector('.api-loading-indicator, #api-loading-indicator');
-        if (anyIndicator) {
-          anyIndicator.remove();
-          debugLog('Removed stuck loading indicator on scene change');
-        }
-      }, 100);
-    }
-  }
-  
-  // Only activate homepage if we're on scene_1215 and it's not already active
-  if (scene && scene.key === 'scene_1215' && !window._staffHomepageActive) {
-    // We're on the homepage scene
-    window._staffHomepageActive = true;
-    
-    // Add classes for styling but don't set direct styles
-    document.body.classList.add('staff-homepage-scene', 'landing-page-scene');
-  }
-});
-
-// Listen for navigation initiated by other components (header, loader)
-$(document).on('vespa-navigation-started', function(event, data) {
-  if (window._staffHomepageActive) {
-    debugLog('Navigation initiated externally, cleaning up homepage', data);
-    cleanupHomepageBeforeNavigation();
-  }
-});
-
-// Coordinate with loader's force reload mechanism
-$(document).on('vespa-app-cleanup', function(event, data) {
-  if (data && data.scene === 'scene_1215') {
-    debugLog('Loader requested homepage cleanup', data);
-    cleanupHomepageBeforeNavigation();
-  }
-});
 
 })(); // Close main IIFE
