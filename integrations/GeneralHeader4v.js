@@ -1372,25 +1372,13 @@
                         const currentHash = window.location.hash;
                         log(`Navigation from ${currentHash} to ${href} (scene: ${targetScene})`);
                         
-                        // Trigger event to notify other components about navigation
-                        $(document).trigger('vespa-navigation-started', {
-                            from: currentHash,
-                            to: href,
-                            targetScene: targetScene,
-                            source: 'header'
-                        });
-                        
                         // CRITICAL: Disable Universal Redirect for ALL navigation
                         // This prevents redirect interference when clicking header buttons
                         window._universalRedirectCompleted = true;
                         window._bypassUniversalRedirect = true;
                         window._navigationInProgress = true;
-                        
-                        // Set multiple bypass flags in sessionStorage for redundancy
-                        sessionStorage.setItem('bypassRedirect', 'true');
                         sessionStorage.setItem('universalRedirectCompleted', 'true');
                         sessionStorage.setItem('navigationTarget', targetScene);
-                        sessionStorage.setItem('targetUrl', href);
                         
                         // Kill any Universal Redirect timers
                         if (window._universalRedirectTimer) {
@@ -1417,36 +1405,53 @@
                             document.body.style.backgroundColor = '';
                             document.body.style.background = '';
                             document.body.style.backgroundImage = '';
-                            document.body.classList.remove('staff-homepage-scene', 'landing-page-scene', 'dashboard-scene');
-                            
-                            // Handle loading screens for special scenes (coordinating with knackAppLoader.js)
-                            if (targetScene === 'scene_1014' || targetScene === 'scene_1095') {
-                                log(`Navigating to ${targetScene}, loader will handle loading screen`);
-                                document.body.classList.add('navigation-initiated');
-                            }
                         }
                         
-                        // Special handling for admin-coaching which has issues
-                        if (targetScene === 'scene_1014' || href === '#admin-coaching') {
-                            log('Special handling for Admin Coaching navigation');
-                            // Use location.replace for cleaner navigation
-                            const targetUrl = 'https://vespaacademy.knack.com/vespa-academy#admin-coaching';
-                            log(`Direct navigation to: ${targetUrl}`);
-                            setTimeout(() => {
-                                window.location.replace(targetUrl);
-                            }, 50);
-                        } else {
-                            // Navigate using full URL reload to ensure proper scene loading
-                            // This forces Knack to reload and properly initialize the new scene
-                            setTimeout(() => {
-                                const fullUrl = window.location.origin + window.location.pathname + href;
-                                log(`Navigating to full URL: ${fullUrl}`);
-                                window.location.href = fullUrl;
+                        // Navigate using Knack with a small delay to ensure cleanup
+                        setTimeout(() => {
+                            window.location.hash = href;
+                            
+                            // Special handling for Resource Portal scenes
+                            if (targetScene === 'scene_1272' || targetScene === 'scene_481') {
+                                log(`Special handling for Resource Portal scene ${targetScene}`);
+                                // Double-check that Universal Redirect is still disabled
+                                window._universalRedirectCompleted = true;
+                                window._bypassUniversalRedirect = true;
                                 
-                                // Navigation will cause page reload, so no need for special handling
-                                // The navigation flag will be cleared on the new page load
-                            }, 50);
-                        }
+                                // Force scene render if needed
+                                setTimeout(() => {
+                                    const currentScene = Knack.scene ? Knack.scene.key : null;
+                                    if (currentScene !== targetScene) {
+                                        log(`Scene didn't change properly for ${targetScene}, attempting force navigation`);
+                                        // Force a page reload as fallback
+                                        window.location.href = window.location.origin + window.location.pathname + href;
+                                    }
+                                    // Clear navigation flag after successful navigation
+                                    window._navigationInProgress = false;
+                                }, 500);
+                            }
+                            
+                            // For Results and Coaching tabs, ensure the scene renders properly
+                            else if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
+                                log(`Forcing scene render for ${targetScene}`);
+                                // Trigger a manual scene render event if Knack doesn't fire it
+                                setTimeout(() => {
+                                    const currentScene = Knack.scene ? Knack.scene.key : null;
+                                    if (currentScene !== targetScene) {
+                                        log(`Scene didn't change properly, attempting force navigation`);
+                                        // Force a page reload as fallback
+                                        window.location.href = window.location.origin + window.location.pathname + href;
+                                    }
+                                    // Clear navigation flag after successful navigation
+                                    window._navigationInProgress = false;
+                                }, 500);
+                            } else {
+                                // Clear navigation flag for other scenes
+                                setTimeout(() => {
+                                    window._navigationInProgress = false;
+                                }, 500);
+                            }
+                        }, 50);
                     }
                 });
             });
