@@ -313,117 +313,6 @@
 
     // --- Core Logic ---
     
-    // Unified navigation function that coordinates with GeneralHeader.js and knackAppLoader.js
-    window.navigateToScene = function(scene, url, featureName) {
-        // CRITICAL: Disable Universal Redirect IMMEDIATELY - must be first!
-        window._bypassUniversalRedirect = true;
-        window._universalRedirectCompleted = true;
-        window._navigationInProgress = true;
-        window._resourceDashboardNavigationInProgress = true;
-        sessionStorage.setItem('universalRedirectCompleted', 'true');
-        sessionStorage.setItem('navigationInProgress', 'true');
-        sessionStorage.setItem('navigationTarget', scene);
-        
-        // Kill any pending redirect timers IMMEDIATELY
-        if (window._universalRedirectTimer) {
-            clearInterval(window._universalRedirectTimer);
-            clearTimeout(window._universalRedirectTimer);
-            window._universalRedirectTimer = null;
-            log('Killed Universal Redirect timer at start of navigation');
-        }
-        
-        // Trigger event to notify other components about navigation
-        $(document).trigger('vespa-navigation-started', {
-            from: window.location.hash,
-            to: url,
-            targetScene: scene,
-            source: 'resource-dashboard'
-        });
-        
-        // 4. Signal the loader to force reload for target scene
-        window._forceAppReload = scene;
-        
-        // 5. Cleanup current dashboard before navigation
-        cleanupResourceDashboard();
-        
-        // 6. Clear background styles and classes
-        document.body.classList.remove('resource-dashboard-scene', 'resource-portal-scene');
-        const existingBackground = document.querySelector('.kn-content');
-        if (existingBackground) {
-            existingBackground.style.removeProperty('background');
-            existingBackground.style.removeProperty('background-image');
-        }
-        
-        // 7. Handle special scenes that need loading screens
-        if (scene === 'scene_1014' || scene === 'scene_1095') {
-            document.body.classList.add('navigation-initiated');
-        }
-        
-        // 8. Track feature usage
-        if (featureName) {
-            trackPageView(featureName).catch(err => 
-                errorLog('Feature tracking failed for ' + featureName + ':', err)
-            );
-        }
-        
-        // 9. Build full URL if needed
-        const fullUrl = url.startsWith('#') ? 
-            'https://vespaacademy.knack.com/vespa-academy' + url : 
-            url;
-        
-        // 10. Navigate using the full URL
-        window.location.href = fullUrl;
-        
-        // Log navigation for debugging
-        log('Resource Dashboard navigation', {
-            scene: scene,
-            url: url,
-            feature: featureName,
-            fullUrl: fullUrl
-        });
-    };
-    
-    // Cleanup function for Resource Dashboard
-    function cleanupResourceDashboard() {
-        log('Cleaning up Resource Dashboard...');
-        
-        // Remove styles
-        $('#resource-dashboard-styles').remove();
-        $('#resource-dashboard-scene-level-overrides').remove();
-        
-        // Remove feedback button and modal
-        $('#feedback-button').remove();
-        $('#feedback-modal').remove();
-        $('#feedback-success-modal').remove();
-        
-        // Remove PDF modal if exists
-        $('#pdfModal').remove();
-        
-        // Clear event listeners
-        $(document).off('click', '.nav-button, .admin-button');
-        $(document).off('click', '#feedback-button');
-        $(document).off('click', '#feedback-modal-close');
-        $(document).off('submit', '#feedback-form');
-        
-        // Clear container
-        const container = document.querySelector(SCRIPT_CONFIG?.elementSelector);
-        if (container) {
-            container.innerHTML = '';
-        }
-        
-        // Note: Don't clear navigation flags immediately - let them persist through navigation
-        setTimeout(() => {
-            window._resourceDashboardActive = false;
-            // Navigation flag will be cleared by universal redirect or next page load
-        }, 1000);
-        
-        // Clear any loading indicators
-        const loadingIndicators = document.querySelectorAll('.loading-state, .pdf-loading');
-        loadingIndicators.forEach(indicator => indicator.remove());
-        
-        log('Resource Dashboard cleanup complete');
-    }
-    
     // Helper to modify embed code for kiosk mode
     function enhanceEmbedForKioskMode(embedCode) {
         if (!embedCode) return embedCode;
@@ -895,26 +784,12 @@
     }
 
     function renderNavigationSection() {
-        const navButtons = MY_RESOURCES_APPS.map(app => {
-            // Extract scene from URL
-            let scene = 'scene_481'; // Default to resources scene
-            if (app.url.includes('#vespa-videos')) scene = 'scene_1266';
-            else if (app.url.includes('#vespa-curriculum') || app.url.includes('#suggested-curriculum')) scene = 'scene_1234';
-            else if (app.url.includes('#worksheets')) scene = 'scene_1169';
-            
-            // Extract hash from URL
-            const hashMatch = app.url.match(/#(.+)/);
-            const hash = hashMatch ? hashMatch[1] : '';
-            
-            return `
-                <a href="javascript:void(0);" class="nav-button" 
-                   onclick="navigateToScene('${scene}', '#${hash}', '${app.name}')" 
-                   style="--theme-color: ${app.color}">
-                    <i class="${app.icon}"></i>
-                    <span>${app.name}</span>
-                </a>
-            `;
-        }).join('');
+        const navButtons = MY_RESOURCES_APPS.map(app => `
+            <a href="${app.url}" class="nav-button" onclick="event.preventDefault(); window.location.href='${app.url}';" style="--theme-color: ${app.color}">
+                <i class="${app.icon}"></i>
+                <span>${app.name}</span>
+            </a>
+        `).join('');
 
         return `
             <section class="vespa-section navigation-section">
@@ -927,27 +802,12 @@
     }
     
     function renderAdminSection() {
-        const adminButtons = ADMIN_APPS.map(app => {
-            // Extract scene from URL
-            let scene = 'scene_1225'; // Default to dashboard
-            if (app.url.includes('#manage-schools')) scene = 'scene_1227';
-            else if (app.url.includes('#manage-staff')) scene = 'scene_1226';
-            else if (app.url.includes('#students')) scene = 'scene_1228';
-            else if (app.url.includes('#import-data')) scene = 'scene_1229';
-            
-            // Extract hash from URL
-            const hashMatch = app.url.match(/#(.+)/);
-            const hash = hashMatch ? hashMatch[1] : '';
-            
-            return `
-                <a href="javascript:void(0);" class="admin-button" 
-                   onclick="navigateToScene('${scene}', '#${hash}', '${app.name}')" 
-                   style="--theme-color: ${app.color}">
-                    <i class="${app.icon}"></i>
-                    <span>${app.name}</span>
-                </a>
-            `;
-        }).join('');
+        const adminButtons = ADMIN_APPS.map(app => `
+            <a href="${app.url}" class="admin-button" onclick="event.preventDefault(); window.location.href='${app.url}';" style="--theme-color: ${app.color}">
+                <i class="${app.icon}"></i>
+                <span>${app.name}</span>
+            </a>
+        `).join('');
 
         return `
             <section class="vespa-section admin-section">
@@ -3266,9 +3126,6 @@
         // Initialize configuration first
         initializeConfig();
         
-        // Set active flag
-        window._resourceDashboardActive = true;
-        
         log('initializeResourceDashboard function called!');
         log('Initializing Resource Dashboard...');
         
@@ -3817,24 +3674,5 @@
         errorLog('Error during script initialization:', error);
         errorLog('Stack trace:', error.stack);
     }
-    
-    // Listen for scene changes to cleanup when navigating away
-    $(document).on('knack-scene-render.any', function(event, scene) {
-        // If we're navigating away from scene_1252 (resources homepage), cleanup
-        if (scene && scene.key !== 'scene_1252') {
-            if (window._resourceDashboardActive) {
-                cleanupResourceDashboard();
-            }
-        }
-    });
-    
-    // Listen for navigation events to coordinate with other components
-    $(document).on('vespa-navigation-started', function(event, data) {
-        // If navigation is from another source and we're active, cleanup
-        if (data.source !== 'resource-dashboard' && window._resourceDashboardActive) {
-            cleanupResourceDashboard();
-        }
-    });
 
 })();
-
