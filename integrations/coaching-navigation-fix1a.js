@@ -253,6 +253,53 @@
         setTimeout(() => clearInterval(waitForHeader), 10000);
     }
     
+    // Patch homepage navigation buttons
+    function patchHomepageNavigation() {
+        log('Patching homepage navigation for coaching scenes');
+        
+        // Wait for homepage buttons to be ready
+        const waitForHomepage = setInterval(() => {
+            // Look for app cards with coaching scenes
+            const coachingButtons = document.querySelectorAll('.app-card[data-scene="scene_1095"], .app-card[data-scene="scene_1014"]');
+            
+            if (coachingButtons.length > 0) {
+                clearInterval(waitForHomepage);
+                
+                coachingButtons.forEach(button => {
+                    const targetScene = button.dataset.scene;
+                    const targetHref = button.getAttribute('href');
+                    
+                    log(`Patching homepage button for ${targetScene}`);
+                    
+                    // Remove the inline onclick handler
+                    button.onclick = null;
+                    button.removeAttribute('onclick');
+                    
+                    // Add enhanced click handler
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        log('Homepage coaching navigation clicked');
+                        
+                        // Track feature usage if needed
+                        const appName = this.querySelector('.app-name')?.textContent;
+                        if (appName && window.trackFeatureUse) {
+                            window.trackFeatureUse(appName);
+                        }
+                        
+                        // Use enhanced navigation
+                        window.navigateToCoachingScene(targetScene, targetHref, 'homepage');
+                    });
+                });
+                
+                log('Homepage navigation patched');
+            }
+        }, 500);
+        
+        // Stop checking after 10 seconds
+        setTimeout(() => clearInterval(waitForHomepage), 10000);
+    }
+    
     // Initialize
     function initialize() {
         log('Initializing Coaching Navigation Fix');
@@ -267,10 +314,19 @@
         // Patch header navigation
         setTimeout(patchHeaderNavigation, 1000);
         
-        // Re-patch if header gets re-rendered
+        // Patch homepage navigation
+        setTimeout(patchHomepageNavigation, 1000);
+        
+        // Re-patch if scene gets re-rendered
         if (window.$ && window.Knack) {
-            $(document).on('knack-scene-render.any', function() {
+            $(document).on('knack-scene-render.any', function(event, scene) {
+                // Re-patch header
                 setTimeout(patchHeaderNavigation, 500);
+                
+                // Re-patch homepage if we're on the homepage scene
+                if (scene && scene.key === 'scene_1215') {
+                    setTimeout(patchHomepageNavigation, 500);
+                }
             });
         }
         
@@ -285,3 +341,4 @@
     }
     
 })();
+
