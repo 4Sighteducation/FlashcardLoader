@@ -476,13 +476,6 @@
           description: "Detailed results analysis for all students"
         },
         {
-          name: "Coaching",
-          url: "#admin-coaching",
-          scene: "scene_1014",
-          icon: "fa-comments",
-          description: "Admin coaching tools and reports"
-        },
-        {
           name: "Manage",
           url: "#upload-manager",
           scene: "scene_1212",
@@ -2665,9 +2658,37 @@
     `;
   }
   
-  // Render the group section
-  function renderGroupSection() {
-    return renderAppSection("MY GROUP", APP_SECTIONS.group);
+  // Render the group section with role-appropriate coaching button
+  function renderGroupSection(hasAdminRole = false) {
+    // Create a modified apps array with the correct coaching button
+    const groupApps = APP_SECTIONS.group.map(app => {
+      // If this is the Coaching button, return the appropriate version
+      if (app.name === "Coaching") {
+        if (hasAdminRole) {
+          // Return admin coaching configuration
+          return {
+            name: "Coaching",
+            url: "#admin-coaching",
+            scene: "scene_1014",
+            icon: "fa-comments",
+            description: "Access admin coaching tools and student reports"
+          };
+        } else {
+          // Return normal staff coaching configuration
+          return {
+            name: "Coaching",
+            url: "#mygroup-vespa-results2/",
+            scene: "scene_1095",
+            icon: "fa-comments",
+            description: "Access coaching reports and feedback for your student group"
+          };
+        }
+      }
+      // Return other apps unchanged
+      return app;
+    });
+    
+    return renderAppSection("MY GROUP", groupApps);
   }
   
   // Render the resources section
@@ -5252,7 +5273,7 @@
           </div>
         </div>
         <div class="group-resources-container">
-          ${renderGroupSection()}
+          ${renderGroupSection(hasAdminRole)}
           ${renderResourcesSection()}
         </div>
         ${hasAdminRole ? renderAdminSection() : '<!-- Management section not shown: user does not have Staff Admin role -->'} 
