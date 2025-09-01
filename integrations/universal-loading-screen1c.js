@@ -43,7 +43,7 @@
             'scene_1206': 'Loading Flashcards',
             'scene_1208': 'Loading Study Planner',
             'scene_1188': 'Loading Taskboards',
-            'scene_1212': 'Loading Upload System',
+            'scene_1212': 'Loading Upload Manager',
             'scene_43': 'Loading Student Report',
             'scene_481': 'Loading Resources',
             'scene_1270': 'Loading Student Results',
@@ -442,4 +442,3 @@
     log('Universal Loading Screen Manager initialized');
     
 })();
-
