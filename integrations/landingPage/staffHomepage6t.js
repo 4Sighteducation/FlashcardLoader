@@ -432,28 +432,28 @@ const KnackAPIQueue = (function() {
     resources: [
       {
         name: "Resources",
-        url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/",
+        url: "#tutor-activities/resources-levels",
         scene: "scene_481",
         icon: "fa-folder-open",
         description: "Access teaching resources and materials"
       },
       {
         name: "Worksheets",
-        url: "https://vespaacademy.knack.com/vespa-academy#worksheets/",
+        url: "#worksheets",
         scene: "scene_1169",
         icon: "fa-files-o",
         description: "Download printable worksheets and activities"
       },
       {
         name: "Videos",
-        url: "https://vespaacademy.knack.com/vespa-academy#vespa-videos/",
+        url: "#vespa-videos",
         scene: "scene_1266",
         icon: "fa-book-open",
         description: "Watch VESPA instructional and training videos"
       },
       {
         name: "Curriculum",
-        url: "https://vespaacademy.knack.com/vespa-academy#suggested-curriculum2/",
+        url: "#suggested-curriculum2",
         scene: "scene_1234",
         icon: "fa-calendar",
         description: "Explore the VESPA curriculum and implementation guides"
