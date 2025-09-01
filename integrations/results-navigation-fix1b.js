@@ -21,6 +21,10 @@
         staffUrl: '#mygroup-vespa-results2',
         staffViews: ['view_2776', 'view_3015'],
         
+        resultsScene: 'scene_1270',  // Results page
+        resultsUrl: '#vesparesults',
+        resultsViews: ['view_3214'],  // Add the actual view IDs for scene_1270
+        
         manageScene: 'scene_1212',
         manageUrl: '#upload-manager',
         
@@ -354,7 +358,9 @@
                 navigationState.currentScene = scene.key;
                 
                 // If we just arrived at a results page
-                if (scene.key === RESULTS_CONFIG.adminScene || scene.key === RESULTS_CONFIG.staffScene) {
+                if (scene.key === RESULTS_CONFIG.adminScene || 
+                    scene.key === RESULTS_CONFIG.staffScene || 
+                    scene.key === RESULTS_CONFIG.resultsScene) {
                     log(`Arrived at results page: ${scene.key}`);
                     
                     // Patch navigation after a delay
@@ -370,8 +376,12 @@
                 }
                 
                 // If we're leaving a results page
-                if ((previousScene === RESULTS_CONFIG.adminScene || previousScene === RESULTS_CONFIG.staffScene) &&
-                    scene.key !== RESULTS_CONFIG.adminScene && scene.key !== RESULTS_CONFIG.staffScene) {
+                if ((previousScene === RESULTS_CONFIG.adminScene || 
+                     previousScene === RESULTS_CONFIG.staffScene || 
+                     previousScene === RESULTS_CONFIG.resultsScene) &&
+                    scene.key !== RESULTS_CONFIG.adminScene && 
+                    scene.key !== RESULTS_CONFIG.staffScene && 
+                    scene.key !== RESULTS_CONFIG.resultsScene) {
                     log('Left results page, running cleanup');
                     
                     // Run any registered cleanup functions
@@ -389,7 +399,9 @@
             // Also monitor view renders for dynamic content
             $(document).on('knack-view-render.any', function(event, view) {
                 const currentScene = window.Knack?.scene?.key;
-                if (currentScene === RESULTS_CONFIG.adminScene || currentScene === RESULTS_CONFIG.staffScene) {
+                if (currentScene === RESULTS_CONFIG.adminScene || 
+                    currentScene === RESULTS_CONFIG.staffScene || 
+                    currentScene === RESULTS_CONFIG.resultsScene) {
                     // Patch any new navigation elements
                     setTimeout(patchResultsNavigation, 500);
                 }
@@ -412,7 +424,8 @@
         
         // Initial patch if we're already on a results page
         if (navigationState.currentScene === RESULTS_CONFIG.adminScene || 
-            navigationState.currentScene === RESULTS_CONFIG.staffScene) {
+            navigationState.currentScene === RESULTS_CONFIG.staffScene ||
+            navigationState.currentScene === RESULTS_CONFIG.resultsScene) {
             setTimeout(patchResultsNavigation, 1000);
         }
         
