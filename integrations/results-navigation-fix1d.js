@@ -43,21 +43,64 @@
     
     // Prevent duplicate script loading
     function preventDuplicateScripts() {
-        const originalLoadScript = window.loadScript;
         const loadedScripts = new Set();
         
+        // Intercept document.createElement to prevent duplicate scripts
+        const originalCreateElement = document.createElement.bind(document);
+        document.createElement = function(tagName) {
+            const element = originalCreateElement(tagName);
+            
+            if (tagName.toLowerCase() === 'script') {
+                // Override the src setter
+                const originalSrcSetter = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src').set;
+                
+                Object.defineProperty(element, '_src', {
+                    writable: true,
+                    value: ''
+                });
+                
+                Object.defineProperty(element, 'src', {
+                    get: function() {
+                        return this._src;
+                    },
+                    set: function(url) {
+                        // List of scripts that cause issues when loaded multiple times
+                        const problematicScripts = [
+                            'studentResultsViewer',
+                            'index9k',
+                            'uploadSystem',
+                            'dynamicStaffTable',
+                            'vue-table-ui-enhancer'
+                        ];
+                        
+                        const isProblematic = problematicScripts.some(script => url.includes(script));
+                        
+                        if (isProblematic && loadedScripts.has(url)) {
+                            log(`BLOCKED duplicate script load: ${url}`);
+                            // Fire load event to prevent hanging
+                            setTimeout(() => {
+                                const event = new Event('load');
+                                this.dispatchEvent(event);
+                            }, 0);
+                            return;
+                        }
+                        
+                        loadedScripts.add(url);
+                        this._src = url;
+                        originalSrcSetter.call(this, url);
+                    }
+                });
+            }
+            
+            return element;
+        };
+        
+        // Also override window.loadScript if it exists
+        const originalLoadScript = window.loadScript;
         window.loadScript = function(url) {
             // Check if script already loaded
             if (loadedScripts.has(url)) {
-                log(`Preventing duplicate load of: ${url}`);
-                return Promise.resolve();
-            }
-            
-            // Check if script element already exists in DOM
-            const existingScript = document.querySelector(`script[src="${url}"]`);
-            if (existingScript) {
-                log(`Script already in DOM: ${url}`);
-                loadedScripts.add(url);
+                log(`Preventing duplicate load via loadScript: ${url}`);
                 return Promise.resolve();
             }
             
@@ -200,6 +243,30 @@
         log('Preparation complete');
     }
     
+    // Force actual page navigation (not AJAX load)
+    window.forcePageNavigation = function(targetUrl) {
+        log(`Forcing page navigation to ${targetUrl}`);
+        
+        // Set flags to prevent AJAX loading
+        window._navigationInProgress = true;
+        window._skipAjaxLoad = true;
+        
+        // Use location.href for full page navigation
+        if (targetUrl.startsWith('#')) {
+            // Change hash and reload if necessary
+            const currentHash = window.location.hash;
+            window.location.hash = targetUrl;
+            
+            // If hash didn't change, force reload
+            if (currentHash === targetUrl) {
+                window.location.reload();
+            }
+        } else {
+            // Full URL navigation
+            window.location.href = targetUrl;
+        }
+    };
+    
     // Enhanced navigation function
     window.navigateFromResultsPage = function(targetScene, targetUrl, source = 'unknown') {
         // Prevent concurrent navigation
@@ -240,8 +307,8 @@
             navigationState.previousScene = currentScene;
             navigationState.currentScene = targetScene;
             
-            // Navigate
-            window.location.hash = targetUrl.startsWith('#') ? targetUrl : '#' + targetUrl;
+            // Force actual navigation (not AJAX)
+            window.forcePageNavigation(targetUrl.startsWith('#') ? targetUrl : '#' + targetUrl);
             
             // Verify navigation succeeded
             setTimeout(() => {
@@ -278,7 +345,9 @@
         const currentScene = window.Knack?.scene?.key;
         
         // Only patch if we're on a results page
-        if (currentScene !== RESULTS_CONFIG.adminScene && currentScene !== RESULTS_CONFIG.staffScene) {
+        if (currentScene !== RESULTS_CONFIG.adminScene && 
+            currentScene !== RESULTS_CONFIG.staffScene &&
+            currentScene !== RESULTS_CONFIG.resultsScene) {
             return;
         }
         
@@ -348,6 +417,67 @@
         log('Navigation patching complete');
     }
     
+    // Patch homepage navigation to results pages
+    function patchHomepageNavigation() {
+        const currentScene = window.Knack?.scene?.key;
+        
+        // Only patch if we're on the homepage
+        if (currentScene !== RESULTS_CONFIG.homepageScene && currentScene !== 'scene_1215') {
+            return;
+        }
+        
+        log('Patching homepage navigation to results');
+        
+        // Find results navigation buttons/links
+        const selectors = [
+            'a[href*="vesparesults"]',
+            'a[href*="admin-coaching"]',
+            'a[href*="mygroup-vespa-results"]',
+            '.app-card[data-scene="scene_1270"]',
+            '.app-card[data-scene="scene_1014"]',
+            '.app-card[data-scene="scene_1095"]',
+            '[data-navigation-target="results"]'
+        ];
+        
+        selectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(element => {
+                if (element.dataset.homepagePatched === 'true') return;
+                
+                element.dataset.homepagePatched = 'true';
+                
+                // Remove existing click handlers
+                const newElement = element.cloneNode(true);
+                element.parentNode.replaceChild(newElement, element);
+                
+                // Add new handler
+                newElement.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const href = this.getAttribute('href') || this.dataset.href;
+                    const targetScene = this.dataset.scene;
+                    
+                    log('Homepage to results navigation clicked', { href, targetScene });
+                    
+                    // Determine target
+                    let targetUrl = '#vesparesults';
+                    if (href) {
+                        targetUrl = href.startsWith('#') ? href : '#' + href;
+                    } else if (targetScene === 'scene_1014') {
+                        targetUrl = '#admin-coaching';
+                    } else if (targetScene === 'scene_1095') {
+                        targetUrl = '#mygroup-vespa-results2';
+                    }
+                    
+                    // Force actual navigation (not AJAX)
+                    window.forcePageNavigation(targetUrl);
+                }, true);
+            });
+        });
+        
+        log('Homepage navigation patching complete');
+    }
+    
     // Monitor scene changes
     function monitorSceneChanges() {
         // Wait for jQuery and Knack to be available
@@ -364,9 +494,9 @@
                 const previousScene = navigationState.currentScene;
                 navigationState.currentScene = scene.key;
                 
-                // If we just arrived at a results page
+                                // If we just arrived at a results page
                 if (scene.key === RESULTS_CONFIG.adminScene || 
-                    scene.key === RESULTS_CONFIG.staffScene || 
+                    scene.key === RESULTS_CONFIG.staffScene ||
                     scene.key === RESULTS_CONFIG.resultsScene) {
                     log(`Arrived at results page: ${scene.key}`);
                     
@@ -380,6 +510,22 @@
                     
                     // Stop repatching after 10 seconds
                     setTimeout(() => clearInterval(repatchInterval), 10000);
+                }
+                
+                // If we arrived at homepage, patch navigation to results
+                if (scene.key === RESULTS_CONFIG.homepageScene || scene.key === 'scene_1215') {
+                    log(`Arrived at homepage: ${scene.key}`);
+                    
+                    // Patch navigation after a delay
+                    setTimeout(patchHomepageNavigation, 1000);
+                    
+                    // Re-patch periodically in case new elements are added
+                    const homepageRepatchInterval = setInterval(() => {
+                        patchHomepageNavigation();
+                    }, 2000);
+                    
+                    // Stop repatching after 10 seconds
+                    setTimeout(() => clearInterval(homepageRepatchInterval), 10000);
                 }
                 
                 // If we're leaving a results page
@@ -452,4 +598,3 @@
     initialize();
     
 })();
-
