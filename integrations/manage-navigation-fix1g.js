@@ -134,83 +134,34 @@
     
     // Patch homepage navigation buttons for manage page
     function patchHomepageNavigation() {
-        // Look for manage button in staff homepage - broader search
-        const selectors = [
-            '.app-card[onclick*="upload-manager"]',
-            '.app-card[onclick*="scene_1212"]',
-            '.app-card[onclick*="1212"]',
-            'a[href="#upload-manager"]',
-            'a[data-scene="scene_1212"]',
-            '.app-card[onclick*="navigateToScene"]',
-            '.app-card[title="Manage"]',
-            '.app-card' // Fallback to all app cards
-        ];
+        // Look for manage button in staff homepage
+        const homepageButtons = document.querySelectorAll('.app-card[onclick*="upload-manager"], .app-button[onclick*="upload-manager"], a[onclick*="navigateToScene"][onclick*="scene_1212"]');
         
-        let patchedCount = 0;
-        
-        selectors.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(button => {
-                if (button.dataset.managePatched === 'true') return;
+        homepageButtons.forEach(button => {
+            if (button.dataset.managePatched === 'true') return;
+            
+            // Remove inline onclick
+            button.removeAttribute('onclick');
+            
+            // Add proper event listener
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 
-                // Check if this is actually the manage button
-                const buttonText = button.textContent || button.innerText || '';
-                const onclick = button.getAttribute('onclick') || '';
-                const href = button.getAttribute('href') || '';
-                const dataScene = button.getAttribute('data-scene') || '';
-                const title = button.getAttribute('title') || '';
+                // Hide the dashboard first if it exists
+                const dashboard = document.getElementById('staff-homepage-container');
+                if (dashboard) {
+                    dashboard.style.display = 'none';
+                }
                 
-                const isManageButton = 
-                    buttonText.includes('Manage') || 
-                    onclick.includes('1212') ||
-                    onclick.includes('upload-manager') ||
-                    href.includes('upload-manager') ||
-                    dataScene === 'scene_1212' ||
-                    title === 'Manage';
-                
-                if (!isManageButton) return;
-                
-                log(`Patching homepage button: ${title || buttonText.trim()} with onclick: ${onclick.substring(0, 50)}...`);
-                
-                // Clone the button to remove ALL event listeners
-                const newButton = button.cloneNode(true);
-                button.parentNode.replaceChild(newButton, button);
-                
-                // Remove inline onclick completely
-                newButton.removeAttribute('onclick');
-                newButton.style.cursor = 'pointer';
-                
-                // Add our click handler with maximum priority
-                const clickHandler = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    
-                    log('Homepage manage button clicked - intercepted successfully');
-                    
-                    // Hide the dashboard first if it exists
-                    const dashboards = document.querySelectorAll('#staff-homepage-container, .staff-dashboard-container, #view_3024, .kn-content');
-                    dashboards.forEach(d => {
-                        if (d) d.style.display = 'none';
-                    });
-                    
-                    // Use our enhanced navigation
-                    window.navigateToManageScene('#upload-manager', 'homepage');
-                    return false;
-                };
-                
-                // Add multiple event listeners to catch the click
-                newButton.addEventListener('click', clickHandler, true); // Capture phase
-                newButton.addEventListener('click', clickHandler, false); // Bubble phase
-                newButton.onclick = clickHandler; // Direct onclick handler
-                
-                newButton.dataset.managePatched = 'true';
-                patchedCount++;
+                window.navigateToManageScene('#upload-manager', 'homepage');
             });
+            
+            button.dataset.managePatched = 'true';
         });
         
-        if (patchedCount > 0) {
-            log(`Homepage navigation patched - ${patchedCount} button(s)`);
+        if (homepageButtons.length > 0) {
+            log(`Homepage navigation patched - ${homepageButtons.length} button(s)`);
         }
     }
     
@@ -311,20 +262,6 @@
                 if (uploadContainer) {
                     uploadContainer.style.display = 'block';
                 }
-                
-                // Hide loading screen immediately if the upload system is already loaded
-                if (uploadContainer && uploadContainer.innerHTML.length > 100) {
-                    log('Upload system already loaded, hiding loading screen');
-                    if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
-                        window.VespaLoadingScreen.hide();
-                        window._loadingScreenActive = false;
-                    }
-                    // Also prevent knackAppLoader from showing its loading screen
-                    window._skipLoadingScreen = true;
-                    setTimeout(() => {
-                        window._skipLoadingScreen = false;
-                    }, 1000);
-                }
             }
             // Block navigation away from scene_1212 if we're supposed to stay
             else if (window._forceStayOnManage && scene.key !== 'scene_1212') {
@@ -358,18 +295,6 @@
                 patchHeaderNavigation();
                 patchHomepageNavigation();
             }, 100);
-            
-            // Extra patching for staff homepage view
-            if (view.key === 'view_3024') {
-                log('Staff homepage view rendered, patching manage buttons with delay');
-                // Wait longer for homepage buttons to be created
-                setTimeout(() => {
-                    patchHomepageNavigation();
-                }, 500);
-                setTimeout(() => {
-                    patchHomepageNavigation();
-                }, 1000);
-            }
         }
     });
     
@@ -384,25 +309,6 @@
             preventManageRedirects();
         }, 500);
     });
-    
-    // Also patch immediately and repeatedly to catch late-loading buttons
-    setTimeout(() => {
-        patchHeaderNavigation();
-        patchHomepageNavigation();
-    }, 100);
-    
-    // Patch every 500ms for the first 5 seconds to catch any dynamically created buttons
-    let patchAttempts = 0;
-    const patchInterval = setInterval(() => {
-        patchHomepageNavigation();
-        patchHeaderNavigation();
-        patchAttempts++;
-        
-        if (patchAttempts > 10) { // Stop after 5 seconds
-            clearInterval(patchInterval);
-            log('Stopped aggressive patching after 10 attempts');
-        }
-    }, 500);
     
     // Check on page load if we should be on the manage page
     if (window.location.hash === '#upload-manager') {
