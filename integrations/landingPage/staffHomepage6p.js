@@ -753,6 +753,139 @@
     }
   }
   
+  // --- API Response Cache Manager ---
+  // Caches API responses in sessionStorage to dramatically improve navigation speed
+  const APICache = {
+    // Default cache duration: 5 minutes
+    DEFAULT_TTL: 5 * 60 * 1000,
+    
+    // Cache key prefix to avoid conflicts
+    PREFIX: 'vespa_api_cache_',
+    
+    // Store data with expiration
+    set: function(key, data, ttlMs = null) {
+      try {
+        const ttl = ttlMs || this.DEFAULT_TTL;
+        const cacheData = {
+          data: data,
+          timestamp: Date.now(),
+          expires: Date.now() + ttl
+        };
+        
+        const fullKey = this.PREFIX + key;
+        sessionStorage.setItem(fullKey, JSON.stringify(cacheData));
+        
+        debugLog(`API Cache: Stored ${key}`, {
+          size: JSON.stringify(data).length,
+          expiresIn: ttl / 1000 + ' seconds'
+        });
+        
+        return true;
+      } catch (e) {
+        // Probably quota exceeded, clear old cache entries
+        if (e.name === 'QuotaExceededError') {
+          this.clearExpired();
+          // Try once more
+          try {
+            sessionStorage.setItem(this.PREFIX + key, JSON.stringify({
+              data: data,
+              timestamp: Date.now(),
+              expires: Date.now() + (ttlMs || this.DEFAULT_TTL)
+            }));
+            return true;
+          } catch (e2) {
+            console.warn('[Staff Homepage] Cache storage full, unable to cache:', key);
+          }
+        }
+        return false;
+      }
+    },
+    
+    // Get cached data if still valid
+    get: function(key) {
+      try {
+        const fullKey = this.PREFIX + key;
+        const cached = sessionStorage.getItem(fullKey);
+        
+        if (!cached) {
+          return null;
+        }
+        
+        const cacheData = JSON.parse(cached);
+        
+        // Check if expired
+        if (Date.now() > cacheData.expires) {
+          sessionStorage.removeItem(fullKey);
+          debugLog(`API Cache: Expired ${key}`);
+          return null;
+        }
+        
+        const ageSeconds = Math.round((Date.now() - cacheData.timestamp) / 1000);
+        debugLog(`API Cache: Hit ${key}`, {
+          age: ageSeconds + ' seconds',
+          expiresIn: Math.round((cacheData.expires - Date.now()) / 1000) + ' seconds'
+        });
+        
+        return cacheData.data;
+      } catch (e) {
+        console.error('[Staff Homepage] Cache read error:', e);
+        // Remove corrupted cache entry
+        sessionStorage.removeItem(this.PREFIX + key);
+        return null;
+      }
+    },
+    
+    // Clear a specific cache entry
+    clear: function(key) {
+      sessionStorage.removeItem(this.PREFIX + key);
+      debugLog(`API Cache: Cleared ${key}`);
+    },
+    
+    // Clear all expired cache entries
+    clearExpired: function() {
+      const now = Date.now();
+      const keysToRemove = [];
+      
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(this.PREFIX)) {
+          try {
+            const cached = JSON.parse(sessionStorage.getItem(key));
+            if (cached.expires < now) {
+              keysToRemove.push(key);
+            }
+          } catch (e) {
+            // Remove corrupted entries
+            keysToRemove.push(key);
+          }
+        }
+      }
+      
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+      
+      if (keysToRemove.length > 0) {
+        debugLog(`API Cache: Cleared ${keysToRemove.length} expired entries`);
+      }
+    },
+    
+    // Clear all cache entries
+    clearAll: function() {
+      const keysToRemove = [];
+      
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(this.PREFIX)) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+      debugLog(`API Cache: Cleared all ${keysToRemove.length} entries`);
+    }
+  };
+  
+  // Clean up expired cache entries on load
+  APICache.clearExpired();
   
   // Generic retry function for API calls
   function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
@@ -1434,8 +1567,16 @@
       return null;
     }
     
+    // Check cache first
+    const cacheKey = `staff_profile_${user.id}`;
+    const cached = APICache.get(cacheKey);
+    if (cached) {
+      debugLog("Using cached staff profile data");
+      return cached;
+    }
+    
     try {
-      debugLog("Getting staff profile data for:", user);
+      debugLog("Getting fresh staff profile data for:", user);
       
       // Find the staff record based on user email
       const staffRecord = await findStaffRecord(user.email);
@@ -1571,6 +1712,9 @@
         userId: user.id,
         schoolLogo: schoolLogo
       };
+      
+      // Cache the profile data
+      APICache.set(cacheKey, profileData);
       
       debugLog("Compiled staff profile data:", profileData);
       return profileData;
@@ -1799,10 +1943,10 @@
     const userEmail = user?.email || 'anonymous';
     
     // Create a user-specific cache key for this school's VESPA results
-    const cacheKey = `school_vespa_${schoolId}_${userEmail}`;
+    const cacheKey = `school_vespa_${schoolId}`;
     
     // Try to get from cache first
-    const cachedResults = await CacheManager.get(cacheKey, 'SchoolResults');
+    const cachedResults = APICache.get(cacheKey);
     if (cachedResults) {
       console.log(`[Staff Homepage] Using cached VESPA results for school ${schoolId}`);
       return cachedResults;
@@ -1950,8 +2094,8 @@
         
       debugLog("Calculated school VESPA averages:", averages);
       
-      // Store in cache for future use
-      await CacheManager.set(cacheKey, averages, 'SchoolResults', 120); // 2 hour TTL
+      // Store in cache for future use (cache for 10 minutes since school data changes less frequently)
+      APICache.set(cacheKey, averages, 10 * 60 * 1000);
       
       return averages;
     }
@@ -1973,10 +2117,10 @@
     
     try {
       // Create a unique cache key for this staff member's students & VESPA results
-      const staffCacheKey = `staff_students_vespa_${schoolId}_${staffEmail}`;
+      const staffCacheKey = `staff_vespa_${schoolId}_${staffEmail.replace('@', '_')}`;
       
       // Try to get from cache first
-      const cachedStaffResults = await CacheManager.get(staffCacheKey, 'StaffResults');
+      const cachedStaffResults = APICache.get(staffCacheKey);
       if (cachedStaffResults) {
         console.log(`[Staff Homepage] Using cached staff VESPA results for ${staffEmail}`);
         return cachedStaffResults;
@@ -2304,8 +2448,8 @@
       
       debugLog("Calculated staff connected students VESPA averages:", averages);
       
-      // Store in cache for future use (120 minutes TTL = 2 hours)
-      await CacheManager.set(staffCacheKey, averages, 'StaffResults', 120);
+      // Store in cache for future use (cache for 5 minutes as staff data is more dynamic)
+      APICache.set(staffCacheKey, averages);
       
       return averages;
     } catch (error) {
@@ -2323,11 +2467,11 @@
     
     try {
       // Create a unique cache key for this user's cycle data
-      const cacheKey = `user_cycles_${userId}_school_${schoolId}`;
+      const cacheKey = `cycles_${userId}_${schoolId}`;
       console.log(`[Staff Homepage] Using cache key: ${cacheKey}`);
       
       // Try to get from cache first
-      const cachedCycles = await CacheManager.get(cacheKey, 'UserCycles');
+      const cachedCycles = APICache.get(cacheKey);
       if (cachedCycles) {
         console.log(`[Staff Homepage] Using cached cycle data for user ${userId}`);
         return cachedCycles;
@@ -2501,8 +2645,8 @@
       // Determine the current cycle
       cycles.currentCycle = determineCurrentCycle(cycles);
       
-      // Store in cache
-      await CacheManager.set(cacheKey, cycles, 'UserCycles', 60); // 60 min TTL
+      // Store in cache (cache for 30 minutes as cycles don't change often)
+      APICache.set(cacheKey, cycles, 30 * 60 * 1000);
       
       return cycles;
     } catch (error) {
