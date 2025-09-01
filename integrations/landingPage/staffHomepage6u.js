@@ -2748,6 +2748,9 @@ window.navigateToScene = function(scene, url, featureName) {
     feature: featureName
   });
   
+  // Store current scene for comparison
+  const currentScene = Knack.scene ? Knack.scene.key : null;
+  
   // CRITICAL: Hide the dashboard immediately to prevent overlay issues
   const dashboardContainer = document.querySelector('.staff-dashboard-container');
   if (dashboardContainer) {
@@ -2776,15 +2779,10 @@ window.navigateToScene = function(scene, url, featureName) {
     console.log('[Staff Homepage] Killed Universal Redirect timer during navigation');
   }
   
-  // Special handling for coaching scenes that need extra care
-  if (scene === 'scene_1014' || scene === 'scene_1095' || url.includes('admin-coaching') || url.includes('mygroup-vespa-results2')) {
-    console.log(`[Staff Homepage] Special handling for coaching scene: ${scene}`);
-    
-    // Use the new coaching navigation function if available
-    if (window.navigateToCoachingScene && typeof window.navigateToCoachingScene === 'function') {
-      console.log('[Staff Homepage] Using enhanced coaching navigation');
-      return window.navigateToCoachingScene(scene, url, 'homepage');
-    }
+  // UNIVERSAL CLEANUP: Force cleanup for all scene navigations
+  // This ensures fresh app loads and prevents issues with cached states
+  if (scene && scene !== currentScene) {
+    console.log(`[Staff Homepage] Navigating to ${scene}, forcing universal cleanup`);
     
     // Signal the loader to force reload for this scene
     window._forceAppReload = scene;
@@ -2800,15 +2798,64 @@ window.navigateToScene = function(scene, url, featureName) {
     document.body.style.backgroundImage = '';
   }
   
-  // Build full URL if needed
-  const fullUrl = url.startsWith('#') ? 
-    `https://vespaacademy.knack.com/vespa-academy${url}` : 
-    url;
+  // Special handling for coaching scenes that need extra care
+  if (scene === 'scene_1014' || scene === 'scene_1095' || url.includes('admin-coaching') || url.includes('mygroup-vespa-results2')) {
+    console.log(`[Staff Homepage] Special handling for coaching scene: ${scene}`);
+    
+    // Use the new coaching navigation function if available
+    if (window.navigateToCoachingScene && typeof window.navigateToCoachingScene === 'function') {
+      console.log('[Staff Homepage] Using enhanced coaching navigation');
+      return window.navigateToCoachingScene(scene, url, 'homepage');
+    }
+  }
   
-  // Navigate using location.href for a clean navigation
-  // This ensures the dashboard is fully unloaded
-  console.log('[Staff Homepage] Navigating to:', fullUrl);
-  window.location.href = fullUrl;
+  // Ensure the URL is a hash
+  const hashUrl = url.startsWith('#') ? url : '#' + url;
+  
+  // Navigate using hash navigation (like GeneralHeader does)
+  // This prevents full page reload and works properly with Knack's SPA routing
+  console.log('[Staff Homepage] Navigating to:', hashUrl);
+  
+  // Navigate using Knack's hash-based routing with a small delay to ensure cleanup
+  setTimeout(() => {
+    window.location.hash = hashUrl;
+    
+    // Special handling for Results scene
+    if (scene === 'scene_1270') {
+      console.log(`[Staff Homepage] Forcing scene render for Results page ${scene}`);
+      // Trigger a manual scene render event if Knack doesn't fire it
+      setTimeout(() => {
+        const newScene = Knack.scene ? Knack.scene.key : null;
+        if (newScene !== scene) {
+          console.log(`[Staff Homepage] Scene didn't change properly, attempting force navigation`);
+          // Force a page reload as fallback
+          window.location.href = window.location.origin + window.location.pathname + hashUrl;
+        }
+        // Clear navigation flag after successful navigation
+        window._navigationInProgress = false;
+      }, 500);
+    } 
+    // Special handling for other specific scenes
+    else if (scene === 'scene_1256' || scene === 'scene_855' || scene === 'scene_481' || 
+             scene === 'scene_1169' || scene === 'scene_1266' || scene === 'scene_1212') {
+      console.log(`[Staff Homepage] Forcing scene render for ${scene}`);
+      setTimeout(() => {
+        const newScene = Knack.scene ? Knack.scene.key : null;
+        if (newScene !== scene) {
+          console.log(`[Staff Homepage] Scene didn't change properly for ${scene}, attempting force navigation`);
+          // Force a page reload as fallback
+          window.location.href = window.location.origin + window.location.pathname + hashUrl;
+        }
+        // Clear navigation flag after successful navigation
+        window._navigationInProgress = false;
+      }, 500);
+    } else {
+      // Clear navigation flag for other scenes
+      setTimeout(() => {
+        window._navigationInProgress = false;
+      }, 500);
+    }
+  }, 50);
 };
 
 // Add this global function for tracking feature usage
