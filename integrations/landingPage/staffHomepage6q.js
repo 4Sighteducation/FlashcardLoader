@@ -753,139 +753,6 @@
     }
   }
   
-  // --- API Response Cache Manager ---
-  // Caches API responses in sessionStorage to dramatically improve navigation speed
-  const APICache = {
-    // Default cache duration: 5 minutes
-    DEFAULT_TTL: 5 * 60 * 1000,
-    
-    // Cache key prefix to avoid conflicts
-    PREFIX: 'vespa_api_cache_',
-    
-    // Store data with expiration
-    set: function(key, data, ttlMs = null) {
-      try {
-        const ttl = ttlMs || this.DEFAULT_TTL;
-        const cacheData = {
-          data: data,
-          timestamp: Date.now(),
-          expires: Date.now() + ttl
-        };
-        
-        const fullKey = this.PREFIX + key;
-        sessionStorage.setItem(fullKey, JSON.stringify(cacheData));
-        
-        debugLog(`API Cache: Stored ${key}`, {
-          size: JSON.stringify(data).length,
-          expiresIn: ttl / 1000 + ' seconds'
-        });
-        
-        return true;
-      } catch (e) {
-        // Probably quota exceeded, clear old cache entries
-        if (e.name === 'QuotaExceededError') {
-          this.clearExpired();
-          // Try once more
-          try {
-            sessionStorage.setItem(this.PREFIX + key, JSON.stringify({
-              data: data,
-              timestamp: Date.now(),
-              expires: Date.now() + (ttlMs || this.DEFAULT_TTL)
-            }));
-            return true;
-          } catch (e2) {
-            console.warn('[Staff Homepage] Cache storage full, unable to cache:', key);
-          }
-        }
-        return false;
-      }
-    },
-    
-    // Get cached data if still valid
-    get: function(key) {
-      try {
-        const fullKey = this.PREFIX + key;
-        const cached = sessionStorage.getItem(fullKey);
-        
-        if (!cached) {
-          return null;
-        }
-        
-        const cacheData = JSON.parse(cached);
-        
-        // Check if expired
-        if (Date.now() > cacheData.expires) {
-          sessionStorage.removeItem(fullKey);
-          debugLog(`API Cache: Expired ${key}`);
-          return null;
-        }
-        
-        const ageSeconds = Math.round((Date.now() - cacheData.timestamp) / 1000);
-        debugLog(`API Cache: Hit ${key}`, {
-          age: ageSeconds + ' seconds',
-          expiresIn: Math.round((cacheData.expires - Date.now()) / 1000) + ' seconds'
-        });
-        
-        return cacheData.data;
-      } catch (e) {
-        console.error('[Staff Homepage] Cache read error:', e);
-        // Remove corrupted cache entry
-        sessionStorage.removeItem(this.PREFIX + key);
-        return null;
-      }
-    },
-    
-    // Clear a specific cache entry
-    clear: function(key) {
-      sessionStorage.removeItem(this.PREFIX + key);
-      debugLog(`API Cache: Cleared ${key}`);
-    },
-    
-    // Clear all expired cache entries
-    clearExpired: function() {
-      const now = Date.now();
-      const keysToRemove = [];
-      
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key && key.startsWith(this.PREFIX)) {
-          try {
-            const cached = JSON.parse(sessionStorage.getItem(key));
-            if (cached.expires < now) {
-              keysToRemove.push(key);
-            }
-          } catch (e) {
-            // Remove corrupted entries
-            keysToRemove.push(key);
-          }
-        }
-      }
-      
-      keysToRemove.forEach(key => sessionStorage.removeItem(key));
-      
-      if (keysToRemove.length > 0) {
-        debugLog(`API Cache: Cleared ${keysToRemove.length} expired entries`);
-      }
-    },
-    
-    // Clear all cache entries
-    clearAll: function() {
-      const keysToRemove = [];
-      
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key && key.startsWith(this.PREFIX)) {
-          keysToRemove.push(key);
-        }
-      }
-      
-      keysToRemove.forEach(key => sessionStorage.removeItem(key));
-      debugLog(`API Cache: Cleared all ${keysToRemove.length} entries`);
-    }
-  };
-  
-  // Clean up expired cache entries on load
-  APICache.clearExpired();
   
   // Generic retry function for API calls
   function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
@@ -1567,16 +1434,8 @@
       return null;
     }
     
-    // Check cache first
-    const cacheKey = `staff_profile_${user.id}`;
-    const cached = APICache.get(cacheKey);
-    if (cached) {
-      debugLog("Using cached staff profile data");
-      return cached;
-    }
-    
     try {
-      debugLog("Getting fresh staff profile data for:", user);
+      debugLog("Getting staff profile data for:", user);
       
       // Find the staff record based on user email
       const staffRecord = await findStaffRecord(user.email);
@@ -1712,9 +1571,6 @@
         userId: user.id,
         schoolLogo: schoolLogo
       };
-      
-      // Cache the profile data
-      APICache.set(cacheKey, profileData);
       
       debugLog("Compiled staff profile data:", profileData);
       return profileData;
@@ -1943,10 +1799,10 @@
     const userEmail = user?.email || 'anonymous';
     
     // Create a user-specific cache key for this school's VESPA results
-    const cacheKey = `school_vespa_${schoolId}`;
+    const cacheKey = `school_vespa_${schoolId}_${userEmail}`;
     
     // Try to get from cache first
-    const cachedResults = APICache.get(cacheKey);
+    const cachedResults = await CacheManager.get(cacheKey, 'SchoolResults');
     if (cachedResults) {
       console.log(`[Staff Homepage] Using cached VESPA results for school ${schoolId}`);
       return cachedResults;
@@ -2094,8 +1950,8 @@
         
       debugLog("Calculated school VESPA averages:", averages);
       
-      // Store in cache for future use (cache for 10 minutes since school data changes less frequently)
-      APICache.set(cacheKey, averages, 10 * 60 * 1000);
+      // Store in cache for future use
+      await CacheManager.set(cacheKey, averages, 'SchoolResults', 120); // 2 hour TTL
       
       return averages;
     }
@@ -2117,10 +1973,10 @@
     
     try {
       // Create a unique cache key for this staff member's students & VESPA results
-      const staffCacheKey = `staff_vespa_${schoolId}_${staffEmail.replace('@', '_')}`;
+      const staffCacheKey = `staff_students_vespa_${schoolId}_${staffEmail}`;
       
       // Try to get from cache first
-      const cachedStaffResults = APICache.get(staffCacheKey);
+      const cachedStaffResults = await CacheManager.get(staffCacheKey, 'StaffResults');
       if (cachedStaffResults) {
         console.log(`[Staff Homepage] Using cached staff VESPA results for ${staffEmail}`);
         return cachedStaffResults;
@@ -2448,8 +2304,8 @@
       
       debugLog("Calculated staff connected students VESPA averages:", averages);
       
-      // Store in cache for future use (cache for 5 minutes as staff data is more dynamic)
-      APICache.set(staffCacheKey, averages);
+      // Store in cache for future use (120 minutes TTL = 2 hours)
+      await CacheManager.set(staffCacheKey, averages, 'StaffResults', 120);
       
       return averages;
     } catch (error) {
@@ -2467,11 +2323,11 @@
     
     try {
       // Create a unique cache key for this user's cycle data
-      const cacheKey = `cycles_${userId}_${schoolId}`;
+      const cacheKey = `user_cycles_${userId}_school_${schoolId}`;
       console.log(`[Staff Homepage] Using cache key: ${cacheKey}`);
       
       // Try to get from cache first
-      const cachedCycles = APICache.get(cacheKey);
+      const cachedCycles = await CacheManager.get(cacheKey, 'UserCycles');
       if (cachedCycles) {
         console.log(`[Staff Homepage] Using cached cycle data for user ${userId}`);
         return cachedCycles;
@@ -2645,8 +2501,8 @@
       // Determine the current cycle
       cycles.currentCycle = determineCurrentCycle(cycles);
       
-      // Store in cache (cache for 30 minutes as cycles don't change often)
-      APICache.set(cacheKey, cycles, 30 * 60 * 1000);
+      // Store in cache
+      await CacheManager.set(cacheKey, cycles, 'UserCycles', 60); // 60 min TTL
       
       return cycles;
     } catch (error) {
@@ -2926,17 +2782,6 @@
       clearTimeout(window._universalRedirectTimer);
       window._universalRedirectTimer = null;
       console.log('[Staff Homepage] Killed Universal Redirect timer during navigation');
-    }
-    
-    // Special handling for manage page navigation
-    if (scene === 'scene_1212' || url.includes('upload-manager')) {
-      console.log(`[Staff Homepage] Special handling for manage scene: ${scene}`);
-      
-      // Use the new manage navigation function if available
-      if (window.navigateToManageScene && typeof window.navigateToManageScene === 'function') {
-        console.log('[Staff Homepage] Using enhanced manage navigation');
-        return window.navigateToManageScene(url, 'homepage');
-      }
     }
     
     // Special handling for coaching scenes that need extra care
@@ -6330,88 +6175,10 @@
     });
   }
   
-  // --- Helper Functions for Cache ---
-  // Reattach event listeners after restoring from cache
-  window.reattachHomepageEventListeners = function() {
-    debugLog("Reattaching homepage event listeners");
-    
-    // Setup feature toggles
-    const schoolId = document.querySelector('[data-school-id]')?.dataset.schoolId;
-    if (schoolId) {
-      setupFeatureToggles(schoolId, {});
-    }
-    
-    // Setup logo controls
-    const adminLogoBtn = document.getElementById('admin-set-logo-btn');
-    if (adminLogoBtn && schoolId) {
-      setupLogoControls(schoolId);
-    }
-    
-    // Setup tooltips
-    setupTooltips();
-    
-    // Setup screenshot upload for feedback
-    setupScreenshotUpload();
-    
-    // Reattach navigation button event listeners
-    document.querySelectorAll('.app-card').forEach(card => {
-      const onclick = card.getAttribute('data-onclick');
-      if (onclick && !card.hasAttribute('data-listener-attached')) {
-        card.addEventListener('click', function(e) {
-          e.preventDefault();
-          eval(onclick);
-        });
-        card.setAttribute('data-listener-attached', 'true');
-      }
-    });
-    
-    // Reattach student emulator button
-    const emulatorBtn = document.getElementById('student-emulator-btn');
-    if (emulatorBtn && !emulatorBtn.hasAttribute('data-listener-attached')) {
-      emulatorBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const modal = document.getElementById('student-emulator-modal');
-        if (modal) modal.style.display = 'block';
-      });
-      emulatorBtn.setAttribute('data-listener-attached', 'true');
-    }
-    
-    // Reattach modal close buttons
-    document.querySelectorAll('.vespa-modal-close').forEach(closeBtn => {
-      if (!closeBtn.hasAttribute('data-listener-attached')) {
-        closeBtn.addEventListener('click', function(e) {
-          const modal = this.closest('.vespa-modal');
-          if (modal) modal.style.display = 'none';
-        });
-        closeBtn.setAttribute('data-listener-attached', 'true');
-      }
-    });
-    
-    debugLog("Event listeners reattached");
-  };
-  
   // --- Main Initialization ---
   // Initialize the staff homepage
   window.initializeStaffHomepage = function() {
     debugLog("Initializing Staff Homepage...");
-    
-    // Check if homepage was restored from cache
-    if (window._homepageRestoredFromCache) {
-      debugLog("Homepage restored from cache, skipping full initialization");
-      window._homepageRestoredFromCache = false;
-      
-      // Just ensure event listeners are attached
-      if (window.reattachHomepageEventListeners) {
-        window.reattachHomepageEventListeners();
-      }
-      
-      // Hide loading screen if it's showing
-      if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
-        window.VespaLoadingScreen.hide();
-      }
-      
-      return;
-    }
     
     // Run cleanup first in case any previous elements exist
     if (window.cleanupStaffHomepage) {
