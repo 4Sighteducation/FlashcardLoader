@@ -2749,7 +2749,7 @@ function renderAppSection(title, apps) {
   `;
 }
 
-// SIMPLIFIED: Handle only the Coaching button dynamically
+// Handle the Coaching button dynamically based on user role
 window.handleCoachingNavigation = function() {
   // Track usage
   trackPageView('Coaching').catch(err => 
@@ -2758,31 +2758,86 @@ window.handleCoachingNavigation = function() {
   
   // Determine the correct URL based on user role
   const userRoles = Knack.getUserRoles ? Knack.getUserRoles() : [];
-  const isStaffAdmin = isStaffAdmin(userRoles);
+  const hasAdminRole = isStaffAdmin(userRoles);
   
-  // Choose the appropriate coaching URL
-  let coachingUrl;
-  if (isStaffAdmin) {
+  // Choose the appropriate coaching scene and hash
+  let coachingScene, coachingHash;
+  if (hasAdminRole) {
     // Staff Admin goes to scene_1014
-    coachingUrl = 'https://vespaacademy.knack.com/vespa-academy#admin-coaching';
+    coachingScene = 'scene_1014';
+    coachingHash = '#admin-coaching';
     console.log('[Staff Homepage] Staff Admin detected, navigating to admin coaching');
   } else {
     // Regular staff goes to scene_1095
-    coachingUrl = 'https://vespaacademy.knack.com/vespa-academy#mygroup-vespa-results2/';
+    coachingScene = 'scene_1095';
+    coachingHash = '#mygroup-vespa-results2/';
     console.log('[Staff Homepage] Regular staff detected, navigating to staff coaching');
   }
   
-  // Simple direct navigation - full page reload
-  window.location.href = coachingUrl;
+  // Use the fixed navigateToScene function for consistent hash navigation
+  navigateToScene(coachingScene, coachingHash, 'Coaching');
 };
 
-// DEPRECATED - Keep for backwards compatibility but simplified
+// Fixed navigation function to use hash routing like GeneralHeader
 window.navigateToScene = function(scene, url, featureName) {
-  // Just do a simple redirect with full page reload
-  const fullUrl = url.startsWith('#') ? 
-    `https://vespaacademy.knack.com/vespa-academy${url}` : 
-    url;
-  window.location.href = fullUrl;
+  // Track the feature usage
+  if (featureName) {
+    trackPageView(featureName).catch(err => 
+      console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
+    );
+  }
+  
+  // Log navigation for debugging
+  debugLog('Homepage button navigation', {
+    scene: scene,
+    url: url,
+    feature: featureName
+  });
+  
+  // CRITICAL: Hide the dashboard immediately to prevent overlay issues
+  const dashboardContainer = document.querySelector('.staff-dashboard-container');
+  if (dashboardContainer) {
+    console.log('[Staff Homepage] Hiding dashboard before navigation');
+    dashboardContainer.style.display = 'none';
+  }
+  
+  // Also hide the entire homepage view container
+  const homepageView = document.querySelector('#view_3024');
+  if (homepageView) {
+    homepageView.style.display = 'none';
+  }
+  
+  // CRITICAL: Set bypass flags to prevent Universal Redirect interference
+  window._universalRedirectCompleted = true;
+  window._bypassUniversalRedirect = true;
+  window._navigationInProgress = true;
+  window._headerNavigationActive = true;
+  sessionStorage.setItem('universalRedirectCompleted', 'true');
+  sessionStorage.setItem('navigationTarget', scene);
+  sessionStorage.setItem('headerNavigationActive', 'true');
+  
+  // Signal the loader to force reload for this scene
+  window._forceAppReload = scene;
+  
+  // Clear any cached app states for the target scene
+  if (window.cleanupAppsForScene && typeof window.cleanupAppsForScene === 'function') {
+    window.cleanupAppsForScene(scene);
+  }
+  
+  // Use hash navigation to stay within the SPA
+  const hashUrl = url.startsWith('#') ? url : '#' + url;
+  
+  // Navigate using hash to avoid full page reload
+  setTimeout(() => {
+    window.location.hash = hashUrl;
+    
+    // Clear navigation flags after a delay
+    setTimeout(() => {
+      window._navigationInProgress = false;
+      window._headerNavigationActive = false;
+      sessionStorage.removeItem('headerNavigationActive');
+    }, 500);
+  }, 50);
 };
 
 // Add this global function for tracking feature usage
