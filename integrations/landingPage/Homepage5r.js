@@ -3661,24 +3661,31 @@
       debugLog(`Using document.body as last resort container`);
     }
     
-    // Show loading indicator
-    container.innerHTML = `
-      <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-        <h3>Loading VESPA Homepage...</h3>
-        <div style="margin-top: 20px;">
-          <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="#079baa" stroke-width="4">
-              <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
-              <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
-            </circle>
-            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(7, 155, 170, 0.3)" stroke-width="2">
-              <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
-              <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
-            </circle>
-          </svg>
+    // Show universal loading screen if available
+    if (window.VespaLoadingScreen) {
+      window.VespaLoadingScreen.showForPageLoad('scene_1027'); // Student homepage scene
+      // Clear container to prevent duplicate content
+      container.innerHTML = '';
+    } else {
+      // Fallback loading indicator
+      container.innerHTML = `
+        <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+          <h3>Loading VESPA Homepage...</h3>
+          <div style="margin-top: 20px;">
+            <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="25" cy="25" r="20" fill="none" stroke="#079baa" stroke-width="4">
+                <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
+                <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(7, 155, 170, 0.3)" stroke-width="2">
+                <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
+                <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
     
     try {
       // Find or create user profile
@@ -3749,10 +3756,22 @@
         
         // Render the homepage UI with all data
         renderHomepage(userProfile, flashcardReviewCounts, studyPlannerNotificationData, taskboardNotificationData, vespaScoresData, activityData);
+        
+        // Hide loading screen on success
+        if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+          window.VespaLoadingScreen.hide();
+        }
+        
         window._homepageInitializing = false;
         window._homepageInitialized = true;
       } else {
         window._homepageInitializing = false;
+        
+        // Hide loading screen on error
+        if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+          window.VespaLoadingScreen.hide();
+        }
+        
         container.innerHTML = `
           <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
             <h3>Error Loading Homepage</h3>
@@ -3764,6 +3783,12 @@
     } catch (error) {
       debugLog("Homepage Error during initialization", { error: error.message, stack: error.stack });
       window._homepageInitializing = false;
+      
+      // Hide loading screen on error
+      if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+        window.VespaLoadingScreen.hide();
+      }
+      
       container.innerHTML = `
         <div style="padding: 30px; text-align: center; color: #079baa; background-color: #23356f; border-radius: 8px; border: 2px solid #079baa; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Homepage</h3>
