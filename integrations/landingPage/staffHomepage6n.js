@@ -5185,29 +5185,44 @@
   // Clear the container
   container.innerHTML = '';
   
-  // Show loading indicator with updated theme colors
-  container.innerHTML = `
-    <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
-      <h3>Loading VESPA Staff Homepage...</h3>
-      <div style="margin-top: 20px;">
-        <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="25" cy="25" r="20" fill="none" stroke="${THEME.ACCENT}" stroke-width="4">
-            <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
-            <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
-          </circle>
-          <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(0, 229, 219, 0.3)" stroke-width="2">
-            <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
-            <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
-          </circle>
-        </svg>
+  // Show universal loading screen
+  if (window.VespaLoadingScreen) {
+    window.VespaLoadingScreen.showForPageLoad('scene_1215');
+  } else {
+    // Fallback loading indicator
+    container.innerHTML = `
+      <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+        <h3>Loading VESPA Staff Homepage...</h3>
+        <div style="margin-top: 20px;">
+          <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="${THEME.ACCENT}" stroke-width="4">
+              <animate attributeName="stroke-dasharray" dur="1.5s" values="1,150;90,150;90,150" repeatCount="indefinite"/>
+              <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-35;-124" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="25" cy="25" r="10" fill="none" stroke="rgba(0, 229, 219, 0.3)" stroke-width="2">
+              <animate attributeName="r" dur="3s" values="10;15;10" repeatCount="indefinite"/>
+              <animate attributeName="opacity" dur="3s" values="0.3;0.6;0.3" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  }
   
   try {
+    // Update loading progress
+    if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+      window.VespaLoadingScreen.updateProgress('Loading your profile...');
+    }
+    
     // Get staff profile data
     const profileData = await getStaffProfileData();
     if (!profileData) {
+      // Hide loading screen on error
+      if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+        window.VespaLoadingScreen.hide();
+      }
+      
       container.innerHTML = `
         <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
           <h3>Error Loading Staff Homepage</h3>
@@ -5252,6 +5267,11 @@
     const hasAdminRole = isStaffAdmin(profileData.roles);
     console.log(`[Staff Homepage] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
     console.log(`[Staff Homepage] Has Admin Role: ${hasAdminRole}, Management section will ${hasAdminRole ? 'be shown' : 'NOT be shown'}`);
+    
+    // Update loading progress
+    if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+      window.VespaLoadingScreen.updateProgress('Loading VESPA data...');
+    }
     
     const [schoolResults, staffResults, cycleData] = await Promise.all([
       getSchoolVESPAResults(profileData.schoolId),
@@ -5643,9 +5663,20 @@
     });
   }
   
+    // Hide the loading screen on success
+    if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+      window.VespaLoadingScreen.hide();
+    }
+    
     debugLog("Staff homepage rendered successfully");
   } catch (error) {
     console.error("Error rendering staff homepage:", error);
+    
+    // Hide the loading screen on error
+    if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+      window.VespaLoadingScreen.hide();
+    }
+    
     container.innerHTML = `
       <div style="padding: 30px; text-align: center; color: ${THEME.ACCENT}; background-color: ${THEME.PRIMARY}; border-radius: 8px; border: 2px solid ${THEME.ACCENT}; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
         <h3>Error Loading Staff Homepage</h3>
