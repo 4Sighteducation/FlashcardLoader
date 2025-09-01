@@ -2784,6 +2784,17 @@
       console.log('[Staff Homepage] Killed Universal Redirect timer during navigation');
     }
     
+    // Special handling for manage page navigation
+    if (scene === 'scene_1212' || url.includes('upload-manager')) {
+      console.log(`[Staff Homepage] Special handling for manage scene: ${scene}`);
+      
+      // Use the new manage navigation function if available
+      if (window.navigateToManageScene && typeof window.navigateToManageScene === 'function') {
+        console.log('[Staff Homepage] Using enhanced manage navigation');
+        return window.navigateToManageScene(url, 'homepage');
+      }
+    }
+    
     // Special handling for coaching scenes that need extra care
     if (scene === 'scene_1014' || scene === 'scene_1095' || url.includes('admin-coaching') || url.includes('mygroup-vespa-results2')) {
       console.log(`[Staff Homepage] Special handling for coaching scene: ${scene}`);
@@ -6175,10 +6186,88 @@
     });
   }
   
+  // --- Helper Functions for Cache ---
+  // Reattach event listeners after restoring from cache
+  window.reattachHomepageEventListeners = function() {
+    debugLog("Reattaching homepage event listeners");
+    
+    // Setup feature toggles
+    const schoolId = document.querySelector('[data-school-id]')?.dataset.schoolId;
+    if (schoolId) {
+      setupFeatureToggles(schoolId, {});
+    }
+    
+    // Setup logo controls
+    const adminLogoBtn = document.getElementById('admin-set-logo-btn');
+    if (adminLogoBtn && schoolId) {
+      setupLogoControls(schoolId);
+    }
+    
+    // Setup tooltips
+    setupTooltips();
+    
+    // Setup screenshot upload for feedback
+    setupScreenshotUpload();
+    
+    // Reattach navigation button event listeners
+    document.querySelectorAll('.app-card').forEach(card => {
+      const onclick = card.getAttribute('data-onclick');
+      if (onclick && !card.hasAttribute('data-listener-attached')) {
+        card.addEventListener('click', function(e) {
+          e.preventDefault();
+          eval(onclick);
+        });
+        card.setAttribute('data-listener-attached', 'true');
+      }
+    });
+    
+    // Reattach student emulator button
+    const emulatorBtn = document.getElementById('student-emulator-btn');
+    if (emulatorBtn && !emulatorBtn.hasAttribute('data-listener-attached')) {
+      emulatorBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const modal = document.getElementById('student-emulator-modal');
+        if (modal) modal.style.display = 'block';
+      });
+      emulatorBtn.setAttribute('data-listener-attached', 'true');
+    }
+    
+    // Reattach modal close buttons
+    document.querySelectorAll('.vespa-modal-close').forEach(closeBtn => {
+      if (!closeBtn.hasAttribute('data-listener-attached')) {
+        closeBtn.addEventListener('click', function(e) {
+          const modal = this.closest('.vespa-modal');
+          if (modal) modal.style.display = 'none';
+        });
+        closeBtn.setAttribute('data-listener-attached', 'true');
+      }
+    });
+    
+    debugLog("Event listeners reattached");
+  };
+  
   // --- Main Initialization ---
   // Initialize the staff homepage
   window.initializeStaffHomepage = function() {
     debugLog("Initializing Staff Homepage...");
+    
+    // Check if homepage was restored from cache
+    if (window._homepageRestoredFromCache) {
+      debugLog("Homepage restored from cache, skipping full initialization");
+      window._homepageRestoredFromCache = false;
+      
+      // Just ensure event listeners are attached
+      if (window.reattachHomepageEventListeners) {
+        window.reattachHomepageEventListeners();
+      }
+      
+      // Hide loading screen if it's showing
+      if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+        window.VespaLoadingScreen.hide();
+      }
+      
+      return;
+    }
     
     // Run cleanup first in case any previous elements exist
     if (window.cleanupStaffHomepage) {
