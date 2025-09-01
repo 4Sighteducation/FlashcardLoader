@@ -21,11 +21,15 @@
     function prepareManageScene() {
         log('Preparing manage scene');
         
-        // Clear any existing upload config to prevent duplicate declaration
-        if (window.VESPA_UPLOAD_CONFIG) {
-            delete window.VESPA_UPLOAD_CONFIG;
-            log('Cleared existing VESPA_UPLOAD_CONFIG');
+        // Store existing VESPA_UPLOAD_CONFIG if it exists
+        // Don't delete it as the script declares it as const
+        if (window.VESPA_UPLOAD_CONFIG && !window._uploadConfigBackup) {
+            window._uploadConfigBackup = window.VESPA_UPLOAD_CONFIG;
+            log('Backed up existing VESPA_UPLOAD_CONFIG');
         }
+        
+        // Set flag to prevent script reload
+        window._uploadSystemLoaded = true;
         
         // Clear any loading states for uploadSystem
         if (window._loading_uploadSystem) {
@@ -265,3 +269,4 @@
     log('Initialization complete');
     
 })();
+
