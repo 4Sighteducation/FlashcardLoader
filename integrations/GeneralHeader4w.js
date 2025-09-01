@@ -702,11 +702,11 @@
                 color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 items: [
-                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
-                    { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
-                    { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
+                    { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
+                    { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
+                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
