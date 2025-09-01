@@ -226,13 +226,22 @@
                     const targetScene = button.dataset.scene;
                     const targetHref = button.getAttribute('href');
                     
+                    // Skip if already patched
+                    if (button.dataset.coachingPatched === 'true') {
+                        return;
+                    }
+                    
                     // If this button navigates to a coaching scene
                     if (COACHING_SCENES.includes(targetScene) || isCoachingUrl(targetHref)) {
                         log(`Patching button for ${targetScene}`);
                         
+                        // Mark as patched
+                        button.dataset.coachingPatched = 'true';
+                        
                         // Remove existing listeners
                         button.onclick = null;
                         const newButton = button.cloneNode(true);
+                        newButton.dataset.coachingPatched = 'true';
                         button.parentNode.replaceChild(newButton, button);
                         
                         // Add enhanced listener
@@ -266,10 +275,18 @@
                 clearInterval(waitForHomepage);
                 
                 coachingButtons.forEach(button => {
+                    // Skip if already patched
+                    if (button.dataset.coachingPatched === 'true') {
+                        return;
+                    }
+                    
                     const targetScene = button.dataset.scene;
                     const targetHref = button.getAttribute('href');
                     
                     log(`Patching homepage button for ${targetScene}`);
+                    
+                    // Mark as patched
+                    button.dataset.coachingPatched = 'true';
                     
                     // Remove the inline onclick handler
                     button.onclick = null;
@@ -320,7 +337,7 @@
         // Re-patch if scene gets re-rendered
         if (window.$ && window.Knack) {
             $(document).on('knack-scene-render.any', function(event, scene) {
-                // Re-patch header
+                // Re-patch header (buttons may be re-rendered)
                 setTimeout(patchHeaderNavigation, 500);
                 
                 // Re-patch homepage if we're on the homepage scene
