@@ -65,10 +65,21 @@
         // Prepare the scene
         prepareManageScene();
         
+        // Hide homepage containers immediately
+        const homepageContainers = document.querySelectorAll('#staff-homepage-container, .staff-dashboard-container, #view_3024');
+        homepageContainers.forEach(container => {
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+        
         // Clear any existing scene/app states
         if (window.cleanupAppsForScene && typeof window.cleanupAppsForScene === 'function') {
             window.cleanupAppsForScene('scene_1212');
         }
+        
+        // Set force stay flag
+        window._forceStayOnManage = true;
         
         // Navigate with a small delay to ensure cleanup
         setTimeout(() => {
@@ -82,11 +93,9 @@
                     window.location.href = window.location.origin + window.location.pathname + '#upload-manager';
                 } else {
                     log('Successfully navigated to manage scene');
-                    // Clear navigation flags after successful navigation
-                    navigatingToManage = false;
-                    window._navigationInProgress = false;
-                    window._manageNavigationActive = false;
-                    sessionStorage.removeItem('navigatingToManage');
+                    // Keep flags active to prevent redirects
+                    window._bypassUniversalRedirect = true;
+                    window._universalRedirectCompleted = true;
                 }
             }, 1000);
         }, 100);
@@ -163,28 +172,39 @@
                                 window.location.hash === '#upload-manager' ||
                                 window._manageNavigationActive;
         
-        if (shouldBeOnManage) {
-            const currentScene = (typeof Knack !== 'undefined' && Knack.scene) ? Knack.scene.key : null;
+        const currentScene = (typeof Knack !== 'undefined' && Knack.scene) ? Knack.scene.key : null;
+        
+        // If we're on scene_1212, prevent ANY redirects
+        if (currentScene === 'scene_1212') {
+            window._bypassUniversalRedirect = true;
+            window._universalRedirectCompleted = true;
+            window._navigationInProgress = false;
             
-            // If we're on scene_1212, prevent any redirects
-            if (currentScene === 'scene_1212') {
-                window._bypassUniversalRedirect = true;
-                window._universalRedirectCompleted = true;
-                
-                // Clear the navigation flags since we're successfully on the page
+            // Force stay on manage page
+            if (window.location.hash !== '#upload-manager') {
+                log('Forcing hash back to upload-manager');
+                window.location.hash = '#upload-manager';
+            }
+            
+            // Clear navigation flags after successful load
+            if (shouldBeOnManage) {
                 sessionStorage.removeItem('navigatingToManage');
                 window._manageNavigationActive = false;
                 navigatingToManage = false;
-                
-                // Hide loading screen if it's still showing
-                if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
-                    setTimeout(() => {
-                        window.VespaLoadingScreen.hide();
-                        window._loadingScreenActive = false;
-                    }, 500);
-                }
             }
+            
+            // Hide loading screen if it's still showing
+            if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+                setTimeout(() => {
+                    window.VespaLoadingScreen.hide();
+                    window._loadingScreenActive = false;
+                }, 500);
+            }
+            
+            return true; // Indicate we're preventing redirects
         }
+        
+        return false;
     }
     
     // Monitor for hash changes that might redirect away from manage
@@ -212,16 +232,15 @@
                 patchHomepageNavigation();
             }, 100);
             
-            // Prevent redirects if we're on the manage page
-            preventManageRedirects();
-            
             // Special handling for scene_1212
             if (scene.key === 'scene_1212') {
                 log('Scene 1212 rendered, ensuring stable state');
                 
-                // Ensure flags are set correctly
+                // Ensure flags are set correctly to prevent ANY redirects
                 window._bypassUniversalRedirect = true;
                 window._universalRedirectCompleted = true;
+                window._navigationInProgress = false;
+                window._forceStayOnManage = true;
                 
                 // Clear duplicate config if it exists
                 if (window.VESPA_UPLOAD_CONFIG && window._uploadConfigBackup) {
@@ -229,13 +248,43 @@
                     window.VESPA_UPLOAD_CONFIG = window._uploadConfigBackup;
                     delete window._uploadConfigBackup;
                 }
+                
+                // Hide any homepage containers that might be showing
+                const homepageContainers = document.querySelectorAll('#staff-homepage-container, .staff-dashboard-container, #view_3024');
+                homepageContainers.forEach(container => {
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                });
+                
+                // Ensure upload container is visible
+                const uploadContainer = document.querySelector('#view_3020');
+                if (uploadContainer) {
+                    uploadContainer.style.display = 'block';
+                }
+            }
+            // Block navigation away from scene_1212 if we're supposed to stay
+            else if (window._forceStayOnManage && scene.key !== 'scene_1212') {
+                log(`Blocking navigation from manage page to ${scene.key}`);
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                
+                // Force back to manage page
+                setTimeout(() => {
+                    window.location.hash = '#upload-manager';
+                }, 0);
+                return false;
             }
             
-            // If we're leaving scene_1212, clean up
-            if (scene.key !== 'scene_1212' && !navigatingToManage) {
+            // If we're leaving scene_1212 intentionally, clean up
+            if (scene.key !== 'scene_1212' && !navigatingToManage && !window._forceStayOnManage) {
                 window._manageNavigationActive = false;
+                window._forceStayOnManage = false;
                 sessionStorage.removeItem('navigatingToManage');
             }
+            
+            // Always prevent redirects if we're on the manage page
+            preventManageRedirects();
         }
     });
     
@@ -264,6 +313,37 @@
     // Check on page load if we should be on the manage page
     if (window.location.hash === '#upload-manager') {
         prepareManageScene();
+    }
+    
+    // Clear force stay flag when user clicks any non-manage navigation
+    $(document).on('click', 'a[href]:not([href*="upload-manager"]):not([href*="scene_1212"])', function() {
+        if (window._forceStayOnManage) {
+            log('User navigating away from manage page, clearing force stay flag');
+            window._forceStayOnManage = false;
+            window._manageNavigationActive = false;
+            sessionStorage.removeItem('navigatingToManage');
+        }
+    });
+    
+    // Also intercept Knack router navigation
+    if (typeof Knack !== 'undefined' && Knack.router) {
+        const originalNavigate = Knack.router.navigate;
+        Knack.router.navigate = function(fragment, options) {
+            // Check if we're navigating away from manage page
+            if (window._forceStayOnManage && !fragment.includes('upload-manager') && !fragment.includes('scene_1212')) {
+                // Check if this is an intentional navigation (user clicked something)
+                if (options && options.trigger) {
+                    log('Allowing intentional navigation away from manage page');
+                    window._forceStayOnManage = false;
+                    window._manageNavigationActive = false;
+                } else {
+                    // This is an automatic redirect, block it
+                    log('Blocking automatic redirect from manage page');
+                    return false;
+                }
+            }
+            return originalNavigate.call(this, fragment, options);
+        };
     }
     
     log('Initialization complete');
