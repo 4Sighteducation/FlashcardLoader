@@ -151,20 +151,26 @@
             if (hasTableData) {
                 observerPaused = true;
                 
+                // Don't hide academic profile views - let ReportProfiles handle their visibility
+                // The ReportProfiles script will populate these views when needed
                 if (config.academicProfile) {
                     const academicView = document.querySelector(config.academicProfile);
-                    if (academicView && academicView.offsetHeight > 100) {
-                        const hasContent = academicView.querySelector('#report-container')?.children.length > 0;
+                    if (academicView) {
+                        // Ensure profile view is always visible for ReportProfiles to work with
+                        academicView.style.removeProperty('display');
+                        academicView.style.removeProperty('visibility');
+                        academicView.style.removeProperty('opacity');
+                        academicView.style.removeProperty('height');
                         
-                        if (!hasContent) {
-                            if (academicView.style.display !== 'none') {
-                                academicView.style.cssText = `
-                                    display: none !important;
-                                    height: 0 !important;
-                                    margin: 0 !important;
-                                    padding: 0 !important;
-                                `;
-                            }
+                        // Only check if we're in table view (no individual report showing)
+                        const hasReportContent = academicView.querySelector('#report-container')?.children.length > 0 ||
+                                               academicView.querySelector('.academic-profile-container')?.children.length > 0;
+                        
+                        // If we're in table view (no report), allow the view to be minimal
+                        if (!hasReportContent) {
+                            academicView.style.minHeight = '10px';
+                        } else {
+                            academicView.style.minHeight = 'auto';
                         }
                     }
                 }
@@ -435,10 +441,20 @@
                     padding-top: 0 !important;
                 }
                 
-                /* Hide empty views */
-                #view_3015:empty, #view_3204:empty,
+                /* Hide only truly unnecessary views, but NOT profile views */
+                /* #view_3015 and #view_3204 are profile views - let ReportProfiles handle them */
                 #view_2716, #view_449 {
                     display: none !important;
+                    position: absolute !important;
+                    left: -9999px !important;
+                }
+                
+                /* Don't hide profile views even when empty - ReportProfiles will populate them */
+                #view_3015, #view_3204 {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    min-height: 10px; /* Prevent collapse */
                 }
                 
                 /* Table title styling */
