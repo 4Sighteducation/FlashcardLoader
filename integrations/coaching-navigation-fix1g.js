@@ -110,6 +110,10 @@
     
     // Function to show loading screen using universal system
     function showLoadingScreen(scene) {
+        // Set flag to indicate loading screen is active
+        window._loadingScreenActive = true;
+        log('Setting _loadingScreenActive flag to true');
+        
         // Use universal loading screen if available
         if (window.VespaLoadingScreen) {
             window.VespaLoadingScreen.showForNavigation(scene, 'coaching');
