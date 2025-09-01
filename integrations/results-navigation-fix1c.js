@@ -350,8 +350,15 @@
     
     // Monitor scene changes
     function monitorSceneChanges() {
-        if (window.$ && window.Knack) {
-            $(document).on('knack-scene-render.any', function(event, scene) {
+        // Wait for jQuery and Knack to be available
+        if (!window.$ || !window.Knack) {
+            log('Waiting for jQuery and Knack to be available...');
+            setTimeout(monitorSceneChanges, 500);
+            return;
+        }
+        
+        log('Setting up scene change monitoring');
+        $(document).on('knack-scene-render.any', function(event, scene) {
                 if (!scene) return;
                 
                 const previousScene = navigationState.currentScene;
@@ -406,7 +413,6 @@
                     setTimeout(patchResultsNavigation, 500);
                 }
             });
-        }
     }
     
     // Initialize
@@ -419,24 +425,31 @@
         // Prevent duplicate script loading
         preventDuplicateScripts();
         
-        // Start monitoring
+        // Start monitoring (will wait for jQuery if needed)
         monitorSceneChanges();
         
         // Initial patch if we're already on a results page
         if (navigationState.currentScene === RESULTS_CONFIG.adminScene || 
             navigationState.currentScene === RESULTS_CONFIG.staffScene ||
             navigationState.currentScene === RESULTS_CONFIG.resultsScene) {
-            setTimeout(patchResultsNavigation, 1000);
+            log(`Already on results page: ${navigationState.currentScene}`);
+            
+            // Wait for jQuery before patching
+            const waitForjQuery = () => {
+                if (window.$) {
+                    setTimeout(patchResultsNavigation, 1000);
+                } else {
+                    setTimeout(waitForjQuery, 500);
+                }
+            };
+            waitForjQuery();
         }
         
-        log('Initialization complete');
+        log('Initialization started');
     }
     
-    // Start when ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize);
-    } else {
-        setTimeout(initialize, 100);
-    }
+    // Initialize immediately
+    initialize();
     
 })();
+
