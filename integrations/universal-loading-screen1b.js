@@ -29,8 +29,8 @@
             'dashboard': 'Loading Dashboard',
             
             // Specific scenes
-            'scene_1014': 'Loading Staff Admin Dashboard',
-            'scene_1095': 'Loading Tutor Dashboard',
+            'scene_1014': 'Loading VESPA Staff Portal',
+            'scene_1095': 'Loading VESPA Staff Portal',
             'scene_1210': 'Loading Student Homepage',
             'scene_1215': 'Loading Staff Homepage',
             'scene_1252': 'Loading Resource Dashboard',
@@ -262,10 +262,10 @@
             minTime: options.minTime || CONFIG.minDisplayTime
         };
         
-        log('Loading screen shown', { text: loadingState.currentText });
-        
-        // Set global flags for compatibility
+        // Set global flag for coordination with other scripts
         window._loadingScreenActive = true;
+        
+        log('Loading screen shown', { text: loadingState.currentText });
         window._universalLoadingActive = true;
     }
     
@@ -442,3 +442,4 @@
     log('Universal Loading Screen Manager initialized');
     
 })();
+
