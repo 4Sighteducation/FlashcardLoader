@@ -134,28 +134,51 @@
     
     // Patch homepage navigation buttons for manage page
     function patchHomepageNavigation() {
-        // Look for manage button in staff homepage
-        const homepageButtons = document.querySelectorAll('.app-card[onclick*="upload-manager"], .app-button[onclick*="upload-manager"], a[onclick*="navigateToScene"][onclick*="scene_1212"]');
+        // Look for manage button in staff homepage - broader search
+        const selectors = [
+            '.app-card[onclick*="upload-manager"]',
+            '.app-card[onclick*="scene_1212"]',
+            'a[href="#upload-manager"]',
+            'a[data-scene="scene_1212"]',
+            '.app-card[onclick*="navigateToScene"][onclick*="1212"]',
+            '.app-card[title="Manage"]'
+        ];
+        
+        const homepageButtons = document.querySelectorAll(selectors.join(', '));
         
         homepageButtons.forEach(button => {
             if (button.dataset.managePatched === 'true') return;
             
+            // Check if this is actually the manage button
+            const buttonText = button.textContent || button.innerText || '';
+            const isManageButton = buttonText.includes('Manage') || 
+                                  button.getAttribute('onclick')?.includes('1212') ||
+                                  button.getAttribute('href')?.includes('upload-manager');
+            
+            if (!isManageButton) return;
+            
+            log(`Patching homepage button: ${buttonText.trim()}`);
+            
             // Remove inline onclick
             button.removeAttribute('onclick');
             
-            // Add proper event listener
+            // Add proper event listener with capture to ensure it runs first
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                log('Homepage manage button clicked');
                 
                 // Hide the dashboard first if it exists
-                const dashboard = document.getElementById('staff-homepage-container');
-                if (dashboard) {
-                    dashboard.style.display = 'none';
-                }
+                const dashboards = document.querySelectorAll('#staff-homepage-container, .staff-dashboard-container, #view_3024');
+                dashboards.forEach(d => {
+                    if (d) d.style.display = 'none';
+                });
                 
                 window.navigateToManageScene('#upload-manager', 'homepage');
-            });
+                return false;
+            }, true); // Use capture phase
             
             button.dataset.managePatched = 'true';
         });
@@ -262,6 +285,20 @@
                 if (uploadContainer) {
                     uploadContainer.style.display = 'block';
                 }
+                
+                // Hide loading screen immediately if the upload system is already loaded
+                if (uploadContainer && uploadContainer.innerHTML.length > 100) {
+                    log('Upload system already loaded, hiding loading screen');
+                    if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+                        window.VespaLoadingScreen.hide();
+                        window._loadingScreenActive = false;
+                    }
+                    // Also prevent knackAppLoader from showing its loading screen
+                    window._skipLoadingScreen = true;
+                    setTimeout(() => {
+                        window._skipLoadingScreen = false;
+                    }, 1000);
+                }
             }
             // Block navigation away from scene_1212 if we're supposed to stay
             else if (window._forceStayOnManage && scene.key !== 'scene_1212') {
@@ -295,6 +332,18 @@
                 patchHeaderNavigation();
                 patchHomepageNavigation();
             }, 100);
+            
+            // Extra patching for staff homepage view
+            if (view.key === 'view_3024') {
+                log('Staff homepage view rendered, patching manage buttons with delay');
+                // Wait longer for homepage buttons to be created
+                setTimeout(() => {
+                    patchHomepageNavigation();
+                }, 500);
+                setTimeout(() => {
+                    patchHomepageNavigation();
+                }, 1000);
+            }
         }
     });
     
