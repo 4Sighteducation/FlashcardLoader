@@ -2702,14 +2702,31 @@ function renderAppSection(title, apps) {
     // Use icon directly from app config, fallback to ICON_MAPPING if needed
     const iconClass = app.icon ? `fa ${app.icon}` : (ICON_MAPPING[app.name] || ICON_MAPPING.default);
     
-    // Build the onclick handler to properly navigate using scene
-    const onclickHandler = app.scene ? 
-      `event.preventDefault(); navigateToScene('${app.scene}', '${app.url}', '${sanitizeField(app.name)}');` :
-      `event.preventDefault(); window.location.href='${app.url}'; window.trackFeatureUse('${sanitizeField(app.name)}');`;
+    // SIMPLIFIED NAVIGATION:
+    // - Use direct navigation for most buttons (full page reload)
+    // - Only Coaching button needs special handling for dynamic URL
+    let onclickHandler = '';
+    let hrefUrl = app.url;
+    
+    if (app.name === 'Coaching') {
+      // Coaching needs dynamic URL based on user role - keep special handling
+      onclickHandler = `event.preventDefault(); handleCoachingNavigation();`;
+      hrefUrl = '#'; // Placeholder, will be handled by JavaScript
+    } else {
+      // For all other buttons, use simple direct navigation
+      // Build full URL if it's a hash
+      const fullUrl = app.url.startsWith('#') ? 
+        `https://vespaacademy.knack.com/vespa-academy${app.url}` : 
+        app.url;
+      hrefUrl = fullUrl;
+      // Simple onclick that tracks usage then navigates
+      onclickHandler = `window.trackFeatureUse('${sanitizeField(app.name)}'); return true;`;
+    }
     
     appsHTML += `
-    <a href="${app.url}" class="app-card" title="${sanitizeField(app.name)}" 
+    <a href="${hrefUrl}" class="app-card" title="${sanitizeField(app.name)}" 
        data-scene="${app.scene || ''}"
+       data-app-name="${app.name}"
        onclick="${onclickHandler}">
       <div class="app-card-header">
         <div class="app-info-icon" title="Click for details" data-description="${sanitizeField(app.description)}">i</div>
@@ -2732,130 +2749,40 @@ function renderAppSection(title, apps) {
   `;
 }
 
-// Add navigation function that matches header behavior
+// SIMPLIFIED: Handle only the Coaching button dynamically
+window.handleCoachingNavigation = function() {
+  // Track usage
+  trackPageView('Coaching').catch(err => 
+    console.warn(`[Staff Homepage] Feature tracking failed for Coaching:`, err)
+  );
+  
+  // Determine the correct URL based on user role
+  const userRoles = Knack.getUserRoles ? Knack.getUserRoles() : [];
+  const isStaffAdmin = isStaffAdmin(userRoles);
+  
+  // Choose the appropriate coaching URL
+  let coachingUrl;
+  if (isStaffAdmin) {
+    // Staff Admin goes to scene_1014
+    coachingUrl = 'https://vespaacademy.knack.com/vespa-academy#admin-coaching';
+    console.log('[Staff Homepage] Staff Admin detected, navigating to admin coaching');
+  } else {
+    // Regular staff goes to scene_1095
+    coachingUrl = 'https://vespaacademy.knack.com/vespa-academy#mygroup-vespa-results2/';
+    console.log('[Staff Homepage] Regular staff detected, navigating to staff coaching');
+  }
+  
+  // Simple direct navigation - full page reload
+  window.location.href = coachingUrl;
+};
+
+// DEPRECATED - Keep for backwards compatibility but simplified
 window.navigateToScene = function(scene, url, featureName) {
-  // Track the feature usage
-  if (featureName) {
-    trackPageView(featureName).catch(err => 
-      console.warn(`[Staff Homepage] Feature tracking failed for ${featureName}:`, err)
-    );
-  }
-  
-  // Log navigation for debugging
-  debugLog('Homepage button navigation', {
-    scene: scene,
-    url: url,
-    feature: featureName
-  });
-  
-  // Store current scene for comparison
-  const currentScene = Knack.scene ? Knack.scene.key : null;
-  
-  // CRITICAL: Hide the dashboard immediately to prevent overlay issues
-  const dashboardContainer = document.querySelector('.staff-dashboard-container');
-  if (dashboardContainer) {
-    console.log('[Staff Homepage] Hiding dashboard before navigation');
-    dashboardContainer.style.display = 'none';
-  }
-  
-  // Also hide the entire homepage view container
-  const homepageView = document.querySelector('#view_3024');
-  if (homepageView) {
-    homepageView.style.display = 'none';
-  }
-  
-  // CRITICAL: Set bypass flags IMMEDIATELY to prevent Universal Redirect interference
-  window._universalRedirectCompleted = true;
-  window._bypassUniversalRedirect = true;
-  window._navigationInProgress = true;
-  sessionStorage.setItem('universalRedirectCompleted', 'true');
-  sessionStorage.setItem('navigationTarget', scene);
-  
-  // Kill any Universal Redirect timers
-  if (window._universalRedirectTimer) {
-    clearInterval(window._universalRedirectTimer);
-    clearTimeout(window._universalRedirectTimer);
-    window._universalRedirectTimer = null;
-    console.log('[Staff Homepage] Killed Universal Redirect timer during navigation');
-  }
-  
-  // UNIVERSAL CLEANUP: Force cleanup for all scene navigations
-  // This ensures fresh app loads and prevents issues with cached states
-  if (scene && scene !== currentScene) {
-    console.log(`[Staff Homepage] Navigating to ${scene}, forcing universal cleanup`);
-    
-    // Signal the loader to force reload for this scene
-    window._forceAppReload = scene;
-    
-    // Clear any cached app states for the target scene
-    if (window.cleanupAppsForScene && typeof window.cleanupAppsForScene === 'function') {
-      window.cleanupAppsForScene(scene);
-    }
-    
-    // Clear background styles that might persist
-    document.body.style.backgroundColor = '';
-    document.body.style.background = '';
-    document.body.style.backgroundImage = '';
-  }
-  
-  // Special handling for coaching scenes that need extra care
-  if (scene === 'scene_1014' || scene === 'scene_1095' || url.includes('admin-coaching') || url.includes('mygroup-vespa-results2')) {
-    console.log(`[Staff Homepage] Special handling for coaching scene: ${scene}`);
-    
-    // Use the new coaching navigation function if available
-    if (window.navigateToCoachingScene && typeof window.navigateToCoachingScene === 'function') {
-      console.log('[Staff Homepage] Using enhanced coaching navigation');
-      return window.navigateToCoachingScene(scene, url, 'homepage');
-    }
-  }
-  
-  // Ensure the URL is a hash
-  const hashUrl = url.startsWith('#') ? url : '#' + url;
-  
-  // Navigate using hash navigation (like GeneralHeader does)
-  // This prevents full page reload and works properly with Knack's SPA routing
-  console.log('[Staff Homepage] Navigating to:', hashUrl);
-  
-  // Navigate using Knack's hash-based routing with a small delay to ensure cleanup
-  setTimeout(() => {
-    window.location.hash = hashUrl;
-    
-    // Special handling for Results scene
-    if (scene === 'scene_1270') {
-      console.log(`[Staff Homepage] Forcing scene render for Results page ${scene}`);
-      // Trigger a manual scene render event if Knack doesn't fire it
-      setTimeout(() => {
-        const newScene = Knack.scene ? Knack.scene.key : null;
-        if (newScene !== scene) {
-          console.log(`[Staff Homepage] Scene didn't change properly, attempting force navigation`);
-          // Force a page reload as fallback
-          window.location.href = window.location.origin + window.location.pathname + hashUrl;
-        }
-        // Clear navigation flag after successful navigation
-        window._navigationInProgress = false;
-      }, 500);
-    } 
-    // Special handling for other specific scenes
-    else if (scene === 'scene_1256' || scene === 'scene_855' || scene === 'scene_481' || 
-             scene === 'scene_1169' || scene === 'scene_1266' || scene === 'scene_1212') {
-      console.log(`[Staff Homepage] Forcing scene render for ${scene}`);
-      setTimeout(() => {
-        const newScene = Knack.scene ? Knack.scene.key : null;
-        if (newScene !== scene) {
-          console.log(`[Staff Homepage] Scene didn't change properly for ${scene}, attempting force navigation`);
-          // Force a page reload as fallback
-          window.location.href = window.location.origin + window.location.pathname + hashUrl;
-        }
-        // Clear navigation flag after successful navigation
-        window._navigationInProgress = false;
-      }, 500);
-    } else {
-      // Clear navigation flag for other scenes
-      setTimeout(() => {
-        window._navigationInProgress = false;
-      }, 500);
-    }
-  }, 50);
+  // Just do a simple redirect with full page reload
+  const fullUrl = url.startsWith('#') ? 
+    `https://vespaacademy.knack.com/vespa-academy${url}` : 
+    url;
+  window.location.href = fullUrl;
 };
 
 // Add this global function for tracking feature usage
