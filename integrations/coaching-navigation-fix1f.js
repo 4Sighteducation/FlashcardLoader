@@ -108,9 +108,34 @@
         log('Preparation complete');
     }
     
+    // Function to show loading screen using universal system
+    function showLoadingScreen(scene) {
+        // Use universal loading screen if available
+        if (window.VespaLoadingScreen) {
+            window.VespaLoadingScreen.showForNavigation(scene, 'coaching');
+        } else {
+            // Fallback: create simple loading indicator if universal screen not available
+            log('Universal loading screen not available, using fallback');
+            const fallbackHTML = `
+                <div id="vespa-loading-overlay" style="
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: linear-gradient(135deg, #2a3c7a 0%, #079baa 100%);
+                    z-index: 99999; display: flex; align-items: center; justify-content: center;">
+                    <div style="color: white; text-align: center;">
+                        <div style="font-size: 18px;">Loading...</div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', fallbackHTML);
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
     // Enhanced navigation function for both header and homepage
     window.navigateToCoachingScene = function(scene, url, source = 'unknown') {
         log(`Navigation to coaching scene from ${source}`, { scene, url });
+        
+        // Show loading screen IMMEDIATELY
+        showLoadingScreen(scene);
         
         // If we're currently on a coaching scene, clean it up first
         if (isCoachingScene) {
@@ -126,6 +151,7 @@
         window._universalRedirectCompleted = true;
         window._bypassUniversalRedirect = true;
         window._navigationInProgress = true;
+        window._loadingScreenActive = true; // Flag to prevent duplicate loading screens
         sessionStorage.setItem('universalRedirectCompleted', 'true');
         sessionStorage.setItem('navigationTarget', scene);
         
@@ -139,6 +165,7 @@
                 if (currentScene === scene) {
                     log('Navigation successful');
                     window._coachingSceneLoading = false;
+                    // Don't remove loading screen here - let knackAppLoader handle it
                 } else {
                     log('Navigation may have failed, attempting reload');
                     window.location.reload();
