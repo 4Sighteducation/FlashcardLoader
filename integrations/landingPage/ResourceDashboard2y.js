@@ -3297,8 +3297,14 @@
             log('Font Awesome already loaded');
         }
 
-        // Show a loading state
-        $container.html('<div class="loading-state">Loading Resource Dashboard...</div>');
+        // Show universal loading screen if available
+        if (window.VespaLoadingScreen) {
+            window.VespaLoadingScreen.showForPageLoad('scene_1252'); // Resource dashboard scene
+            $container.html(''); // Clear container to prevent duplicate content
+        } else {
+            // Fallback loading state
+            $container.html('<div class="loading-state">Loading Resource Dashboard...</div>');
+        }
 
         // Fetch all data in parallel
         try {
@@ -3456,6 +3462,11 @@
             
             // Add feedback elements to body
             $('body').append(feedbackHTML);
+            
+            // Hide loading screen on success
+            if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+                window.VespaLoadingScreen.hide();
+            }
             
             log('Dashboard rendered.');
             
@@ -3616,6 +3627,11 @@
         });
 
     } catch (err) {
+            // Hide loading screen on error
+            if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+                window.VespaLoadingScreen.hide();
+            }
+            
             $container.html('<div class="error-state">Could not load dashboard. Please try again later.</div>');
             errorLog('Failed to initialize dashboard:', err);
         }
