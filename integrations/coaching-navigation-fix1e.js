@@ -18,6 +18,8 @@
     let currentScene = null;
     let isCoachingScene = false;
     let cleanupFunctions = [];
+    let lastPatchTime = 0;
+    const PATCH_DEBOUNCE_MS = 1000; // Prevent rapid re-patching
     
     // Detect if we're on a coaching scene
     function detectCoachingScene() {
@@ -212,6 +214,14 @@
     
     // Patch GeneralHeader navigation
     function patchHeaderNavigation() {
+        // Debounce rapid calls
+        const now = Date.now();
+        if (now - lastPatchTime < PATCH_DEBOUNCE_MS) {
+            log('Skipping header patch - too soon after last patch');
+            return;
+        }
+        lastPatchTime = now;
+        
         log('Patching header navigation for coaching scenes');
         
         // Wait for header to be ready
@@ -221,6 +231,7 @@
             if (navButtons.length > 0) {
                 clearInterval(waitForHeader);
                 
+                let patchedCount = 0;
                 navButtons.forEach(button => {
                     const originalClick = button.onclick;
                     const targetScene = button.dataset.scene;
@@ -233,7 +244,7 @@
                     
                     // If this button navigates to a coaching scene
                     if (COACHING_SCENES.includes(targetScene) || isCoachingUrl(targetHref)) {
-                        log(`Patching button for ${targetScene}`);
+                        patchedCount++;
                         
                         // Mark as patched
                         button.dataset.coachingPatched = 'true';
@@ -254,7 +265,11 @@
                     }
                 });
                 
-                log('Header navigation patched');
+                if (patchedCount > 0) {
+                    log(`Header navigation patched - ${patchedCount} button(s)`);
+                } else {
+                    log('Header navigation already patched - no changes needed');
+                }
             }
         }, 500);
         
@@ -274,6 +289,7 @@
             if (coachingButtons.length > 0) {
                 clearInterval(waitForHomepage);
                 
+                let patchedCount = 0;
                 coachingButtons.forEach(button => {
                     // Skip if already patched
                     if (button.dataset.coachingPatched === 'true') {
@@ -283,7 +299,7 @@
                     const targetScene = button.dataset.scene;
                     const targetHref = button.getAttribute('href');
                     
-                    log(`Patching homepage button for ${targetScene}`);
+                    patchedCount++;
                     
                     // Mark as patched
                     button.dataset.coachingPatched = 'true';
@@ -309,7 +325,11 @@
                     });
                 });
                 
-                log('Homepage navigation patched');
+                if (patchedCount > 0) {
+                    log(`Homepage navigation patched - ${patchedCount} button(s)`);
+                } else {
+                    log('Homepage navigation already patched - no changes needed');
+                }
             }
         }, 500);
         
@@ -336,13 +356,21 @@
         
         // Re-patch if scene gets re-rendered
         if (window.$ && window.Knack) {
+            let sceneRenderCount = 0;
             $(document).on('knack-scene-render.any', function(event, scene) {
-                // Re-patch header (buttons may be re-rendered)
-                setTimeout(patchHeaderNavigation, 500);
+                sceneRenderCount++;
                 
-                // Re-patch homepage if we're on the homepage scene
-                if (scene && scene.key === 'scene_1215') {
-                    setTimeout(patchHomepageNavigation, 500);
+                // Only re-patch on significant scene changes, not every render
+                if (sceneRenderCount > 1 && scene && scene.key !== currentScene) {
+                    currentScene = scene.key;
+                    
+                    // Re-patch header only if we've changed scenes
+                    setTimeout(patchHeaderNavigation, 500);
+                    
+                    // Re-patch homepage if we're on the homepage scene
+                    if (scene.key === 'scene_1215') {
+                        setTimeout(patchHomepageNavigation, 500);
+                    }
                 }
             });
         }
@@ -358,3 +386,4 @@
     }
     
 })();
+
