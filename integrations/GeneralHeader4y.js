@@ -705,6 +705,7 @@
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
@@ -1376,8 +1377,10 @@
                         window._universalRedirectCompleted = true;
                         window._bypassUniversalRedirect = true;
                         window._navigationInProgress = true;
+                        window._headerNavigationActive = true; // New flag for header navigation
                         sessionStorage.setItem('universalRedirectCompleted', 'true');
                         sessionStorage.setItem('navigationTarget', targetScene);
+                        sessionStorage.setItem('headerNavigationActive', 'true');
                         
                         // Kill any Universal Redirect timers
                         if (window._universalRedirectTimer) {
@@ -1422,11 +1425,16 @@
                                     const currentScene = Knack.scene ? Knack.scene.key : null;
                                     if (currentScene !== targetScene) {
                                         log(`Scene didn't change properly for ${targetScene}, attempting force navigation`);
-                                        // Force a page reload as fallback
-                                        window.location.href = window.location.origin + window.location.pathname + href;
+                                        // Try hash navigation again instead of full page reload
+                                        // This avoids going through scene_1 and triggering Universal Redirect
+                                        window.location.hash = href;
+                                        // If still doesn't work, just log it - don't do full page reload
+                                        log(`Attempted hash navigation to ${href}`);
                                     }
-                                    // Clear navigation flag after successful navigation
+                                    // Clear navigation flags after successful navigation
                                     window._navigationInProgress = false;
+                                    window._headerNavigationActive = false;
+                                    sessionStorage.removeItem('headerNavigationActive');
                                 }, 500);
                             }
                             
@@ -1438,16 +1446,23 @@
                                     const currentScene = Knack.scene ? Knack.scene.key : null;
                                     if (currentScene !== targetScene) {
                                         log(`Scene didn't change properly, attempting force navigation`);
-                                        // Force a page reload as fallback
-                                        window.location.href = window.location.origin + window.location.pathname + href;
+                                        // Try hash navigation again instead of full page reload
+                                        // This avoids going through scene_1 and triggering Universal Redirect
+                                        window.location.hash = href;
+                                        // If still doesn't work, just log it - don't do full page reload
+                                        log(`Attempted hash navigation to ${href}`);
                                     }
-                                    // Clear navigation flag after successful navigation
+                                    // Clear navigation flags after successful navigation
                                     window._navigationInProgress = false;
+                                    window._headerNavigationActive = false;
+                                    sessionStorage.removeItem('headerNavigationActive');
                                 }, 500);
                             } else {
-                                // Clear navigation flag for other scenes
+                                // Clear navigation flags for other scenes
                                 setTimeout(() => {
                                     window._navigationInProgress = false;
+                                    window._headerNavigationActive = false;
+                                    sessionStorage.removeItem('headerNavigationActive');
                                 }, 500);
                             }
                         }, 50);
