@@ -33,7 +33,7 @@
             'scene_1095': 'Loading VESPA Staff Portal',
             'scene_1210': 'Loading Student Homepage',
             'scene_1215': 'Loading Staff Homepage',
-            'scene_1252': 'Loading Resource Dashboard',
+            'scene_1278': 'Loading Resource Dashboard', // Updated to new resource scene
             'scene_1225': 'Loading Analytics Dashboard',
             'scene_1268': 'Loading Super User Dashboard',
             'scene_1224': 'Loading Coach Summary',
