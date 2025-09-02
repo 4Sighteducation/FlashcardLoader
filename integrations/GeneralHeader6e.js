@@ -934,17 +934,255 @@
                     ` : ''}
                 </div>
                 <div class="mobile-nav-overlay"></div>
-                <style id="vespaGeneralHeaderDynamicStyles">
-                    /* Dynamic user-specific colors (loaded from navConfig) */
-                    .vespa-general-header-enhanced.${userType} {
-                        background-color: ${navConfig.color};
-                    }
-                    .vespa-general-header-enhanced.${userType} .header-navigation.primary-nav,
-                    .vespa-general-header-enhanced.${userType} .header-utility {
-                        background-color: ${navConfig.color};
+                <style>
+                    /* Hide entire Knack header */
+                    .knHeader {
+                        display: none !important;
                     }
                     
-                    /* Dynamic padding based on secondary row */
+                    /* Hide original user info container */
+                    body.has-general-header-enhanced .kn-info,
+                    body.has-general-header-enhanced .kn-current_user {
+                        display: none !important;
+                        visibility: hidden !important;
+                    }
+                    
+                    /* Enhanced Header Base Styles */
+                    .vespa-general-header-enhanced {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        background-color: ${navConfig.color};
+                        color: white;
+                        z-index: 9999;
+                        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+                        transition: all 0.3s ease;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                    }
+                    
+                    .header-content {
+                        max-width: 1600px;
+                        margin: 0 auto;
+                        padding: 0 20px;
+                    }
+                    
+                    /* Primary Row (Brand + Main Nav + Utility) */
+                    .header-primary-row {
+                        height: 70px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 20px;
+                        border-bottom: 1px solid rgba(255,255,255,0.1);
+                    }
+                    
+                    /* Brand Section */
+                    .header-brand {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-shrink: 0;
+                    }
+                    
+                    .brand-text {
+                        font-size: 18px;
+                        font-weight: 600;
+                        letter-spacing: -0.3px;
+                        white-space: nowrap;
+                    }
+                    
+                    .logo-link {
+                        display: flex;
+                        align-items: center;
+                        text-decoration: none;
+                        transition: opacity 0.2s ease;
+                    }
+                    
+                    .logo-link:hover {
+                        opacity: 0.85;
+                    }
+                    
+                    .vespa-logo {
+                        height: 45px;
+                        width: auto;
+                    }
+                    
+                    /* Primary Navigation */
+                    .header-navigation.primary-nav {
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        flex: 1;
+                        justify-content: center;
+                        max-width: 800px;
+                    }
+                    
+                    /* Enhanced Button Styles */
+                    .header-nav-button {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 10px 16px;
+                        background: rgba(255,255,255,0.12);
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        transition: all 0.2s ease;
+                        font-size: 14px;
+                        font-weight: 500;
+                        white-space: nowrap;
+                        border: 1px solid rgba(255,255,255,0.08);
+                        position: relative;
+                        overflow: hidden;
+                        min-height: 44px;
+                    }
+                    
+                    .header-nav-button:hover {
+                        background: rgba(255,255,255,0.22);
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+                        border-color: rgba(255,255,255,0.2);
+                    }
+                    
+                    .header-nav-button.active {
+                        background: rgba(255,255,255,0.28);
+                        box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+                        border-color: rgba(255,255,255,0.3);
+                        font-weight: 600;
+                    }
+                    
+                    .header-nav-button.active::after {
+                        content: '';
+                        position: absolute;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        height: 3px;
+                        background: white;
+                    }
+                    
+                    .header-nav-button i {
+                        font-size: 18px;
+                        opacity: 0.95;
+                    }
+                    
+                    /* Management Button Styling */
+                    .header-nav-button.management-button {
+                        background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.12) 100%);
+                        border-color: rgba(255,255,255,0.2);
+                        font-weight: 600;
+                    }
+                    
+                    .header-nav-button.management-button:hover {
+                        background: linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.22) 100%);
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+                    }
+                    
+                    .header-nav-button.management-button.active {
+                        background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.28) 100%);
+                    }
+                    
+                    /* Secondary Row */
+                    .header-secondary-row {
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 0;
+                        justify-content: center;
+                        background: rgba(0,0,0,0.08);
+                    }
+                    
+                    .header-nav-button.secondary-button {
+                        padding: 6px 12px;
+                        font-size: 13px;
+                        min-height: 32px;
+                        background: rgba(255,255,255,0.08);
+                    }
+                    
+                    .header-nav-button.secondary-button i {
+                        font-size: 14px;
+                    }
+                    
+                    /* Utility Buttons */
+                    .header-utility {
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        flex-shrink: 0;
+                    }
+                    
+                    .header-utility-button {
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 8px 14px;
+                        background: rgba(0,0,0,0.15);
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        transition: all 0.2s ease;
+                        font-size: 13px;
+                        font-weight: 500;
+                        border: 1px solid rgba(255,255,255,0.08);
+                        min-height: 38px;
+                    }
+                    
+                    .header-utility-button:hover {
+                        background: rgba(0,0,0,0.25);
+                        border-color: rgba(255,255,255,0.15);
+                    }
+                    
+                    .header-utility-button i {
+                        font-size: 16px;
+                    }
+                    
+                    /* Mobile menu toggle */
+                    .mobile-menu-toggle {
+                        display: none;
+                        background: none;
+                        border: none;
+                        color: white;
+                        font-size: 22px;
+                        cursor: pointer;
+                        padding: 8px;
+                        border-radius: 6px;
+                        transition: background-color 0.2s ease;
+                    }
+                    
+                    .mobile-menu-toggle:hover {
+                        background-color: rgba(255,255,255,0.1);
+                    }
+                    
+                    /* Breadcrumb styles */
+                    .header-breadcrumb {
+                        background-color: rgba(0,0,0,0.08);
+                        padding: 8px 0;
+                    }
+                    
+                    .breadcrumb-back {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        color: rgba(255,255,255,0.9);
+                        text-decoration: none;
+                        font-size: 13px;
+                        padding: 4px 20px;
+                        max-width: 1400px;
+                        margin: 0 auto;
+                        transition: all 0.2s ease;
+                    }
+                    
+                    .breadcrumb-back:hover {
+                        color: white;
+                    }
+                    
+                    .breadcrumb-back i {
+                        font-size: 12px;
+                    }
+                    
+                    /* Adjust body for enhanced header with dynamic height */
                     body.has-general-header-enhanced {
                         padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '110px' : '70px'} !important;
                     }
@@ -953,10 +1191,198 @@
                         padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '150px' : '110px'} !important;
                     }
                     
-                    /* Ensure content is visible with dynamic height */
+                    /* Hide Knack's default navigation */
+                    body.has-general-header-enhanced .kn-menu.kn-view {
+                        display: none !important;
+                    }
+                    
+                    /* Ensure content is visible */
                     .kn-scene {
                         min-height: calc(100vh - ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '110px' : '70px'});
                     }
+                    
+                    /* Tablet Styles */
+                    @media (max-width: 1200px) {
+                        .header-nav-button {
+                            padding: 8px 12px;
+                            font-size: 13px;
+                            min-height: 40px;
+                        }
+                        
+                        .header-nav-button i {
+                            font-size: 16px;
+                        }
+                        
+                        .header-nav-button span {
+                            display: none;
+                        }
+                        
+                        .header-navigation.primary-nav {
+                            gap: 4px;
+                        }
+                        
+                        .header-utility-button .utility-label {
+                            display: none;
+                        }
+                        
+                        .header-utility-button {
+                            padding: 8px;
+                            min-width: 38px;
+                            justify-content: center;
+                        }
+                    }
+                    
+                    /* Mobile Styles */
+                    @media (max-width: 768px) {
+                        .header-primary-row {
+                            height: 60px;
+                            padding: 0 16px;
+                        }
+                        
+                        .header-secondary-row {
+                            display: none;
+                        }
+                        
+                        .vespa-logo {
+                            height: 36px;
+                        }
+                        
+                        .brand-text {
+                            font-size: 16px;
+                        }
+                        
+                        .header-navigation.primary-nav,
+                        .header-utility {
+                            position: fixed;
+                            top: 60px;
+                            right: -300px;
+                            width: 300px;
+                            max-height: calc(100vh - 60px);
+                            background-color: ${navConfig.color};
+                            flex-direction: column;
+                            justify-content: flex-start;
+                            padding: 16px;
+                            gap: 8px;
+                            transition: right 0.3s ease;
+                            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+                            overflow-y: auto;
+                            z-index: 9998;
+                        }
+                        
+                        .header-navigation.mobile-open,
+                        .header-utility.mobile-open {
+                            right: 0;
+                        }
+                        
+                        .header-nav-button,
+                        .header-nav-button.secondary-button,
+                        .header-utility-button {
+                            width: 100%;
+                            justify-content: flex-start;
+                            padding: 14px 16px;
+                            font-size: 15px;
+                            min-height: 48px;
+                        }
+                        
+                        .header-nav-button span,
+                        .header-utility-button .utility-label {
+                            display: inline;
+                        }
+                        
+                        .header-nav-button i,
+                        .header-utility-button i {
+                            font-size: 18px;
+                            width: 24px;
+                            text-align: center;
+                        }
+                        
+                        .mobile-menu-toggle {
+                            display: block;
+                        }
+                        
+                        .mobile-nav-overlay {
+                            display: none;
+                            position: fixed;
+                            top: 60px;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background-color: rgba(0,0,0,0.4);
+                            z-index: 9997;
+                            backdrop-filter: blur(2px);
+                        }
+                        
+                        .mobile-nav-overlay.active {
+                            display: block;
+                        }
+                        
+                        body.has-general-header-enhanced {
+                            padding-top: 60px !important;
+                        }
+                        
+                        body.has-general-header-enhanced:has(.header-breadcrumb) {
+                            padding-top: 100px !important;
+                        }
+                        
+                        .header-breadcrumb {
+                            padding: 6px 0;
+                        }
+                        
+                        .breadcrumb-back {
+                            font-size: 12px;
+                            padding: 4px 16px;
+                        }
+                    }
+                    
+                    /* Small Mobile */
+                    @media (max-width: 480px) {
+                        .brand-text {
+                            display: none;
+                        }
+                    }
+                    
+                    /* Specific background colors for different user types */
+                    .vespa-general-header-enhanced.student {
+                        background-color: ${navigationConfig.student.color};
+                    }
+                    
+                    .vespa-general-header-enhanced.staffResource {
+                        background-color: ${navigationConfig.staffResource.color};
+                    }
+                    
+                    .vespa-general-header-enhanced.staffCoaching {
+                        background-color: ${navigationConfig.staffCoaching.color};
+                    }
+                    
+                    .vespa-general-header-enhanced.staffAdminResource,
+                    .vespa-general-header-enhanced.staffAdminCoaching {
+                        background-color: ${navigationConfig.staffAdminResource.color};
+                    }
+                    
+                    .vespa-general-header-enhanced.superUser {
+                        background-color: ${navigationConfig.superUser.color};
+                    }
+                    
+                    /* Smooth transitions */
+                    * {
+                        -webkit-font-smoothing: antialiased;
+                        -moz-osx-font-smoothing: grayscale;
+                    }
+                    
+                    /* Focus styles for accessibility */
+                    .header-nav-button:focus,
+                    .header-utility-button:focus,
+                    .mobile-menu-toggle:focus,
+                    .breadcrumb-back:focus {
+                        outline: 2px solid rgba(255,255,255,0.5);
+                        outline-offset: 2px;
+                    }
+                    
+                    /* SIMPLIFIED STYLING APPROACH
+                     * With uniform button count (7 buttons), all account types now use the same clean styling.
+                     * No special cases or overrides needed - just consistent, maintainable CSS!
+                     * Using unique class name .header-nav-button to prevent conflicts with other components.
+                     */
                 </style>
             `;
         }
@@ -986,16 +1412,6 @@
             if (!userType) {
                 log('User not logged in, not showing header');
                 return;
-            }
-            
-            // Load CSS stylesheet if not already loaded
-            if (!document.getElementById('vespaGeneralHeaderStyles')) {
-                const link = document.createElement('link');
-                link.id = 'vespaGeneralHeaderStyles';
-                link.rel = 'stylesheet';
-                link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/general-header-styles1b.css';
-                document.head.appendChild(link);
-                log('Loaded header stylesheet from CDN');
             }
             
             // Create and inject the header
