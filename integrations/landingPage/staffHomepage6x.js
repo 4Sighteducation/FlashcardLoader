@@ -2824,6 +2824,12 @@ window.navigateToScene = function(scene, url, featureName) {
     window.cleanupAppsForScene(scene);
   }
   
+  // Load navigation fixes on-demand for specific scenes
+  if (window.loadNavigationFixForScene && typeof window.loadNavigationFixForScene === 'function') {
+    console.log(`[Staff Homepage] Loading navigation fix for scene ${scene}`);
+    window.loadNavigationFixForScene(scene);
+  }
+  
   // Use hash navigation to stay within the SPA
   const hashUrl = url.startsWith('#') ? url : '#' + url;
   
@@ -6259,7 +6265,7 @@ window.initializeStaffHomepage = function() {
      }
      
      // Redirect to resources page
-     window.location.hash = '#resources-home';
+     window.location.hash = '#resources-portal/'; // Updated to new resource portal
      return;
    }
  }
