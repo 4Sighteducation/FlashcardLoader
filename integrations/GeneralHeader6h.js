@@ -989,9 +989,9 @@
                     }
                     
                     .brand-text {
-                        font-size: 19px;
+                        font-size: clamp(18px, 1.4vw, 22px);
                         font-weight: 700;
-                        letter-spacing: -0.4px;
+                        letter-spacing: -0.3px;
                         white-space: nowrap;
                         text-shadow: 0 1px 2px rgba(0,0,0,0.1);
                     }
@@ -1025,32 +1025,36 @@
                         margin: 0 auto;
                     }
                     
-                    /* Enhanced Button Styles with Glassmorphism */
+                    /* Enhanced Button Styles with Better Contrast and Dynamic Font */
                     .header-nav-button {
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         gap: 8px;
                         padding: 12px 16px;
-                        background: rgba(255,255,255,0.1);
-                        backdrop-filter: blur(8px);
-                        -webkit-backdrop-filter: blur(8px);
+                        background: rgba(255,255,255,0.22);
+                        backdrop-filter: blur(12px) saturate(1.2);
+                        -webkit-backdrop-filter: blur(12px) saturate(1.2);
                         color: white;
                         text-decoration: none;
                         border-radius: 10px;
                         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                        font-size: 14px;
+                        font-size: clamp(14px, 1.1vw, 16px);
                         font-weight: 600;
                         white-space: nowrap;
-                        border: 1px solid rgba(255,255,255,0.18);
+                        border: 2px solid rgba(255,255,255,0.35);
                         position: relative;
                         overflow: hidden;
-                        min-height: 46px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                        min-height: 48px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15), 
+                                    0 1px 3px rgba(0,0,0,0.1),
+                                    inset 0 1px 0 rgba(255,255,255,0.2);
                         text-align: center;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                        letter-spacing: 0.3px;
                     }
                     
-                    /* Hover Effect with Glow */
+                    /* Hover Effect with Stronger Contrast */
                     .header-nav-button::before {
                         content: '';
                         position: absolute;
@@ -1058,16 +1062,18 @@
                         left: 0;
                         right: 0;
                         bottom: 0;
-                        background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
+                        background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 100%);
                         opacity: 0;
                         transition: opacity 0.3s ease;
                     }
                     
                     .header-nav-button:hover {
-                        background: rgba(255,255,255,0.18);
+                        background: rgba(255,255,255,0.32);
                         transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(0,0,0,0.15), 0 2px 8px rgba(255,255,255,0.2) inset;
-                        border-color: rgba(255,255,255,0.3);
+                        box-shadow: 0 8px 24px rgba(0,0,0,0.2), 
+                                    0 4px 8px rgba(0,0,0,0.15),
+                                    inset 0 2px 4px rgba(255,255,255,0.25);
+                        border-color: rgba(255,255,255,0.45);
                     }
                     
                     .header-nav-button:hover::before {
@@ -1075,10 +1081,13 @@
                     }
                     
                     .header-nav-button.active {
-                        background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.18) 100%);
-                        box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(255,255,255,0.3) inset;
-                        border-color: rgba(255,255,255,0.35);
+                        background: linear-gradient(135deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0.28) 100%);
+                        box-shadow: 0 6px 20px rgba(0,0,0,0.18), 
+                                    0 2px 6px rgba(0,0,0,0.12),
+                                    inset 0 2px 4px rgba(255,255,255,0.35);
+                        border-color: rgba(255,255,255,0.5);
                         font-weight: 700;
+                        text-shadow: 0 1px 3px rgba(0,0,0,0.25);
                     }
                     
                     .header-nav-button.active::after {
@@ -1093,36 +1102,46 @@
                     }
                     
                     .header-nav-button i {
-                        font-size: 18px;
+                        font-size: clamp(18px, 1.4vw, 22px);
                         filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
                     }
                     
                     .header-nav-button span {
-                        font-size: 13px;
-                        letter-spacing: 0.2px;
+                        font-size: clamp(14px, 1.1vw, 16px);
+                        letter-spacing: 0.4px;
+                        font-weight: 600;
                     }
                     
-                    /* Management Button with Distinct Styling */
+                    /* Management Button with High Contrast Styling */
                     .header-nav-button.management-button {
-                        background: linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(255,193,7,0.1) 100%);
-                        border-color: rgba(255,215,0,0.25);
+                        background: linear-gradient(135deg, rgba(255,215,0,0.35) 0%, rgba(255,193,7,0.25) 100%);
+                        border-color: rgba(255,215,0,0.5);
                         font-weight: 700;
-                        box-shadow: 0 2px 10px rgba(255,193,7,0.15);
+                        box-shadow: 0 4px 14px rgba(255,193,7,0.25),
+                                    0 2px 6px rgba(0,0,0,0.15),
+                                    inset 0 1px 0 rgba(255,255,255,0.3);
+                        text-shadow: 0 1px 3px rgba(0,0,0,0.3);
                     }
                     
                     .header-nav-button.management-button::before {
-                        background: linear-gradient(135deg, rgba(255,215,0,0) 0%, rgba(255,215,0,0.15) 100%);
+                        background: linear-gradient(135deg, rgba(255,215,0,0) 0%, rgba(255,215,0,0.2) 100%);
                     }
                     
                     .header-nav-button.management-button:hover {
-                        background: linear-gradient(135deg, rgba(255,215,0,0.25) 0%, rgba(255,193,7,0.18) 100%);
-                        box-shadow: 0 6px 24px rgba(255,193,7,0.25), 0 2px 8px rgba(255,215,0,0.3) inset;
-                        border-color: rgba(255,215,0,0.35);
+                        background: linear-gradient(135deg, rgba(255,215,0,0.45) 0%, rgba(255,193,7,0.35) 100%);
+                        box-shadow: 0 8px 28px rgba(255,193,7,0.35), 
+                                    0 4px 10px rgba(0,0,0,0.2),
+                                    inset 0 2px 6px rgba(255,255,255,0.35);
+                        border-color: rgba(255,215,0,0.6);
+                        transform: translateY(-2px) scale(1.02);
                     }
                     
                     .header-nav-button.management-button.active {
-                        background: linear-gradient(135deg, rgba(255,215,0,0.3) 0%, rgba(255,193,7,0.22) 100%);
-                        box-shadow: 0 4px 20px rgba(255,193,7,0.3), 0 2px 6px rgba(255,215,0,0.4) inset;
+                        background: linear-gradient(135deg, rgba(255,215,0,0.5) 0%, rgba(255,193,7,0.4) 100%);
+                        box-shadow: 0 6px 24px rgba(255,193,7,0.4), 
+                                    0 3px 8px rgba(0,0,0,0.2),
+                                    inset 0 2px 8px rgba(255,255,255,0.4);
+                        border-color: rgba(255,215,0,0.65);
                     }
                     
                     /* Secondary Row with Equal Heights */
@@ -1138,20 +1157,38 @@
                     }
                     
                     .header-nav-button.secondary-button {
-                        padding: 8px 14px;
-                        font-size: 13px;
-                        min-height: 36px;
-                        background: rgba(255,255,255,0.07);
-                        border-color: rgba(255,255,255,0.12);
+                        padding: 10px 14px;
+                        font-size: clamp(13px, 1vw, 15px);
+                        min-height: 40px;
+                        background: rgba(255,255,255,0.18);
+                        border-color: rgba(255,255,255,0.3);
+                        border-width: 1.5px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.12),
+                                    inset 0 1px 0 rgba(255,255,255,0.15);
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+                        letter-spacing: 0.3px;
                     }
                     
                     .header-nav-button.secondary-button i {
-                        font-size: 15px;
+                        font-size: clamp(16px, 1.2vw, 18px);
+                    }
+                    
+                    .header-nav-button.secondary-button span {
+                        font-size: clamp(13px, 1vw, 15px);
                     }
                     
                     .header-nav-button.secondary-button:hover {
-                        background: rgba(255,255,255,0.14);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                        background: rgba(255,255,255,0.26);
+                        box-shadow: 0 6px 16px rgba(0,0,0,0.15),
+                                    inset 0 1px 2px rgba(255,255,255,0.2);
+                        border-color: rgba(255,255,255,0.4);
+                    }
+                    
+                    .header-nav-button.secondary-button.active {
+                        background: rgba(255,255,255,0.32);
+                        border-color: rgba(255,255,255,0.45);
+                        box-shadow: 0 4px 14px rgba(0,0,0,0.15),
+                                    inset 0 1px 3px rgba(255,255,255,0.25);
                     }
                     
                     /* Utility Buttons Section */
@@ -1168,40 +1205,54 @@
                         justify-content: center;
                         gap: 6px;
                         padding: 10px 16px;
-                        background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.15) 100%);
-                        backdrop-filter: blur(5px);
+                        background: linear-gradient(135deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.25) 100%);
+                        backdrop-filter: blur(8px) saturate(1.2);
+                        -webkit-backdrop-filter: blur(8px) saturate(1.2);
                         color: white;
                         text-decoration: none;
                         border-radius: 10px;
                         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                        font-size: 13px;
+                        font-size: clamp(13px, 1vw, 15px);
                         font-weight: 600;
-                        border: 1px solid rgba(255,255,255,0.12);
-                        min-height: 40px;
-                        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                        letter-spacing: 0.3px;
+                        border: 2px solid rgba(255,255,255,0.25);
+                        min-height: 42px;
+                        box-shadow: 0 3px 10px rgba(0,0,0,0.2),
+                                    inset 0 1px 0 rgba(255,255,255,0.1);
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
                     }
                     
                     .header-utility-button:hover {
-                        background: linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 100%);
-                        border-color: rgba(255,255,255,0.2);
+                        background: linear-gradient(135deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.35) 100%);
+                        border-color: rgba(255,255,255,0.35);
                         transform: translateY(-1px);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        box-shadow: 0 6px 16px rgba(0,0,0,0.25),
+                                    inset 0 1px 2px rgba(255,255,255,0.15);
                     }
                     
                     .header-utility-button i {
-                        font-size: 16px;
+                        font-size: clamp(16px, 1.2vw, 18px);
+                        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
                     }
                     
-                    /* Special Logout Button Styling */
+                    .header-utility-button .utility-label {
+                        font-size: clamp(13px, 1vw, 15px);
+                    }
+                    
+                    /* Special Logout Button Styling with High Contrast */
                     .header-logout-button {
-                        background: linear-gradient(135deg, rgba(220,53,69,0.2) 0%, rgba(220,53,69,0.15) 100%);
-                        border-color: rgba(220,53,69,0.3);
+                        background: linear-gradient(135deg, rgba(220,53,69,0.35) 0%, rgba(220,53,69,0.25) 100%);
+                        border-color: rgba(255,255,255,0.3);
+                        box-shadow: 0 3px 10px rgba(220,53,69,0.3),
+                                    inset 0 1px 0 rgba(255,255,255,0.15);
                     }
                     
                     .header-logout-button:hover {
-                        background: linear-gradient(135deg, rgba(220,53,69,0.3) 0%, rgba(220,53,69,0.25) 100%);
-                        border-color: rgba(220,53,69,0.4);
-                        box-shadow: 0 4px 12px rgba(220,53,69,0.2);
+                        background: linear-gradient(135deg, rgba(220,53,69,0.45) 0%, rgba(220,53,69,0.35) 100%);
+                        border-color: rgba(255,255,255,0.4);
+                        box-shadow: 0 6px 16px rgba(220,53,69,0.4),
+                                    inset 0 1px 2px rgba(255,255,255,0.2);
+                        transform: translateY(-1px) scale(1.02);
                     }
                     
                     /* Mobile menu toggle with Enhanced Style */
@@ -1309,11 +1360,24 @@
                         
                         .header-nav-button {
                             padding: 14px 20px;
-                            font-size: 15px;
+                            font-size: 17px;
+                            min-height: 52px;
                         }
                         
                         .header-nav-button i {
-                            font-size: 20px;
+                            font-size: 22px;
+                        }
+                        
+                        .header-nav-button span {
+                            font-size: 17px;
+                        }
+                        
+                        .brand-text {
+                            font-size: 24px;
+                        }
+                        
+                        .vespa-logo {
+                            height: 52px;
                         }
                     }
                     
@@ -1423,36 +1487,43 @@
                             right: 0;
                         }
                         
-                        /* Mobile Button Styles */
+                        /* Mobile Button Styles with Better Contrast and Larger Text */
                         .header-nav-button,
                         .header-nav-button.secondary-button,
                         .header-utility-button {
                             width: 100%;
                             justify-content: flex-start;
                             padding: 14px 18px;
-                            font-size: 15px;
-                            min-height: 50px;
-                            background: rgba(255,255,255,0.08);
-                            backdrop-filter: blur(5px);
+                            font-size: 16px;
+                            min-height: 52px;
+                            background: rgba(255,255,255,0.2);
+                            backdrop-filter: blur(8px);
+                            border: 2px solid rgba(255,255,255,0.3);
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.15),
+                                        inset 0 1px 0 rgba(255,255,255,0.15);
                         }
                         
                         .header-nav-button:hover,
                         .header-nav-button.secondary-button:hover,
                         .header-utility-button:hover {
-                            background: rgba(255,255,255,0.15);
+                            background: rgba(255,255,255,0.28);
                             transform: translateX(4px);
+                            border-color: rgba(255,255,255,0.4);
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.2),
+                                        inset 0 1px 2px rgba(255,255,255,0.2);
                         }
                         
                         .header-nav-button span,
                         .header-utility-button .utility-label {
                             display: inline;
-                            font-size: 14px;
+                            font-size: 16px;
+                            font-weight: 600;
                         }
                         
                         .header-nav-button i,
                         .header-utility-button i {
-                            font-size: 18px;
-                            width: 28px;
+                            font-size: 20px;
+                            width: 30px;
                             text-align: center;
                         }
                         
@@ -1518,18 +1589,19 @@
                         .header-nav-button.secondary-button,
                         .header-utility-button {
                             padding: 12px 14px;
-                            min-height: 46px;
+                            min-height: 48px;
+                            font-size: 15px;
                         }
                         
                         .header-nav-button span,
                         .header-utility-button .utility-label {
-                            font-size: 13px;
+                            font-size: 15px;
                         }
                         
                         .header-nav-button i,
                         .header-utility-button i {
-                            font-size: 16px;
-                            width: 24px;
+                            font-size: 18px;
+                            width: 26px;
                         }
                     }
                     
