@@ -947,168 +947,217 @@
                         visibility: hidden !important;
                     }
                     
-                    /* Enhanced Header Base Styles */
+                    /* Enhanced Header Base Styles with Gradient Background */
                     .vespa-general-header-enhanced {
                         position: fixed;
                         top: 0;
                         left: 0;
                         right: 0;
-                        background-color: ${navConfig.color};
+                        background: linear-gradient(135deg, ${navConfig.color} 0%, ${navConfig.accentColor || navConfig.color} 100%);
                         color: white;
                         z-index: 9999;
-                        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-                        transition: all 0.3s ease;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                        backdrop-filter: blur(10px);
                     }
                     
                     .header-content {
-                        max-width: 1600px;
+                        max-width: 1920px;
                         margin: 0 auto;
-                        padding: 0 20px;
+                        padding: 0 24px;
                     }
                     
-                    /* Primary Row (Brand + Main Nav + Utility) */
+                    /* Primary Row with Consistent Height */
                     .header-primary-row {
-                        height: 70px;
+                        height: 72px;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        gap: 20px;
-                        border-bottom: 1px solid rgba(255,255,255,0.1);
+                        gap: 24px;
+                        border-bottom: 1px solid rgba(255,255,255,0.12);
+                        position: relative;
                     }
                     
-                    /* Brand Section */
+                    /* Brand Section Enhanced */
                     .header-brand {
                         display: flex;
                         align-items: center;
-                        gap: 12px;
+                        gap: 14px;
                         flex-shrink: 0;
+                        min-width: 200px;
                     }
                     
                     .brand-text {
-                        font-size: 18px;
-                        font-weight: 600;
-                        letter-spacing: -0.3px;
+                        font-size: 19px;
+                        font-weight: 700;
+                        letter-spacing: -0.4px;
                         white-space: nowrap;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
                     }
                     
                     .logo-link {
                         display: flex;
                         align-items: center;
                         text-decoration: none;
-                        transition: opacity 0.2s ease;
+                        transition: all 0.3s ease;
+                        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
                     }
                     
                     .logo-link:hover {
-                        opacity: 0.85;
+                        transform: scale(1.05);
+                        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
                     }
                     
                     .vespa-logo {
-                        height: 45px;
+                        height: 48px;
                         width: auto;
                     }
                     
-                    /* Primary Navigation */
+                    /* Primary Navigation with CSS Grid for Equal Sizing */
                     .header-navigation.primary-nav {
-                        display: flex;
-                        gap: 8px;
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                        gap: 10px;
                         align-items: center;
                         flex: 1;
-                        justify-content: center;
-                        max-width: 800px;
+                        max-width: 1200px;
+                        margin: 0 auto;
                     }
                     
-                    /* Enhanced Button Styles */
+                    /* Enhanced Button Styles with Glassmorphism */
                     .header-nav-button {
                         display: flex;
                         align-items: center;
+                        justify-content: center;
                         gap: 8px;
-                        padding: 10px 16px;
-                        background: rgba(255,255,255,0.12);
+                        padding: 12px 16px;
+                        background: rgba(255,255,255,0.1);
+                        backdrop-filter: blur(8px);
+                        -webkit-backdrop-filter: blur(8px);
                         color: white;
                         text-decoration: none;
-                        border-radius: 8px;
-                        transition: all 0.2s ease;
+                        border-radius: 10px;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         font-size: 14px;
-                        font-weight: 500;
+                        font-weight: 600;
                         white-space: nowrap;
-                        border: 1px solid rgba(255,255,255,0.08);
+                        border: 1px solid rgba(255,255,255,0.18);
                         position: relative;
                         overflow: hidden;
-                        min-height: 44px;
+                        min-height: 46px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                        text-align: center;
+                    }
+                    
+                    /* Hover Effect with Glow */
+                    .header-nav-button::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
                     }
                     
                     .header-nav-button:hover {
-                        background: rgba(255,255,255,0.22);
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-                        border-color: rgba(255,255,255,0.2);
+                        background: rgba(255,255,255,0.18);
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 20px rgba(0,0,0,0.15), 0 2px 8px rgba(255,255,255,0.2) inset;
+                        border-color: rgba(255,255,255,0.3);
+                    }
+                    
+                    .header-nav-button:hover::before {
+                        opacity: 1;
                     }
                     
                     .header-nav-button.active {
-                        background: rgba(255,255,255,0.28);
-                        box-shadow: 0 2px 12px rgba(0,0,0,0.18);
-                        border-color: rgba(255,255,255,0.3);
-                        font-weight: 600;
+                        background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.18) 100%);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(255,255,255,0.3) inset;
+                        border-color: rgba(255,255,255,0.35);
+                        font-weight: 700;
                     }
                     
                     .header-nav-button.active::after {
                         content: '';
                         position: absolute;
-                        bottom: 0;
-                        left: 0;
-                        right: 0;
+                        bottom: -1px;
+                        left: 10%;
+                        right: 10%;
                         height: 3px;
-                        background: white;
+                        background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%);
+                        box-shadow: 0 0 8px rgba(255,255,255,0.6);
                     }
                     
                     .header-nav-button i {
                         font-size: 18px;
-                        opacity: 0.95;
+                        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
                     }
                     
-                    /* Management Button Styling */
+                    .header-nav-button span {
+                        font-size: 13px;
+                        letter-spacing: 0.2px;
+                    }
+                    
+                    /* Management Button with Distinct Styling */
                     .header-nav-button.management-button {
-                        background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.12) 100%);
-                        border-color: rgba(255,255,255,0.2);
-                        font-weight: 600;
+                        background: linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(255,193,7,0.1) 100%);
+                        border-color: rgba(255,215,0,0.25);
+                        font-weight: 700;
+                        box-shadow: 0 2px 10px rgba(255,193,7,0.15);
+                    }
+                    
+                    .header-nav-button.management-button::before {
+                        background: linear-gradient(135deg, rgba(255,215,0,0) 0%, rgba(255,215,0,0.15) 100%);
                     }
                     
                     .header-nav-button.management-button:hover {
-                        background: linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.22) 100%);
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+                        background: linear-gradient(135deg, rgba(255,215,0,0.25) 0%, rgba(255,193,7,0.18) 100%);
+                        box-shadow: 0 6px 24px rgba(255,193,7,0.25), 0 2px 8px rgba(255,215,0,0.3) inset;
+                        border-color: rgba(255,215,0,0.35);
                     }
                     
                     .header-nav-button.management-button.active {
-                        background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.28) 100%);
+                        background: linear-gradient(135deg, rgba(255,215,0,0.3) 0%, rgba(255,193,7,0.22) 100%);
+                        box-shadow: 0 4px 20px rgba(255,193,7,0.3), 0 2px 6px rgba(255,215,0,0.4) inset;
                     }
                     
-                    /* Secondary Row */
+                    /* Secondary Row with Equal Heights */
                     .header-secondary-row {
-                        height: 40px;
-                        display: flex;
+                        height: 52px;
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+                        gap: 8px;
+                        padding: 8px 0;
                         align-items: center;
-                        gap: 6px;
-                        padding: 0;
-                        justify-content: center;
-                        background: rgba(0,0,0,0.08);
+                        background: linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.04) 100%);
+                        border-bottom: 1px solid rgba(255,255,255,0.08);
                     }
                     
                     .header-nav-button.secondary-button {
-                        padding: 6px 12px;
+                        padding: 8px 14px;
                         font-size: 13px;
-                        min-height: 32px;
-                        background: rgba(255,255,255,0.08);
+                        min-height: 36px;
+                        background: rgba(255,255,255,0.07);
+                        border-color: rgba(255,255,255,0.12);
                     }
                     
                     .header-nav-button.secondary-button i {
-                        font-size: 14px;
+                        font-size: 15px;
                     }
                     
-                    /* Utility Buttons */
+                    .header-nav-button.secondary-button:hover {
+                        background: rgba(255,255,255,0.14);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    }
+                    
+                    /* Utility Buttons Section */
                     .header-utility {
                         display: flex;
-                        gap: 8px;
+                        gap: 10px;
                         align-items: center;
                         flex-shrink: 0;
                     }
@@ -1116,79 +1165,125 @@
                     .header-utility-button {
                         display: flex;
                         align-items: center;
+                        justify-content: center;
                         gap: 6px;
-                        padding: 8px 14px;
-                        background: rgba(0,0,0,0.15);
+                        padding: 10px 16px;
+                        background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.15) 100%);
+                        backdrop-filter: blur(5px);
                         color: white;
                         text-decoration: none;
-                        border-radius: 8px;
-                        transition: all 0.2s ease;
+                        border-radius: 10px;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         font-size: 13px;
-                        font-weight: 500;
-                        border: 1px solid rgba(255,255,255,0.08);
-                        min-height: 38px;
+                        font-weight: 600;
+                        border: 1px solid rgba(255,255,255,0.12);
+                        min-height: 40px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                     }
                     
                     .header-utility-button:hover {
-                        background: rgba(0,0,0,0.25);
-                        border-color: rgba(255,255,255,0.15);
+                        background: linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.25) 100%);
+                        border-color: rgba(255,255,255,0.2);
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                     }
                     
                     .header-utility-button i {
                         font-size: 16px;
                     }
                     
-                    /* Mobile menu toggle */
+                    /* Special Logout Button Styling */
+                    .header-logout-button {
+                        background: linear-gradient(135deg, rgba(220,53,69,0.2) 0%, rgba(220,53,69,0.15) 100%);
+                        border-color: rgba(220,53,69,0.3);
+                    }
+                    
+                    .header-logout-button:hover {
+                        background: linear-gradient(135deg, rgba(220,53,69,0.3) 0%, rgba(220,53,69,0.25) 100%);
+                        border-color: rgba(220,53,69,0.4);
+                        box-shadow: 0 4px 12px rgba(220,53,69,0.2);
+                    }
+                    
+                    /* Mobile menu toggle with Enhanced Style */
                     .mobile-menu-toggle {
                         display: none;
-                        background: none;
-                        border: none;
+                        background: rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.2);
                         color: white;
-                        font-size: 22px;
+                        font-size: 20px;
                         cursor: pointer;
-                        padding: 8px;
-                        border-radius: 6px;
-                        transition: background-color 0.2s ease;
+                        padding: 8px 12px;
+                        border-radius: 8px;
+                        transition: all 0.3s ease;
+                        backdrop-filter: blur(5px);
                     }
                     
                     .mobile-menu-toggle:hover {
-                        background-color: rgba(255,255,255,0.1);
+                        background: rgba(255,255,255,0.18);
+                        transform: scale(1.05);
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                     }
                     
-                    /* Breadcrumb styles */
+                    /* Enhanced Breadcrumb Styles */
                     .header-breadcrumb {
-                        background-color: rgba(0,0,0,0.08);
-                        padding: 8px 0;
+                        background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 100%);
+                        padding: 10px 0;
+                        border-bottom: 1px solid rgba(255,255,255,0.08);
                     }
                     
                     .breadcrumb-back {
                         display: inline-flex;
                         align-items: center;
                         gap: 8px;
-                        color: rgba(255,255,255,0.9);
+                        color: rgba(255,255,255,0.95);
                         text-decoration: none;
                         font-size: 13px;
-                        padding: 4px 20px;
-                        max-width: 1400px;
+                        font-weight: 600;
+                        padding: 6px 24px;
+                        max-width: 1920px;
                         margin: 0 auto;
-                        transition: all 0.2s ease;
+                        transition: all 0.3s ease;
+                        position: relative;
+                    }
+                    
+                    .breadcrumb-back::before {
+                        content: '';
+                        position: absolute;
+                        left: 0;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 3px;
+                        height: 16px;
+                        background: linear-gradient(180deg, transparent 0%, white 50%, transparent 100%);
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
                     }
                     
                     .breadcrumb-back:hover {
                         color: white;
+                        padding-left: 32px;
+                    }
+                    
+                    .breadcrumb-back:hover::before {
+                        opacity: 1;
                     }
                     
                     .breadcrumb-back i {
                         font-size: 12px;
+                        transition: transform 0.3s ease;
+                    }
+                    
+                    .breadcrumb-back:hover i {
+                        transform: translateX(-2px);
                     }
                     
                     /* Adjust body for enhanced header with dynamic height */
                     body.has-general-header-enhanced {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '110px' : '70px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '124px' : '72px'} !important;
                     }
                     
                     body.has-general-header-enhanced:has(.header-breadcrumb) {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '150px' : '110px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '168px' : '116px'} !important;
                     }
                     
                     /* Hide Knack's default navigation */
@@ -1198,27 +1293,66 @@
                     
                     /* Ensure content is visible */
                     .kn-scene {
-                        min-height: calc(100vh - ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '110px' : '70px'});
+                        min-height: calc(100vh - ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '124px' : '72px'});
                     }
                     
-                    /* Tablet Styles */
-                    @media (max-width: 1200px) {
+                    /* Large Desktop Optimization */
+                    @media (min-width: 1920px) {
+                        .header-content {
+                            max-width: 2200px;
+                        }
+                        
+                        .header-navigation.primary-nav {
+                            max-width: 1400px;
+                            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                        }
+                        
                         .header-nav-button {
-                            padding: 8px 12px;
-                            font-size: 13px;
-                            min-height: 40px;
+                            padding: 14px 20px;
+                            font-size: 15px;
                         }
                         
                         .header-nav-button i {
-                            font-size: 16px;
+                            font-size: 20px;
+                        }
+                    }
+                    
+                    /* Tablet Styles with Better Proportions */
+                    @media (max-width: 1200px) and (min-width: 769px) {
+                        .header-content {
+                            padding: 0 20px;
+                        }
+                        
+                        .header-primary-row {
+                            height: 64px;
+                        }
+                        
+                        .header-navigation.primary-nav {
+                            grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+                            gap: 6px;
+                        }
+                        
+                        .header-nav-button {
+                            padding: 8px;
+                            min-height: 42px;
+                            border-radius: 8px;
+                        }
+                        
+                        .header-nav-button i {
+                            font-size: 18px;
                         }
                         
                         .header-nav-button span {
                             display: none;
                         }
                         
-                        .header-navigation.primary-nav {
-                            gap: 4px;
+                        .header-secondary-row {
+                            height: 44px;
+                            grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+                        }
+                        
+                        .header-nav-button.secondary-button {
+                            min-height: 34px;
                         }
                         
                         .header-utility-button .utility-label {
@@ -1227,15 +1361,26 @@
                         
                         .header-utility-button {
                             padding: 8px;
-                            min-width: 38px;
-                            justify-content: center;
+                            min-width: 40px;
+                        }
+                        
+                        .vespa-logo {
+                            height: 40px;
+                        }
+                        
+                        .brand-text {
+                            font-size: 16px;
                         }
                     }
                     
-                    /* Mobile Styles */
+                    /* Mobile Styles with Slide-out Menu */
                     @media (max-width: 768px) {
                         .header-primary-row {
                             height: 60px;
+                            gap: 12px;
+                        }
+                        
+                        .header-content {
                             padding: 0 16px;
                         }
                         
@@ -1249,24 +1394,28 @@
                         
                         .brand-text {
                             font-size: 16px;
+                            font-weight: 600;
                         }
                         
+                        /* Mobile Navigation Drawer */
                         .header-navigation.primary-nav,
                         .header-utility {
                             position: fixed;
                             top: 60px;
-                            right: -300px;
-                            width: 300px;
+                            right: -320px;
+                            width: 320px;
                             max-height: calc(100vh - 60px);
-                            background-color: ${navConfig.color};
+                            background: linear-gradient(135deg, ${navConfig.color} 0%, ${navConfig.accentColor || navConfig.color} 100%);
+                            display: flex;
                             flex-direction: column;
                             justify-content: flex-start;
-                            padding: 16px;
-                            gap: 8px;
-                            transition: right 0.3s ease;
-                            box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+                            padding: 20px 16px;
+                            gap: 10px;
+                            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                            box-shadow: -4px 0 20px rgba(0,0,0,0.3);
                             overflow-y: auto;
                             z-index: 9998;
+                            backdrop-filter: blur(10px);
                         }
                         
                         .header-navigation.mobile-open,
@@ -1274,25 +1423,36 @@
                             right: 0;
                         }
                         
+                        /* Mobile Button Styles */
                         .header-nav-button,
                         .header-nav-button.secondary-button,
                         .header-utility-button {
                             width: 100%;
                             justify-content: flex-start;
-                            padding: 14px 16px;
+                            padding: 14px 18px;
                             font-size: 15px;
-                            min-height: 48px;
+                            min-height: 50px;
+                            background: rgba(255,255,255,0.08);
+                            backdrop-filter: blur(5px);
+                        }
+                        
+                        .header-nav-button:hover,
+                        .header-nav-button.secondary-button:hover,
+                        .header-utility-button:hover {
+                            background: rgba(255,255,255,0.15);
+                            transform: translateX(4px);
                         }
                         
                         .header-nav-button span,
                         .header-utility-button .utility-label {
                             display: inline;
+                            font-size: 14px;
                         }
                         
                         .header-nav-button i,
                         .header-utility-button i {
                             font-size: 18px;
-                            width: 24px;
+                            width: 28px;
                             text-align: center;
                         }
                         
@@ -1300,6 +1460,7 @@
                             display: block;
                         }
                         
+                        /* Mobile Overlay */
                         .mobile-nav-overlay {
                             display: none;
                             position: fixed;
@@ -1307,13 +1468,20 @@
                             left: 0;
                             right: 0;
                             bottom: 0;
-                            background-color: rgba(0,0,0,0.4);
+                            background-color: rgba(0,0,0,0.5);
                             z-index: 9997;
-                            backdrop-filter: blur(2px);
+                            backdrop-filter: blur(4px);
+                            transition: opacity 0.3s ease;
                         }
                         
                         .mobile-nav-overlay.active {
                             display: block;
+                            animation: fadeIn 0.3s ease;
+                        }
+                        
+                        @keyframes fadeIn {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
                         }
                         
                         body.has-general-header-enhanced {
@@ -1321,67 +1489,165 @@
                         }
                         
                         body.has-general-header-enhanced:has(.header-breadcrumb) {
-                            padding-top: 100px !important;
+                            padding-top: 104px !important;
                         }
                         
                         .header-breadcrumb {
-                            padding: 6px 0;
+                            padding: 8px 0;
                         }
                         
                         .breadcrumb-back {
                             font-size: 12px;
-                            padding: 4px 16px;
+                            padding: 6px 16px;
                         }
                     }
                     
-                    /* Small Mobile */
+                    /* Small Mobile Optimization */
                     @media (max-width: 480px) {
                         .brand-text {
                             display: none;
                         }
+                        
+                        .header-navigation.primary-nav,
+                        .header-utility {
+                            width: 280px;
+                            right: -280px;
+                        }
+                        
+                        .header-nav-button,
+                        .header-nav-button.secondary-button,
+                        .header-utility-button {
+                            padding: 12px 14px;
+                            min-height: 46px;
+                        }
+                        
+                        .header-nav-button span,
+                        .header-utility-button .utility-label {
+                            font-size: 13px;
+                        }
+                        
+                        .header-nav-button i,
+                        .header-utility-button i {
+                            font-size: 16px;
+                            width: 24px;
+                        }
                     }
                     
-                    /* Specific background colors for different user types */
+                    /* Specific User Type Styling with Enhanced Gradients */
                     .vespa-general-header-enhanced.student {
-                        background-color: ${navigationConfig.student.color};
+                        background: linear-gradient(135deg, #079baa 0%, #7bd8d0 100%);
+                    }
+                    
+                    .vespa-general-header-enhanced.student .header-secondary-row {
+                        background: linear-gradient(180deg, rgba(0,0,0,0.06) 0%, transparent 100%);
                     }
                     
                     .vespa-general-header-enhanced.staffResource {
-                        background-color: ${navigationConfig.staffResource.color};
+                        background: linear-gradient(135deg, #5899a8 0%, #62d1d2 100%);
                     }
                     
                     .vespa-general-header-enhanced.staffCoaching {
-                        background-color: ${navigationConfig.staffCoaching.color};
+                        background: linear-gradient(135deg, #2f8dcb 0%, #079baa 100%);
                     }
                     
                     .vespa-general-header-enhanced.staffAdminResource,
                     .vespa-general-header-enhanced.staffAdminCoaching {
-                        background-color: ${navigationConfig.staffAdminResource.color};
+                        background: linear-gradient(135deg, #2a3c7a 0%, #23356f 100%);
+                    }
+                    
+                    .vespa-general-header-enhanced.staffAdminResource .header-nav-button.management-button,
+                    .vespa-general-header-enhanced.staffAdminCoaching .header-nav-button.management-button {
+                        background: linear-gradient(135deg, rgba(7,155,170,0.2) 0%, rgba(7,155,170,0.15) 100%);
+                        border-color: rgba(7,155,170,0.3);
                     }
                     
                     .vespa-general-header-enhanced.superUser {
-                        background-color: ${navigationConfig.superUser.color};
+                        background: linear-gradient(135deg, #2a3c7a 0%, #079baa 100%);
                     }
                     
-                    /* Smooth transitions */
+                    .vespa-general-header-enhanced.superUser .header-nav-button.management-button {
+                        background: linear-gradient(135deg, rgba(123,216,208,0.18) 0%, rgba(123,216,208,0.12) 100%);
+                        border-color: rgba(123,216,208,0.25);
+                    }
+                    
+                    /* Smooth animations and transitions */
                     * {
                         -webkit-font-smoothing: antialiased;
                         -moz-osx-font-smoothing: grayscale;
                     }
                     
-                    /* Focus styles for accessibility */
-                    .header-nav-button:focus,
-                    .header-utility-button:focus,
-                    .mobile-menu-toggle:focus,
-                    .breadcrumb-back:focus {
-                        outline: 2px solid rgba(255,255,255,0.5);
-                        outline-offset: 2px;
+                    /* Loading animation for buttons */
+                    @keyframes shimmer {
+                        0% { background-position: -100% 0; }
+                        100% { background-position: 100% 0; }
                     }
                     
-                    /* SIMPLIFIED STYLING APPROACH
-                     * With uniform button count (7 buttons), all account types now use the same clean styling.
-                     * No special cases or overrides needed - just consistent, maintainable CSS!
-                     * Using unique class name .header-nav-button to prevent conflicts with other components.
+                    .header-nav-button.loading {
+                        background: linear-gradient(90deg, 
+                            rgba(255,255,255,0.1) 0%, 
+                            rgba(255,255,255,0.2) 50%, 
+                            rgba(255,255,255,0.1) 100%);
+                        background-size: 200% 100%;
+                        animation: shimmer 1.5s ease-in-out infinite;
+                    }
+                    
+                    /* Enhanced Focus styles for accessibility */
+                    .header-nav-button:focus-visible,
+                    .header-utility-button:focus-visible,
+                    .mobile-menu-toggle:focus-visible,
+                    .breadcrumb-back:focus-visible {
+                        outline: 3px solid rgba(255,255,255,0.7);
+                        outline-offset: 3px;
+                        box-shadow: 0 0 20px rgba(255,255,255,0.3);
+                    }
+                    
+                    /* Print styles */
+                    @media print {
+                        .vespa-general-header-enhanced {
+                            display: none !important;
+                        }
+                        
+                        body.has-general-header-enhanced {
+                            padding-top: 0 !important;
+                        }
+                    }
+                    
+                    /* High contrast mode support */
+                    @media (prefers-contrast: high) {
+                        .header-nav-button {
+                            border-width: 2px;
+                        }
+                        
+                        .header-nav-button.active {
+                            outline: 2px solid white;
+                        }
+                    }
+                    
+                    /* Reduced motion support */
+                    @media (prefers-reduced-motion: reduce) {
+                        .header-nav-button,
+                        .header-utility-button,
+                        .breadcrumb-back,
+                        .mobile-menu-toggle {
+                            transition: none;
+                        }
+                        
+                        .header-nav-button::before {
+                            transition: none;
+                        }
+                        
+                        @keyframes shimmer {
+                            0%, 100% { background-position: 0 0; }
+                        }
+                    }
+                    
+                    /* Enhanced Visual Polish
+                     * - CSS Grid ensures equal button widths across all user types
+                     * - Glassmorphism effects add modern depth
+                     * - Gradient backgrounds utilize the blue/turquoise palette
+                     * - Management buttons have distinct golden accent
+                     * - Responsive breakpoints ensure perfect scaling
+                     * - Accessibility features built-in
                      */
                 </style>
             `;
