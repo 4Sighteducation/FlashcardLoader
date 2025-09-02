@@ -723,6 +723,7 @@
                     { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' }
                 ],
                 utilityButtons: [
+                    { label: 'Refresh', icon: 'fa-sync-alt', href: '#', scene: 'refresh', isRefresh: true },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -754,7 +755,7 @@
                 color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
                 primaryRow: [
-                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215',isLogout: true },
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212', isManagement: true },
                     { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014', isManagement: true },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227', isManagement: true },
@@ -769,6 +770,7 @@
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
                 ],
                 utilityButtons: [
+                    { label: 'Refresh', icon: 'fa-sync-alt', href: '#', scene: 'refresh', isRefresh: true },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -788,6 +790,7 @@
                     { label: 'Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227', isManagement: true }
                 ],
                 utilityButtons: [
+                    { label: 'Refresh', icon: 'fa-sync-alt', href: '#', scene: 'refresh', isRefresh: true },
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -883,13 +886,15 @@
                 
                 if (item.isSettings) buttonClass += ' header-settings-button';
                 if (item.isLogout) buttonClass += ' header-logout-button';
+                if (item.isRefresh) buttonClass += ' header-refresh-button';
                 
                 // Hide logout button in emulator mode
                 if (item.isLogout && window._isStudentEmulatorMode) {
                     return '';
                 }
                 
-                const dataAttrs = item.isLogout ? 'data-logout="true"' : '';
+                const dataAttrs = item.isLogout ? 'data-logout="true"' : 
+                                 item.isRefresh ? 'data-refresh="true"' : '';
                 
                 return `
                     <a href="${item.href}" 
@@ -1237,6 +1242,31 @@
                     
                     .header-utility-button .utility-label {
                         font-size: clamp(13px, 1vw, 15px);
+                    }
+                    
+                    /* Special Refresh Button Styling */
+                    .header-refresh-button {
+                        background: linear-gradient(135deg, rgba(7,155,170,0.35) 0%, rgba(7,155,170,0.25) 100%);
+                        border-color: rgba(255,255,255,0.35);
+                        box-shadow: 0 3px 10px rgba(7,155,170,0.3),
+                                    inset 0 1px 0 rgba(255,255,255,0.15);
+                    }
+                    
+                    .header-refresh-button:hover {
+                        background: linear-gradient(135deg, rgba(7,155,170,0.45) 0%, rgba(7,155,170,0.35) 100%);
+                        border-color: rgba(255,255,255,0.45);
+                        box-shadow: 0 6px 16px rgba(7,155,170,0.4),
+                                    inset 0 1px 2px rgba(255,255,255,0.2);
+                        transform: translateY(-1px) scale(1.02);
+                    }
+                    
+                    .header-refresh-button i {
+                        animation: none;
+                        transition: transform 0.3s ease;
+                    }
+                    
+                    .header-refresh-button:hover i {
+                        transform: rotate(180deg);
                     }
                     
                     /* Special Logout Button Styling with High Contrast */
@@ -1836,6 +1866,60 @@
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
                     
+                    // Check if this is the refresh button
+                    if (this.getAttribute('data-refresh') === 'true') {
+                        log('Refresh button clicked - performing soft reset');
+                        
+                        // Show loading screen
+                        if (window.showUniversalLoadingScreen) {
+                            window.showUniversalLoadingScreen('Refreshing page...');
+                        }
+                        
+                        // Clear various flags that might be causing navigation issues
+                        window._universalRedirectCompleted = true;
+                        window._bypassUniversalRedirect = true;
+                        window._navigationInProgress = false;
+                        window._headerNavigationActive = false;
+                        sessionStorage.setItem('universalRedirectCompleted', 'true');
+                        sessionStorage.removeItem('navigationTarget');
+                        sessionStorage.removeItem('headerNavigationActive');
+                        
+                        // Clear any homepage loading flags
+                        if (window._homepageLoadTimer) {
+                            clearTimeout(window._homepageLoadTimer);
+                            window._homepageLoadTimer = null;
+                        }
+                        
+                        // Clear scene level containers that might be conflicting
+                        const sceneContainers = document.querySelectorAll('[id^="scene-level-container"]');
+                        sceneContainers.forEach(container => {
+                            log('Removing scene container during refresh:', container.id);
+                            container.remove();
+                        });
+                        
+                        // Force reload the current hash location
+                        const currentHash = window.location.hash;
+                        log('Refreshing current location:', currentHash);
+                        
+                        // Small delay then reload
+                        setTimeout(() => {
+                            // First clear the hash
+                            window.location.hash = '';
+                            // Then set it back to trigger reload
+                            setTimeout(() => {
+                                window.location.hash = currentHash;
+                                // Hide loading screen after navigation
+                                setTimeout(() => {
+                                    if (window.hideUniversalLoadingScreen) {
+                                        window.hideUniversalLoadingScreen();
+                                    }
+                                }, 500);
+                            }, 50);
+                        }, 100);
+                        
+                        return;
+                    }
+                    
                     // Check if this is the logout button
                     if (this.getAttribute('data-logout') === 'true') {
                         log('Logout button clicked');
@@ -1887,6 +1971,12 @@
                         sessionStorage.setItem('universalRedirectCompleted', 'true');
                         sessionStorage.setItem('navigationTarget', targetScene);
                         sessionStorage.setItem('headerNavigationActive', 'true');
+                        
+                        // IMPORTANT: Block homepage loading during navigation
+                        window._blockHomepageLoad = true;
+                        window._navigatingToScene = targetScene;
+                        sessionStorage.setItem('blockHomepageLoad', 'true');
+                        sessionStorage.setItem('navigatingToScene', targetScene);
                         
                         // Kill any Universal Redirect timers
                         if (window._universalRedirectTimer) {
@@ -1944,31 +2034,52 @@
                                 }, 500);
                             }
                             
-                            // For Results and Coaching tabs, ensure the scene renders properly
-                            else if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
-                                log(`Forcing scene render for ${targetScene}`);
-                                // Trigger a manual scene render event if Knack doesn't fire it
-                                setTimeout(() => {
-                                    const currentScene = Knack.scene ? Knack.scene.key : null;
-                                    if (currentScene !== targetScene) {
-                                        log(`Scene didn't change properly, attempting force navigation`);
-                                        // Try hash navigation again instead of full page reload
-                                        // This avoids going through scene_1 and triggering Universal Redirect
-                                        window.location.hash = href;
-                                        // If still doesn't work, just log it - don't do full page reload
-                                        log(`Attempted hash navigation to ${href}`);
-                                    }
-                                    // Clear navigation flags after successful navigation
-                                    window._navigationInProgress = false;
-                                    window._headerNavigationActive = false;
-                                    sessionStorage.removeItem('headerNavigationActive');
-                                }, 500);
-                            } else {
+                                                    // For Results and Coaching tabs, ensure the scene renders properly
+                        else if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
+                            log(`Special handling for Results/Coaching scene ${targetScene}`);
+                            
+                            // Extra protection against homepage loading
+                            window._blockHomepageLoad = true;
+                            window._skipHomepageRender = true;
+                            sessionStorage.setItem('skipHomepageRender', 'true');
+                            
+                            // Force cleanup of any existing homepage containers
+                            const homepageContainers = document.querySelectorAll('[id*="homepage"], [id*="staff-homepage"], [id*="resource-dashboard"]');
+                            homepageContainers.forEach(container => {
+                                log('Removing homepage container before Results/Coaching navigation:', container.id);
+                                container.remove();
+                            });
+                            
+                            // Trigger a manual scene render event if Knack doesn't fire it
+                            setTimeout(() => {
+                                const currentScene = Knack.scene ? Knack.scene.key : null;
+                                if (currentScene !== targetScene) {
+                                    log(`Scene didn't change properly, attempting force navigation`);
+                                    // Try hash navigation again
+                                    window.location.hash = href;
+                                    log(`Attempted hash navigation to ${href}`);
+                                }
+                                // Clear navigation flags after successful navigation
+                                window._navigationInProgress = false;
+                                window._headerNavigationActive = false;
+                                window._blockHomepageLoad = false;
+                                window._skipHomepageRender = false;
+                                sessionStorage.removeItem('headerNavigationActive');
+                                sessionStorage.removeItem('blockHomepageLoad');
+                                sessionStorage.removeItem('skipHomepageRender');
+                                sessionStorage.removeItem('navigatingToScene');
+                            }, 500);
+                        } else {
                                 // Clear navigation flags for other scenes
                                 setTimeout(() => {
                                     window._navigationInProgress = false;
                                     window._headerNavigationActive = false;
+                                    window._blockHomepageLoad = false;
+                                    window._skipHomepageRender = false;
                                     sessionStorage.removeItem('headerNavigationActive');
+                                    sessionStorage.removeItem('blockHomepageLoad');
+                                    sessionStorage.removeItem('skipHomepageRender');
+                                    sessionStorage.removeItem('navigatingToScene');
                                 }, 500);
                             }
                         }, 50);
@@ -2963,9 +3074,26 @@
     // Export the initializer function
     window.initializeGeneralHeader = initializeGeneralHeader;
     
+    // Global function for homepage apps to check if they should skip loading
+    window.shouldSkipHomepageLoad = function() {
+        // Check various flags that indicate homepage should not load
+        if (window._blockHomepageLoad || 
+            window._skipHomepageRender || 
+            window._navigationInProgress ||
+            window._headerNavigationActive ||
+            sessionStorage.getItem('blockHomepageLoad') === 'true' ||
+            sessionStorage.getItem('skipHomepageRender') === 'true' ||
+            sessionStorage.getItem('navigatingToScene')) {
+            
+            const targetScene = sessionStorage.getItem('navigatingToScene') || window._navigatingToScene;
+            console.log('[General Header] Homepage load should be skipped. Navigating to:', targetScene);
+            return true;
+        }
+        return false;
+    };
+    
     // Only show setup complete message if debug mode is enabled
     if (window.GENERAL_HEADER_CONFIG && window.GENERAL_HEADER_CONFIG.debugMode) {
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
-
