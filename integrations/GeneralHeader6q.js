@@ -1362,13 +1362,18 @@
                         transform: translateX(-2px);
                     }
                     
-                    /* Adjust body for enhanced header with dynamic height - increased padding */
+                    /* Adjust body for enhanced header with dynamic height - accounts for translation bar */
                     body.has-general-header-enhanced {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '140px' : '85px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '165px' : '110px'} !important;
                     }
                     
                     body.has-general-header-enhanced:has(.header-breadcrumb) {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '180px' : '125px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '205px' : '150px'} !important;
+                    }
+                    
+                    /* When translation bar exists */
+                    body.has-general-header-enhanced:has(.header-translation-bar) {
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '175px' : '120px'} !important;
                     }
                     
                     /* Hide Knack's default navigation */
@@ -2215,18 +2220,31 @@
             
             log('Adding translation widget to header');
             
-            // Create container - positioning it in the utility section
-            const headerUtility = document.querySelector('.header-utility');
-            if (!headerUtility) {
-                log('Header utility section not found, retrying in 500ms');
+            // Create container - positioning it below the primary row
+            const headerContent = document.querySelector('.header-content');
+            if (!headerContent) {
+                log('Header content not found, retrying in 500ms');
                 setTimeout(addTranslationWidget, 500);
                 return;
             }
             
+            // Create a translation bar container
+            const translationBar = document.createElement('div');
+            translationBar.className = 'header-translation-bar';
+            translationBar.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                padding: 4px 0;
+                background: rgba(0,0,0,0.08);
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                min-height: 32px;
+            `;
+            
             // Create container for translation controls
             const translationControlsContainer = document.createElement('div');
             translationControlsContainer.className = 'translation-controls-container';
-            translationControlsContainer.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin: 0;';
+            translationControlsContainer.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-right: 20px;';
             
             // Create translate widget container
             const translateContainer = document.createElement('div');
@@ -2243,12 +2261,15 @@
                 clearButton.style.cssText = `
                     background: rgba(255,255,255,0.2);
                     border: 1px solid rgba(255,255,255,0.3);
-                    border-radius: 6px;
+                    border-radius: 4px;
                     color: white;
-                    padding: 6px 8px;
+                    padding: 3px 6px;
                     cursor: pointer;
-                    font-size: 14px;
+                    font-size: 11px;
                     transition: all 0.2s ease;
+                    height: 26px;
+                    display: inline-flex;
+                    align-items: center;
                 `;
                 clearButton.onmouseover = function() {
                     this.style.background = 'rgba(255,255,255,0.3)';
@@ -2276,18 +2297,20 @@
                 translationControlsContainer.appendChild(clearButton);
             }
 
-            // Prevent navigation handlers from reacting to clicks inside the widget
-            translationControlsContainer.addEventListener('click', function(e) { e.stopPropagation(); }, true);
-            translationControlsContainer.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
-            translationControlsContainer.addEventListener('touchstart', function(e) { e.stopPropagation(); }, true);
+            // Add translation controls to the translation bar
+            translationBar.appendChild(translationControlsContainer);
             
-            // Insert before the refresh button
-            const refreshButton = document.querySelector('.header-refresh-button');
-            if (refreshButton) {
-                headerUtility.insertBefore(translationControlsContainer, refreshButton);
+            // Prevent navigation handlers from reacting to clicks inside the widget
+            translationBar.addEventListener('click', function(e) { e.stopPropagation(); }, true);
+            translationBar.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
+            translationBar.addEventListener('touchstart', function(e) { e.stopPropagation(); }, true);
+            
+            // Insert the translation bar after the primary row
+            const primaryRow = headerContent.querySelector('.header-primary-row');
+            if (primaryRow && primaryRow.nextSibling) {
+                headerContent.insertBefore(translationBar, primaryRow.nextSibling);
             } else {
-                // Insert at the beginning of utility section
-                headerUtility.insertBefore(translationControlsContainer, headerUtility.firstChild);
+                headerContent.appendChild(translationBar);
             }
             
             // Load Google Translate script
@@ -2513,21 +2536,22 @@
                     font-size: 0 !important;
                 }
                 
-                /* Style the dropdown */
-                .goog-te-gadget .goog-te-combo {
+                /* Style the dropdown - compact for translation bar */
+                .header-translation-bar .goog-te-gadget .goog-te-combo {
                     background: rgba(255,255,255,0.14);
                     border: 1px solid rgba(255,255,255,0.18);
-                    border-radius: 8px;
-                    padding: 8px 14px;
+                    border-radius: 6px;
+                    padding: 4px 10px;
                     color: #ffffff;
-                    font-size: 13px;
+                    font-size: 12px;
                     font-weight: 600;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                    min-width: 140px;
+                    min-width: 120px;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     backdrop-filter: blur(3px);
                     outline: none;
+                    height: 26px;
                 }
                 
                 .goog-te-gadget .goog-te-combo:hover {
@@ -2595,22 +2619,15 @@
                 }
                 
                 @media (max-width: 768px) {
-                    .translation-controls-container {
-                        width: 100%;
-                        margin: 0 0 8px 0;
-                        order: -1; /* Move to top on mobile */
-                        gap: 8px;
+                    /* Hide translation bar on mobile to save space */
+                    .header-translation-bar {
+                        display: none !important;
                     }
-                    .translate-widget-container {
-                        flex: 1;
+                    
+                    /* Adjust padding when translation bar is hidden */
+                    body.has-general-header-enhanced {
+                        padding-top: 75px !important;
                     }
-                    .goog-te-gadget .goog-te-combo {
-                        width: 100%;
-                        padding: 12px 16px;
-                        font-size: 15px;
-                        background: rgba(255,255,255,0.08);
-                    }
-                    /* (Refresh button responsive styles removed) */
                 }
                 
                 /* Fix for translation affecting header buttons */
