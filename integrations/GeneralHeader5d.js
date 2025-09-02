@@ -993,7 +993,7 @@
                 const link = document.createElement('link');
                 link.id = 'vespaGeneralHeaderStyles';
                 link.rel = 'stylesheet';
-                link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/general-header-styles1a.css';
+                link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/general-header-styles1b.css';
                 document.head.appendChild(link);
                 log('Loaded header stylesheet from CDN');
             }
