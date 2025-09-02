@@ -902,6 +902,13 @@
                 `;
             }).join('');
             
+            // Check if secondary row exists and add class to body for CSS
+            if (navConfig.secondaryRow && navConfig.secondaryRow.length > 0) {
+                setTimeout(() => {
+                    document.body.classList.add('has-secondary-row');
+                }, 50);
+            }
+            
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header-enhanced ${userType}">
                     <div class="header-content">
@@ -934,46 +941,106 @@
                     ` : ''}
                 </div>
                 <div class="mobile-nav-overlay"></div>
-                <style>
-                    /* Hide entire Knack header */
-                    .knHeader {
-                        display: none !important;
-                    }
-                    
-                    /* Hide original user info container */
-                    body.has-general-header-enhanced .kn-info,
-                    body.has-general-header-enhanced .kn-current_user {
-                        display: none !important;
-                        visibility: hidden !important;
-                    }
-                    
-                    /* Enhanced Header Base Styles */
-                    .vespa-general-header-enhanced {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
+                <style id="vespaGeneralHeaderDynamicStyles">
+                    /* Dynamic user-specific colors (loaded from navConfig) */
+                    .vespa-general-header-enhanced.${userType} {
                         background-color: ${navConfig.color};
-                        color: white;
-                        z-index: 9999;
-                        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-                        transition: all 0.3s ease;
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                     }
-                    
-                    .header-content {
-                        max-width: 1600px;
-                        margin: 0 auto;
-                        padding: 0 20px;
+                    .vespa-general-header-enhanced.${userType} .header-navigation.primary-nav,
+                    .vespa-general-header-enhanced.${userType} .header-utility {
+                        background-color: ${navConfig.color};
                     }
+                </style>
+            `;
+        }
+        
+        // Function to inject the header
+        function injectHeader() {
+            // Check if header already exists
+            if (document.getElementById('vespaGeneralHeader')) {
+                log('Header already exists, checking if it should be removed');
+                const userType = getUserType();
+                if (!userType) {
+                    // User is not logged in, remove header
+                    log('User not logged in, removing header');
+                    const existingHeader = document.getElementById('vespaGeneralHeader');
+                    if (existingHeader) existingHeader.remove();
+                    // Reset body padding
+                    document.body.classList.remove('has-general-header-enhanced');
+                    document.body.style.paddingTop = '';
+                }
+                return;
+            }
+            
+            const userType = getUserType();
+            log('Detected user type:', userType);
+            
+            // Don't show header if user is not logged in
+            if (!userType) {
+                log('User not logged in, not showing header');
+                return;
+            }
+            
+            // Load CSS stylesheet if not already loaded
+            if (!document.getElementById('vespaGeneralHeaderStyles')) {
+                const link = document.createElement('link');
+                link.id = 'vespaGeneralHeaderStyles';
+                link.rel = 'stylesheet';
+                link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/general-header-styles1a.css';
+                document.head.appendChild(link);
+                log('Loaded header stylesheet from CDN');
+            }
+            
+            // Create and inject the header
+            const headerHTML = createHeaderHTML(userType, currentScene);
+            document.body.insertAdjacentHTML('afterbegin', headerHTML);
+            document.body.classList.add('has-general-header-enhanced');
+            
+            log('Header injected successfully');
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Apply permanent header offset
+            applyFixedHeaderOffset();
+
+            // Track current page
+            trackPageView(userType, currentScene);
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu toggle
+            const mobileToggle = document.querySelector('.mobile-menu-toggle');
+            const navigation = document.querySelector('.header-navigation');
+            const utility = document.querySelector('.header-utility');
+            const overlay = document.querySelector('.mobile-nav-overlay');
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', function() {
+                    navigation.classList.toggle('mobile-open');
+                    utility.classList.toggle('mobile-open');
+                    overlay.classList.toggle('active');
+                });
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    navigation.classList.remove('mobile-open');
+                    utility.classList.remove('mobile-open');
+                    overlay.classList.remove('active');
+                });
+            }
+            
+            // Navigation click handling
+            const navLinks = document.querySelectorAll('.header-nav-button, .header-utility-button, .breadcrumb-back');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
                     
-                    /* Primary Row (Brand + Main Nav + Utility) */
-                    .header-primary-row {
-                        height: 70px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        gap: 20px;
+                    // Check if this is the logout button
+                    if (this.getAttribute('data-logout') === 'true') {
+                        log('Logout button clicked');
                         border-bottom: 1px solid rgba(255,255,255,0.1);
                     }
                     
@@ -1378,11 +1445,6 @@
                         outline-offset: 2px;
                     }
                     
-                    /* SIMPLIFIED STYLING APPROACH
-                     * With uniform button count (7 buttons), all account types now use the same clean styling.
-                     * No special cases or overrides needed - just consistent, maintainable CSS!
-                     * Using unique class name .header-nav-button to prevent conflicts with other components.
-                     */
                 </style>
             `;
         }
@@ -1412,6 +1474,16 @@
             if (!userType) {
                 log('User not logged in, not showing header');
                 return;
+            }
+            
+            // Load CSS stylesheet if not already loaded
+            if (!document.getElementById('vespaGeneralHeaderStyles')) {
+                const link = document.createElement('link');
+                link.id = 'vespaGeneralHeaderStyles';
+                link.rel = 'stylesheet';
+                link.href = 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/general-header-styles1a.css';
+                document.head.appendChild(link);
+                log('Loaded header stylesheet from CDN');
             }
             
             // Create and inject the header
@@ -1817,11 +1889,24 @@
             translationControlsContainer.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
             translationControlsContainer.addEventListener('touchstart', function(e) { e.stopPropagation(); }, true);
             
-            // Insert before the settings button
-            const settingsButton = document.querySelector('.header-settings-button');
-            if (settingsButton) {
-                headerNav.insertBefore(translationControlsContainer, settingsButton);
-            } else {
+            // Insert translation widget in the appropriate place
+            // Try utility section first, then primary nav
+            const utilitySection = document.querySelector('.header-utility');
+            const primaryNav = document.querySelector('.header-navigation.primary-nav');
+            
+            if (utilitySection) {
+                // Insert at the beginning of utility section
+                const firstUtilityButton = utilitySection.querySelector('.header-utility-button');
+                if (firstUtilityButton) {
+                    utilitySection.insertBefore(translationControlsContainer, firstUtilityButton);
+                } else {
+                    utilitySection.appendChild(translationControlsContainer);
+                }
+            } else if (primaryNav) {
+                // Fallback to primary nav if no utility section
+                primaryNav.appendChild(translationControlsContainer);
+            } else if (headerNav) {
+                // Last resort - just append to header nav
                 headerNav.appendChild(translationControlsContainer);
             }
             
