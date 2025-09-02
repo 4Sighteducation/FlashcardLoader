@@ -720,7 +720,9 @@
                 secondaryRow: [
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' }
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' }
+
                 ],
                 utilityButtons: [
                     { label: 'Refresh', icon: 'fa-sync-alt', href: '#', scene: 'refresh', isRefresh: true },
@@ -952,19 +954,21 @@
                         visibility: hidden !important;
                     }
                     
-                    /* Enhanced Header Base Styles with Gradient Background */
+                    /* Enhanced Header Base Styles with Solid Background */
                     .vespa-general-header-enhanced {
                         position: fixed;
-                        top: 0;
+                        top: 0 !important;
                         left: 0;
                         right: 0;
                         background: linear-gradient(135deg, ${navConfig.color} 0%, ${navConfig.accentColor || navConfig.color} 100%);
+                        background-color: ${navConfig.color}; /* Fallback solid color */
                         color: white;
                         z-index: 9999;
                         box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
                         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                         backdrop-filter: blur(10px);
+                        -webkit-backdrop-filter: blur(10px);
                     }
                     
                     .header-content {
@@ -1358,13 +1362,13 @@
                         transform: translateX(-2px);
                     }
                     
-                    /* Adjust body for enhanced header with dynamic height */
+                    /* Adjust body for enhanced header with dynamic height - increased padding */
                     body.has-general-header-enhanced {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '124px' : '72px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '140px' : '85px'} !important;
                     }
                     
                     body.has-general-header-enhanced:has(.header-breadcrumb) {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '168px' : '116px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '180px' : '125px'} !important;
                     }
                     
                     /* Hide Knack's default navigation */
@@ -1586,11 +1590,11 @@
                         }
                         
                         body.has-general-header-enhanced {
-                            padding-top: 60px !important;
+                            padding-top: 75px !important;
                         }
                         
                         body.has-general-header-enhanced:has(.header-breadcrumb) {
-                            padding-top: 104px !important;
+                            padding-top: 115px !important;
                         }
                         
                         .header-breadcrumb {
@@ -1868,53 +1872,17 @@
                     
                     // Check if this is the refresh button
                     if (this.getAttribute('data-refresh') === 'true') {
-                        log('Refresh button clicked - performing soft reset');
+                        log('Refresh button clicked - performing page reload');
                         
                         // Show loading screen
                         if (window.showUniversalLoadingScreen) {
                             window.showUniversalLoadingScreen('Refreshing page...');
                         }
                         
-                        // Clear various flags that might be causing navigation issues
-                        window._universalRedirectCompleted = true;
-                        window._bypassUniversalRedirect = true;
-                        window._navigationInProgress = false;
-                        window._headerNavigationActive = false;
-                        sessionStorage.setItem('universalRedirectCompleted', 'true');
-                        sessionStorage.removeItem('navigationTarget');
-                        sessionStorage.removeItem('headerNavigationActive');
-                        
-                        // Clear any homepage loading flags
-                        if (window._homepageLoadTimer) {
-                            clearTimeout(window._homepageLoadTimer);
-                            window._homepageLoadTimer = null;
-                        }
-                        
-                        // Clear scene level containers that might be conflicting
-                        const sceneContainers = document.querySelectorAll('[id^="scene-level-container"]');
-                        sceneContainers.forEach(container => {
-                            log('Removing scene container during refresh:', container.id);
-                            container.remove();
-                        });
-                        
-                        // Force reload the current hash location
-                        const currentHash = window.location.hash;
-                        log('Refreshing current location:', currentHash);
-                        
-                        // Small delay then reload
+                        // Simply reload the page like F5 - this is more reliable
+                        // and mimics what works for the user
                         setTimeout(() => {
-                            // First clear the hash
-                            window.location.hash = '';
-                            // Then set it back to trigger reload
-                            setTimeout(() => {
-                                window.location.hash = currentHash;
-                                // Hide loading screen after navigation
-                                setTimeout(() => {
-                                    if (window.hideUniversalLoadingScreen) {
-                                        window.hideUniversalLoadingScreen();
-                                    }
-                                }, 500);
-                            }, 50);
+                            window.location.reload();
                         }, 100);
                         
                         return;
@@ -2034,9 +2002,20 @@
                                 }, 500);
                             }
                             
-                                                    // Special handling for Results page - simplified approach
+                                                    // Special handling for Results page - simplified approach with loading indicator
                         else if (targetScene === 'scene_1270') {
                             log(`Special handling for Results page`);
+                            
+                            // Show loading screen briefly for user feedback
+                            if (window.showUniversalLoadingScreen) {
+                                window.showUniversalLoadingScreen('Loading Results...');
+                                // Auto-hide after 2 seconds max
+                                setTimeout(() => {
+                                    if (window.hideUniversalLoadingScreen) {
+                                        window.hideUniversalLoadingScreen();
+                                    }
+                                }, 2000);
+                            }
                             
                             // Set protection flags
                             window._blockHomepageLoad = true;
@@ -2072,7 +2051,11 @@
                                     sessionStorage.removeItem('skipHomepageRender');
                                     sessionStorage.removeItem('navigatingToScene');
                                     sessionStorage.removeItem('navigatingToResults');
-                                }, 1000);
+                                    // Also ensure loading screen is hidden
+                                    if (window.hideUniversalLoadingScreen) {
+                                        window.hideUniversalLoadingScreen();
+                                    }
+                                }, 1500);
                             }, 100);
                         }
                         // For Coaching tabs, ensure the scene renders properly
@@ -2135,45 +2118,36 @@
             // You can add analytics tracking here if needed
         }
         
-        // Apply a permanent offset so the browser translation bar doesn't cover our header
-        const FIXED_HEADER_OFFSET_PX = 35; // Adjust as needed
-        function getCssPaddingTop() {
-            const previousInline = document.body.style.paddingTop;
-            document.body.style.paddingTop = '';
-            const cssPadding = parseFloat(window.getComputedStyle(document.body).paddingTop) || 0;
-            document.body.style.paddingTop = previousInline;
-            return cssPadding;
-        }
-        function applyFixedHeaderOffset() {
-            try {
-                const header = document.getElementById('vespaGeneralHeader');
-                if (!header) return;
-                // Set header top offset
-                header.style.top = FIXED_HEADER_OFFSET_PX + 'px';
-                // Add offset on top of the current CSS padding (handles breadcrumb/mobile variants)
-                const basePadding = getCssPaddingTop();
-                document.body.style.paddingTop = (basePadding + FIXED_HEADER_OFFSET_PX) + 'px';
-                // Add a fixed top cover so content doesn't show in the 35px gap
-                let cover = document.getElementById('vespaHeaderTopCover');
-                const bg = window.getComputedStyle(header).backgroundColor || '#2a3c7a';
-                if (!cover) {
-                    cover = document.createElement('div');
-                    cover.id = 'vespaHeaderTopCover';
-                    cover.style.position = 'fixed';
-                    cover.style.top = '0';
-                    cover.style.left = '0';
-                    cover.style.right = '0';
-                    cover.style.zIndex = '9998';
-                    cover.style.pointerEvents = 'none';
-                    document.body.appendChild(cover);
-                }
-                cover.style.height = FIXED_HEADER_OFFSET_PX + 'px';
-                cover.style.background = bg;
-                log('Applied fixed header offset', { offset: FIXED_HEADER_OFFSET_PX, basePadding });
-            } catch (e) {
-                logWarn('Failed to apply fixed header offset', e);
+            // Apply a permanent offset so the browser translation bar doesn't cover our header
+    const FIXED_HEADER_OFFSET_PX = 0; // Set to 0 since translate widget is inline
+    function getCssPaddingTop() {
+        const previousInline = document.body.style.paddingTop;
+        document.body.style.paddingTop = '';
+        const cssPadding = parseFloat(window.getComputedStyle(document.body).paddingTop) || 0;
+        document.body.style.paddingTop = previousInline;
+        return cssPadding;
+    }
+    function applyFixedHeaderOffset() {
+        try {
+            const header = document.getElementById('vespaGeneralHeader');
+            if (!header) return;
+            // Set header to top with no offset
+            header.style.top = '0px';
+            // Just use the CSS padding from styles
+            const basePadding = getCssPaddingTop();
+            document.body.style.paddingTop = basePadding + 'px';
+            
+            // Remove any old cover div if it exists
+            const oldCover = document.getElementById('vespaHeaderTopCover');
+            if (oldCover) {
+                oldCover.remove();
             }
+            
+            log('Applied fixed header offset', { offset: 0, basePadding });
+        } catch (e) {
+            logWarn('Failed to apply fixed header offset', e);
         }
+    }
 
         // Lightweight DOM cleanup function - only clean up what's actually needed
         function cleanupPageContent(newScene) {
@@ -2241,10 +2215,10 @@
             
             log('Adding translation widget to header');
             
-            // Create container - positioning it in your header
-            const headerNav = document.querySelector('.header-navigation');
-            if (!headerNav) {
-                log('Header navigation not found, retrying in 500ms');
+            // Create container - positioning it in the utility section
+            const headerUtility = document.querySelector('.header-utility');
+            if (!headerUtility) {
+                log('Header utility section not found, retrying in 500ms');
                 setTimeout(addTranslationWidget, 500);
                 return;
             }
@@ -2252,7 +2226,7 @@
             // Create container for translation controls
             const translationControlsContainer = document.createElement('div');
             translationControlsContainer.className = 'translation-controls-container';
-            translationControlsContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            translationControlsContainer.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin: 0;';
             
             // Create translate widget container
             const translateContainer = document.createElement('div');
@@ -2307,12 +2281,13 @@
             translationControlsContainer.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
             translationControlsContainer.addEventListener('touchstart', function(e) { e.stopPropagation(); }, true);
             
-            // Insert before the settings button
-            const settingsButton = document.querySelector('.header-settings-button');
-            if (settingsButton) {
-                headerNav.insertBefore(translationControlsContainer, settingsButton);
+            // Insert before the refresh button
+            const refreshButton = document.querySelector('.header-refresh-button');
+            if (refreshButton) {
+                headerUtility.insertBefore(translationControlsContainer, refreshButton);
             } else {
-                headerNav.appendChild(translationControlsContainer);
+                // Insert at the beginning of utility section
+                headerUtility.insertBefore(translationControlsContainer, headerUtility.firstChild);
             }
             
             // Load Google Translate script
