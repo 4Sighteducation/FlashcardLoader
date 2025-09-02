@@ -1,4 +1,4 @@
-/**/**
+/**
  * VESPA Universal Header System - Enhanced Version 2.0
  * Two-row navigation layout with conditional logic and improved styling
  * Centralized navigation to replace dashboard-specific buttons
