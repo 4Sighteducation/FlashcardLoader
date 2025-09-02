@@ -1,0 +1,644 @@
+/**
+ * VESPA General Header Enhanced Styles
+ * Consistent styling for the 2-row navigation header across all user types
+ * Version: 2.0
+ */
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+/* Hide Knack's default header */
+.knHeader {
+    display: none !important;
+}
+
+/* Hide original user info */
+body.has-general-header-enhanced .kn-info,
+body.has-general-header-enhanced .kn-current_user,
+body.has-general-header-enhanced .kn-menu.kn-view {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* ============================================
+   HEADER CONTAINER
+   ============================================ */
+
+.vespa-general-header-enhanced {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.header-content {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* ============================================
+   PRIMARY ROW
+   ============================================ */
+
+.header-primary-row {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    background: inherit;
+}
+
+/* Brand Section */
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    min-width: 200px;
+}
+
+.logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.logo-link:hover {
+    opacity: 0.85;
+}
+
+.vespa-logo {
+    height: 45px;
+    width: auto;
+}
+
+.brand-text {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    color: white;
+}
+
+/* Primary Navigation */
+.header-navigation.primary-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+    justify-content: center;
+    max-width: 900px;
+}
+
+/* ============================================
+   BUTTON STYLES - UNIFORM SIZING
+   ============================================ */
+
+/* Base button style - applies to ALL navigation buttons */
+.header-nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.12);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+    overflow: hidden;
+    min-height: 44px;
+    height: 44px;  /* Fixed height for consistency */
+    line-height: 1.2;
+    text-align: center;
+}
+
+.header-nav-button:hover {
+    background: rgba(255,255,255,0.22);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    border-color: rgba(255,255,255,0.2);
+    color: white;
+    text-decoration: none;
+}
+
+.header-nav-button.active {
+    background: rgba(255,255,255,0.28);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    border-color: rgba(255,255,255,0.3);
+    font-weight: 600;
+}
+
+.header-nav-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: white;
+}
+
+.header-nav-button i {
+    font-size: 18px;
+    opacity: 0.95;
+    flex-shrink: 0;
+}
+
+.header-nav-button span {
+    flex: 1;
+}
+
+/* Management Button Special Styling */
+.header-nav-button.management-button {
+    background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.12) 100%);
+    border-color: rgba(255,255,255,0.2);
+    font-weight: 600;
+}
+
+.header-nav-button.management-button:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.22) 100%);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+.header-nav-button.management-button.active {
+    background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.28) 100%);
+}
+
+/* ============================================
+   SECONDARY ROW
+   ============================================ */
+
+.header-secondary-row {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 20px;
+    background: rgba(0,0,0,0.08);
+}
+
+.header-nav-button.secondary-button {
+    padding: 6px 12px;
+    font-size: 13px;
+    min-height: 32px;
+    height: 32px;  /* Fixed height for secondary buttons */
+    background: rgba(255,255,255,0.08);
+}
+
+.header-nav-button.secondary-button i {
+    font-size: 14px;
+}
+
+/* ============================================
+   UTILITY SECTION
+   ============================================ */
+
+.header-utility {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.header-utility-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: rgba(0,0,0,0.15);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.08);
+    min-height: 38px;
+    height: 38px;  /* Fixed height for utility buttons */
+    line-height: 1.2;
+}
+
+.header-utility-button:hover {
+    background: rgba(0,0,0,0.25);
+    border-color: rgba(255,255,255,0.15);
+    color: white;
+    text-decoration: none;
+}
+
+.header-utility-button i {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   TRANSLATION WIDGET
+   ============================================ */
+
+.translation-controls-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 8px;
+}
+
+.translate-widget-container {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Google Translate dropdown styling */
+.goog-te-gadget .goog-te-combo {
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+    height: 38px;  /* Match utility button height */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    backdrop-filter: blur(3px);
+    outline: none;
+}
+
+.goog-te-gadget .goog-te-combo:hover {
+    background: rgba(255,255,255,0.22);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+}
+
+.goog-te-gadget .goog-te-combo option {
+    background: #2a3c7a;
+    color: #ffffff;
+}
+
+/* Clear translation button */
+.translation-clear-button {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px;
+    color: white;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.translation-clear-button:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Hide Google branding */
+.goog-logo-link {
+    display: none !important;
+}
+
+.goog-te-gadget {
+    color: transparent !important;
+    font-size: 0 !important;
+}
+
+/* ============================================
+   BREADCRUMB
+   ============================================ */
+
+.header-breadcrumb {
+    background-color: rgba(0,0,0,0.08);
+    padding: 8px 0;
+}
+
+.breadcrumb-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255,255,255,0.9);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px 20px;
+    max-width: 1600px;
+    margin: 0 auto;
+    transition: all 0.2s ease;
+}
+
+.breadcrumb-back:hover {
+    color: white;
+    text-decoration: none;
+}
+
+.breadcrumb-back i {
+    font-size: 12px;
+}
+
+/* ============================================
+   MOBILE MENU
+   ============================================ */
+
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.mobile-menu-toggle:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.mobile-nav-overlay {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.4);
+    z-index: 9997;
+    backdrop-filter: blur(2px);
+}
+
+.mobile-nav-overlay.active {
+    display: block;
+}
+
+/* ============================================
+   USER TYPE SPECIFIC COLORS
+   ============================================ */
+
+.vespa-general-header-enhanced.student {
+    background-color: #079baa;
+}
+
+.vespa-general-header-enhanced.staffResource {
+    background-color: #5899a8;
+}
+
+.vespa-general-header-enhanced.staffCoaching {
+    background-color: #2f8dcb;
+}
+
+.vespa-general-header-enhanced.staffAdminResource,
+.vespa-general-header-enhanced.staffAdminCoaching {
+    background-color: #2a3c7a;
+}
+
+.vespa-general-header-enhanced.superUser {
+    background-color: #2a3c7a;
+}
+
+/* ============================================
+   BODY PADDING ADJUSTMENTS
+   ============================================ */
+
+body.has-general-header-enhanced {
+    padding-top: 70px !important;
+}
+
+body.has-general-header-enhanced.has-secondary-row {
+    padding-top: 110px !important;
+}
+
+body.has-general-header-enhanced:has(.header-breadcrumb) {
+    padding-top: 110px !important;
+}
+
+body.has-general-header-enhanced.has-secondary-row:has(.header-breadcrumb) {
+    padding-top: 150px !important;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Tablet (1200px and below) */
+@media (max-width: 1200px) {
+    .header-nav-button {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 40px;
+        height: 40px;
+    }
+    
+    .header-nav-button i {
+        font-size: 16px;
+    }
+    
+    /* Hide text, show icons only */
+    .header-nav-button span {
+        display: none;
+    }
+    
+    .header-navigation.primary-nav {
+        gap: 4px;
+    }
+    
+    .header-utility-button .utility-label {
+        display: none;
+    }
+    
+    .header-utility-button {
+        padding: 8px;
+        min-width: 38px;
+        justify-content: center;
+    }
+    
+    .goog-te-gadget .goog-te-combo {
+        min-width: 100px;
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+}
+
+/* Mobile (768px and below) */
+@media (max-width: 768px) {
+    .header-primary-row {
+        height: 60px;
+        padding: 0 16px;
+    }
+    
+    .header-secondary-row {
+        display: none;
+    }
+    
+    .vespa-logo {
+        height: 36px;
+    }
+    
+    .brand-text {
+        font-size: 16px;
+    }
+    
+    /* Mobile slide-out menu */
+    .header-navigation.primary-nav,
+    .header-utility {
+        position: fixed;
+        top: 60px;
+        right: -300px;
+        width: 300px;
+        max-height: calc(100vh - 60px);
+        background-color: inherit;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 16px;
+        gap: 8px;
+        transition: right 0.3s ease;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+        overflow-y: auto;
+        z-index: 9998;
+    }
+    
+    .header-navigation.mobile-open,
+    .header-utility.mobile-open {
+        right: 0;
+    }
+    
+    /* Full width buttons in mobile menu */
+    .header-nav-button,
+    .header-nav-button.secondary-button,
+    .header-utility-button {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 14px 16px;
+        font-size: 15px;
+        min-height: 48px;
+        height: auto;
+    }
+    
+    /* Show text in mobile menu */
+    .header-nav-button span,
+    .header-utility-button .utility-label {
+        display: inline;
+    }
+    
+    .header-nav-button i,
+    .header-utility-button i {
+        font-size: 18px;
+        width: 24px;
+        text-align: center;
+    }
+    
+    .mobile-menu-toggle {
+        display: block;
+    }
+    
+    /* Translation widget in mobile menu */
+    .translation-controls-container {
+        width: 100%;
+        margin: 0 0 8px 0;
+        order: -1;
+        gap: 8px;
+    }
+    
+    .translate-widget-container {
+        flex: 1;
+    }
+    
+    .goog-te-gadget .goog-te-combo {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 15px;
+        background: rgba(255,255,255,0.08);
+    }
+    
+    /* Body padding adjustments */
+    body.has-general-header-enhanced {
+        padding-top: 60px !important;
+    }
+    
+    body.has-general-header-enhanced:has(.header-breadcrumb) {
+        padding-top: 100px !important;
+    }
+    
+    .header-breadcrumb {
+        padding: 6px 0;
+    }
+    
+    .breadcrumb-back {
+        font-size: 12px;
+        padding: 4px 16px;
+    }
+}
+
+/* Small Mobile (480px and below) */
+@media (max-width: 480px) {
+    .brand-text {
+        display: none;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+.header-nav-button:focus,
+.header-utility-button:focus,
+.mobile-menu-toggle:focus,
+.breadcrumb-back:focus {
+    outline: 2px solid rgba(255,255,255,0.5);
+    outline-offset: 2px;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.vespa-general-header-enhanced {
+    animation: slideDown 0.3s ease-out;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.hidden {
+    display: none !important;
+}
+
+.no-scroll {
+    overflow: hidden;
+}
+
+/* Ensure content is visible */
+.kn-scene {
+    min-height: calc(100vh - 70px);
+}
