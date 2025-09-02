@@ -1868,53 +1868,17 @@
                     
                     // Check if this is the refresh button
                     if (this.getAttribute('data-refresh') === 'true') {
-                        log('Refresh button clicked - performing soft reset');
+                        log('Refresh button clicked - performing page reload');
                         
                         // Show loading screen
                         if (window.showUniversalLoadingScreen) {
                             window.showUniversalLoadingScreen('Refreshing page...');
                         }
                         
-                        // Clear various flags that might be causing navigation issues
-                        window._universalRedirectCompleted = true;
-                        window._bypassUniversalRedirect = true;
-                        window._navigationInProgress = false;
-                        window._headerNavigationActive = false;
-                        sessionStorage.setItem('universalRedirectCompleted', 'true');
-                        sessionStorage.removeItem('navigationTarget');
-                        sessionStorage.removeItem('headerNavigationActive');
-                        
-                        // Clear any homepage loading flags
-                        if (window._homepageLoadTimer) {
-                            clearTimeout(window._homepageLoadTimer);
-                            window._homepageLoadTimer = null;
-                        }
-                        
-                        // Clear scene level containers that might be conflicting
-                        const sceneContainers = document.querySelectorAll('[id^="scene-level-container"]');
-                        sceneContainers.forEach(container => {
-                            log('Removing scene container during refresh:', container.id);
-                            container.remove();
-                        });
-                        
-                        // Force reload the current hash location
-                        const currentHash = window.location.hash;
-                        log('Refreshing current location:', currentHash);
-                        
-                        // Small delay then reload
+                        // Simply reload the page like F5 - this is more reliable
+                        // and mimics what works for the user
                         setTimeout(() => {
-                            // First clear the hash
-                            window.location.hash = '';
-                            // Then set it back to trigger reload
-                            setTimeout(() => {
-                                window.location.hash = currentHash;
-                                // Hide loading screen after navigation
-                                setTimeout(() => {
-                                    if (window.hideUniversalLoadingScreen) {
-                                        window.hideUniversalLoadingScreen();
-                                    }
-                                }, 500);
-                            }, 50);
+                            window.location.reload();
                         }, 100);
                         
                         return;
@@ -2034,9 +1998,20 @@
                                 }, 500);
                             }
                             
-                                                    // Special handling for Results page - simplified approach
+                                                    // Special handling for Results page - simplified approach with loading indicator
                         else if (targetScene === 'scene_1270') {
                             log(`Special handling for Results page`);
+                            
+                            // Show loading screen briefly for user feedback
+                            if (window.showUniversalLoadingScreen) {
+                                window.showUniversalLoadingScreen('Loading Results...');
+                                // Auto-hide after 2 seconds max
+                                setTimeout(() => {
+                                    if (window.hideUniversalLoadingScreen) {
+                                        window.hideUniversalLoadingScreen();
+                                    }
+                                }, 2000);
+                            }
                             
                             // Set protection flags
                             window._blockHomepageLoad = true;
@@ -2072,7 +2047,11 @@
                                     sessionStorage.removeItem('skipHomepageRender');
                                     sessionStorage.removeItem('navigatingToScene');
                                     sessionStorage.removeItem('navigatingToResults');
-                                }, 1000);
+                                    // Also ensure loading screen is hidden
+                                    if (window.hideUniversalLoadingScreen) {
+                                        window.hideUniversalLoadingScreen();
+                                    }
+                                }, 1500);
                             }, 100);
                         }
                         // For Coaching tabs, ensure the scene renders properly
