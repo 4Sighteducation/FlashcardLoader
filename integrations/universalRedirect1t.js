@@ -14,16 +14,16 @@ console.log('[Universal Redirect] Script loaded!');
         scenes: {
             student: 'scene_1210',
             staffCoaching: 'scene_1215', 
-            staffResource: 'scene_1252', // New scene for resource staff
+            staffResource: 'scene_1278', // Updated to new dedicated resource scene
             staffAdminCoaching: 'scene_1215', // Staff admin coaching uses same scene as staff coaching
-            staffAdminResource: 'scene_1252', // Staff admin resource uses same scene as staff resource
+            staffAdminResource: 'scene_1278', // Updated to new dedicated resource scene
             superUser: 'scene_1268' // New scene for super users
         },
         // Map scenes to their URL hashes
         urls: {
             scene_1210: '#landing-page/',
             scene_1215: '#staff-landing-page/',
-            scene_1252: '#resources-home', // Correct URL for resources page
+            scene_1278: '#resources-portal/', // New URL for dedicated resource portal
             scene_1268: '#oversight-page/' // New URL for super users
         }
     };
@@ -353,9 +353,9 @@ console.log('[Universal Redirect] Script loaded!');
             // Don't redirect if user is already on their correct page
             if ((userType === 'student' && currentUrl.includes('#landing-page')) ||
                 (userType === 'staffCoaching' && currentUrl.includes('#staff-landing-page')) ||
-                (userType === 'staffResource' && (currentUrl.includes('#resources-home') || currentUrl.includes('#resource-staff-management'))) ||
+                (userType === 'staffResource' && currentUrl.includes('#resources-portal')) ||
                 (userType === 'staffAdminCoaching' && currentUrl.includes('#staff-landing-page')) ||
-                (userType === 'staffAdminResource' && (currentUrl.includes('#resources-home') || currentUrl.includes('#resource-staff-management'))) ||
+                (userType === 'staffAdminResource' && currentUrl.includes('#resources-portal')) ||
                 (userType === 'superUser' && currentUrl.includes('#oversight-page'))) {
                 console.log('[Universal Redirect] User already on correct page, no redirect needed');
                 return;
