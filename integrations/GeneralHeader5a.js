@@ -1,6 +1,7 @@
 /**
- * VESPA Universal Header System - Phase 1
- * Loads on all pages and provides context-aware navigation
+ * VESPA Universal Header System - Enhanced Version 2.0
+ * Two-row navigation layout with conditional logic and improved styling
+ * Centralized navigation to replace dashboard-specific buttons
  */
 
 (function() {
@@ -20,7 +21,7 @@
         }
         
         // Configuration
-        const DEBUG = false; // Disabled to reduce log spam
+        const DEBUG = config.debugMode || false; // Use config debug mode
         const currentScene = config.sceneKey;
         const currentView = config.viewKey;
         const userRoles = config.userRoles || [];
@@ -44,6 +45,29 @@
         }
         
         log('Initializing with config:', config);
+        
+        // Check visibility preferences for conditional display
+        function getVisibilityPreferences() {
+            const preferences = {
+                showAcademicProfile: true,
+                showProductivityHub: true
+            };
+            
+            // Check field_3646 for Academic Profile visibility
+            const academicProfileValue = userAttributes.values?.field_3646;
+            if (academicProfileValue !== undefined) {
+                preferences.showAcademicProfile = academicProfileValue !== false;
+            }
+            
+            // Check field_3647 for Productivity Hub visibility
+            const productivityHubValue = userAttributes.values?.field_3647;
+            if (productivityHubValue !== undefined) {
+                preferences.showProductivityHub = productivityHubValue !== false;
+            }
+            
+            log('Visibility preferences:', preferences);
+            return preferences;
+        }
         
         // Detect user type
         // Helper function to determine available roles for super users
@@ -629,21 +653,34 @@
             return 'staffCoaching';
         }
         
-        // Navigation configurations for different user types
-        // All configurations now have Settings and Log Out buttons at the end
+        // Build productivity hub buttons for students (conditional)
+        function getProductivityButtons(showProductivityHub) {
+            if (!showProductivityHub) {
+                return [];
+            }
+            
+            return [
+                { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
+                { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
+                { label: 'Taskboard', icon: 'fa-clipboard-list', href: '#task-board', scene: 'scene_1188' }
+            ];
+        }
+        
+        // ENHANCED Navigation configurations with 2-row layout
         const navigationConfig = {
             student: {
                 brand: 'VESPA Student',
                 brandIcon: 'fa-graduation-cap',
                 color: '#079baa', // Main teal - bright and welcoming for students
                 accentColor: '#06206e', // Dark blue for accents
-                items: [
+                primaryRow: [
+                    { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
                     { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
                     { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-results', scene: 'scene_43' },
-                    { label: 'My Activities', icon: 'fa-book', href: '#my-vespa-activities', scene: 'scene_1258' },
-                    { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
-                    { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
-                    { label: 'Taskboard', icon: 'fa-clipboard-list-chart', href: '#task-board', scene: 'scene_1188' },
+                    { label: 'My Activities', icon: 'fa-book', href: '#my-vespa-activities', scene: 'scene_1258' }
+                ],
+                secondaryRow: [], // Will be filled conditionally with productivity buttons
+                utilityButtons: [
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -653,12 +690,17 @@
                 brandIcon: 'fa-book',
                 color: '#5899a8', // Muted blue-green - professional yet approachable
                 accentColor: '#06206e',
-                items: [
+                primaryRow: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' },
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' },
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' }
+                ],
+                secondaryRow: [
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
-                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' }
+                ],
+                utilityButtons: [
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings/', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -668,14 +710,19 @@
                 brandIcon: 'fa-users',
                 color: '#2f8dcb', // Bright blue - energetic and engaging for coaching
                 accentColor: '#06206e',
-                items: [
+                primaryRow: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
                     { label: 'Activities', icon: 'fa-book', href: '#activity-manage', scene: 'scene_1256' },
-                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' },
+                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
+                ],
+                secondaryRow: [
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
-                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' }
+                ],
+                utilityButtons: [
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -685,13 +732,18 @@
                 brandIcon: 'fa-shield',
                 color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
-                items: [
-                    { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-management/', scene: 'scene_1272' },
+                primaryRow: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-management/', scene: 'scene_1272', isManagement: true },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' },
+                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' }
+                ],
+                secondaryRow: [
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
-                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' },
+                    { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' }
+                ],
+                utilityButtons: [
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings/', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -701,17 +753,22 @@
                 brandIcon: 'fa-shield',
                 color: '#2a3c7a', // Dark blue - authoritative and professional for admins
                 accentColor: '#06206e',
-                items: [
-                    { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212' },
-                    { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014' },
+                primaryRow: [
+                    { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
+                    { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212', isManagement: true },
+                    { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014', isManagement: true },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
+                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225', isManagement: true }
+                ],
+                secondaryRow: [
                     { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234' },
-                    { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
-                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
+                    { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227', isManagement: true }
+                ],
+                utilityButtons: [
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
@@ -721,23 +778,33 @@
                 brandIcon: 'fa-shield',
                 color: '#2a3c7a', // Dark blue - authoritative and professional for super users
                 accentColor: '#079baa', // Teal accent
-                items: [
-                    { label: 'Upload Manager', icon: 'fa-upload', href: '#upload-manager', scene: 'scene_1212' },
-                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225' },
-                    { label: 'CRM', icon: 'fa-users', href: '#vespa-customers/', scene: 'scene_1226' },
-                    { label: 'Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227' },
+                primaryRow: [
+                    { label: 'Home', icon: 'fa-home', href: '#oversight-page/', scene: 'scene_1268' },
+                    { label: 'Upload Manager', icon: 'fa-upload', href: '#upload-manager', scene: 'scene_1212', isManagement: true },
+                    { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225', isManagement: true },
+                    { label: 'CRM', icon: 'fa-users', href: '#vespa-customers/', scene: 'scene_1226', isManagement: true }
+                ],
+                secondaryRow: [
+                    { label: 'Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227', isManagement: true }
+                ],
+                utilityButtons: [
                     { label: 'Settings', icon: 'fa-cog', href: '#account-settings', scene: 'scene_2', isSettings: true },
                     { label: 'Log Out', icon: 'fa-sign-out', href: '#', scene: 'logout', isLogout: true }
                 ]
             }
         };
         
-        // Create the header HTML
+        // Create the enhanced header HTML with 2-row layout
         function createHeaderHTML(userType, currentScene) {
             const navConfig = navigationConfig[userType];
+            const visibilityPrefs = getVisibilityPreferences();
             
-            // Debug log for resource type detection
-            log(`Creating header for userType: ${userType}, isResource: ${userType.includes('Resource')}`);
+            log(`Creating enhanced header for userType: ${userType}`, visibilityPrefs);
+            
+            // Add productivity buttons for students if enabled
+            if (userType === 'student') {
+                navConfig.secondaryRow = getProductivityButtons(visibilityPrefs.showProductivityHub);
+            }
             
             // Determine home page based on user type
             let homeHref, homeScene;
@@ -753,23 +820,13 @@
             }
             const isHomePage = currentScene === homeScene;
             
-            // Build navigation items
-            const navItemsHTML = navConfig.items.map(item => {
-                const isActive = currentScene === item.scene && !item.isLogout && !item.isSettings;
-                let buttonClass = 'header-nav-button';
+            // Build primary row navigation items
+            const primaryRowHTML = navConfig.primaryRow.map(item => {
+                const isActive = currentScene === item.scene;
+                let buttonClass = 'header-nav-button primary-button';
                 
-                // Add special classes for settings and logout buttons
-                if (item.isSettings) buttonClass += ' header-settings-button';
-                if (item.isLogout) buttonClass += ' header-logout-button';
+                if (item.isManagement) buttonClass += ' management-button';
                 if (isActive) buttonClass += ' active';
-                
-                // HIDE LOGOUT BUTTON IN EMULATOR MODE
-                if (item.isLogout && window._isStudentEmulatorMode) {
-                    return ''; // Return empty string to hide logout button
-                }
-                
-                // Add data attributes for special buttons
-                const dataAttrs = item.isLogout ? 'data-logout="true"' : '';
                 
                 // Check if this is the questionnaire button and if validator is enabled
                 let tooltipText = '';
@@ -791,7 +848,6 @@
                     <a href="${item.href}" 
                        class="${buttonClass}" 
                        data-scene="${item.scene}"
-                       ${dataAttrs}
                        ${tooltipText}>
                         <i class="fa ${item.icon}"></i>
                         <span>${item.label}</span>
@@ -799,23 +855,74 @@
                 `;
             }).join('');
             
+            // Build secondary row navigation items (if any)
+            const secondaryRowHTML = navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? `
+                <div class="header-secondary-row">
+                    ${navConfig.secondaryRow.map(item => {
+                        const isActive = currentScene === item.scene;
+                        let buttonClass = 'header-nav-button secondary-button';
+                        
+                        if (item.isManagement) buttonClass += ' management-button';
+                        if (isActive) buttonClass += ' active';
+                        
+                        return `
+                            <a href="${item.href}" 
+                               class="${buttonClass}" 
+                               data-scene="${item.scene}">
+                                <i class="fa ${item.icon}"></i>
+                                <span>${item.label}</span>
+                            </a>
+                        `;
+                    }).join('')}
+                </div>
+            ` : '';
+            
+            // Build utility buttons
+            const utilityButtonsHTML = navConfig.utilityButtons.map(item => {
+                let buttonClass = 'header-utility-button';
+                
+                if (item.isSettings) buttonClass += ' header-settings-button';
+                if (item.isLogout) buttonClass += ' header-logout-button';
+                
+                // Hide logout button in emulator mode
+                if (item.isLogout && window._isStudentEmulatorMode) {
+                    return '';
+                }
+                
+                const dataAttrs = item.isLogout ? 'data-logout="true"' : '';
+                
+                return `
+                    <a href="${item.href}" 
+                       class="${buttonClass}" 
+                       data-scene="${item.scene}"
+                       ${dataAttrs}>
+                        <i class="fa ${item.icon}"></i>
+                        <span class="utility-label">${item.label}</span>
+                    </a>
+                `;
+            }).join('');
+            
             return `
-                <div id="vespaGeneralHeader" class="vespa-general-header ${userType}">
+                <div id="vespaGeneralHeader" class="vespa-general-header-enhanced ${userType}">
                     <div class="header-content">
-                        <div class="header-top-row">
+                        <div class="header-primary-row">
                             <div class="header-brand">
                                 <a href="https://www.vespa.academy" target="_blank" class="logo-link">
                                     <img src="https://vespa.academy/_astro/vespalogo.BGrK1ARl.png" alt="VESPA Academy" class="vespa-logo">
                                 </a>
-                                <span>${navConfig.brand}</span>
+                                <span class="brand-text">${navConfig.brand}</span>
                             </div>
-                            <nav class="header-navigation">
-                                ${navItemsHTML}
+                            <nav class="header-navigation primary-nav">
+                                ${primaryRowHTML}
                             </nav>
+                            <div class="header-utility">
+                                ${utilityButtonsHTML}
+                            </div>
                             <button class="mobile-menu-toggle" aria-label="Toggle menu">
                                 <i class="fa fa-bars"></i>
                             </button>
                         </div>
+                        ${secondaryRowHTML}
                     </div>
                     ${!isHomePage ? `
                     <div class="header-breadcrumb">
@@ -834,14 +941,14 @@
                     }
                     
                     /* Hide original user info container */
-                    body.has-general-header .kn-info,
-                    body.has-general-header .kn-current_user {
+                    body.has-general-header-enhanced .kn-info,
+                    body.has-general-header-enhanced .kn-current_user {
                         display: none !important;
                         visibility: hidden !important;
                     }
                     
-                    /* Base Header Styles */
-                    .vespa-general-header {
+                    /* Enhanced Header Base Styles */
+                    .vespa-general-header-enhanced {
                         position: fixed;
                         top: 0;
                         left: 0;
@@ -849,30 +956,40 @@
                         background-color: ${navConfig.color};
                         color: white;
                         z-index: 9999;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
                         transition: all 0.3s ease;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                     }
                     
                     .header-content {
-                        max-width: 1400px;
+                        max-width: 1600px;
                         margin: 0 auto;
                         padding: 0 20px;
                     }
                     
-                    .header-top-row {
-                        height: 65px;
+                    /* Primary Row (Brand + Main Nav + Utility) */
+                    .header-primary-row {
+                        height: 70px;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
+                        gap: 20px;
+                        border-bottom: 1px solid rgba(255,255,255,0.1);
                     }
                     
+                    /* Brand Section */
                     .header-brand {
                         display: flex;
                         align-items: center;
                         gap: 12px;
-                        font-size: 20px;
+                        flex-shrink: 0;
+                    }
+                    
+                    .brand-text {
+                        font-size: 18px;
                         font-weight: 600;
-                        letter-spacing: -0.5px;
+                        letter-spacing: -0.3px;
+                        white-space: nowrap;
                     }
                     
                     .logo-link {
@@ -891,75 +1008,134 @@
                         width: auto;
                     }
                     
-                    .header-navigation {
+                    /* Primary Navigation */
+                    .header-navigation.primary-nav {
                         display: flex;
                         gap: 8px;
                         align-items: center;
                         flex: 1;
                         justify-content: center;
-                        max-width: 1100px;
-                        margin: 0 20px;
+                        max-width: 800px;
                     }
                     
+                    /* Enhanced Button Styles */
                     .header-nav-button {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 10px 16px;
+                        background: rgba(255,255,255,0.12);
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        transition: all 0.2s ease;
+                        font-size: 14px;
+                        font-weight: 500;
+                        white-space: nowrap;
+                        border: 1px solid rgba(255,255,255,0.08);
+                        position: relative;
+                        overflow: hidden;
+                        min-height: 44px;
+                    }
+                    
+                    .header-nav-button:hover {
+                        background: rgba(255,255,255,0.22);
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+                        border-color: rgba(255,255,255,0.2);
+                    }
+                    
+                    .header-nav-button.active {
+                        background: rgba(255,255,255,0.28);
+                        box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+                        border-color: rgba(255,255,255,0.3);
+                        font-weight: 600;
+                    }
+                    
+                    .header-nav-button.active::after {
+                        content: '';
+                        position: absolute;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        height: 3px;
+                        background: white;
+                    }
+                    
+                    .header-nav-button i {
+                        font-size: 18px;
+                        opacity: 0.95;
+                    }
+                    
+                    /* Management Button Styling */
+                    .header-nav-button.management-button {
+                        background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.12) 100%);
+                        border-color: rgba(255,255,255,0.2);
+                        font-weight: 600;
+                    }
+                    
+                    .header-nav-button.management-button:hover {
+                        background: linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.22) 100%);
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+                    }
+                    
+                    .header-nav-button.management-button.active {
+                        background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.28) 100%);
+                    }
+                    
+                    /* Secondary Row */
+                    .header-secondary-row {
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 0;
+                        justify-content: center;
+                        background: rgba(0,0,0,0.08);
+                    }
+                    
+                    .header-nav-button.secondary-button {
+                        padding: 6px 12px;
+                        font-size: 13px;
+                        min-height: 32px;
+                        background: rgba(255,255,255,0.08);
+                    }
+                    
+                    .header-nav-button.secondary-button i {
+                        font-size: 14px;
+                    }
+                    
+                    /* Utility Buttons */
+                    .header-utility {
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        flex-shrink: 0;
+                    }
+                    
+                    .header-utility-button {
                         display: flex;
                         align-items: center;
                         gap: 6px;
                         padding: 8px 14px;
-                        background: rgba(255,255,255,0.15);
+                        background: rgba(0,0,0,0.15);
                         color: white;
                         text-decoration: none;
-                        border-radius: 6px;
+                        border-radius: 8px;
                         transition: all 0.2s ease;
                         font-size: 13px;
                         font-weight: 500;
-                        white-space: nowrap;
-                        border: 1px solid rgba(255,255,255,0.1);
-                        position: relative;
-                        overflow: hidden;
-                        text-transform: none;
-                        letter-spacing: 0.2px;
-                        min-width: 90px;
-                        justify-content: center;
+                        border: 1px solid rgba(255,255,255,0.08);
+                        min-height: 38px;
                     }
                     
-                    .header-nav-button:hover {
-                        background: rgba(255,255,255,0.25);
-                        transform: translateY(-1px);
-                        box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-                        border-color: rgba(255,255,255,0.25);
-                    }
-                    
-                    .header-nav-button.active {
-                        background: rgba(255,255,255,0.3);
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-                        border-color: rgba(255,255,255,0.35);
-                        color: white;
-                        font-weight: 600;
-                    }
-                    
-                    .header-nav-button i {
-                        font-size: 16px;
-                        opacity: 0.95;
-                    }
-                    
-                    /* Special styling for settings and logout buttons */
-                    .header-settings-button,
-                    .header-logout-button {
-                        background: rgba(0,0,0,0.15);
-                        border-color: rgba(255,255,255,0.08);
-                        min-width: auto;
-                        padding: 8px 12px;
-                    }
-                    
-                    .header-settings-button:hover,
-                    .header-logout-button:hover {
+                    .header-utility-button:hover {
                         background: rgba(0,0,0,0.25);
                         border-color: rgba(255,255,255,0.15);
                     }
                     
-                    .header-logout-button {
-                        margin-left: auto;
+                    .header-utility-button i {
+                        font-size: 16px;
                     }
                     
                     /* Mobile menu toggle */
@@ -1006,71 +1182,82 @@
                         font-size: 12px;
                     }
                     
-                    /* Adjust body for header */
-                    body.has-general-header {
-                        padding-top: 65px !important;
+                    /* Adjust body for enhanced header with dynamic height */
+                    body.has-general-header-enhanced {
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '110px' : '70px'} !important;
                     }
                     
-                    body.has-general-header:has(.header-breadcrumb) {
-                        padding-top: 105px !important;
+                    body.has-general-header-enhanced:has(.header-breadcrumb) {
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '150px' : '110px'} !important;
                     }
                     
-                    /* Hide Knack's default navigation but keep user info initially */
-                    body.has-general-header .kn-menu.kn-view {
+                    /* Hide Knack's default navigation */
+                    body.has-general-header-enhanced .kn-menu.kn-view {
                         display: none !important;
                     }
                     
                     /* Ensure content is visible */
                     .kn-scene {
-                        min-height: calc(100vh - 97px);
+                        min-height: calc(100vh - ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '110px' : '70px'});
                     }
                     
-                    /* Mobile Styles */
-                    @media (max-width: 992px) {
-                        .header-navigation {
-                            gap: 4px;
-                            margin: 0 10px;
-                        }
-                        
+                    /* Tablet Styles */
+                    @media (max-width: 1200px) {
                         .header-nav-button {
-                            padding: 5px 8px;
-                            font-size: 11px;
+                            padding: 8px 12px;
+                            font-size: 13px;
+                            min-height: 40px;
                         }
                         
                         .header-nav-button i {
-                            font-size: 12px;
+                            font-size: 16px;
                         }
                         
-                        .header-brand {
-                            font-size: 18px;
+                        .header-nav-button span {
+                            display: none;
                         }
                         
-                        .vespa-logo {
-                            height: 40px;
+                        .header-navigation.primary-nav {
+                            gap: 4px;
                         }
                         
-
+                        .header-utility-button .utility-label {
+                            display: none;
+                        }
+                        
+                        .header-utility-button {
+                            padding: 8px;
+                            min-width: 38px;
+                            justify-content: center;
+                        }
                     }
                     
+                    /* Mobile Styles */
                     @media (max-width: 768px) {
-                        .header-top-row {
-                            height: 56px;
+                        .header-primary-row {
+                            height: 60px;
+                            padding: 0 16px;
                         }
                         
-                        .header-brand span {
-                            font-size: 16px;
+                        .header-secondary-row {
+                            display: none;
                         }
                         
                         .vespa-logo {
                             height: 36px;
                         }
                         
-                        .header-navigation {
+                        .brand-text {
+                            font-size: 16px;
+                        }
+                        
+                        .header-navigation.primary-nav,
+                        .header-utility {
                             position: fixed;
-                            top: 56px;
-                            right: -280px;
-                            width: 280px;
-                            max-height: calc(100vh - 56px);
+                            top: 60px;
+                            right: -300px;
+                            width: 300px;
+                            max-height: calc(100vh - 60px);
                             background-color: ${navConfig.color};
                             flex-direction: column;
                             justify-content: flex-start;
@@ -1078,63 +1265,35 @@
                             gap: 8px;
                             transition: right 0.3s ease;
                             box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-                            margin: 0;
                             overflow-y: auto;
-                            /* Remove fixed height to allow natural sizing */
+                            z-index: 9998;
                         }
                         
-                        .header-navigation.mobile-open {
+                        .header-navigation.mobile-open,
+                        .header-utility.mobile-open {
                             right: 0;
                         }
                         
-                        .header-nav-button {
+                        .header-nav-button,
+                        .header-nav-button.secondary-button,
+                        .header-utility-button {
                             width: 100%;
                             justify-content: flex-start;
-                            padding: 12px 16px;
+                            padding: 14px 16px;
                             font-size: 15px;
-                            background: rgba(255,255,255,0.08);
-                            min-width: auto;
+                            min-height: 48px;
                         }
                         
-                        .header-nav-button i {
+                        .header-nav-button span,
+                        .header-utility-button .utility-label {
+                            display: inline;
+                        }
+                        
+                        .header-nav-button i,
+                        .header-utility-button i {
                             font-size: 18px;
                             width: 24px;
                             text-align: center;
-                        }
-                        
-                        /* Settings and Logout buttons - distinct styling on mobile */
-                        .header-settings-button,
-                        .header-logout-button {
-                            margin-left: 0;
-                            margin-top: 16px; /* Small gap before these buttons */
-                            background: rgba(0,0,0,0.25); /* Darker background */
-                            border: 1px solid rgba(255,255,255,0.2);
-                        }
-                        
-                        .header-settings-button:hover,
-                        .header-logout-button:hover {
-                            background: rgba(0,0,0,0.35);
-                            border-color: rgba(255,255,255,0.3);
-                        }
-                        
-                        /* Add a separator before settings/logout on mobile */
-                        .header-settings-button {
-                            position: relative;
-                            padding-top: 24px;
-                        }
-                        
-                        .header-settings-button::before {
-                            content: '';
-                            position: absolute;
-                            top: 0;
-                            left: 20%;
-                            right: 20%;
-                            height: 1px;
-                            background: rgba(255,255,255,0.2);
-                        }
-                        
-                        .header-logout-button {
-                            margin-top: 8px; /* Smaller gap between settings and logout */
                         }
                         
                         .mobile-menu-toggle {
@@ -1144,12 +1303,12 @@
                         .mobile-nav-overlay {
                             display: none;
                             position: fixed;
-                            top: 56px;
+                            top: 60px;
                             left: 0;
                             right: 0;
                             bottom: 0;
                             background-color: rgba(0,0,0,0.4);
-                            z-index: 9998;
+                            z-index: 9997;
                             backdrop-filter: blur(2px);
                         }
                         
@@ -1157,12 +1316,12 @@
                             display: block;
                         }
                         
-                        body.has-general-header {
-                            padding-top: 56px !important;
+                        body.has-general-header-enhanced {
+                            padding-top: 60px !important;
                         }
                         
-                        body.has-general-header:has(.header-breadcrumb) {
-                            padding-top: 96px !important;
+                        body.has-general-header-enhanced:has(.header-breadcrumb) {
+                            padding-top: 100px !important;
                         }
                         
                         .header-breadcrumb {
@@ -1175,31 +1334,32 @@
                         }
                     }
                     
+                    /* Small Mobile */
                     @media (max-width: 480px) {
-                        .header-brand span {
+                        .brand-text {
                             display: none;
                         }
                     }
                     
                     /* Specific background colors for different user types */
-                    .vespa-general-header.student {
+                    .vespa-general-header-enhanced.student {
                         background-color: ${navigationConfig.student.color};
                     }
                     
-                    .vespa-general-header.staffResource {
+                    .vespa-general-header-enhanced.staffResource {
                         background-color: ${navigationConfig.staffResource.color};
                     }
                     
-                    .vespa-general-header.staffCoaching {
+                    .vespa-general-header-enhanced.staffCoaching {
                         background-color: ${navigationConfig.staffCoaching.color};
                     }
                     
-                    .vespa-general-header.staffAdminResource,
-                    .vespa-general-header.staffAdminCoaching {
+                    .vespa-general-header-enhanced.staffAdminResource,
+                    .vespa-general-header-enhanced.staffAdminCoaching {
                         background-color: ${navigationConfig.staffAdminResource.color};
                     }
                     
-                    .vespa-general-header.superUser {
+                    .vespa-general-header-enhanced.superUser {
                         background-color: ${navigationConfig.superUser.color};
                     }
                     
@@ -1211,8 +1371,9 @@
                     
                     /* Focus styles for accessibility */
                     .header-nav-button:focus,
-                    #vespaGeneralHeader .mobile-menu-toggle:focus,
-                    #vespaGeneralHeader .breadcrumb-back:focus {
+                    .header-utility-button:focus,
+                    .mobile-menu-toggle:focus,
+                    .breadcrumb-back:focus {
                         outline: 2px solid rgba(255,255,255,0.5);
                         outline-offset: 2px;
                     }
@@ -1238,7 +1399,7 @@
                     const existingHeader = document.getElementById('vespaGeneralHeader');
                     if (existingHeader) existingHeader.remove();
                     // Reset body padding
-                    document.body.classList.remove('has-general-header');
+                    document.body.classList.remove('has-general-header-enhanced');
                     document.body.style.paddingTop = '';
                 }
                 return;
@@ -1256,7 +1417,7 @@
             // Create and inject the header
             const headerHTML = createHeaderHTML(userType, currentScene);
             document.body.insertAdjacentHTML('afterbegin', headerHTML);
-            document.body.classList.add('has-general-header');
+            document.body.classList.add('has-general-header-enhanced');
             
             log('Header injected successfully');
             
@@ -1297,6 +1458,7 @@
             // Mobile menu toggle
             const mobileToggle = document.querySelector('.mobile-menu-toggle');
             const navigation = document.querySelector('.header-navigation');
+            const utility = document.querySelector('.header-utility');
             const overlay = document.querySelector('.mobile-nav-overlay');
             
             // DEBUG: Log nav button styles after setup
@@ -1317,6 +1479,7 @@
             if (mobileToggle) {
                 mobileToggle.addEventListener('click', function() {
                     navigation.classList.toggle('mobile-open');
+                    utility.classList.toggle('mobile-open');
                     overlay.classList.toggle('active');
                 });
             }
@@ -1324,12 +1487,13 @@
             if (overlay) {
                 overlay.addEventListener('click', function() {
                     navigation.classList.remove('mobile-open');
+                    utility.classList.remove('mobile-open');
                     overlay.classList.remove('active');
                 });
             }
             
             // Navigation click handling
-            const navLinks = document.querySelectorAll('#vespaGeneralHeader .header-nav-button, #vespaGeneralHeader .breadcrumb-back');
+            const navLinks = document.querySelectorAll('.header-nav-button, .header-utility-button, .breadcrumb-back');
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -1369,6 +1533,7 @@
                     if (href && href.startsWith('#')) {
                         // Close mobile menu if open
                         navigation.classList.remove('mobile-open');
+                        utility.classList.remove('mobile-open');
                         overlay.classList.remove('active');
                         
                         // Store the navigation intent
@@ -1604,6 +1769,48 @@
             translateContainer.id = 'google_translate_element';
             translateContainer.className = 'translate-widget-container';
             translationControlsContainer.appendChild(translateContainer);
+            
+            // Add clear translation button if there's a saved preference
+            if (localStorage.getItem('vespaPreferredLanguage')) {
+                const clearButton = document.createElement('button');
+                clearButton.className = 'translation-clear-button';
+                clearButton.innerHTML = '<i class="fa fa-times-circle"></i>';
+                clearButton.title = 'Clear translation preference';
+                clearButton.style.cssText = `
+                    background: rgba(255,255,255,0.2);
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 6px;
+                    color: white;
+                    padding: 6px 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: all 0.2s ease;
+                `;
+                clearButton.onmouseover = function() {
+                    this.style.background = 'rgba(255,255,255,0.3)';
+                };
+                clearButton.onmouseout = function() {
+                    this.style.background = 'rgba(255,255,255,0.2)';
+                };
+                clearButton.onclick = function(e) {
+                    e.stopPropagation();
+                    // Clear all translation preferences
+                    localStorage.removeItem('vespaPreferredLanguage');
+                    sessionStorage.removeItem('vespaTranslationActive');
+                    // Switch back to English
+                    const selector = document.querySelector('.goog-te-combo');
+                    if (selector) {
+                        selector.value = 'en';
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', false, true);
+                        selector.dispatchEvent(evt);
+                    }
+                    // Hide the clear button
+                    clearButton.style.display = 'none';
+                    log('Translation preference cleared');
+                };
+                translationControlsContainer.appendChild(clearButton);
+            }
 
             // Prevent navigation handlers from reacting to clicks inside the widget
             translationControlsContainer.addEventListener('click', function(e) { e.stopPropagation(); }, true);
@@ -1673,13 +1880,26 @@
         
         // Save and restore language preferences
         function saveLanguagePreference(language) {
-            if (language && language !== '') {
+            if (language === 'en' || language === '') {
+                // Clear preference when switching back to English
+                localStorage.removeItem('vespaPreferredLanguage');
+                sessionStorage.removeItem('vespaTranslationActive');
+                log('Cleared language preference - switched to English');
+            } else if (language) {
                 localStorage.setItem('vespaPreferredLanguage', language);
+                sessionStorage.setItem('vespaTranslationActive', 'true');
                 log('Saved language preference:', language);
             }
         }
         
         function restoreLanguagePreference() {
+            // Check if user explicitly disabled translation this session
+            const translationDisabled = sessionStorage.getItem('vespaTranslationDisabled');
+            if (translationDisabled === 'true') {
+                log('Translation disabled for this session');
+                return;
+            }
+            
             const savedLanguage = localStorage.getItem('vespaPreferredLanguage');
             if (savedLanguage && savedLanguage !== 'en') {
                 log('Restoring saved language preference:', savedLanguage);
@@ -1691,10 +1911,23 @@
                         const evt = document.createEvent('HTMLEvents');
                         evt.initEvent('change', false, true);
                         selector.dispatchEvent(evt);
-                        // No refresh button any more
                     }, 500);
                 }
             }
+        }
+        
+        // Add function to explicitly disable translation for session
+        function disableTranslationForSession() {
+            sessionStorage.setItem('vespaTranslationDisabled', 'true');
+            // Switch back to English
+            const selector = document.querySelector('.goog-te-combo');
+            if (selector && selector.value !== 'en') {
+                selector.value = 'en';
+                const evt = document.createEvent('HTMLEvents');
+                evt.initEvent('change', false, true);
+                selector.dispatchEvent(evt);
+            }
+            log('Translation disabled for this session');
         }
         
         function observeLanguageChanges() {
@@ -1702,9 +1935,23 @@
             if (selector) {
                 selector.addEventListener('change', function() {
                     const selectedLanguage = this.value;
+                    
+                    // Clear the session disabled flag when user actively changes language
+                    if (selectedLanguage && selectedLanguage !== 'en') {
+                        sessionStorage.removeItem('vespaTranslationDisabled');
+                    }
+                    
                     saveLanguagePreference(selectedLanguage);
                     
-                    // No refresh button behaviour
+                    // Update clear button visibility
+                    const clearButton = document.querySelector('.translation-clear-button');
+                    if (clearButton) {
+                        if (selectedLanguage && selectedLanguage !== 'en' && selectedLanguage !== '') {
+                            clearButton.style.display = 'inline-block';
+                        } else {
+                            clearButton.style.display = 'none';
+                        }
+                    }
                     
                     // Always remove Google banner after language change
                     setTimeout(removeGoogleBanner, 100);
@@ -2209,7 +2456,7 @@
                     const existingHeader = document.getElementById('vespaGeneralHeader');
                     if (existingHeader) {
                         existingHeader.remove();
-                        document.body.classList.remove('has-general-header');
+                        document.body.classList.remove('has-general-header-enhanced');
                         document.body.style.paddingTop = '';
                     }
                 }
@@ -2262,7 +2509,7 @@
                     log('Navigated to login page, removing header');
                     const existingHeader = document.getElementById('vespaGeneralHeader');
                     if (existingHeader) existingHeader.remove();
-                    document.body.classList.remove('has-general-header');
+                    document.body.classList.remove('has-general-header-enhanced');
                     document.body.style.paddingTop = '';
                     // Clear the global loaded flag
                     window._generalHeaderLoaded = false;
@@ -2314,15 +2561,17 @@
                 log('User logged out, removing header and clearing flag');
                 const existingHeader = document.getElementById('vespaGeneralHeader');
                 if (existingHeader) existingHeader.remove();
-                document.body.classList.remove('has-general-header');
+                document.body.classList.remove('has-general-header-enhanced');
                 document.body.style.paddingTop = '';
                 // Clear the global loaded flag
                 window._generalHeaderLoaded = false;
                 // Clear session storage flag
                 sessionStorage.removeItem('_generalHeaderLoadedSession');
-                // Clear language preference on logout
+                // Clear ALL translation preferences on logout
                 localStorage.removeItem('vespaPreferredLanguage');
-                log('Cleared language preference on logout');
+                sessionStorage.removeItem('vespaTranslationActive');
+                sessionStorage.removeItem('vespaTranslationDisabled');
+                log('Cleared all translation preferences on logout');
                 
                 // Since we navigate BEFORE logout, user should already be on home page
                 log('Logout complete - user should already be on home page');
@@ -2341,6 +2590,32 @@
             }
             // Reset modal flag
             window._roleModalShowing = false;
+        };
+        
+        // Global function to clear translation preferences (useful for debugging)
+        window.clearTranslationPreferences = function() {
+            // Clear all storage
+            localStorage.removeItem('vespaPreferredLanguage');
+            sessionStorage.removeItem('vespaTranslationActive');
+            sessionStorage.removeItem('vespaTranslationDisabled');
+            
+            // Switch back to English if currently translated
+            const selector = document.querySelector('.goog-te-combo');
+            if (selector && selector.value !== 'en') {
+                selector.value = 'en';
+                const evt = document.createEvent('HTMLEvents');
+                evt.initEvent('change', false, true);
+                selector.dispatchEvent(evt);
+            }
+            
+            // Hide clear button if it exists
+            const clearButton = document.querySelector('.translation-clear-button');
+            if (clearButton) {
+                clearButton.style.display = 'none';
+            }
+            
+            console.log('[General Header] Translation preferences cleared. Page will load in English on next visit.');
+            return 'Translation preferences cleared';
         };
         
         // Start initialization
