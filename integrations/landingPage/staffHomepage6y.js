@@ -6265,7 +6265,7 @@ window.initializeStaffHomepage = function() {
      }
      
      // Redirect to resources page
-     window.location.hash = '#resources-portal/'; // Updated to new resource portal
+     window.location.hash = '#resources-homepage/'; // Using correct Knack slug
      return;
    }
  }
