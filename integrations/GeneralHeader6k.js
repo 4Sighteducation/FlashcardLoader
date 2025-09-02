@@ -2034,9 +2034,87 @@
                                 }, 500);
                             }
                             
-                                                    // For Results and Coaching tabs, ensure the scene renders properly
-                        else if (targetScene === 'scene_1270' || targetScene === 'scene_1095') {
-                            log(`Special handling for Results/Coaching scene ${targetScene}`);
+                                                    // Special handling for Results page to prevent blank screen
+                        else if (targetScene === 'scene_1270') {
+                            log(`Special handling for Results page`);
+                            
+                            // Show loading screen for Results page
+                            if (window.showUniversalLoadingScreen) {
+                                window.showUniversalLoadingScreen('Loading Results...');
+                            }
+                            
+                            // Extra protection against homepage loading and content clearing
+                            window._blockHomepageLoad = true;
+                            window._skipHomepageRender = true;
+                            window._resultsNavigationActive = true;
+                            sessionStorage.setItem('skipHomepageRender', 'true');
+                            sessionStorage.setItem('navigatingToResults', 'true');
+                            
+                            // Force cleanup of any existing containers that might interfere
+                            const interferingContainers = document.querySelectorAll('[id*="homepage"], [id*="staff-homepage"], [id*="resource-dashboard"], [id*="scene-level-container"]');
+                            interferingContainers.forEach(container => {
+                                log('Removing interfering container before Results navigation:', container.id);
+                                container.remove();
+                            });
+                            
+                            // Clear any existing content that might cause conflicts
+                            const knContent = document.querySelector('#knack-content');
+                            if (knContent) {
+                                const oldScenes = knContent.querySelectorAll('.kn-scene:not(#kn-scene_1270)');
+                                oldScenes.forEach(scene => {
+                                    log('Removing old scene:', scene.id);
+                                    scene.remove();
+                                });
+                            }
+                            
+                            // Navigate with multiple fallback attempts
+                            let attemptCount = 0;
+                            const maxAttempts = 3;
+                            
+                            const attemptNavigation = () => {
+                                attemptCount++;
+                                const currentScene = Knack.scene ? Knack.scene.key : null;
+                                
+                                if (currentScene === targetScene) {
+                                    log('Results page loaded successfully');
+                                    // Hide loading screen
+                                    setTimeout(() => {
+                                        if (window.hideUniversalLoadingScreen) {
+                                            window.hideUniversalLoadingScreen();
+                                        }
+                                    }, 500);
+                                    // Clear flags
+                                    window._navigationInProgress = false;
+                                    window._headerNavigationActive = false;
+                                    window._blockHomepageLoad = false;
+                                    window._skipHomepageRender = false;
+                                    window._resultsNavigationActive = false;
+                                    sessionStorage.removeItem('headerNavigationActive');
+                                    sessionStorage.removeItem('blockHomepageLoad');
+                                    sessionStorage.removeItem('skipHomepageRender');
+                                    sessionStorage.removeItem('navigatingToScene');
+                                    sessionStorage.removeItem('navigatingToResults');
+                                } else if (attemptCount <= maxAttempts) {
+                                    log(`Attempt ${attemptCount}: Results scene not loaded, retrying...`);
+                                    window.location.hash = href;
+                                    setTimeout(attemptNavigation, 500);
+                                } else {
+                                    log('Failed to load Results page after multiple attempts');
+                                    // Hide loading screen even on failure
+                                    if (window.hideUniversalLoadingScreen) {
+                                        window.hideUniversalLoadingScreen();
+                                    }
+                                    // Show notification to user
+                                    alert('Having trouble loading the Results page. Please try the Refresh button or reload the page.');
+                                }
+                            };
+                            
+                            // Start navigation attempts
+                            setTimeout(attemptNavigation, 100);
+                        }
+                        // For Coaching tabs, ensure the scene renders properly
+                        else if (targetScene === 'scene_1095') {
+                            log(`Special handling for Coaching scene ${targetScene}`);
                             
                             // Extra protection against homepage loading
                             window._blockHomepageLoad = true;
@@ -2046,7 +2124,7 @@
                             // Force cleanup of any existing homepage containers
                             const homepageContainers = document.querySelectorAll('[id*="homepage"], [id*="staff-homepage"], [id*="resource-dashboard"]');
                             homepageContainers.forEach(container => {
-                                log('Removing homepage container before Results/Coaching navigation:', container.id);
+                                log('Removing homepage container before Coaching navigation:', container.id);
                                 container.remove();
                             });
                             
