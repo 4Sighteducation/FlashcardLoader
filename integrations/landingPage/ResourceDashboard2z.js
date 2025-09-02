@@ -3299,7 +3299,7 @@
 
         // Show universal loading screen if available
         if (window.VespaLoadingScreen) {
-            window.VespaLoadingScreen.showForPageLoad('scene_1252'); // Resource dashboard scene
+            window.VespaLoadingScreen.showForPageLoad('scene_1278'); // Resource dashboard scene - updated
             $container.html(''); // Clear container to prevent duplicate content
         } else {
             // Fallback loading state
@@ -3654,16 +3654,16 @@
         $('.modal-backdrop').remove();
         
         // Reset body styles
-        document.body.classList.remove('landing-page-scene', 'landing-page-scene_1252');
+        document.body.classList.remove('landing-page-scene', 'landing-page-scene_1278'); // Updated to new scene
         document.body.style.backgroundColor = '';
         document.body.style.backgroundImage = '';
         
         log('Resource Dashboard cleanup completed');
     }
     
-    // Listen for scene changes to cleanup when navigating away from scene_1252
+    // Listen for scene changes to cleanup when navigating away from scene_1278
     $(document).on('knack-scene-render.any', function(event, scene) {
-        if (scene && scene.key && scene.key !== 'scene_1252') {
+        if (scene && scene.key && scene.key !== 'scene_1278') {
             // User navigated away from the resource dashboard scene
             cleanupResourceDashboard();
         }
