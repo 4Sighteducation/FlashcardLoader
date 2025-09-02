@@ -1206,6 +1206,13 @@
                         gap: 10px;
                         align-items: center;
                         flex-shrink: 0;
+                        flex-wrap: nowrap;
+                    }
+                    
+                    /* Position translation widget before buttons */
+                    .header-utility .translation-controls-container {
+                        margin-right: 10px;
+                        flex-shrink: 0;
                     }
                     
                     .header-utility-button {
@@ -1362,18 +1369,13 @@
                         transform: translateX(-2px);
                     }
                     
-                    /* Adjust body for enhanced header with dynamic height - accounts for translation bar */
+                    /* Adjust body for enhanced header with dynamic height */
                     body.has-general-header-enhanced {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '165px' : '110px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '140px' : '85px'} !important;
                     }
                     
                     body.has-general-header-enhanced:has(.header-breadcrumb) {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '205px' : '150px'} !important;
-                    }
-                    
-                    /* When translation bar exists */
-                    body.has-general-header-enhanced:has(.header-translation-bar) {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '175px' : '120px'} !important;
+                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '180px' : '125px'} !important;
                     }
                     
                     /* Hide Knack's default navigation */
@@ -2212,6 +2214,12 @@
                 return;
             }
             
+            // Remove any existing translation bar first
+            const existingBar = document.querySelector('.header-translation-bar');
+            if (existingBar) {
+                existingBar.remove();
+            }
+            
             // Check if already added
             if (document.getElementById('google_translate_element')) {
                 log('Translation widget already exists');
@@ -2220,31 +2228,22 @@
             
             log('Adding translation widget to header');
             
-            // Create container - positioning it below the primary row
-            const headerContent = document.querySelector('.header-content');
-            if (!headerContent) {
-                log('Header content not found, retrying in 500ms');
+            // Find the utility section - place widget there but position it better
+            const headerUtility = document.querySelector('.header-utility');
+            if (!headerUtility) {
+                log('Header utility section not found, retrying in 500ms');
                 setTimeout(addTranslationWidget, 500);
                 return;
             }
             
-            // Create a translation bar container
-            const translationBar = document.createElement('div');
-            translationBar.className = 'header-translation-bar';
-            translationBar.style.cssText = `
-                display: flex;
-                align-items: center;
-                justify-content: flex-end;
-                padding: 4px 0;
-                background: rgba(0,0,0,0.08);
-                border-bottom: 1px solid rgba(255,255,255,0.08);
-                min-height: 32px;
-            `;
-            
             // Create container for translation controls
             const translationControlsContainer = document.createElement('div');
             translationControlsContainer.className = 'translation-controls-container';
-            translationControlsContainer.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-right: 20px;';
+            translationControlsContainer.style.cssText = `
+                display: inline-flex; 
+                align-items: center; 
+                gap: 8px;
+            `;
             
             // Create translate widget container
             const translateContainer = document.createElement('div');
@@ -2261,15 +2260,16 @@
                 clearButton.style.cssText = `
                     background: rgba(255,255,255,0.2);
                     border: 1px solid rgba(255,255,255,0.3);
-                    border-radius: 4px;
+                    border-radius: 6px;
                     color: white;
-                    padding: 3px 6px;
+                    padding: 5px 8px;
                     cursor: pointer;
-                    font-size: 11px;
+                    font-size: 12px;
                     transition: all 0.2s ease;
-                    height: 26px;
+                    height: 32px;
                     display: inline-flex;
                     align-items: center;
+                    margin-left: -5px;
                 `;
                 clearButton.onmouseover = function() {
                     this.style.background = 'rgba(255,255,255,0.3)';
@@ -2297,21 +2297,13 @@
                 translationControlsContainer.appendChild(clearButton);
             }
 
-            // Add translation controls to the translation bar
-            translationBar.appendChild(translationControlsContainer);
-            
             // Prevent navigation handlers from reacting to clicks inside the widget
-            translationBar.addEventListener('click', function(e) { e.stopPropagation(); }, true);
-            translationBar.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
-            translationBar.addEventListener('touchstart', function(e) { e.stopPropagation(); }, true);
+            translationControlsContainer.addEventListener('click', function(e) { e.stopPropagation(); }, true);
+            translationControlsContainer.addEventListener('mousedown', function(e) { e.stopPropagation(); }, true);
+            translationControlsContainer.addEventListener('touchstart', function(e) { e.stopPropagation(); }, true);
             
-            // Insert the translation bar after the primary row
-            const primaryRow = headerContent.querySelector('.header-primary-row');
-            if (primaryRow && primaryRow.nextSibling) {
-                headerContent.insertBefore(translationBar, primaryRow.nextSibling);
-            } else {
-                headerContent.appendChild(translationBar);
-            }
+            // Insert at the beginning of utility section (before other buttons)
+            headerUtility.insertBefore(translationControlsContainer, headerUtility.firstChild);
             
             // Load Google Translate script
             if (!window.googleTranslateElementInit) {
@@ -2536,14 +2528,14 @@
                     font-size: 0 !important;
                 }
                 
-                /* Style the dropdown - compact for translation bar */
-                .header-translation-bar .goog-te-gadget .goog-te-combo {
+                /* Style the dropdown - compact for utility section */
+                .goog-te-gadget .goog-te-combo {
                     background: rgba(255,255,255,0.14);
                     border: 1px solid rgba(255,255,255,0.18);
                     border-radius: 6px;
-                    padding: 4px 10px;
+                    padding: 6px 10px;
                     color: #ffffff;
-                    font-size: 12px;
+                    font-size: 13px;
                     font-weight: 600;
                     cursor: pointer;
                     transition: all 0.2s ease;
@@ -2551,7 +2543,7 @@
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     backdrop-filter: blur(3px);
                     outline: none;
-                    height: 26px;
+                    height: 32px;
                 }
                 
                 .goog-te-gadget .goog-te-combo:hover {
@@ -2619,14 +2611,9 @@
                 }
                 
                 @media (max-width: 768px) {
-                    /* Hide translation bar on mobile to save space */
-                    .header-translation-bar {
+                    /* Hide translation widget on mobile to save space */
+                    .translation-controls-container {
                         display: none !important;
-                    }
-                    
-                    /* Adjust padding when translation bar is hidden */
-                    body.has-general-header-enhanced {
-                        padding-top: 75px !important;
                     }
                 }
                 
