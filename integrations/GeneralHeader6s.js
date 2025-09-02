@@ -1209,12 +1209,7 @@
                         flex-wrap: nowrap;
                     }
                     
-                    /* Position translation widget before buttons */
-                    .header-utility .translation-controls-container {
-                        margin-right: 10px;
-                        flex-shrink: 0;
-                    }
-                    
+
                     .header-utility-button {
                         display: flex;
                         align-items: center;
@@ -2205,9 +2200,12 @@
             log('Lightweight DOM cleanup completed');
         }
         
-        // Translation Widget Functions
+        // Translation Widget Functions - REMOVED
+        // Translation functionality has been removed and can be added back later if needed
+        
+        // Placeholder function to prevent errors if called
         function addTranslationWidget() {
-            // Don't add on login pages
+            return; // Function disabled - translation widget removed
             const loginScenes = ['scene_1', 'scene_2', 'scene_3', 'scene_4', 'scene_5'];
             if (loginScenes.includes(currentScene)) {
                 log('On login scene, not adding translation widget');
@@ -2610,12 +2608,7 @@
                     /* (Refresh button responsive styles removed) */
                 }
                 
-                @media (max-width: 768px) {
-                    /* Hide translation widget on mobile to save space */
-                    .translation-controls-container {
-                        display: none !important;
-                    }
-                }
+
                 
                 /* Fix for translation affecting header buttons */
                 .header-nav-button .notranslate {
@@ -2940,22 +2933,12 @@
             if (currentScene === 'scene_1014' || currentScene === 'scene_1095') {
                 // For scenes with loading screen, inject immediately
                 injectHeader();
-                // Add translation widget after header
-                log('Scheduling translation widget for loading screen scene');
-                setTimeout(() => {
-                    log('Now calling addTranslationWidget after delay');
-                    addTranslationWidget();
-                }, 500);
+                // Translation widget removed - can be added later if needed
             } else {
                 // For other scenes, slight delay to allow other apps to load
                 setTimeout(() => {
                     injectHeader();
-                    // Add translation widget after header
-                    log('Scheduling translation widget for regular scene');
-                    setTimeout(() => {
-                        log('Now calling addTranslationWidget after delay');
-                        addTranslationWidget();
-                    }, 500);
+                    // Translation widget removed - can be added later if needed
                 }, 250);
             }
             
@@ -2996,29 +2979,14 @@
                             // Double-check header is still missing before injecting
                             if (!document.getElementById('vespaGeneralHeader')) {
                                 injectHeader();
-                                // Re-add translation widget after header re-injection
-                                log('Adding translation widget after header injection');
-                                setTimeout(() => {
-                                    addTranslationWidget();
-                                }, 500);
+                                // Translation widget removed - can be added later if needed
                             }
                         }, 300);
                     }
                 } else {
-                    log('Header exists, now ensuring translation widget is present');
-                    // ALWAYS ensure translation widget exists on non-login pages
+                    log('Header exists');
+                    // Translation widget removed - can be added later if needed
                     setTimeout(() => {
-                        if (!document.getElementById('google_translate_element')) {
-                            log('Translation widget missing on non-login page, adding it now!');
-                            addTranslationWidget();
-                        } else {
-                            log('Translation widget already exists');
-                            // But check if Google Translate is actually loaded
-                            if (!document.querySelector('.goog-te-combo')) {
-                                log('Google Translate dropdown not found, re-initializing');
-                                addTranslationWidget();
-                            }
-                        }
                         // Re-apply permanent header offset after scene settles
                         applyFixedHeaderOffset();
                     }, 1000); // Give page time to settle
