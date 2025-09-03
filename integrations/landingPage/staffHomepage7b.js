@@ -5056,6 +5056,28 @@ canvas {
   color: #00e5db;
 }
 
+.emulator-notice {
+  background: #ffa726;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.emulator-notice i {
+  color: #fff;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.emulator-notice div {
+  color: #fff;
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 .emulator-body {
   flex: 1;
   position: relative;
@@ -5113,6 +5135,13 @@ const studentEmulatorModal = `
     <div class="emulator-header">
       <h3><i class="fas fa-user-graduate"></i> Student Experience Mode</h3>
       <span class="vespa-modal-close" id="emulator-modal-close">&times;</span>
+    </div>
+    <div class="emulator-notice" style="background: #ffa726; padding: 10px; display: flex; align-items: center; gap: 10px;">
+      <i class="fas fa-info-circle" style="color: #fff; font-size: 20px;"></i>
+      <div style="color: #fff; flex: 1;">
+        <strong>Note:</strong> In Student Experience Mode, the VESPA questionnaire is always accessible regardless of cycle dates. 
+        This allows you to test the student experience at any time.
+      </div>
     </div>
     <div class="emulator-body">
       <iframe id="student-emulator-iframe" 
@@ -6780,7 +6809,8 @@ if (feedbackRequest.screenshot) {
   const EMULATION_FIELDS = {
     OBJECT_3: {
       EMAIL: 'field_70',
-      USER_ROLES: 'field_73'
+      USER_ROLES: 'field_73',
+      CONNECTED_CUSTOMER: 'field_153'  // Staff's connected customer
     },
     OBJECT_6: {
       EMAIL: 'field_20',
@@ -6791,7 +6821,9 @@ if (feedbackRequest.screenshot) {
     },
     OBJECT_10: {
       EMAIL: 'field_197',
-      GROUP: 'field_223'
+      GROUP: 'field_223',
+      CONNECTED_CUSTOMER: 'field_133',  // Student's connected customer
+      CYCLE_UNLOCKED: 'field_1679'       // Override field for questionnaire access
     },
     OBJECT_29: {
       EMAIL: 'field_2732',
@@ -6873,6 +6905,82 @@ if (feedbackRequest.screenshot) {
     return roles.includes('Student') || roles.includes('profile_6');
   }
 
+  // Get additional staff data from Object_2 and Object_5
+  async function getStaffAdditionalData(userEmail) {
+    const staffData = {
+      customerValue: null,
+      name: {
+        prefix: '',
+        firstName: '',
+        lastName: ''
+      },
+      staffAdminId: null
+    };
+
+    try {
+      // Get Object_2 data (for Connected Customer field_44)
+      const obj2Filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [{ field: 'field_32', operator: 'is', value: userEmail }] // Assuming email field in Object_2
+      }));
+
+      const obj2Response = await emulationApiCall({
+        url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_2/records?filters=${obj2Filters}`,
+        method: 'GET'
+      });
+
+      if (obj2Response.records && obj2Response.records.length > 0) {
+        const obj2Record = obj2Response.records[0];
+        
+        // Get Connected Customer (field_44)
+        const customerField = obj2Record.field_44_raw || obj2Record.field_44;
+        if (customerField) {
+          if (Array.isArray(customerField) && customerField.length > 0) {
+            staffData.customerValue = customerField[0].id || customerField[0];
+          } else if (typeof customerField === 'string' && customerField.includes('class="')) {
+            // Extract ID from HTML
+            const match = customerField.match(/class="([^"\s]+)/);
+            if (match) {
+              staffData.customerValue = match[1];
+            }
+          } else if (customerField.id) {
+            staffData.customerValue = customerField.id;
+          } else {
+            staffData.customerValue = customerField;
+          }
+        }
+        
+        // Get name fields from Object_2
+        staffData.name.prefix = obj2Record.field_309 || '';
+        staffData.name.firstName = obj2Record.field_17 || '';
+        staffData.name.lastName = obj2Record.field_18 || '';
+      }
+
+      // Get Object_5 data (for Staff Admin connection via email field_86)
+      const obj5Filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [{ field: 'field_86', operator: 'is', value: userEmail }]
+      }));
+
+      const obj5Response = await emulationApiCall({
+        url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_5/records?filters=${obj5Filters}`,
+        method: 'GET'
+      });
+
+      if (obj5Response.records && obj5Response.records.length > 0) {
+        staffData.staffAdminId = obj5Response.records[0].id;
+      }
+
+      console.log('[Student Emulation Setup] Additional staff data collected:', staffData);
+
+    } catch (error) {
+      console.error('[Student Emulation Setup] Error fetching additional data:', error);
+      // Continue with partial data rather than failing completely
+    }
+
+    return staffData;
+  }
+
   // Add Student role to user
   async function addStudentRole(userEmail) {
     const filters = encodeURIComponent(JSON.stringify({
@@ -6943,7 +7051,7 @@ if (feedbackRequest.screenshot) {
   }
 
   // Create Object_10 record
-  async function createObject10Record(userEmail) {
+  async function createObject10Record(userEmail, staffData) {
     console.log('[Student Emulation Setup] Creating Object_10 record...');
     
     const filters = encodeURIComponent(JSON.stringify({
@@ -6957,24 +7065,72 @@ if (feedbackRequest.screenshot) {
     });
 
     if (existingResponse.records && existingResponse.records.length > 0) {
-      console.log('[Student Emulation Setup] Object_10 record already exists');
+      console.log('[Student Emulation Setup] Object_10 record already exists - updating');
+      
+      // Update existing record with all required fields
+      const recordId = existingResponse.records[0].id;
+      const updateData = {
+        [EMULATION_FIELDS.OBJECT_10.CYCLE_UNLOCKED]: 'Yes',  // Unlock questionnaire for staff
+        field_187: {
+          prefix: staffData.name.prefix,
+          first: staffData.name.firstName,
+          last: staffData.name.lastName
+        }
+      };
+      
+      // Add customer connection if available
+      if (staffData.customerValue) {
+        updateData[EMULATION_FIELDS.OBJECT_10.CONNECTED_CUSTOMER] = [staffData.customerValue];
+      }
+      
+      // Add staff admin connection if available
+      if (staffData.staffAdminId) {
+        updateData.field_439 = [staffData.staffAdminId];
+      }
+      
+      await emulationApiCall({
+        url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_10/records/${recordId}`,
+        method: 'PUT',
+        data: updateData
+      });
+      
       return existingResponse.records[0];
+    }
+
+    // Create new record with all required fields
+    const recordData = {
+      [EMULATION_FIELDS.OBJECT_10.EMAIL]: userEmail,
+      [EMULATION_FIELDS.OBJECT_10.GROUP]: 'STAFF',
+      [EMULATION_FIELDS.OBJECT_10.CYCLE_UNLOCKED]: 'Yes',  // Unlock questionnaire for staff
+      field_187: {  // Name field
+        prefix: staffData.name.prefix,
+        first: staffData.name.firstName,
+        last: staffData.name.lastName
+      }
+    };
+    
+    // Add customer connection if available
+    if (staffData.customerValue) {
+      recordData[EMULATION_FIELDS.OBJECT_10.CONNECTED_CUSTOMER] = [staffData.customerValue];
+    }
+    
+    // Add staff admin connection if available
+    if (staffData.staffAdminId) {
+      recordData.field_439 = [staffData.staffAdminId];
     }
 
     const response = await emulationApiCall({
       url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_10/records`,
       method: 'POST',
-      data: {
-        [EMULATION_FIELDS.OBJECT_10.EMAIL]: userEmail,
-        [EMULATION_FIELDS.OBJECT_10.GROUP]: 'STAFF'
-      }
+      data: recordData
     });
 
+    console.log('[Student Emulation Setup] Object_10 record created with all fields');
     return response;
   }
 
   // Create Object_29 record
-  async function createObject29Record(userEmail, object10Id) {
+  async function createObject29Record(userEmail, object10Id, staffData) {
     console.log('[Student Emulation Setup] Creating Object_29 record...');
     
     const filters = encodeURIComponent(JSON.stringify({
@@ -6988,20 +7144,67 @@ if (feedbackRequest.screenshot) {
     });
 
     if (existingResponse.records && existingResponse.records.length > 0) {
-      console.log('[Student Emulation Setup] Object_29 record already exists');
+      console.log('[Student Emulation Setup] Object_29 record already exists - updating');
+      
+      // Update existing record with additional fields
+      const recordId = existingResponse.records[0].id;
+      const updateData = {
+        [EMULATION_FIELDS.OBJECT_29.OBJECT_10_CONNECTION]: [object10Id],  // Ensure Object_10 connection
+        field_1823: {  // Name field
+          prefix: staffData.name.prefix,
+          first: staffData.name.firstName,
+          last: staffData.name.lastName
+        }
+      };
+      
+      // Add connected customer if available
+      if (staffData.customerValue) {
+        updateData.field_1821 = [staffData.customerValue];
+      }
+      
+      // Add staff admin connection if available
+      if (staffData.staffAdminId) {
+        updateData.field_2069 = [staffData.staffAdminId];
+      }
+      
+      await emulationApiCall({
+        url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_29/records/${recordId}`,
+        method: 'PUT',
+        data: updateData
+      });
+      
       return existingResponse.records[0];
+    }
+
+    // Create new record with all fields
+    const recordData = {
+      [EMULATION_FIELDS.OBJECT_29.EMAIL]: userEmail,
+      [EMULATION_FIELDS.OBJECT_29.GROUP]: 'STAFF',
+      [EMULATION_FIELDS.OBJECT_29.OBJECT_10_CONNECTION]: [object10Id],
+      field_1823: {  // Name field
+        prefix: staffData.name.prefix,
+        first: staffData.name.firstName,
+        last: staffData.name.lastName
+      }
+    };
+    
+    // Add connected customer if available
+    if (staffData.customerValue) {
+      recordData.field_1821 = [staffData.customerValue];
+    }
+    
+    // Add staff admin connection if available
+    if (staffData.staffAdminId) {
+      recordData.field_2069 = [staffData.staffAdminId];
     }
 
     const response = await emulationApiCall({
       url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_29/records`,
       method: 'POST',
-      data: {
-        [EMULATION_FIELDS.OBJECT_29.EMAIL]: userEmail,
-        [EMULATION_FIELDS.OBJECT_29.GROUP]: 'STAFF',
-        [EMULATION_FIELDS.OBJECT_29.OBJECT_10_CONNECTION]: [object10Id]
-      }
+      data: recordData
     });
 
+    console.log('[Student Emulation Setup] Object_29 record created with all fields');
     return response;
   }
 
@@ -7061,9 +7264,12 @@ if (feedbackRequest.screenshot) {
 
       console.log('[Student Emulation Setup] User needs Student role - proceeding with setup...');
 
+      // Get additional data needed for records
+      const staffData = await getStaffAdditionalData(userEmail);
+      
       await addStudentRole(userEmail);
-      const object10Record = await createObject10Record(userEmail);
-      await createObject29Record(userEmail, object10Record.id);
+      const object10Record = await createObject10Record(userEmail, staffData);
+      await createObject29Record(userEmail, object10Record.id, staffData);
       await setupObject6Record(userEmail, object10Record.id);
 
       console.log('[Student Emulation Setup] Setup completed successfully!');
