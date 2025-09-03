@@ -6764,7 +6764,7 @@ function loadStudentEmulationSetup() {
   
   const script = document.createElement('script');
   // Load the local comprehensive module
-  script.src = 'staff-homepage-integration-snippet.js';
+  script.src = 'staff-homepage-integration-snippet1d.js';
   script.async = true;
   script.onload = function() {
     console.log('[Staff Homepage] Student emulation setup module loaded successfully');
