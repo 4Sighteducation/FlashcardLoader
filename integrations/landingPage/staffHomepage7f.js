@@ -6915,7 +6915,7 @@ if (feedbackRequest.screenshot) {
         firstName: '',
         lastName: ''
       },
-      staffAdminId: null
+      staffAdminIds: []  // Array for many-to-many relationship
     };
 
     try {
@@ -7009,7 +7009,7 @@ if (feedbackRequest.screenshot) {
         }
       }
 
-      // Get Object_5 data (for Staff Admin connection via email field_86)
+      // Get Object_5 data (for Staff Admin connections - many-to-many)
       const obj5Filters = encodeURIComponent(JSON.stringify({
         match: 'and',
         rules: [{ field: 'field_86', operator: 'is', value: userEmail }]
@@ -7021,8 +7021,11 @@ if (feedbackRequest.screenshot) {
       });
 
       if (obj5Response.records && obj5Response.records.length > 0) {
-        staffData.staffAdminId = obj5Response.records[0].id;
-        console.log('[Student Emulation Setup] Found Staff Admin ID:', staffData.staffAdminId);
+        // Collect ALL staff admin IDs as an array (many-to-many relationship)
+        staffData.staffAdminIds = obj5Response.records.map(record => record.id);
+        console.log('[Student Emulation Setup] Found Staff Admin IDs:', staffData.staffAdminIds);
+      } else {
+        staffData.staffAdminIds = [];
       }
 
       console.log('[Student Emulation Setup] Additional staff data collected:', staffData);
@@ -7137,9 +7140,9 @@ if (feedbackRequest.screenshot) {
         updateData[EMULATION_FIELDS.OBJECT_10.CONNECTED_CUSTOMER] = [staffData.establishmentId];
       }
       
-      // Add staff admin connection if available (field_439)
-      if (staffData.staffAdminId) {
-        updateData.field_439 = [staffData.staffAdminId];
+      // Add staff admin connections if available (field_439) - many-to-many
+      if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
+        updateData.field_439 = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
@@ -7168,10 +7171,10 @@ if (feedbackRequest.screenshot) {
       recordData[EMULATION_FIELDS.OBJECT_10.CONNECTED_CUSTOMER] = [staffData.establishmentId];
     }
     
-    // Add staff admin connection if available (field_439)
-    if (staffData.staffAdminId) {
-      recordData.field_439 = [staffData.staffAdminId];
-    }
+          // Add staff admin connections if available (field_439) - many-to-many
+      if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
+        recordData.field_439 = staffData.staffAdminIds;
+      }
 
     const response = await emulationApiCall({
       url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_10/records`,
@@ -7216,9 +7219,9 @@ if (feedbackRequest.screenshot) {
         updateData.field_1821 = [staffData.establishmentId];
       }
       
-      // Add staff admin connection if available (field_2069)
-      if (staffData.staffAdminId) {
-        updateData.field_2069 = [staffData.staffAdminId];
+      // Add staff admin connections if available (field_2069) - many-to-many
+      if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
+        updateData.field_2069 = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
@@ -7247,9 +7250,9 @@ if (feedbackRequest.screenshot) {
       recordData.field_1821 = [staffData.establishmentId];
     }
     
-    // Add staff admin connection if available (field_2069)
-    if (staffData.staffAdminId) {
-      recordData.field_2069 = [staffData.staffAdminId];
+    // Add staff admin connections if available (field_2069) - many-to-many
+    if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
+      recordData.field_2069 = staffData.staffAdminIds;
     }
 
     const response = await emulationApiCall({
@@ -7290,9 +7293,9 @@ if (feedbackRequest.screenshot) {
         updateData.field_179 = [staffData.establishmentId];
       }
       
-      // Add connected staff admin if available (field_190)
-      if (staffData.staffAdminId) {
-        updateData.field_190 = [staffData.staffAdminId];
+      // Add connected staff admin if available (field_190) - many-to-many
+      if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
+        updateData.field_190 = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
@@ -7316,9 +7319,9 @@ if (feedbackRequest.screenshot) {
         createData.field_179 = [staffData.establishmentId];
       }
       
-      // Add connected staff admin if available (field_190)
-      if (staffData.staffAdminId) {
-        createData.field_190 = [staffData.staffAdminId];
+      // Add connected staff admin if available (field_190) - many-to-many
+      if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
+        createData.field_190 = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
