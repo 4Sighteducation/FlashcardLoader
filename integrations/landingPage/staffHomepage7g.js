@@ -7009,23 +7009,30 @@ if (feedbackRequest.screenshot) {
         }
       }
 
-      // Get Object_5 data (for Staff Admin connections - many-to-many)
-      const obj5Filters = encodeURIComponent(JSON.stringify({
-        match: 'and',
-        rules: [{ field: 'field_86', operator: 'is', value: userEmail }]
-      }));
+      // Get Object_5 data (Staff Admins for the same establishment)
+      // Search by establishment/customer field_110, not by email
+      if (staffData.establishmentId) {
+        const obj5Filters = encodeURIComponent(JSON.stringify({
+          match: 'and',
+          rules: [{ field: 'field_110', operator: 'is', value: staffData.establishmentId }]
+        }));
 
-      const obj5Response = await emulationApiCall({
-        url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_5/records?filters=${obj5Filters}`,
-        method: 'GET'
-      });
+        const obj5Response = await emulationApiCall({
+          url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_5/records?filters=${obj5Filters}`,
+          method: 'GET'
+        });
 
-      if (obj5Response.records && obj5Response.records.length > 0) {
-        // Collect ALL staff admin IDs as an array (many-to-many relationship)
-        staffData.staffAdminIds = obj5Response.records.map(record => record.id);
-        console.log('[Student Emulation Setup] Found Staff Admin IDs:', staffData.staffAdminIds);
+        if (obj5Response.records && obj5Response.records.length > 0) {
+          // Collect ALL staff admin IDs as an array (many-to-many relationship)
+          staffData.staffAdminIds = obj5Response.records.map(record => record.id);
+          console.log('[Student Emulation Setup] Found Staff Admin IDs for establishment:', staffData.staffAdminIds);
+        } else {
+          staffData.staffAdminIds = [];
+          console.log('[Student Emulation Setup] No Staff Admins found for establishment:', staffData.establishmentId);
+        }
       } else {
         staffData.staffAdminIds = [];
+        console.log('[Student Emulation Setup] No establishment ID, cannot search for Staff Admins');
       }
 
       console.log('[Student Emulation Setup] Additional staff data collected:', staffData);
