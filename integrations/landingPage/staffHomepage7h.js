@@ -5136,12 +5136,15 @@ const studentEmulatorModal = `
       <h3><i class="fas fa-user-graduate"></i> Student Experience Mode</h3>
       <span class="vespa-modal-close" id="emulator-modal-close">&times;</span>
     </div>
-    <div class="emulator-notice" style="background: #ffa726; padding: 10px; display: flex; align-items: center; gap: 10px;">
+    <div class="emulator-notice" style="background: #ffa726; padding: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
       <i class="fas fa-info-circle" style="color: #fff; font-size: 20px;"></i>
-      <div style="color: #fff; flex: 1;">
-        <strong>Note:</strong> In Student Experience Mode, the VESPA questionnaire is always accessible regardless of cycle dates. 
-        This allows you to test the student experience at any time.
+      <div style="color: #fff; flex: 1; min-width: 250px;">
+        <strong>This report shows a Level 3 (A-Level) student.</strong> 
+        <span style="margin-left: 10px;">To view a Level 2 Report (GCSE):</span>
       </div>
+      <button id="level-switcher-btn" class="level-switch-btn" style="background: #fff; color: #ffa726; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; min-width: 120px;">
+        Switch to Level 2
+      </button>
     </div>
     <div class="emulator-body">
       <iframe id="student-emulator-iframe" 
@@ -5694,6 +5697,7 @@ feedbackBtn.addEventListener('click', function() {
 const emulatorBtn = document.getElementById('student-emulator-btn');
 const emulatorModal = document.getElementById('student-emulator-modal');
 const emulatorCloseBtn = document.getElementById('emulator-modal-close');
+const levelSwitcherBtn = document.getElementById('level-switcher-btn');
 
 if (emulatorBtn && emulatorModal) {
   // Show modal when clicking emulator button
@@ -5718,6 +5722,106 @@ if (emulatorBtn && emulatorModal) {
       emulatorModal.style.display = 'none';
     }
   });
+  
+  // Level switcher functionality
+  if (levelSwitcherBtn) {
+    // Track current level in sessionStorage
+    let currentLevel = sessionStorage.getItem('emulatedStudentLevel') || 'Level 3';
+    
+    // Update button text based on current level
+    function updateLevelButton() {
+      const strongElement = levelSwitcherBtn.parentElement.querySelector('strong');
+      if (currentLevel === 'Level 3') {
+        levelSwitcherBtn.textContent = 'Switch to Level 2';
+        if (strongElement) strongElement.textContent = 'This report shows a Level 3 (A-Level) student.';
+      } else {
+        levelSwitcherBtn.textContent = 'Switch to Level 3';
+        if (strongElement) strongElement.textContent = 'This report shows a Level 2 (GCSE) student.';
+      }
+    }
+    
+    // Initialize button state
+    updateLevelButton();
+    
+    // Handle level switching
+    levelSwitcherBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      
+      // Disable button during update
+      levelSwitcherBtn.disabled = true;
+      levelSwitcherBtn.textContent = 'Switching...';
+      
+      try {
+        // Toggle level
+        currentLevel = currentLevel === 'Level 3' ? 'Level 2' : 'Level 3';
+        sessionStorage.setItem('emulatedStudentLevel', currentLevel);
+        
+        // Update Object_10 record via API
+        const userEmail = Knack.getUserAttributes().email;
+        
+        // Find Object_10 record
+        const filters = encodeURIComponent(JSON.stringify({
+          match: 'and',
+          rules: [{ field: 'field_197', operator: 'is', value: userEmail }]
+        }));
+        
+        const findResponse = await $.ajax({
+          url: `https://api.knack.com/v1/objects/object_10/records?filters=${filters}`,
+          type: 'GET',
+          headers: {
+            'X-Knack-Application-Id': '5ee90912c38ae7001510c1a9',
+            'X-Knack-REST-API-Key': '8f733aa5-dd35-4464-8348-64824d1f5f0d'
+          }
+        });
+        
+        if (findResponse.records && findResponse.records.length > 0) {
+          const recordId = findResponse.records[0].id;
+          
+          // Update the Level field
+          await $.ajax({
+            url: `https://api.knack.com/v1/objects/object_10/records/${recordId}`,
+            type: 'PUT',
+            headers: {
+              'X-Knack-Application-Id': '5ee90912c38ae7001510c1a9',
+              'X-Knack-REST-API-Key': '8f733aa5-dd35-4464-8348-64824d1f5f0d',
+              'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({
+              field_568: currentLevel  // Update Level field - field_568 is the correct Level field
+            })
+          });
+          
+          console.log('[Student Emulation] Level switched to:', currentLevel);
+          
+          // Update button text
+          updateLevelButton();
+          
+          // Reload iframe to show new report
+          const iframe = document.getElementById('student-emulator-iframe');
+          if (iframe) {
+            // Store current iframe location
+            const currentSrc = iframe.src;
+            // Force reload by changing and restoring src
+            iframe.src = 'about:blank';
+            setTimeout(() => {
+              iframe.src = currentSrc;
+            }, 100);
+          }
+        }
+        
+      } catch (error) {
+        console.error('[Student Emulation] Error switching level:', error);
+        alert('Unable to switch level. Please try again.');
+        // Revert level on error
+        currentLevel = currentLevel === 'Level 3' ? 'Level 2' : 'Level 3';
+        sessionStorage.setItem('emulatedStudentLevel', currentLevel);
+      } finally {
+        // Re-enable button
+        levelSwitcherBtn.disabled = false;
+        updateLevelButton();
+      }
+    });
+  }
 }
 
   // Hide the loading screen on success
@@ -7135,6 +7239,7 @@ if (feedbackRequest.screenshot) {
       const recordId = existingResponse.records[0].id;
       const updateData = {
         [EMULATION_FIELDS.OBJECT_10.CYCLE_UNLOCKED]: 'Yes',  // Unlock questionnaire for staff
+        field_568: 'Level 3',  // Default to Level 3 (A-Level) for report text matching - field_568 is the Level field
         field_187: {
           prefix: staffData.name.prefix,
           first: staffData.name.firstName,
@@ -7164,8 +7269,9 @@ if (feedbackRequest.screenshot) {
     // Create new record with all required fields
     const recordData = {
       [EMULATION_FIELDS.OBJECT_10.EMAIL]: userEmail,
-      [EMULATION_FIELDS.OBJECT_10.GROUP]: 'STAFF',
+      [EMULATION_FIELDS.OBJECT_10.GROUP]: 'EMULATED',  // Changed from 'STAFF' to avoid filtering
       [EMULATION_FIELDS.OBJECT_10.CYCLE_UNLOCKED]: 'Yes',  // Unlock questionnaire for staff
+      field_568: 'Level 3',  // Default to Level 3 (A-Level) for report text matching - field_568 is the Level field
       field_187: {  // Name field
         prefix: staffData.name.prefix,
         first: staffData.name.firstName,
@@ -7243,7 +7349,7 @@ if (feedbackRequest.screenshot) {
     // Create new record with all fields
     const recordData = {
       [EMULATION_FIELDS.OBJECT_29.EMAIL]: userEmail,
-      [EMULATION_FIELDS.OBJECT_29.GROUP]: 'STAFF',
+      [EMULATION_FIELDS.OBJECT_29.GROUP]: 'EMULATED',  // Changed from 'STAFF' to avoid filtering
       [EMULATION_FIELDS.OBJECT_29.OBJECT_10_CONNECTION]: [object10Id],  // field_792
       field_1823: {  // Name field
         prefix: staffData.name.prefix,
@@ -7291,7 +7397,7 @@ if (feedbackRequest.screenshot) {
       const recordId = existingResponse.records[0].id;
       
       const updateData = {
-        [EMULATION_FIELDS.OBJECT_6.GROUP]: 'STAFF',
+        [EMULATION_FIELDS.OBJECT_6.GROUP]: 'EMULATED',  // Changed from 'STAFF' to avoid filtering
         [EMULATION_FIELDS.OBJECT_6.OBJECT_10_CONNECTION]: [object10Id]  // field_182
       };
       
@@ -7317,7 +7423,7 @@ if (feedbackRequest.screenshot) {
         [EMULATION_FIELDS.OBJECT_6.EMAIL]: userEmail,
         [EMULATION_FIELDS.OBJECT_6.ACCOUNT_STATUS]: 'Active',
         [EMULATION_FIELDS.OBJECT_6.USER_ROLE]: 'Student',
-        [EMULATION_FIELDS.OBJECT_6.GROUP]: 'STAFF',
+        [EMULATION_FIELDS.OBJECT_6.GROUP]: 'EMULATED',  // Changed from 'STAFF' to avoid filtering
         [EMULATION_FIELDS.OBJECT_6.OBJECT_10_CONNECTION]: [object10Id]  // field_182
       };
       
