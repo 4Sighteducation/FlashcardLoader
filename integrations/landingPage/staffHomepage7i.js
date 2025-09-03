@@ -5140,7 +5140,7 @@ const studentEmulatorModal = `
       <i class="fas fa-info-circle" style="color: #fff; font-size: 20px;"></i>
       <div style="color: #fff; flex: 1; min-width: 250px;">
         <strong>This report shows a Level 3 (A-Level) student.</strong> 
-        <span style="margin-left: 10px;">To view a Level 2 Report (GCSE):</span>
+        <span style="margin-left: 10px;">To view a Level 2 Student (GCSE):</span>
       </div>
       <button id="level-switcher-btn" class="level-switch-btn" style="background: #fff; color: #ffa726; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; min-width: 120px;">
         Switch to Level 2
