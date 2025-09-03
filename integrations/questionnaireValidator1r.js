@@ -52,12 +52,35 @@
     
     function formatDate(dateStr) {
         if (!dateStr) return 'Not set';
-        const date = new Date(dateStr);
+        const date = parseUKDate(dateStr);
         return date.toLocaleDateString('en-GB', { 
             day: 'numeric', 
             month: 'long', 
             year: 'numeric' 
         });
+    }
+    
+    // Parse UK date format (dd/mm/yyyy) correctly
+    function parseUKDate(dateStr) {
+        if (!dateStr) return null;
+        
+        // If already a Date object, return it
+        if (dateStr instanceof Date) return dateStr;
+        
+        // Handle dd/mm/yyyy format
+        if (typeof dateStr === 'string' && dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                // Parse as day, month (0-indexed), year
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed
+                const year = parseInt(parts[2], 10);
+                return new Date(year, month, day);
+            }
+        }
+        
+        // Fallback to regular Date constructor for other formats
+        return new Date(dateStr);
     }
     
     // Fetch user's Object_10 record
@@ -225,10 +248,6 @@
             // Fetch cycle dates
             const cycleDates = await fetchCycleDates(customerValue);
             
-            // Get current date
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
             // Check if user has cycleUnlocked override (field_1679)
             const cycleUnlocked = userRecord[CONFIG.fields.cycleUnlocked];
             log('User cycleUnlocked value:', cycleUnlocked);
@@ -245,17 +264,48 @@
                 cycleUnlocked === true || 
                 cycleUnlocked === 'true' ||
                 (Array.isArray(cycleUnlocked) && cycleUnlocked[0] === 'Yes')) {
-                log('User has cycleUnlocked override - allowing questionnaire access');
-                // Determine which cycle they should take based on completion
-                let nextCycle = 1;
+                log('User has cycleUnlocked override - checking for active cycles');
+                
                 const hasCompletedCycle1 = userRecord[CONFIG.fields.cycle1Score] && userRecord[CONFIG.fields.cycle1Score] !== '';
                 const hasCompletedCycle2 = userRecord[CONFIG.fields.cycle2Score] && userRecord[CONFIG.fields.cycle2Score] !== '';
                 const hasCompletedCycle3 = userRecord[CONFIG.fields.cycle3Score] && userRecord[CONFIG.fields.cycle3Score] !== '';
                 
+                // Check if there's a currently active cycle
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                for (const cycleDate of cycleDates) {
+                    const cycleNum = parseInt(cycleDate[CONFIG.fields.cycleNumber]);
+                    
+                    // Skip completed cycles even with override
+                    if (cycleNum === 1 && hasCompletedCycle1) continue;
+                    if (cycleNum === 2 && hasCompletedCycle2) continue;
+                    if (cycleNum === 3 && hasCompletedCycle3) continue;
+                    
+                    const startDate = parseUKDate(cycleDate[CONFIG.fields.startDate]);
+                    const endDate = parseUKDate(cycleDate[CONFIG.fields.endDate]);
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate.setHours(23, 59, 59, 999);
+                    
+                    if (today >= startDate && today <= endDate) {
+                        // Use the active cycle number even with override
+                        log(`Cycle ${cycleNum} is active with override, using Cycle ${cycleNum}`);
+                        return {
+                            allowed: true,
+                            cycleNumber: cycleNum,
+                            userRecord: userRecord,
+                            reason: 'cycle_unlocked_override_with_active_cycle'
+                        };
+                    }
+                }
+                
+                // No active cycle but has override - use progression
+                let nextCycle = 1;
                 if (hasCompletedCycle1) nextCycle = 2;
                 if (hasCompletedCycle2) nextCycle = 3;
                 if (hasCompletedCycle3) nextCycle = 1; // If all completed, restart at cycle 1
                 
+                log(`No active cycle with override, using progression: Cycle ${nextCycle}`);
                 return {
                     allowed: true,
                     cycleNumber: nextCycle,
@@ -307,66 +357,75 @@
                 };
             }
             
-            // Check each cycle date
+            // Check if ANY cycle is currently active (not just the next sequential one)
+            // Students should be able to take the questionnaire during any active cycle period
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
             for (const cycleDate of cycleDates) {
                 const cycleNum = parseInt(cycleDate[CONFIG.fields.cycleNumber]);
                 
-                // Skip if this isn't the next cycle to complete
-                if (cycleNum !== nextCycle) continue;
+                // Check if we've already completed this cycle
+                if (cycleNum === 1 && hasCompletedCycle1) continue;
+                if (cycleNum === 2 && hasCompletedCycle2) continue;
+                if (cycleNum === 3 && hasCompletedCycle3) continue;
                 
-                // Check date range
-                const startDate = new Date(cycleDate[CONFIG.fields.startDate]);
-                const endDate = new Date(cycleDate[CONFIG.fields.endDate]);
+                // Check date range using UK date parsing
+                const startDate = parseUKDate(cycleDate[CONFIG.fields.startDate]);
+                const endDate = parseUKDate(cycleDate[CONFIG.fields.endDate]);
                 startDate.setHours(0, 0, 0, 0);
                 endDate.setHours(23, 59, 59, 999);
                 
                 if (today >= startDate && today <= endDate) {
-                    // Within date range
+                    // Within date range - use the CURRENT CYCLE NUMBER when dates are purposefully set
+                    // This allows schools to control which cycle is active regardless of progression
+                    log(`Cycle ${cycleNum} is active, student will take Cycle ${cycleNum} questionnaire`);
                     return {
                         allowed: true,
-                        cycleNumber: cycleNum,
+                        cycleNumber: cycleNum,  // Use the active cycle number, not progression
                         userRecord: userRecord
                     };
-                } else if (today < startDate) {
-                    // Before start date
-                    return {
-                        allowed: false,
-                        reason: 'before_start',
-                        message: `The questionnaire for Cycle ${cycleNum} will open on ${formatDate(cycleDate[CONFIG.fields.startDate])}.`,
-                        nextStartDate: formatDate(cycleDate[CONFIG.fields.startDate]),
-                        userRecord: userRecord
-                    };
-                } else {
-                    // After end date
-                    // Check if there's a next cycle
-                    const nextCycleDate = cycleDates.find(cd => 
-                        parseInt(cd[CONFIG.fields.cycleNumber]) === cycleNum + 1
-                    );
-                    
-                    if (nextCycleDate) {
-                        return {
-                            allowed: false,
-                            reason: 'missed_cycle',
-                            message: `You missed the deadline for Cycle ${cycleNum}. The next cycle starts on ${formatDate(nextCycleDate[CONFIG.fields.startDate])}.`,
-                            nextStartDate: formatDate(nextCycleDate[CONFIG.fields.startDate]),
-                            userRecord: userRecord
-                        };
-                    } else {
-                        return {
-                            allowed: false,
-                            reason: 'after_end',
-                            message: `The questionnaire period for Cycle ${cycleNum} has ended.`,
-                            userRecord: userRecord
-                        };
+                }
+            }
+            
+            // No active cycle found - find the next upcoming cycle
+            let nearestFutureCycle = null;
+            let nearestFutureDate = null;
+            
+            for (const cycleDate of cycleDates) {
+                const cycleNum = parseInt(cycleDate[CONFIG.fields.cycleNumber]);
+                const startDate = parseUKDate(cycleDate[CONFIG.fields.startDate]);
+                startDate.setHours(0, 0, 0, 0);
+                
+                // Skip completed cycles
+                if (cycleNum === 1 && hasCompletedCycle1) continue;
+                if (cycleNum === 2 && hasCompletedCycle2) continue;
+                if (cycleNum === 3 && hasCompletedCycle3) continue;
+                
+                if (startDate > today) {
+                    if (!nearestFutureDate || startDate < nearestFutureDate) {
+                        nearestFutureDate = startDate;
+                        nearestFutureCycle = cycleDate;
                     }
                 }
             }
             
-            // No matching cycle found
+            if (nearestFutureCycle) {
+                const cycleNum = parseInt(nearestFutureCycle[CONFIG.fields.cycleNumber]);
+                return {
+                    allowed: false,
+                    reason: 'before_start',
+                    message: `The next questionnaire cycle (Cycle ${cycleNum}) will open on ${formatDate(nearestFutureCycle[CONFIG.fields.startDate])}.`,
+                    nextStartDate: formatDate(nearestFutureCycle[CONFIG.fields.startDate]),
+                    userRecord: userRecord
+                };
+            }
+            
+            // All cycles have ended
             return {
                 allowed: false,
                 reason: 'no_active_cycle',
-                message: 'There is no active questionnaire cycle at this time.',
+                message: 'All questionnaire cycles have ended for this year. Please contact your tutor for more information.',
                 userRecord: userRecord
             };
             
