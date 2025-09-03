@@ -6752,33 +6752,342 @@ if (feedbackRequest.screenshot) {
   }
 }
 
-// --- Student Emulation Module Loader ---
-// Load the comprehensive student role setup module
-function loadStudentEmulationSetup() {
-  console.log('[Staff Homepage] Loading student emulation setup module...');
+// --- Student Emulation Setup Module ---
+// Integrated directly to avoid CDN loading issues
+(function() {
+  'use strict';
   
-  // Pass configuration to the module
-  window.STAFFHOMEPAGE_CONFIG = window.STAFFHOMEPAGE_CONFIG || {};
-  window.STAFFHOMEPAGE_CONFIG.knackAppId = window.Knack?.application_id;
-  window.STAFFHOMEPAGE_CONFIG.knackApiKey = '8f733aa5-dd35-4464-8348-64824d1f5f0d'; // Your API key
+  console.log('[Student Emulation Setup] Module initializing...');
   
-  const script = document.createElement('script');
-  // Load the local comprehensive module
-  script.src = 'staff-homepage-integration-snippet1d.js';
-  script.async = true;
-  script.onload = function() {
-    console.log('[Staff Homepage] Student emulation setup module loaded successfully');
+  // Configuration for student emulation
+  const EMULATION_CONFIG = {
+    KNACK_API_URL: 'https://api.knack.com/v1',
+    get APP_ID() {
+      if (window.Knack && window.Knack.application_id) {
+        return window.Knack.application_id;
+      }
+      console.error('[Student Emulation Setup] No App ID found.');
+      return null;
+    },
+    get API_KEY() {
+      return '8f733aa5-dd35-4464-8348-64824d1f5f0d';
+    },
+    MAX_RETRIES: 3,
+    RETRY_DELAY: 1000
   };
-  script.onerror = function() {
-    console.error('[Staff Homepage] Failed to load student emulation setup module');
-  };
-  document.head.appendChild(script);
-}
 
-// Initialize module loading queue
-if (!window.staffHomepageInitQueue) {
-  window.staffHomepageInitQueue = [];
-}
-window.staffHomepageInitQueue.push(loadStudentEmulationSetup);
+  // Field mappings for student emulation
+  const EMULATION_FIELDS = {
+    OBJECT_3: {
+      EMAIL: 'field_70',
+      USER_ROLES: 'field_73'
+    },
+    OBJECT_6: {
+      EMAIL: 'field_20',
+      ACCOUNT_STATUS: 'field_18',
+      USER_ROLE: 'field_46',
+      GROUP: 'field_565',
+      OBJECT_10_CONNECTION: 'field_182'
+    },
+    OBJECT_10: {
+      EMAIL: 'field_197',
+      GROUP: 'field_223'
+    },
+    OBJECT_29: {
+      EMAIL: 'field_2732',
+      GROUP: 'field_1824',
+      OBJECT_10_CONNECTION: 'field_792'
+    }
+  };
+
+  // Helper function to get API headers for emulation
+  function getEmulationHeaders() {
+    const appId = EMULATION_CONFIG.APP_ID;
+    const apiKey = EMULATION_CONFIG.API_KEY;
+    
+    if (!appId || !apiKey) {
+      throw new Error('API credentials not available for student emulation.');
+    }
+    
+    console.log('[Student Emulation Setup] Using App ID:', appId);
+    
+    return {
+      'X-Knack-Application-Id': appId,
+      'X-Knack-REST-API-Key': apiKey,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  // Helper function for API calls with retry logic
+  async function emulationApiCall(options, retries = EMULATION_CONFIG.MAX_RETRIES) {
+    if (typeof $ === 'undefined' || typeof $.ajax === 'undefined') {
+      throw new Error('jQuery is not available for student emulation API calls.');
+    }
+    
+    try {
+      const response = await $.ajax({
+        url: options.url,
+        type: options.method || 'GET',
+        headers: options.headers || getEmulationHeaders(),
+        data: options.data ? JSON.stringify(options.data) : undefined,
+        contentType: 'application/json',
+        dataType: 'json'
+      });
+      return response;
+    } catch (error) {
+      console.error('[Student Emulation Setup] API call failed:', {
+        status: error.status,
+        statusText: error.statusText,
+        responseText: error.responseText,
+        url: options.url
+      });
+      
+      if (retries > 0 && error.status !== 400) {
+        console.log(`[Student Emulation Setup] Retrying API call, ${retries} attempts remaining`);
+        await new Promise(resolve => setTimeout(resolve, EMULATION_CONFIG.RETRY_DELAY));
+        return emulationApiCall(options, retries - 1);
+      }
+      throw error;
+    }
+  }
+
+  // Check if user has Student role
+  async function checkStudentRole(userEmail) {
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: EMULATION_FIELDS.OBJECT_3.EMAIL, operator: 'is', value: userEmail }]
+    }));
+
+    const response = await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+      method: 'GET'
+    });
+
+    if (!response.records || response.records.length === 0) {
+      throw new Error('Staff record not found for student role check');
+    }
+
+    const staffRecord = response.records[0];
+    const roles = staffRecord[EMULATION_FIELDS.OBJECT_3.USER_ROLES] || [];
+    
+    return roles.includes('Student') || roles.includes('profile_6');
+  }
+
+  // Add Student role to user
+  async function addStudentRole(userEmail) {
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: EMULATION_FIELDS.OBJECT_3.EMAIL, operator: 'is', value: userEmail }]
+    }));
+
+    const response = await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_3/records?filters=${filters}&format=both`,
+      method: 'GET'
+    });
+
+    if (!response.records || response.records.length === 0) {
+      throw new Error('Staff record not found for role update');
+    }
+
+    const staffRecord = response.records[0];
+    
+    console.log('[Student Emulation Setup] Current roles:', staffRecord[EMULATION_FIELDS.OBJECT_3.USER_ROLES]);
+    
+    let currentRolesRaw = staffRecord[`${EMULATION_FIELDS.OBJECT_3.USER_ROLES}_raw`] || [];
+    
+    if (!currentRolesRaw || currentRolesRaw.length === 0) {
+      currentRolesRaw = staffRecord[EMULATION_FIELDS.OBJECT_3.USER_ROLES] || [];
+    }
+    
+    if (!Array.isArray(currentRolesRaw)) {
+      currentRolesRaw = [currentRolesRaw];
+    }
+    
+    if (currentRolesRaw.length === 0) {
+      console.error('[Student Emulation Setup] No existing roles found - aborting to prevent role loss');
+      throw new Error('Safety check failed: No existing roles found');
+    }
+    
+    const hasStudentRole = currentRolesRaw.some(role => {
+      if (typeof role === 'string') {
+        return role === 'Student' || role === 'profile_6';
+      }
+      if (typeof role === 'object' && role.id) {
+        return role.id === 'profile_6' || role.identifier === 'profile_6';
+      }
+      return false;
+    });
+    
+    if (hasStudentRole) {
+      console.log('[Student Emulation Setup] User already has Student role');
+      return;
+    }
+    
+    const updatedRoles = [...currentRolesRaw, 'profile_6'];
+    
+    console.log('[Student Emulation Setup] Updating roles to:', updatedRoles);
+    
+    if (updatedRoles.length <= currentRolesRaw.length) {
+      throw new Error('Safety check failed: Role count did not increase');
+    }
+
+    await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_3/records/${staffRecord.id}`,
+      method: 'PUT',
+      data: {
+        [EMULATION_FIELDS.OBJECT_3.USER_ROLES]: updatedRoles
+      }
+    });
+    
+    console.log('[Student Emulation Setup] Role update completed');
+  }
+
+  // Create Object_10 record
+  async function createObject10Record(userEmail) {
+    console.log('[Student Emulation Setup] Creating Object_10 record...');
+    
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: EMULATION_FIELDS.OBJECT_10.EMAIL, operator: 'is', value: userEmail }]
+    }));
+
+    const existingResponse = await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_10/records?filters=${filters}`,
+      method: 'GET'
+    });
+
+    if (existingResponse.records && existingResponse.records.length > 0) {
+      console.log('[Student Emulation Setup] Object_10 record already exists');
+      return existingResponse.records[0];
+    }
+
+    const response = await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_10/records`,
+      method: 'POST',
+      data: {
+        [EMULATION_FIELDS.OBJECT_10.EMAIL]: userEmail,
+        [EMULATION_FIELDS.OBJECT_10.GROUP]: 'STAFF'
+      }
+    });
+
+    return response;
+  }
+
+  // Create Object_29 record
+  async function createObject29Record(userEmail, object10Id) {
+    console.log('[Student Emulation Setup] Creating Object_29 record...');
+    
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: EMULATION_FIELDS.OBJECT_29.EMAIL, operator: 'is', value: userEmail }]
+    }));
+
+    const existingResponse = await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_29/records?filters=${filters}`,
+      method: 'GET'
+    });
+
+    if (existingResponse.records && existingResponse.records.length > 0) {
+      console.log('[Student Emulation Setup] Object_29 record already exists');
+      return existingResponse.records[0];
+    }
+
+    const response = await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_29/records`,
+      method: 'POST',
+      data: {
+        [EMULATION_FIELDS.OBJECT_29.EMAIL]: userEmail,
+        [EMULATION_FIELDS.OBJECT_29.GROUP]: 'STAFF',
+        [EMULATION_FIELDS.OBJECT_29.OBJECT_10_CONNECTION]: [object10Id]
+      }
+    });
+
+    return response;
+  }
+
+  // Create or update Object_6 record
+  async function setupObject6Record(userEmail, object10Id) {
+    console.log('[Student Emulation Setup] Setting up Object_6 record...');
+    
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [{ field: EMULATION_FIELDS.OBJECT_6.EMAIL, operator: 'is', value: userEmail }]
+    }));
+
+    const existingResponse = await emulationApiCall({
+      url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_6/records?filters=${filters}`,
+      method: 'GET'
+    });
+
+    if (existingResponse.records && existingResponse.records.length > 0) {
+      console.log('[Student Emulation Setup] Updating existing Object_6 record');
+      const recordId = existingResponse.records[0].id;
+      
+      await emulationApiCall({
+        url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_6/records/${recordId}`,
+        method: 'PUT',
+        data: {
+          [EMULATION_FIELDS.OBJECT_6.GROUP]: 'STAFF',
+          [EMULATION_FIELDS.OBJECT_6.OBJECT_10_CONNECTION]: [object10Id]
+        }
+      });
+    } else {
+      console.log('[Student Emulation Setup] Creating new Object_6 record');
+      await emulationApiCall({
+        url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_6/records`,
+        method: 'POST',
+        data: {
+          [EMULATION_FIELDS.OBJECT_6.EMAIL]: userEmail,
+          [EMULATION_FIELDS.OBJECT_6.ACCOUNT_STATUS]: 'Active',
+          [EMULATION_FIELDS.OBJECT_6.USER_ROLE]: 'Student',
+          [EMULATION_FIELDS.OBJECT_6.GROUP]: 'STAFF',
+          [EMULATION_FIELDS.OBJECT_6.OBJECT_10_CONNECTION]: [object10Id]
+        }
+      });
+    }
+  }
+
+  // Main setup function
+  async function setupStudentEmulation(userEmail, userId) {
+    console.log('[Student Emulation Setup] Starting setup for:', userEmail);
+    
+    try {
+      const hasStudentRole = await checkStudentRole(userEmail);
+      
+      if (hasStudentRole) {
+        console.log('[Student Emulation Setup] User already has Student role');
+        return { success: true, message: 'User already has Student role' };
+      }
+
+      console.log('[Student Emulation Setup] User needs Student role - proceeding with setup...');
+
+      await addStudentRole(userEmail);
+      const object10Record = await createObject10Record(userEmail);
+      await createObject29Record(userEmail, object10Record.id);
+      await setupObject6Record(userEmail, object10Record.id);
+
+      console.log('[Student Emulation Setup] Setup completed successfully!');
+      return { success: true, message: 'Student emulation setup completed' };
+
+    } catch (error) {
+      console.error('[Student Emulation Setup] Error during setup:', error);
+      return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+  }
+
+  // Expose the setup function globally
+  window.StaffStudentEmulationSetup = {
+    setup: async function(userEmail, userId) {
+      if (!userEmail) {
+        console.error('[Student Emulation Setup] No user email provided');
+        return { success: false, error: 'No user email provided' };
+      }
+      return await setupStudentEmulation(userEmail, userId);
+    },
+    config: EMULATION_CONFIG
+  };
+
+  console.log('[Student Emulation Setup] Module initialized and ready');
+})();
 
 })(); // Close main IIFE
