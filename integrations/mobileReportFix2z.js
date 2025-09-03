@@ -54,6 +54,17 @@
             return false;
         }
         
+        // SKIP FOR EMULATED STUDENTS - Check if user has both staff and student roles
+        const user = Knack.getUserAttributes();
+        if (user && user.roles) {
+            const hasStaffRole = user.roles.includes('object_7');
+            const hasStudentRole = user.roles.includes('object_6');
+            if (hasStaffRole && hasStudentRole) {
+                console.log('[Student Report Enhancement] Emulated student detected - skipping mobile fixes to prevent score display issues');
+                return false;
+            }
+        }
+        
         try {
             // Wait for the report container with timeout
             const reportContainer = await waitForElement('#view_3041 #report-container', 5000);
@@ -294,12 +305,23 @@
                     scoreSection.appendChild(originalContent);
                     
                     // Find and display just the score number
-                    const scoreNumber = lines[lines.length - 1]; // Usually the last line is the score
-                    if (scoreNumber && /^\d+$/.test(scoreNumber)) {
+                    // Look for a line that's just a number, not necessarily the last line
+                    let scoreNumber = null;
+                    for (let i = lines.length - 1; i >= 0; i--) {
+                        if (/^\d+$/.test(lines[i].trim())) {
+                            scoreNumber = lines[i].trim();
+                            break;
+                        }
+                    }
+                    
+                    if (scoreNumber) {
                         const scoreDisplay = document.createElement('div');
                         scoreDisplay.className = 'mobile-score-display';
                         scoreDisplay.textContent = scoreNumber;
                         scoreSection.appendChild(scoreDisplay);
+                    } else {
+                        // If we can't find a score, don't add the mobile display
+                        console.log('[Student Report Enhancement] Could not parse score for', themeName);
                     }
                 }
             }
@@ -1945,3 +1967,4 @@
     
     console.log('[Student Report Enhancement v5.1] Initialization complete');
 })();
+
