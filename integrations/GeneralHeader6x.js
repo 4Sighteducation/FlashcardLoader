@@ -2080,7 +2080,6 @@
         
         // Extracted navigation handler function
         function handleNavigationClick(e) {
-                    
                     // Check if this is the refresh button
                     if (this.getAttribute('data-refresh') === 'true') {
                         log('Refresh button clicked - performing page reload');
@@ -2136,9 +2135,20 @@
                     
                     if (href && href.startsWith('#')) {
                         // Close mobile menu if open
-                        navigation.classList.remove('mobile-open');
-                        utility.classList.remove('mobile-open');
-                        overlay.classList.remove('active');
+                        const mobileMenu = document.querySelector('.mobile-menu-container');
+                        const overlay = document.querySelector('.mobile-nav-overlay');
+                        if (mobileMenu) {
+                            mobileMenu.classList.remove('mobile-open');
+                        }
+                        if (overlay) {
+                            overlay.classList.remove('active');
+                        }
+                        // Reset hamburger icon if it exists
+                        const mobileToggle = document.querySelector('.mobile-menu-toggle');
+                        if (mobileToggle) {
+                            const icon = mobileToggle.querySelector('i');
+                            if (icon) icon.className = 'fa fa-bars';
+                        }
                         
                         // Store the navigation intent
                         const currentHash = window.location.hash;
@@ -2170,7 +2180,8 @@
                         
                         // UNIVERSAL CLEANUP: Force cleanup for all scene navigations
                         // This ensures fresh app loads and prevents issues with cached states
-                        if (targetScene && targetScene !== currentScene) {
+                        const currentSceneKey = Knack.scene ? Knack.scene.key : null;
+                        if (targetScene && targetScene !== currentSceneKey) {
                             log(`Navigating to ${targetScene}, forcing universal cleanup`);
                             
                             // Signal the loader to force reload for this scene
@@ -2200,8 +2211,8 @@
                                 
                                 // Force scene render if needed
                                 setTimeout(() => {
-                                    const currentScene = Knack.scene ? Knack.scene.key : null;
-                                    if (currentScene !== targetScene) {
+                                    const currentSceneNow = Knack.scene ? Knack.scene.key : null;
+                                    if (currentSceneNow !== targetScene) {
                                         log(`Scene didn't change properly for ${targetScene}, attempting force navigation`);
                                         // Try hash navigation again instead of full page reload
                                         // This avoids going through scene_1 and triggering Universal Redirect
@@ -2247,8 +2258,8 @@
                             
                             // Simple navigation without aggressive retries
                             setTimeout(() => {
-                                const currentScene = Knack.scene ? Knack.scene.key : null;
-                                if (currentScene !== targetScene) {
+                                const currentSceneNow = Knack.scene ? Knack.scene.key : null;
+                                if (currentSceneNow !== targetScene) {
                                     log(`Navigating to Results page`);
                                     window.location.hash = href;
                                 }
@@ -2290,8 +2301,8 @@
                             
                             // Trigger a manual scene render event if Knack doesn't fire it
                             setTimeout(() => {
-                                const currentScene = Knack.scene ? Knack.scene.key : null;
-                                if (currentScene !== targetScene) {
+                                const currentSceneNow = Knack.scene ? Knack.scene.key : null;
+                                if (currentSceneNow !== targetScene) {
                                     log(`Scene didn't change properly, attempting force navigation`);
                                     // Try hash navigation again
                                     window.location.hash = href;
@@ -3295,3 +3306,4 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
+
