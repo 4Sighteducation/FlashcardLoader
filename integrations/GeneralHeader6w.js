@@ -1473,7 +1473,7 @@
                         }
                     }
                     
-                    /* Mobile Styles with Slide-out Menu */
+                    /* Mobile Styles with Improved Menu */
                     @media (max-width: 768px) {
                         .header-primary-row {
                             height: 60px;
@@ -1497,70 +1497,135 @@
                             font-weight: 600;
                         }
                         
-                        /* Mobile Navigation Drawer */
+                        /* Hide desktop navigation on mobile */
                         .header-navigation.primary-nav,
                         .header-utility {
-                            position: fixed;
-                            top: 60px;
-                            right: -320px;
-                            width: 320px;
-                            max-height: calc(100vh - 60px);
-                            background: linear-gradient(135deg, ${navConfig.color} 0%, ${navConfig.accentColor || navConfig.color} 100%);
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: flex-start;
-                            padding: 20px 16px;
-                            gap: 10px;
-                            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                            box-shadow: -4px 0 20px rgba(0,0,0,0.3);
-                            overflow-y: auto;
-                            z-index: 9998;
-                            backdrop-filter: blur(10px);
+                            display: none;
                         }
                         
-                        .header-navigation.mobile-open,
-                        .header-utility.mobile-open {
+                        /* Mobile Menu Container */
+                        .mobile-menu-container {
+                            position: fixed;
+                            top: 0;
+                            right: -320px;
+                            width: 320px;
+                            height: 100vh;
+                            background: linear-gradient(135deg, ${navConfig.color} 0%, ${navConfig.accentColor || navConfig.color} 100%);
+                            box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+                            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                            z-index: 9998;
+                            overflow-y: auto;
+                        }
+                        
+                        .mobile-menu-container.mobile-open {
                             right: 0;
                         }
                         
-                        /* Mobile Button Styles with Better Contrast and Larger Text */
-                        .header-nav-button,
-                        .header-nav-button.secondary-button,
-                        .header-utility-button {
-                            width: 100%;
-                            justify-content: flex-start;
-                            padding: 14px 18px;
-                            font-size: 16px;
-                            min-height: 52px;
-                            background: rgba(255,255,255,0.2);
-                            backdrop-filter: blur(8px);
-                            border: 2px solid rgba(255,255,255,0.3);
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.15),
-                                        inset 0 1px 0 rgba(255,255,255,0.15);
+                        .mobile-menu-content {
+                            padding: 0;
+                            height: 100%;
+                            display: flex;
+                            flex-direction: column;
                         }
                         
-                        .header-nav-button:hover,
-                        .header-nav-button.secondary-button:hover,
-                        .header-utility-button:hover {
-                            background: rgba(255,255,255,0.28);
-                            transform: translateX(4px);
-                            border-color: rgba(255,255,255,0.4);
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.2),
-                                        inset 0 1px 2px rgba(255,255,255,0.2);
+                        .mobile-menu-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 16px 20px;
+                            background: rgba(0,0,0,0.1);
+                            border-bottom: 1px solid rgba(255,255,255,0.1);
                         }
                         
-                        .header-nav-button span,
-                        .header-utility-button .utility-label {
-                            display: inline;
-                            font-size: 16px;
+                        .mobile-menu-title {
+                            font-size: 18px;
+                            font-weight: 700;
+                            color: white;
+                        }
+                        
+                        .mobile-menu-close {
+                            background: transparent;
+                            border: none;
+                            color: white;
+                            font-size: 24px;
+                            cursor: pointer;
+                            padding: 4px 8px;
+                            transition: transform 0.2s ease;
+                        }
+                        
+                        .mobile-menu-close:hover {
+                            transform: scale(1.1);
+                        }
+                        
+                        .mobile-menu-sections {
+                            flex: 1;
+                            padding: 20px 0;
+                            overflow-y: auto;
+                        }
+                        
+                        .mobile-menu-section {
+                            margin-bottom: 24px;
+                            padding: 0 20px;
+                        }
+                        
+                        .mobile-menu-section h3 {
+                            color: rgba(255,255,255,0.7);
+                            font-size: 12px;
                             font-weight: 600;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            margin: 0 0 12px 0;
+                            padding-bottom: 8px;
+                            border-bottom: 1px solid rgba(255,255,255,0.1);
                         }
                         
-                        .header-nav-button i,
-                        .header-utility-button i {
-                            font-size: 20px;
-                            width: 30px;
+                        .mobile-menu-item {
+                            display: flex;
+                            align-items: center;
+                            gap: 16px;
+                            padding: 14px 16px;
+                            margin-bottom: 6px;
+                            background: rgba(255,255,255,0.1);
+                            border: 1px solid rgba(255,255,255,0.15);
+                            border-radius: 8px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 16px;
+                            font-weight: 500;
+                            transition: all 0.2s ease;
+                        }
+                        
+                        .mobile-menu-item:hover,
+                        .mobile-menu-item:active {
+                            background: rgba(255,255,255,0.2);
+                            transform: translateX(4px);
+                            border-color: rgba(255,255,255,0.25);
+                        }
+                        
+                        .mobile-menu-item i {
+                            font-size: 18px;
+                            width: 24px;
                             text-align: center;
+                            flex-shrink: 0;
+                        }
+                        
+                        .mobile-menu-item span {
+                            flex: 1;
+                        }
+                        
+                        .mobile-menu-utilities {
+                            border-top: 1px solid rgba(255,255,255,0.1);
+                            padding-top: 20px;
+                        }
+                        
+                        .mobile-utility-item.logout-item {
+                            background: rgba(220,53,69,0.2);
+                            border-color: rgba(220,53,69,0.3);
+                        }
+                        
+                        .mobile-utility-item.logout-item:hover {
+                            background: rgba(220,53,69,0.3);
+                            border-color: rgba(220,53,69,0.4);
                         }
                         
                         .mobile-menu-toggle {
@@ -1827,12 +1892,123 @@
             });
         }
         
+        // Create mobile menu with all navigation items
+        function createMobileMenu() {
+            const navConfig = navigationConfig[getUserType()];
+            const visibilityPrefs = getVisibilityPreferences();
+            
+            // Add productivity buttons for students if enabled
+            let secondaryItems = navConfig.secondaryRow || [];
+            if (getUserType() === 'student') {
+                secondaryItems = getProductivityButtons(visibilityPrefs.showProductivityHub);
+            }
+            
+            const mobileMenuHTML = `
+                <div class="mobile-menu-container">
+                    <div class="mobile-menu-content">
+                        <div class="mobile-menu-header">
+                            <span class="mobile-menu-title">${navConfig.brand}</span>
+                            <button class="mobile-menu-close">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="mobile-menu-sections">
+                            <div class="mobile-menu-section">
+                                <h3>Main Navigation</h3>
+                                ${navConfig.primaryRow.map(item => `
+                                    <a href="${item.href}" 
+                                       class="mobile-menu-item" 
+                                       data-scene="${item.scene}">
+                                        <i class="fa ${item.icon}"></i>
+                                        <span>${item.label}</span>
+                                    </a>
+                                `).join('')}
+                            </div>
+                            ${secondaryItems.length > 0 ? `
+                                <div class="mobile-menu-section">
+                                    <h3>${getUserType() === 'student' ? 'Productivity Hub' : 'Resources'}</h3>
+                                    ${secondaryItems.map(item => `
+                                        <a href="${item.href}" 
+                                           class="mobile-menu-item" 
+                                           data-scene="${item.scene}">
+                                            <i class="fa ${item.icon}"></i>
+                                            <span>${item.label}</span>
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            <div class="mobile-menu-section mobile-menu-utilities">
+                                <h3>Account</h3>
+                                ${navConfig.utilityButtons.map(item => {
+                                    // Skip logout button in emulator mode
+                                    if (item.isLogout && window._isStudentEmulatorMode) {
+                                        return '';
+                                    }
+                                    
+                                    let dataAttrs = '';
+                                    if (item.isLogout) dataAttrs = 'data-logout="true"';
+                                    if (item.isRefresh) dataAttrs = 'data-refresh="true"';
+                                    
+                                    return `
+                                        <a href="${item.href}" 
+                                           class="mobile-menu-item mobile-utility-item ${item.isLogout ? 'logout-item' : ''}" 
+                                           data-scene="${item.scene}"
+                                           ${dataAttrs}>
+                                            <i class="fa ${item.icon}"></i>
+                                            <span>${item.label}</span>
+                                        </a>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Create container element
+            const container = document.createElement('div');
+            container.innerHTML = mobileMenuHTML;
+            const mobileMenu = container.firstElementChild;
+            
+            // Setup close button
+            const closeBtn = mobileMenu.querySelector('.mobile-menu-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    mobileMenu.classList.remove('mobile-open');
+                    document.querySelector('.mobile-nav-overlay').classList.remove('active');
+                    const mobileToggle = document.querySelector('.mobile-menu-toggle');
+                    if (mobileToggle) {
+                        mobileToggle.querySelector('i').className = 'fa fa-bars';
+                    }
+                });
+            }
+            
+            // Setup navigation for menu items
+            const menuItems = mobileMenu.querySelectorAll('.mobile-menu-item');
+            menuItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Close mobile menu
+                    mobileMenu.classList.remove('mobile-open');
+                    document.querySelector('.mobile-nav-overlay').classList.remove('active');
+                    const mobileToggle = document.querySelector('.mobile-menu-toggle');
+                    if (mobileToggle) {
+                        mobileToggle.querySelector('i').className = 'fa fa-bars';
+                    }
+                    
+                    // Handle navigation (reuse existing navigation logic)
+                    handleNavigationClick.call(this, e);
+                });
+            });
+            
+            return mobileMenu;
+        }
+        
         // Setup event listeners
         function setupEventListeners() {
-            // Mobile menu toggle
+            // Mobile menu toggle - FIXED to create proper mobile menu
             const mobileToggle = document.querySelector('.mobile-menu-toggle');
-            const navigation = document.querySelector('.header-navigation');
-            const utility = document.querySelector('.header-utility');
             const overlay = document.querySelector('.mobile-nav-overlay');
             
             // DEBUG: Log nav button styles after setup
@@ -1852,17 +2028,43 @@
             
             if (mobileToggle) {
                 mobileToggle.addEventListener('click', function() {
-                    navigation.classList.toggle('mobile-open');
-                    utility.classList.toggle('mobile-open');
+                    // Create or toggle mobile menu
+                    let mobileMenu = document.querySelector('.mobile-menu-container');
+                    
+                    if (!mobileMenu) {
+                        // Create mobile menu if it doesn't exist
+                        mobileMenu = createMobileMenu();
+                        document.body.appendChild(mobileMenu);
+                    }
+                    
+                    // Toggle menu and overlay
+                    mobileMenu.classList.toggle('mobile-open');
                     overlay.classList.toggle('active');
+                    
+                    // Update toggle button icon
+                    const icon = mobileToggle.querySelector('i');
+                    if (mobileMenu.classList.contains('mobile-open')) {
+                        icon.className = 'fa fa-times';
+                    } else {
+                        icon.className = 'fa fa-bars';
+                    }
                 });
             }
             
             if (overlay) {
                 overlay.addEventListener('click', function() {
-                    navigation.classList.remove('mobile-open');
-                    utility.classList.remove('mobile-open');
+                    const mobileMenu = document.querySelector('.mobile-menu-container');
+                    if (mobileMenu) {
+                        mobileMenu.classList.remove('mobile-open');
+                    }
                     overlay.classList.remove('active');
+                    
+                    // Reset toggle icon
+                    const mobileToggle = document.querySelector('.mobile-menu-toggle');
+                    if (mobileToggle) {
+                        const icon = mobileToggle.querySelector('i');
+                        icon.className = 'fa fa-bars';
+                    }
                 });
             }
             
@@ -1871,6 +2073,13 @@
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
+                    handleNavigationClick.call(this, e);
+                });
+            });
+        }
+        
+        // Extracted navigation handler function
+        function handleNavigationClick(e) {
                     
                     // Check if this is the refresh button
                     if (this.getAttribute('data-refresh') === 'true') {
@@ -1892,29 +2101,32 @@
                     
                     // Check if this is the logout button
                     if (this.getAttribute('data-logout') === 'true') {
-                        log('Logout button clicked');
+                        log('Logout button clicked - immediate logout');
                         
-                        // Clear role selection from session storage
-                        sessionStorage.removeItem('selectedUserRole');
-                        log('Cleared role selection from session storage');
+                        // Clear all session data
+                        sessionStorage.clear();
+                        localStorage.removeItem('vespaPreferredLanguage');
                         
-                        // FIRST: Navigate to home page immediately
-                        log('Navigating to home page first');
-                        window.location.href = 'https://vespaacademy.knack.com/vespa-academy#home/';
+                        // Show loading message if possible
+                        if (window.showUniversalLoadingScreen) {
+                            window.showUniversalLoadingScreen('Logging out...');
+                        }
                         
-                        // THEN: Trigger logout after a small delay to allow navigation to start
+                        // Try to find and click Knack's logout immediately
+                        const logoutLink = document.querySelector('.kn-log-out');
+                        if (logoutLink) {
+                            logoutLink.click();
+                        } else {
+                            // If no Knack logout, use direct navigation
+                            // This will trigger Knack's logout process
+                            window.location.href = 'https://vespaacademy.knack.com/vespa-academy#home/';
+                        }
+                        
+                        // Force reload after a short delay as fallback
                         setTimeout(() => {
-                            log('Now triggering logout');
-                            // Trigger Knack logout
-                            const logoutLink = document.querySelector('.kn-log-out');
-                            if (logoutLink) {
-                                logoutLink.click();
-                            } else {
-                                // Fallback: try to find and click any logout link
-                                const altLogout = document.querySelector('a[href*="logout"]');
-                                if (altLogout) altLogout.click();
-                            }
-                        }, 100); // Small delay to ensure navigation starts first
+                            // If we're still here, force navigation
+                            window.location.href = 'https://vespaacademy.knack.com/vespa-academy#home/';
+                        }, 1000);
                         
                         return;
                     }
@@ -2110,8 +2322,6 @@
                             }
                         }, 50);
                     }
-                });
-            });
         }
         
         // Track page views for analytics
