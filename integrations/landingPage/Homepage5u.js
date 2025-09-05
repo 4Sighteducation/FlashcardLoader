@@ -2428,7 +2428,7 @@
 function renderVespaQuestionnaireSection(vespaScoresData = null) {
   return `
     <div class="vespa-questionnaire-inner">
-      <h3 class="vespa-questionnaire-title">
+      <h3 class="vespa-questionnaire-title" style="color: #00e5db !important;">
         About the VESPA Questionnaire
       </h3>
       <div class="vespa-questionnaire-content">
@@ -2463,8 +2463,28 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
     </div>
     <style>
       /* Additional styles for the new content structure */
+      .vespa-questionnaire-inner {
+        padding: 10px 15px !important; /* Reduced padding */
+      }
+      
+      .vespa-questionnaire-title {
+        color: #00e5db !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        margin-bottom: 15px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+      }
+      
+      .vespa-highlight-box {
+        padding: 15px !important; /* Reduced from default */
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+      
       .vq-section {
-        margin-bottom: 1.2rem;
+        margin-bottom: 1rem; /* Reduced from 1.2rem */
       }
       
       .vq-section:last-child {
@@ -2472,17 +2492,18 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
       }
       
       .vq-subtitle {
-        margin: 0 0 0.5rem 0;
-        font-size: 0.95rem;
+        margin: 0 0 0.4rem 0;
+        font-size: 0.9rem;
         font-weight: 700;
         color: #b7c7e6;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
       }
       
       .vespa-questionnaire-content p {
-        margin: 0.5rem 0;
-        line-height: 1.6;
+        margin: 0.4rem 0;
+        line-height: 1.5;
+        font-size: 0.95rem;
         color: rgba(255, 255, 255, 0.9);
       }
       
@@ -2494,6 +2515,10 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
       .vespa-questionnaire-content p em {
         font-style: italic;
         color: rgba(255, 255, 255, 0.95);
+      }
+      
+      .vespa-scores-compact {
+        margin-top: 15px !important;
       }
     </style>
   `;
