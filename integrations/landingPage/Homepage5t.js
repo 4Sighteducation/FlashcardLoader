@@ -1515,7 +1515,7 @@
     if (!activity || !activity.embedCode) {
       return `
         <div class="activity-section">
-  <h3 class="activity-section-title" style="color: #00e5db !important;">Activity of the Day</h3>
+  <h3 class="activity-section-title" style="color: #00e5db !important;">TASTER ACTIVITY</h3>
           <div class="activity-container">
             <div class="no-activity">
               <i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i>
@@ -1529,7 +1529,7 @@
 
     return `
       <div class="activity-section">
-<h3 class="activity-section-title" style="color: #00e5db !important;">Activity of the Day</h3>
+<h3 class="activity-section-title" style="color: #00e5db !important;">TASTER ACTIVITY</h3>
         <div class="activity-header">
           <div class="activity-info">
             <h4 class="activity-name" style="color: #00e5db !important;">${activity.title || 'Activity'}</h4>
@@ -2427,190 +2427,75 @@
   // New function to render VESPA Questionnaire section
 function renderVespaQuestionnaireSection(vespaScoresData = null) {
   return `
-  <section class="vespa-questionnaire">
+    <div class="vespa-questionnaire-inner">
+      <h3 class="vespa-questionnaire-title">
+        About the VESPA Questionnaire
+      </h3>
+      <div class="vespa-questionnaire-content">
+        <div class="vespa-highlight-box">
+          <div class="vq-section">
+            <h4 class="vq-subtitle">What it is</h4>
+            <p><strong>The VESPA Questionnaire measures your current mindset</strong> across Vision, Effort, Systems, Practice, and Attitude.</p>
+          </div>
+          
+          <div class="vq-section">
+            <h4 class="vq-subtitle">What it's for</h4>
+            <p>It's designed to <strong>motivate growth</strong> and <strong>spark meaningful change</strong>—not to label you.</p>
+          </div>
+          
+          <div class="vq-section">
+            <h4 class="vq-subtitle">How to use it</h4>
+            <p>Use your results to kick off <strong>coaching conversations</strong>, guide <strong>team discussions</strong>, set <strong>goals</strong>, and shape your <strong>ongoing development</strong>.</p>
+          </div>
+          
+          <div class="vq-section">
+            <h4 class="vq-subtitle">Remember</h4>
+            <p>Your results reflect how you see yourself <em>right now</em>—a <strong>snapshot, not a verdict</strong>.</p>
+          </div>
+        </div>
+        ${vespaScoresData ? `
+          <div class="vespa-scores-compact">
+            <h4 class="vespa-scores-title" style="color: #00e5db !important;">Current VESPA Scores</h4>
+            ${renderVespaCirclesHTML(vespaScoresData, true)}
+          </div>
+        ` : ''}
+      </div>
+    </div>
     <style>
-      /* ===== Scoped styles (safe to paste as-is) ===== */
-      .vespa-questionnaire {
-        --accent: #34efdf;           /* cool teal */
-        --accent-2: #ffb703;         /* warm amber */
-        --ink: #e9f3ff;              /* light text on dark bg */
-        --muted: #b7c7e6;
-        --card: rgba(255,255,255,0.06);
-        --border: rgba(255,255,255,0.12);
-        font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Arial, sans-serif;
-        color: var(--ink);
+      /* Additional styles for the new content structure */
+      .vq-section {
+        margin-bottom: 1.2rem;
       }
-      .vq-wrap {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 1.5rem 1.25rem 2rem;
+      
+      .vq-section:last-child {
+        margin-bottom: 0;
       }
-      .vq-title {
-        margin: 0 0 1rem;
-        font-size: clamp(1.15rem, 1vw + 1rem, 1.6rem);
-        font-weight: 800;
-        letter-spacing: 0.2px;
-        display: inline-block;
-        background: linear-gradient(90deg, var(--accent), var(--accent-2));
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-      }
-
-      .vq-grid {
-        display: grid;
-        grid-template-columns: 1.2fr 1fr;
-        gap: 1rem;
-      }
-      @media (max-width: 880px) {
-        .vq-grid { grid-template-columns: 1fr; }
-      }
-
-      .vq-quote {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-left: 6px solid var(--accent);
-        padding: 1rem 1.1rem 1rem 1.1rem;
-        border-radius: 14px;
-        position: relative;
-        overflow: hidden;
-      }
-      .vq-quote::after {
-        content: "";
-        position: absolute;
-        inset: -20% -30% auto auto;
-        height: 180px; width: 180px;
-        background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 25%, transparent), transparent 70%);
-        opacity: .5;
-        pointer-events: none;
-      }
-      .vq-quote h4 {
-        margin: 0 0 .5rem 0;
+      
+      .vq-subtitle {
+        margin: 0 0 0.5rem 0;
         font-size: 0.95rem;
         font-weight: 700;
-        color: var(--muted);
+        color: #b7c7e6;
         text-transform: uppercase;
-        letter-spacing: .08em;
+        letter-spacing: 0.08em;
       }
-      .vq-quote p {
+      
+      .vespa-questionnaire-content p {
         margin: 0.5rem 0;
-        line-height: 1.5;
-        font-size: 1rem;
-        color: var(--ink);
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
       }
-      .vq-quote .snap {
-        display: inline-block;
-        padding: .15rem .5rem;
-        border-radius: 999px;
-        background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 30%, transparent), color-mix(in oklab, var(--accent-2) 30%, transparent));
-        border: 1px solid var(--border);
-        font-weight: 700;
-        font-size: .85rem;
+      
+      .vespa-questionnaire-content p strong {
+        color: #00e5db;
+        font-weight: 600;
       }
-
-      .vq-points {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1rem 1.1rem;
-      }
-      .vq-sub {
-        margin: 0 0 .75rem 0;
-        font-size: .95rem;
-        font-weight: 700;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: .08em;
-      }
-      .vq-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: grid;
-        gap: .65rem;
-      }
-      .vq-list li {
-        position: relative;
-        padding-left: 1.75rem;
-        line-height: 1.45;
-      }
-      .vq-list li::before {
-        content: "";
-        position: absolute;
-        left: 0; top: .25rem;
-        width: 1.1rem; height: 1.1rem;
-        border-radius: 9px;
-        border: 1px solid var(--border);
-        background:
-          radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--accent) 65%, transparent), transparent 70%),
-          linear-gradient(135deg, color-mix(in oklab, var(--accent) 25%, transparent), color-mix(in oklab, var(--accent-2) 25%, transparent));
-        box-shadow: 0 0 0 2px rgba(0,0,0,.08) inset;
-      }
-      .tag, .tag-alt {
-        font-weight: 800;
-        letter-spacing: .02em;
-        padding: .05rem .45rem;
-        border-radius: .5rem;
-        border: 1px solid var(--border);
-        display: inline-block;
-      }
-      .tag { color: var(--accent); }
-      .tag-alt { color: var(--accent-2); }
-
-      .vq-scores {
-        margin-top: 1.1rem;
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1rem 1.1rem;
-      }
-      .vq-scores-title {
-        margin: 0 0 .75rem 0;
-        font-weight: 800;
-        font-size: 1rem;
-        color: var(--accent);
+      
+      .vespa-questionnaire-content p em {
+        font-style: italic;
+        color: rgba(255, 255, 255, 0.95);
       }
     </style>
-
-    <div class="vq-wrap">
-      <h3 class="vq-title">About the VESPA Questionnaire</h3>
-
-      <div class="vq-grid">
-        <!-- Left: the core message, broken into short, readable chunks -->
-        <div class="vq-quote">
-          <h4>What it is</h4>
-          <p><strong>The VESPA Questionnaire measures your current mindset</strong> across Vision, Effort, Systems, Practice, and Attitude.</p>
-
-          <h4>What it’s for</h4>
-          <p>It’s designed to <strong>motivate growth</strong> and <strong>spark meaningful change</strong>—not to label you.</p>
-
-          <h4>How to use it</h4>
-          <p>Use your results to kick off <strong>coaching conversations</strong>, guide <strong>team discussions</strong>, set <strong>goals</strong>, and shape your <strong>ongoing development</strong>.</p>
-
-          <h4>Remember</h4>
-          <p>Your results reflect how you see yourself <em>right now</em>—a <span class="snap">snapshot, not a verdict</span>.</p>
-        </div>
-
-        <!-- Right: quick hits with visual anchors -->
-        <div class="vq-points">
-          <div class="vq-sub">At a glance</div>
-          <ul class="vq-list">
-            <li><span class="tag">Measure</span> A clear read on where you are today so you can plan what to do next.</li>
-            <li><span class="tag-alt">Motivate</span> Built to nudge progress—small steps, repeated often, drive change.</li>
-            <li><span class="tag">Make it useful</span> Turn insights into action: coaching, team check-ins, and concrete goals.</li>
-            <li><span class="tag-alt">Mindset</span> Treat scores as signals to explore, not labels to accept.</li>
-          </ul>
-        </div>
-      </div>
-
-      ${vespaScoresData ? `
-        <div class="vq-scores">
-          <h4 class="vq-scores-title">Current VESPA Scores</h4>
-          ${renderVespaCirclesHTML(vespaScoresData, true)}
-        </div>
-      ` : ``}
-    </div>
-  </section>
   `;
 }  
   // Render VESPA sections when academic profile is hidden
@@ -2622,7 +2507,7 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
             ${renderVespaQuestionnaireSection(vespaScoresData)}
           </div>
           <div class="activity-day-section">
-            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Taster Activity</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
           </div>
         </div>
       </section>
@@ -2884,7 +2769,7 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
             ${renderVespaQuestionnaireSection(showVespaScores ? vespaScoresData : null)}
           </div>
           <div class="activity-day-section">
-            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">Activity of the Day</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
+            ${activityData ? renderActivitySection(activityData) : '<div class="activity-section"><h3 class="activity-section-title">TAS</h3><div class="activity-container"><div class="no-activity"><i class="fas fa-calendar-times" style="font-size: 2em; margin-bottom: 10px; color: #cccccc;"></i><p style="color: #cccccc; font-size: 14px;">Loading activity...</p></div></div></div>'}
           </div>
         </div>
       </section>
