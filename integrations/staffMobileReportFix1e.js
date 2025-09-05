@@ -1,5 +1,5 @@
 /**
- * Scene 1095 Staff Coaching Report Mobile Optimization & Help System
+ * Scene 1095 Staff Closing confaching Report Mobile Optimization & Help System
  * Optimizes the VESPA coaching report display for staff members viewing student reports
  * Based on mobileReportFix.js v5.1 - EXACT SAME LOGIC adapted for scene_1095/view_2776
  */
@@ -132,6 +132,11 @@
                     
                     // Fix all modal types on mobile
                     fixAllModalsForMobile();
+                    
+                    // FIX VIEW ANSWERS BUTTON - Remove circular class
+                    fixViewAnswersButton();
+                    setTimeout(fixViewAnswersButton, 500);
+                    setTimeout(fixViewAnswersButton, 1000);
                 }
                 
                 // Fix info button modals on all screen sizes
@@ -151,6 +156,70 @@
         } catch (error) {
             console.error('[Staff Mobile Report Enhancement] Error during initialization:', error);
             return false;
+        }
+    }
+    
+    function fixViewAnswersButton() {
+        console.log('[Staff Mobile Report Enhancement] Fixing VIEW ANSWERS button');
+        
+        // Find the VIEW ANSWERS button - it incorrectly has p-button-rounded class
+        const viewBtn = Array.from(document.querySelectorAll('button.p-button')).find(b => 
+            b.textContent.includes('VIEW ANSWERS'));
+        
+        if (viewBtn) {
+            // Remove the rounded class that makes it circular
+            viewBtn.classList.remove('p-button-rounded');
+            viewBtn.classList.remove('p-button-icon-only');
+            
+            // Apply rectangular styling directly
+            viewBtn.style.cssText += `
+                min-width: 140px !important;
+                width: auto !important;
+                height: 44px !important;
+                border-radius: 6px !important;
+                padding: 10px 20px !important;
+                white-space: nowrap !important;
+                background-color: #00e5db !important;
+                color: #23356f !important;
+            `;
+            
+            console.log('[Staff Mobile Report Enhancement] VIEW ANSWERS button fixed');
+        }
+        
+        // Fix header container wrapping
+        const topHeader = document.getElementById('top-report-header-container');
+        if (topHeader) {
+            topHeader.style.flexWrap = 'wrap';
+            topHeader.style.gap = '10px';
+            topHeader.style.padding = '10px';
+            topHeader.style.justifyContent = 'center';
+            topHeader.style.alignItems = 'center';
+            console.log('[Staff Mobile Report Enhancement] Header wrapping fixed');
+        }
+        
+        // Fix fixed-width containers
+        document.querySelectorAll('div[style*="width: 250px"], div[style*="width:250px"]').forEach(div => {
+            div.style.width = 'auto';
+            div.style.flex = '1 1 auto';
+            div.style.minWidth = '200px';
+            div.style.maxWidth = '100%';
+            div.style.margin = '5px';
+        });
+        
+        // Fix title wrapping
+        const titleDiv = document.querySelector('#header-title');
+        if (titleDiv) {
+            titleDiv.style.flex = '1 1 100%';
+            titleDiv.style.width = '100%';
+            titleDiv.style.textAlign = 'center';
+            
+            const title = titleDiv.querySelector('h2, h3, div');
+            if (title && title.textContent.includes('VESPA')) {
+                title.style.whiteSpace = 'normal';
+                title.style.wordWrap = 'break-word';
+                title.style.fontSize = '20px';
+                title.style.lineHeight = '1.3';
+            }
         }
     }
     
@@ -1195,6 +1264,141 @@
             
             /* Mobile-only styles */
             @media (max-width: 768px) {
+                /* === HEADER LAYOUT FIXES === */
+                /* Fix header containers to be responsive and stack */
+                #top-report-header-container,
+                #bottom-report-header-container,
+                #view_2776 div[id*="report-header"],
+                #view_2776 .report-header,
+                #view_2776 > div:first-child > div:first-child,
+                #view_3015 div[id*="report-header"],
+                #view_3015 .report-header,
+                #view_3015 > div:first-child > div:first-child,
+                #kn-scene_1095 div[id*="report-header"],
+                #kn-scene_1095 .report-header {
+                    display: flex !important;
+                    flex-wrap: wrap !important;
+                    gap: 10px !important;
+                    padding: 10px !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                    justify-content: center !important;
+                    align-items: center !important;
+                }
+                
+                /* Make info containers (Student, Date, Cycle) responsive */
+                #view_2776 div[id*="report-header"] > div,
+                #view_2776 .field-container,
+                #view_3015 div[id*="report-header"] > div,
+                #view_3015 .field-container,
+                #kn-scene_1095 div[id*="report-header"] > div,
+                #kn-scene_1095 .field-container {
+                    flex: 1 1 auto !important;
+                    min-width: 250px !important;
+                    max-width: 100% !important;
+                    margin: 5px !important;
+                    box-sizing: border-box !important;
+                    text-align: center !important;
+                }
+                
+                /* Fix for inline width styles */
+                #view_2776 [style*="width:"][style*="px"],
+                #view_3015 [style*="width:"][style*="px"],
+                #kn-scene_1095 [style*="width:"][style*="px"] {
+                    width: auto !important;
+                    min-width: 200px !important;
+                    max-width: 100% !important;
+                }
+                
+                /* Fix VIEW ANSWERS button - PREVENT IT FROM BECOMING CIRCULAR */
+                #view_2776 button.p-button:not(.p-button-rounded):not(.p-button-icon-only),
+                #view_2776 button[aria-label*="VIEW" i][aria-label*="ANSWERS" i],
+                #view_2776 button[title*="VIEW" i][title*="ANSWERS" i],
+                #view_2776 .view-answers-button,
+                #view_3015 button.p-button:not(.p-button-rounded):not(.p-button-icon-only),
+                #view_3015 button[aria-label*="VIEW" i][aria-label*="ANSWERS" i],
+                #view_3015 button[title*="VIEW" i][title*="ANSWERS" i],
+                #view_3015 .view-answers-button,
+                #kn-scene_1095 button.p-button:not(.p-button-rounded):not(.p-button-icon-only),
+                #kn-scene_1095 button[aria-label*="VIEW" i][aria-label*="ANSWERS" i],
+                #kn-scene_1095 button[title*="VIEW" i][title*="ANSWERS" i],
+                #kn-scene_1095 .view-answers-button {
+                    min-width: 140px !important;
+                    width: auto !important;
+                    height: 44px !important;
+                    padding: 10px 20px !important;
+                    border-radius: 6px !important; /* Rectangular shape */
+                    font-size: 14px !important;
+                    font-weight: 600 !important;
+                    white-space: nowrap !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    background-color: #00e5db !important;
+                    color: #23356f !important;
+                    border: none !important;
+                    box-shadow: 0 2px 8px rgba(0, 229, 219, 0.3) !important;
+                    margin: 10px !important;
+                }
+                
+                #view_2776 button.p-button:not(.p-button-rounded):hover,
+                #view_3015 button.p-button:not(.p-button-rounded):hover,
+                #kn-scene_1095 button.p-button:not(.p-button-rounded):hover {
+                    background-color: #00c5c0 !important;
+                    transform: translateY(-1px) !important;
+                }
+                
+                /* Ensure button text is visible */
+                #view_2776 button:not(.p-button-rounded) span.p-button-label,
+                #view_3015 button:not(.p-button-rounded) span.p-button-label,
+                #kn-scene_1095 button:not(.p-button-rounded) span.p-button-label {
+                    display: inline !important;
+                    visibility: visible !important;
+                    font-size: 14px !important;
+                }
+                
+                /* Fix VESPA COACHING REPORT title to wrap properly */
+                #view_2776 h1,
+                #view_2776 h2, 
+                #view_2776 h3,
+                #view_2776 .report-title,
+                #view_2776 [class*="title"],
+                #view_3015 h1,
+                #view_3015 h2, 
+                #view_3015 h3,
+                #view_3015 .report-title,
+                #view_3015 [class*="title"],
+                #kn-scene_1095 h1,
+                #kn-scene_1095 h2, 
+                #kn-scene_1095 h3,
+                #kn-scene_1095 .report-title,
+                #kn-scene_1095 [class*="title"] {
+                    white-space: normal !important;
+                    word-wrap: break-word !important;
+                    word-break: break-word !important;
+                    overflow-wrap: break-word !important;
+                    text-align: center !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    padding: 0 15px !important;
+                    box-sizing: border-box !important;
+                    line-height: 1.3 !important;
+                }
+                
+                /* Special styling for VESPA title */
+                #view_2776 h1:has-text("VESPA"),
+                #view_2776 h2:has-text("VESPA"),
+                #view_2776 *:has-text("VESPA COACHING REPORT"),
+                #view_3015 h1:has-text("VESPA"),
+                #view_3015 h2:has-text("VESPA"),
+                #view_3015 *:has-text("VESPA COACHING REPORT"),
+                #kn-scene_1095 h1:has-text("VESPA"),
+                #kn-scene_1095 h2:has-text("VESPA"),
+                #kn-scene_1095 *:has-text("VESPA COACHING REPORT") {
+                    font-size: 22px !important;
+                    margin: 15px 0 !important;
+                }
+                
                 /* Hide only logo on mobile, keep info buttons visible */
                 #view_2776 .image-logo,
                 #view_2776 img[alt="Logo"],
@@ -1842,4 +2046,3 @@
     
     console.log('[Staff Mobile Report Enhancement v1.0] Initialization complete');
 })();
-
