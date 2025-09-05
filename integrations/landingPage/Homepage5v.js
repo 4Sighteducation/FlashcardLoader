@@ -2434,22 +2434,22 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
       <div class="vespa-questionnaire-content">
         <div class="vespa-highlight-box">
           <div class="vq-section">
-            <h4 class="vq-subtitle">What it is</h4>
+            <h4 class="vq-subtitle" style="color: #00e5db !important;">What it is</h4>
             <p><strong>The VESPA Questionnaire measures your current mindset</strong> across Vision, Effort, Systems, Practice, and Attitude.</p>
           </div>
           
           <div class="vq-section">
-            <h4 class="vq-subtitle">What it's for</h4>
+            <h4 class="vq-subtitle" style="color: #00e5db !important;">What it's for</h4>
             <p>It's designed to <strong>motivate growth</strong> and <strong>spark meaningful change</strong>—not to label you.</p>
           </div>
           
           <div class="vq-section">
-            <h4 class="vq-subtitle">How to use it</h4>
+            <h4 class="vq-subtitle" style="color: #00e5db !important;">How to use it</h4>
             <p>Use your results to kick off <strong>coaching conversations</strong>, guide <strong>team discussions</strong>, set <strong>goals</strong>, and shape your <strong>ongoing development</strong>.</p>
           </div>
           
           <div class="vq-section">
-            <h4 class="vq-subtitle">Remember</h4>
+            <h4 class="vq-subtitle" style="color: #00e5db !important;">Remember</h4>
             <p>Your results reflect how you see yourself <em>right now</em>—a <strong>snapshot, not a verdict</strong>.</p>
           </div>
         </div>
@@ -2464,27 +2464,27 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
     <style>
       /* Additional styles for the new content structure */
       .vespa-questionnaire-inner {
-        padding: 10px 15px !important; /* Reduced padding */
+        padding: 5px 10px !important; /* Further reduced padding */
       }
       
       .vespa-questionnaire-title {
         color: #00e5db !important;
         font-size: 16px !important;
         font-weight: 600 !important;
-        margin-bottom: 15px !important;
+        margin-bottom: 10px !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
       }
       
       .vespa-highlight-box {
-        padding: 15px !important; /* Reduced from default */
+        padding: 10px !important; /* Further reduced padding */
         background: rgba(255, 255, 255, 0.05) !important;
         border-radius: 8px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
       }
       
       .vq-section {
-        margin-bottom: 1rem; /* Reduced from 1.2rem */
+        margin-bottom: 0.8rem; /* Further reduced spacing */
       }
       
       .vq-section:last-child {
@@ -2492,17 +2492,17 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
       }
       
       .vq-subtitle {
-        margin: 0 0 0.4rem 0;
+        margin: 0 0 0.3rem 0;
         font-size: 0.9rem;
         font-weight: 700;
-        color: #b7c7e6;
+        color: #00e5db !important; /* Changed to turquoise to match title */
         text-transform: uppercase;
         letter-spacing: 0.06em;
       }
       
       .vespa-questionnaire-content p {
-        margin: 0.4rem 0;
-        line-height: 1.5;
+        margin: 0.3rem 0;
+        line-height: 1.4;
         font-size: 0.95rem;
         color: rgba(255, 255, 255, 0.9);
       }
@@ -2518,7 +2518,8 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
       }
       
       .vespa-scores-compact {
-        margin-top: 15px !important;
+        margin-top: 10px !important; /* Reduced margin */
+        padding: 8px !important;
       }
     </style>
   `;
