@@ -18,6 +18,77 @@
     
     const KNACK_API_URL = 'https://api.knack.com/v1';
     
+    // Define navigation apps (updated to use hash URLs like copyofHomepage.js)
+    const MY_RESOURCES_APPS = [
+        {
+            name: "Resources",
+            url: "#tutor-activities/resources-levels",  // Changed from full URL to hash
+            scene: "scene_481",
+            icon: "fas fa-folder-open",
+            color: "#7bd8d0",
+            description: "Access teaching resources and materials"
+        },
+        {
+            name: "Worksheets",
+            url: "#worksheets",  // Changed from full URL to hash
+            scene: "scene_1169",
+            icon: "fas fa-file-alt",
+            color: "#62d1d2",
+            description: "Download printable worksheets and activities"
+        },
+        {
+            name: "Videos",
+            url: "#vespa-videos",  // Changed from full URL to hash
+            scene: "scene_1266",
+            icon: "fas fa-video",
+            color: "#00e5db",
+            description: "Watch VESPA instructional videos"
+        },
+        {
+            name: "Curriculum",
+            url: "#suggested-curriculum2",  // Changed from full URL to hash
+            scene: "scene_1234",
+            icon: "fas fa-calendar-alt",
+            color: "#5899a8",
+            description: "Explore the VESPA curriculum"
+        }
+    ];
+    
+    const ADMIN_APPS = [
+        {
+            name: "Dashboard",
+            url: "#dashboard",  // Changed from full URL to hash
+            scene: "scene_1225",
+            icon: "fas fa-tachometer-alt",
+            color: "#2f8dcb",
+            description: "View comprehensive analytics"
+        },
+        {
+            name: "Results",
+            url: "#vesparesults",  // Changed from full URL to hash
+            scene: "scene_1270",
+            icon: "fas fa-chart-bar",
+            color: "#23356f",
+            description: "Detailed results analysis"
+        },
+        {
+            name: "Manage",
+            url: "#upload-manager",  // Changed from full URL to hash
+            scene: "scene_1212",
+            icon: "fas fa-cog",
+            color: "#2a3c7a",
+            description: "Manage accounts and uploads"
+        },
+        {
+            name: "Print Reports",
+            url: "#report-printing",  // Changed from full URL to hash
+            scene: "scene_1227",
+            icon: "fas fa-print",
+            color: "#079baa",
+            description: "Generate and print reports"
+        }
+    ];
+    
     // Initialize configuration inside the function instead of at script load
     function initializeConfig() {
         // Use config from loader if available, otherwise use defaults
@@ -639,20 +710,6 @@
 
     // --- Rendering Functions ---
     
-    const MY_RESOURCES_APPS = [
-       { name: "Slide Decks", url: "https://vespaacademy.knack.com/vespa-academy#tutor-activities/", icon: "fa-solid fa-display", color: "#079baa" },
-       { name: "Videos", url: "https://vespaacademy.knack.com/vespa-academy#vespa-videos", icon: "fa-solid fa-play", color: "#7bd8d0" },
-       { name: "Curriculum", url: "https://vespaacademy.knack.com/vespa-academy#vespa-curriculum/suggested-curriculum/", icon: "fa-solid fa-book-open", color: "#62d1d2" },
-       { name: "Worksheets", url: "https://vespaacademy.knack.com/vespa-academy#worksheets/", icon: "fa-solid fa-file-pdf", color: "#00e5db" },
-    ];
-    
-    const ADMIN_APPS = [
-       { name: "Manage Schools", url: "https://vespaacademy.knack.com/vespa-academy#manage-schools/", icon: "fa-solid fa-school", color: "#5899a8" },
-       { name: "Manage Staff", url: "https://vespaacademy.knack.com/vespa-academy#manage-staff/", icon: "fa-solid fa-users-cog", color: "#2f8dcb" },
-       { name: "Manage Students", url: "https://vespaacademy.knack.com/vespa-academy#students/", icon: "fa-solid fa-user-graduate", color: "#23356f" },
-       { name: "Import Data", url: "https://vespaacademy.knack.com/vespa-academy#import-data/", icon: "fa-solid fa-file-import", color: "#2a3c7a" },
-    ];
-
     // --- User Activity Tracking Functions ---
     
     // Track user login activity
@@ -785,7 +842,10 @@
 
     function renderNavigationSection() {
         const navButtons = MY_RESOURCES_APPS.map(app => `
-            <a href="${app.url}" class="nav-button" onclick="event.preventDefault(); window.location.href='${app.url}';" style="--theme-color: ${app.color}">
+            <a href="${app.url}" class="nav-button" 
+               data-scene="${app.scene || ''}" 
+               onclick="trackPageView('${app.name}'); return true;" 
+               style="--theme-color: ${app.color}">
                 <i class="${app.icon}"></i>
                 <span>${app.name}</span>
             </a>
@@ -803,7 +863,10 @@
     
     function renderAdminSection() {
         const adminButtons = ADMIN_APPS.map(app => `
-            <a href="${app.url}" class="admin-button" onclick="event.preventDefault(); window.location.href='${app.url}';" style="--theme-color: ${app.color}">
+            <a href="${app.url}" class="admin-button" 
+               data-scene="${app.scene || ''}" 
+               onclick="trackPageView('${app.name}'); return true;" 
+               style="--theme-color: ${app.color}">
                 <i class="${app.icon}"></i>
                 <span>${app.name}</span>
             </a>
