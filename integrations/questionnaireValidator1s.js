@@ -904,7 +904,7 @@
                         message: 'Unable to check questionnaire access. Please try again later.'
                     });
                 });
-            }, 300); // Reduced delay for better UX
+            }, 100); // Reduced delay for better UX (was 300ms)
         }
     }
     
