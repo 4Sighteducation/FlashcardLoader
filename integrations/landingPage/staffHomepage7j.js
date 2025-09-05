@@ -2713,13 +2713,10 @@ function renderAppSection(title, apps) {
       onclickHandler = `event.preventDefault(); handleCoachingNavigation();`;
       hrefUrl = '#'; // Placeholder, will be handled by JavaScript
     } else {
-      // For all other buttons, use simple direct navigation
-      // Build full URL if it's a hash
-      const fullUrl = app.url.startsWith('#') ? 
-        `https://vespaacademy.knack.com/vespa-academy${app.url}` : 
-        app.url;
-      hrefUrl = fullUrl;
-      // Simple onclick that tracks usage then navigates
+      // For all other buttons, use hash navigation (matching copyofHomepage.js)
+      // Keep hash URLs as-is for consistent navigation with questionnaireValidator
+      hrefUrl = app.url;
+      // Simple onclick that tracks usage
       onclickHandler = `window.trackFeatureUse('${sanitizeField(app.name)}'); return true;`;
     }
     
