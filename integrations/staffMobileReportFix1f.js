@@ -120,6 +120,7 @@
                 initializeTextAreaFocus();
                 initializeHelpButtons();
                 improveInfoButtonContent(); // Universal info button improvements
+                interceptActivityLinks(); // Intercept and style activity links
                 popupsInitialized = true;
                 
                 // Mobile-specific initializations
@@ -503,6 +504,143 @@
         window.staffEffortSectionObserver = observer;
     }
     
+    // New function to intercept and style activity links
+    function interceptActivityLinks() {
+        console.log('[Staff Mobile Report Enhancement] Intercepting activity links...');
+        
+        // Convert old URL format to new format
+        function convertActivityUrl(oldUrl) {
+            const pattern1 = /my-vespa\/start-activity\/([a-f0-9]+)\/?/;
+            const pattern2 = /activity\/([a-f0-9]+)\/?/;
+            
+            let match = oldUrl.match(pattern1) || oldUrl.match(pattern2);
+            
+            if (match && match[1]) {
+                const activityId = match[1];
+                return `https://vespaacademy.knack.com/vespa-academy#my-vespa-activities?activity=${activityId}&action=start`;
+            }
+            
+            return oldUrl;
+        }
+        
+        // Get theme color based on section
+        function getThemeColor(element) {
+            const section = element.closest('.vespa-report');
+            if (!section) return '#1976d2';
+            
+            const scoreSection = section.querySelector('.vespa-report-score');
+            if (!scoreSection) return '#1976d2';
+            
+            const bgColor = scoreSection.style.backgroundColor;
+            
+            if (bgColor.includes('255, 143, 0')) return '#ff8f00'; // VISION
+            if (bgColor.includes('134, 180, 240')) return '#86b4f0'; // EFFORT
+            if (bgColor.includes('114, 203, 68')) return '#72cb44'; // SYSTEMS
+            if (bgColor.includes('127, 49, 164')) return '#7f31a4'; // PRACTICE
+            if (bgColor.includes('240, 50, 230')) return '#f032e6'; // ATTITUDE
+            
+            return '#1976d2';
+        }
+        
+        // Process all activity links - adapt selectors for staff views
+        const selectors = [
+            '#view_2776 a[href*="start-activity"]',
+            '#view_2776 a[href*="/activity/"]',
+            '#view_2776 .vespa-report-coaching-questions a',
+            '#view_3015 a[href*="start-activity"]',
+            '#view_3015 a[href*="/activity/"]',
+            '#view_3015 .vespa-report-coaching-questions a',
+            '#kn-scene_1095 a[href*="start-activity"]',
+            '#kn-scene_1095 a[href*="/activity/"]',
+            '#kn-scene_1095 .vespa-report-coaching-questions a',
+            '.vespa-modal-activities a'
+        ];
+        
+        selectors.forEach(selector => {
+            const links = document.querySelectorAll(selector);
+            
+            links.forEach(link => {
+                if (link.hasAttribute('data-activity-processed')) return;
+                
+                const href = link.href || link.getAttribute('href');
+                if (!href) return;
+                
+                // Convert URL
+                const newUrl = convertActivityUrl(href);
+                link.href = newUrl;
+                
+                // Style the link
+                const themeColor = getThemeColor(link);
+                const isMobile = window.innerWidth <= 768;
+                
+                if (isMobile) {
+                    // Mobile: Compact chip style
+                    link.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 8px 14px;
+                        margin: 4px;
+                        background: linear-gradient(135deg, ${themeColor}15 0%, ${themeColor}25 100%);
+                        border: 1.5px solid ${themeColor}40;
+                        border-radius: 20px;
+                        color: ${themeColor};
+                        text-decoration: none;
+                        font-size: 14px;
+                        font-weight: 500;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 2px 8px ${themeColor}20;
+                        white-space: nowrap;
+                    `;
+                    
+                    // Add icon if not present
+                    if (!link.innerHTML.includes('🎯')) {
+                        link.innerHTML = '🎯 ' + link.innerHTML;
+                    }
+                } else {
+                    // Desktop: Button style
+                    link.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 10px 18px;
+                        margin: 6px;
+                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
+                        border: 2px solid ${themeColor}30;
+                        border-radius: 12px;
+                        color: ${themeColor};
+                        text-decoration: none;
+                        font-size: 15px;
+                        font-weight: 500;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 3px 12px ${themeColor}15;
+                        min-width: 140px;
+                        justify-content: center;
+                    `;
+                    
+                    // Add icon if not present
+                    if (!link.innerHTML.includes('🎯')) {
+                        link.innerHTML = '🎯 ' + link.innerHTML;
+                    }
+                }
+                
+                // Add hover effects
+                link.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = `0 5px 20px ${themeColor}30`;
+                });
+                
+                link.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = `0 3px 12px ${themeColor}15`;
+                });
+                
+                // Mark as processed
+                link.setAttribute('data-activity-processed', 'true');
+                
+                console.log(`[Staff Mobile Report Enhancement] Updated activity link: ${newUrl}`);
+            });
+        });
+    }
+    
     function initializeHelpButtons() {
         console.log('[Staff Mobile Report Enhancement] Initializing help buttons');
         
@@ -787,6 +925,11 @@
                     
                     // Ensure modal is on top
                     modal.style.zIndex = '2147483647';
+                    
+                    // Intercept activity links in the modal
+                    setTimeout(() => {
+                        interceptActivityLinks();
+                    }, 100);
                     
                     console.log(`[Staff Mobile Report Enhancement] Opened popup for ${sectionName}`);
                 });
