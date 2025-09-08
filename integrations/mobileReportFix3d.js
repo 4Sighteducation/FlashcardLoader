@@ -605,23 +605,91 @@
                         const modal = document.getElementById('response-guide-modal');
                         const contentDiv = document.getElementById('response-guide-content');
                         
-                        // Get the intro questions content
-                        const introQuestionsEl = document.querySelector('#view_3041 #introductory-questions-container');
-                        if (introQuestionsEl) {
-                            contentDiv.innerHTML = `
-                                <div class="help-content">
-                                    <p style="font-style: italic; margin-bottom: 20px;">Use these questions to help guide your response:</p>
-                                    ${introQuestionsEl.innerHTML}
+                        // Enhanced response guide content
+                        contentDiv.innerHTML = `
+                            <div class="response-guide-content">
+                                <div class="guide-intro">
+                                    <p>Your response helps your tutor/mentor understand your unique situation and provide personalized support. Be honest and specific - there are no wrong answers!</p>
                                 </div>
-                            `;
-                        } else {
-                            contentDiv.innerHTML = '<p>No introductory questions available.</p>';
-                        }
+                                
+                                <h3>📊 Reflecting on Your VESPA Scores</h3>
+                                <div class="guide-section">
+                                    <p>Consider how accurately the report reflects your current study habits:</p>
+                                    <ul>
+                                        <li><strong>Do the scores feel right?</strong> Which ones resonate most with your experience?</li>
+                                        <li><strong>Any surprises?</strong> Were any scores higher or lower than expected?</li>
+                                        <li><strong>Your strengths:</strong> What's your highest score telling you?</li>
+                                        <li><strong>Growth areas:</strong> What might your lowest score suggest?</li>
+                                    </ul>
+                                    
+                                    <div class="sentence-starters">
+                                        <h4>Try starting with:</h4>
+                                        <p class="starter">"Looking at my scores, I was surprised to see..."</p>
+                                        <p class="starter">"My [highest/lowest] score in [area] makes sense because..."</p>
+                                        <p class="starter">"I think the report is [very/somewhat/not very] accurate because..."</p>
+                                        <p class="starter">"If I could adjust one score, it would be [area] because..."</p>
+                                    </div>
+                                </div>
+                                
+                                <h3>📚 Your Current Study Experience</h3>
+                                <div class="guide-section">
+                                    <p>Help your tutor/mentor understand what studying is really like for you right now:</p>
+                                    <ul>
+                                        <li><strong>Daily reality:</strong> What does a typical study session look like?</li>
+                                        <li><strong>Challenges:</strong> What's been particularly difficult lately?</li>
+                                        <li><strong>Successes:</strong> What study strategies are working well?</li>
+                                        <li><strong>Time management:</strong> How do you balance study with other commitments?</li>
+                                    </ul>
+                                    
+                                    <div class="sentence-starters">
+                                        <h4>Express yourself with:</h4>
+                                        <p class="starter">"Right now, I'm finding it hard to..."</p>
+                                        <p class="starter">"My biggest challenge with studying is..."</p>
+                                        <p class="starter">"I usually study by... but I'm not sure if..."</p>
+                                        <p class="starter">"Something that's been working well for me is..."</p>
+                                        <p class="starter">"I struggle most when..."</p>
+                                    </div>
+                                </div>
+                                
+                                <h3>🎯 What You Want to Achieve</h3>
+                                <div class="guide-section">
+                                    <p>Share what matters most to you academically:</p>
+                                    <ul>
+                                        <li><strong>Immediate concerns:</strong> What needs attention first?</li>
+                                        <li><strong>Long-term goals:</strong> Where do you want to be?</li>
+                                        <li><strong>Support needed:</strong> What kind of help would be most valuable?</li>
+                                        <li><strong>Motivation:</strong> What drives you to succeed?</li>
+                                    </ul>
+                                    
+                                    <div class="sentence-starters">
+                                        <h4>Share your thoughts:</h4>
+                                        <p class="starter">"What I really need help with is..."</p>
+                                        <p class="starter">"I'm motivated by..."</p>
+                                        <p class="starter">"My main priority right now is..."</p>
+                                        <p class="starter">"I'd like to improve my ability to..."</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="guide-tips">
+                                    <h4>💡 Tips for a Great Response</h4>
+                                    <ul>
+                                        <li><strong>Be specific:</strong> Instead of "I procrastinate," try "I often leave essays until 2 days before they're due"</li>
+                                        <li><strong>Include context:</strong> Mention relevant factors (work commitments, health, family responsibilities)</li>
+                                        <li><strong>Be honest:</strong> Your tutor/mentor is here to help, not judge</li>
+                                        <li><strong>Ask for what you need:</strong> If you want specific strategies or support, say so!</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="response-prompt">
+                                    <p><strong>Remember:</strong> This is the start of a conversation. Your tutor/mentor will use your response to tailor their support specifically to you. The more open and detailed you are, the more helpful they can be!</p>
+                                </div>
+                            </div>
+                        `;
                         
                         // Show modal
                         modal.classList.add('active');
                         
-                        console.log('[Student Report Enhancement] Opened response guide modal');
+                        console.log('[Student Report Enhancement] Opened enhanced response guide modal');
                     });
                 } else if (isGoalsSection) {
                     // Goals section - goal-setting help
@@ -715,51 +783,51 @@
                 const isMobile = window.innerWidth <= 768;
                 
                 if (isMobile) {
-                    // Mobile: Compact chip style
+                    // Mobile: Very compact chip style
                     link.style.cssText = `
                         display: inline-flex;
                         align-items: center;
-                        padding: 8px 14px;
-                        margin: 4px;
+                        padding: 4px 8px;
+                        margin: 2px;
                         background: linear-gradient(135deg, ${themeColor}15 0%, ${themeColor}25 100%);
-                        border: 1.5px solid ${themeColor}40;
-                        border-radius: 20px;
-                        color: ${themeColor};
-                        text-decoration: none;
-                        font-size: 14px;
-                        font-weight: 500;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 2px 8px ${themeColor}20;
-                        white-space: nowrap;
-                    `;
-                    
-                    // Add icon if not present
-                    if (!link.innerHTML.includes('🎯')) {
-                        link.innerHTML = '🎯 ' + link.innerHTML;
-                    }
-                } else {
-                    // Desktop: Button style
-                    link.style.cssText = `
-                        display: inline-flex;
-                        align-items: center;
-                        padding: 10px 18px;
-                        margin: 6px;
-                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
-                        border: 2px solid ${themeColor}30;
+                        border: 1px solid ${themeColor}40;
                         border-radius: 12px;
                         color: ${themeColor};
                         text-decoration: none;
-                        font-size: 15px;
+                        font-size: 11px;
                         font-weight: 500;
                         transition: all 0.3s ease;
-                        box-shadow: 0 3px 12px ${themeColor}15;
-                        min-width: 140px;
-                        justify-content: center;
+                        box-shadow: 0 1px 4px ${themeColor}15;
+                        white-space: nowrap;
+                        line-height: 1.2;
                     `;
                     
-                    // Add icon if not present
-                    if (!link.innerHTML.includes('🎯')) {
-                        link.innerHTML = '🎯 ' + link.innerHTML;
+                    // Smaller icon
+                    if (!link.innerHTML.includes('▸')) {
+                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
+                    }
+                } else {
+                    // Desktop: Smaller button style
+                    link.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 5px 10px;
+                        margin: 3px;
+                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
+                        border: 1.5px solid ${themeColor}30;
+                        border-radius: 8px;
+                        color: ${themeColor};
+                        text-decoration: none;
+                        font-size: 13px;
+                        font-weight: 500;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 2px 6px ${themeColor}10;
+                        white-space: nowrap;
+                    `;
+                    
+                    // Smaller icon
+                    if (!link.innerHTML.includes('▸')) {
+                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
                     }
                 }
                 
@@ -1385,6 +1453,144 @@
                 font-size: 16px !important;
                 line-height: 1.6 !important;
                 color: #333 !important;
+            }
+            
+            /* Response Guide specific styles */
+            .response-guide-content {
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+            }
+            
+            .guide-intro {
+                background: #e8f4f8 !important;
+                padding: 16px !important;
+                border-radius: 8px !important;
+                margin-bottom: 20px !important;
+                border-left: 4px solid #079baa !important;
+            }
+            
+            .guide-intro p {
+                margin: 0 !important;
+                color: #1a4d4d !important;
+                font-weight: 500 !important;
+            }
+            
+            .guide-section {
+                background: #f8f9fa !important;
+                padding: 16px !important;
+                margin: 16px 0 !important;
+                border-radius: 6px !important;
+                border: 1px solid #e0e0e0 !important;
+            }
+            
+            .guide-section p {
+                margin: 0 0 12px 0 !important;
+                color: #333 !important;
+            }
+            
+            .guide-section ul {
+                margin: 12px 0 !important;
+                padding-left: 24px !important;
+            }
+            
+            .guide-section li {
+                margin-bottom: 10px !important;
+                color: #555 !important;
+            }
+            
+            .guide-section li strong {
+                color: #1a4d4d !important;
+            }
+            
+            .sentence-starters {
+                background: white !important;
+                padding: 14px !important;
+                margin-top: 16px !important;
+                border-radius: 6px !important;
+                border: 1px solid #d0e5ea !important;
+            }
+            
+            .sentence-starters h4 {
+                color: #079baa !important;
+                margin: 0 0 12px 0 !important;
+                font-size: 15px !important;
+                font-weight: 600 !important;
+            }
+            
+            .sentence-starters .starter {
+                background: #f0f8fa !important;
+                padding: 10px 14px !important;
+                margin: 8px 0 !important;
+                border-left: 3px solid #62d1d2 !important;
+                border-radius: 4px !important;
+                font-style: italic !important;
+                color: #2a3c7a !important;
+                font-size: 15px !important;
+            }
+            
+            .guide-tips {
+                background: #fff9e6 !important;
+                border: 1px solid #ffd700 !important;
+                padding: 16px !important;
+                margin: 20px 0 !important;
+                border-radius: 8px !important;
+            }
+            
+            .guide-tips h4 {
+                color: #856404 !important;
+                margin: 0 0 12px 0 !important;
+                font-size: 17px !important;
+            }
+            
+            .guide-tips ul {
+                margin: 0 !important;
+                padding-left: 24px !important;
+            }
+            
+            .guide-tips li {
+                margin-bottom: 10px !important;
+                color: #704000 !important;
+            }
+            
+            .guide-tips li strong {
+                color: #856404 !important;
+            }
+            
+            .response-prompt {
+                background: linear-gradient(135deg, #e3f2fd 0%, #d8ebf7 100%) !important;
+                padding: 18px !important;
+                border-radius: 8px !important;
+                margin-top: 20px !important;
+                border: 1px solid #1976d2 !important;
+                text-align: center !important;
+            }
+            
+            .response-prompt p {
+                margin: 0 !important;
+                color: #1565c0 !important;
+                font-size: 16px !important;
+                line-height: 1.5 !important;
+            }
+            
+            .response-prompt strong {
+                color: #0d47a1 !important;
+            }
+            
+            /* Responsive adjustments for response guide */
+            @media (max-width: 768px) {
+                .sentence-starters .starter {
+                    font-size: 14px !important;
+                    padding: 8px 12px !important;
+                }
+                
+                .guide-section,
+                .guide-tips {
+                    padding: 12px !important;
+                }
+                
+                .response-guide-content h3 {
+                    font-size: 18px !important;
+                }
             }
             
             /* Goal setting specific styles */
@@ -2273,3 +2479,4 @@
     
     console.log('[Student Report Enhancement v5.1] Initialization complete');
 })();
+
