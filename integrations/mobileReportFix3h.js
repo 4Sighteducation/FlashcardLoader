@@ -100,7 +100,49 @@
                 // Initialize for all screen sizes
                 initializeVespaPopups();
                 initializeTextAreaFocus();
-                initializeHelpButtons();
+                
+                // Initialize help buttons with proper timing for textareas
+                const initHelpButtonsWithRetry = () => {
+                    const textareas = document.querySelectorAll('textarea');
+                    if (textareas.length > 0) {
+                        console.log(`[Student Report Enhancement] Found ${textareas.length} textareas, initializing help buttons`);
+                        initializeHelpButtons();
+                    } else {
+                        console.log('[Student Report Enhancement] No textareas found yet, will retry help buttons initialization');
+                        
+                        // Set up observer to wait for textareas
+                        const observer = new MutationObserver((mutations) => {
+                            const hasTextarea = document.querySelector('textarea');
+                            const hasHelpButton = document.querySelector('.help-button');
+                            
+                            if (hasTextarea && !hasHelpButton) {
+                                console.log('[Student Report Enhancement] Textareas now detected, initializing help buttons');
+                                initializeHelpButtons();
+                                observer.disconnect();
+                            }
+                        });
+                        
+                        observer.observe(document.body, {
+                            childList: true,
+                            subtree: true
+                        });
+                        
+                        // Also try again after delay
+                        setTimeout(() => {
+                            const textareas = document.querySelectorAll('textarea');
+                            if (textareas.length > 0 && !document.querySelector('.help-button')) {
+                                console.log('[Student Report Enhancement] Textareas found after delay, initializing help buttons');
+                                initializeHelpButtons();
+                                observer.disconnect();
+                            }
+                        }, 2000);
+                    }
+                };
+                
+                // Try immediately and with delay
+                initHelpButtonsWithRetry();
+                setTimeout(initHelpButtonsWithRetry, 1000);
+                
                 improveInfoButtonContent(); // Universal info button improvements
                 interceptActivityLinks(); // Intercept and style activity links
                 popupsInitialized = true;
@@ -574,10 +616,38 @@
             });
         }
         
-        // Use setTimeout to ensure DOM is ready
-        setTimeout(() => {
-            // Find all comment sections
-            const commentSections = document.querySelectorAll('#view_3041 .comment-section');
+        // Function to add help buttons
+        const addHelpButtonsToSections = () => {
+            // First check if textareas exist
+            const allTextareas = document.querySelectorAll('textarea');
+            console.log(`[Student Report Enhancement] Total textareas on page: ${allTextareas.length}`);
+            
+            if (allTextareas.length === 0) {
+                console.log('[Student Report Enhancement] No textareas found yet, will not add help buttons');
+                return false;
+            }
+            
+            // Find all comment sections - first try specific selector, then fallback to textareas
+            let commentSections = Array.from(document.querySelectorAll('#view_3041 .comment-section'));
+            
+            // If no sections found with specific selector, find via textareas
+            if (commentSections.length === 0) {
+                console.log('[Student Report Enhancement] No .comment-section found, using textarea containers');
+                allTextareas.forEach(textarea => {
+                    const container = textarea.closest('.kn-input-group') || 
+                                     textarea.closest('.kn-input') || 
+                                     textarea.closest('.field') ||
+                                     textarea.closest('[class*="field"]') ||
+                                     textarea.parentElement?.parentElement ||
+                                     textarea.parentElement;
+                    
+                    if (container && !commentSections.includes(container)) {
+                        commentSections.push(container);
+                    }
+                });
+            }
+            
+            console.log(`[Student Report Enhancement] Found ${commentSections.length} comment sections`);
             
             commentSections.forEach((section, index) => {
                 // Check if button already exists
@@ -718,15 +788,24 @@
                 }
             });
             
-            console.log(`[Student Report Enhancement] Added help buttons to comment sections`);
-        }, 500);
+            console.log(`[Student Report Enhancement] Added help buttons to ${commentSections.length} comment sections`);
+            return commentSections.length > 0;
+        };
+        
+        // Call the function immediately and after delays
+        const result = addHelpButtonsToSections();
+        if (!result) {
+            setTimeout(addHelpButtonsToSections, 1000);
+            setTimeout(addHelpButtonsToSections, 2000);
+        }
     }
     
     // New function to intercept and style activity links
     function initializeViewAnswersEnhancement() {
-        console.log('[Student Report Enhancement] Initializing View Answers enhancement...');
-        
-        let currentCycle = 1;
+        try {
+            console.log('[Student Report Enhancement] Initializing View Answers enhancement...');
+            
+            let currentCycle = 1;
         
         // Track cycle button clicks
         function initializeCycleTracking() {
@@ -876,7 +955,10 @@
         }
         
         // Watch for View Answers button click
-        const viewAnswersBtn = document.querySelector('button[aria-label*="VIEW ANSWERS"], button:has-text("VIEW ANSWERS")');
+        const viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(b => 
+            b.textContent.includes('VIEW ANSWERS') || 
+            b.getAttribute('aria-label')?.includes('VIEW ANSWERS'));
+        
         if (viewAnswersBtn) {
             viewAnswersBtn.addEventListener('click', function() {
                 console.log('[Student Report Enhancement] View Answers clicked');
@@ -926,6 +1008,9 @@
         });
         
         console.log('[Student Report Enhancement] View Answers enhancement initialized');
+        } catch (error) {
+            console.error('[Student Report Enhancement] Error initializing View Answers enhancement:', error);
+        }
     }
     
     function interceptActivityLinks() {
