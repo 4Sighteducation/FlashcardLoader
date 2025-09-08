@@ -15,12 +15,12 @@
     let initAttempts = 0;
     const MAX_INIT_ATTEMPTS = 10;
     
-    // More robust mobile detection
+    // More robust mobile detection - fix to prevent false positives on desktop
     function isMobileDevice() {
-        const isMobile = window.innerWidth <= 768 || 
-                        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                        ('ontouchstart' in window) ||
-                        (navigator.maxTouchPoints > 0);
+        // Primary check is screen width - desktop is NOT mobile even if it has touch
+        const isMobile = window.innerWidth <= 768 && 
+                        (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                        ('ontouchstart' in window && window.innerWidth <= 768));
         console.log('[Student Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'UserAgent:', navigator.userAgent);
         return isMobile;
     }
@@ -875,8 +875,12 @@
             });
         }
         
-        // Watch for View Answers button click
-        const viewAnswersBtn = document.querySelector('button[aria-label*="VIEW ANSWERS"], button:has-text("VIEW ANSWERS")');
+        // Watch for View Answers button click - with better selector
+        const viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+            btn.textContent.includes('VIEW ANSWERS') || 
+            btn.getAttribute('aria-label')?.includes('VIEW ANSWERS')
+        );
+        
         if (viewAnswersBtn) {
             viewAnswersBtn.addEventListener('click', function() {
                 console.log('[Student Report Enhancement] View Answers clicked');
@@ -888,6 +892,8 @@
                     }
                 }, 500);
             });
+        } else {
+            console.log('[Student Report Enhancement] View Answers button not found during initialization');
         }
         
         // Watch for modal appearance via mutation observer
@@ -915,17 +921,25 @@
             subtree: true
         });
         
-        // Initialize cycle tracking
-        initializeCycleTracking();
-        
-        // Re-initialize on hash change
-        window.addEventListener('hashchange', () => {
-            setTimeout(() => {
-                initializeCycleTracking();
-            }, 500);
-        });
-        
-        console.log('[Student Report Enhancement] View Answers enhancement initialized');
+        // Initialize cycle tracking with error handling
+        try {
+            initializeCycleTracking();
+            
+            // Re-initialize on hash change
+            window.addEventListener('hashchange', () => {
+                setTimeout(() => {
+                    try {
+                        initializeCycleTracking();
+                    } catch (e) {
+                        console.log('[Student Report Enhancement] Could not initialize cycle tracking on hash change:', e.message);
+                    }
+                }, 500);
+            });
+            
+            console.log('[Student Report Enhancement] View Answers enhancement initialized');
+        } catch (error) {
+            console.log('[Student Report Enhancement] Could not initialize View Answers enhancement:', error.message);
+        }
     }
     
     function interceptActivityLinks() {
