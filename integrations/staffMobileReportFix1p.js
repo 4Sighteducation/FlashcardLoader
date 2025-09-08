@@ -14,12 +14,12 @@
     let initAttempts = 0;
     const MAX_INIT_ATTEMPTS = 10;
     
-    // More robust mobile detection - fix to prevent false positives on desktop
+    // More robust mobile detection
     function isMobileDevice() {
-        // Primary check is screen width - desktop is NOT mobile even if it has touch
-        const isMobile = window.innerWidth <= 768 && 
-                        (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                        ('ontouchstart' in window && window.innerWidth <= 768));
+        const isMobile = window.innerWidth <= 768 || 
+                        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                        ('ontouchstart' in window) ||
+                        (navigator.maxTouchPoints > 0);
         console.log('[Staff Mobile Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'UserAgent:', navigator.userAgent);
         return isMobile;
     }
@@ -130,16 +130,25 @@
             
             // Initialize features
             if (!popupsInitialized) {
-                // Initialize for all screen sizes
-                initializeVespaPopups();
-                initializeTextAreaFocus();
-                initializeHelpButtons();
+                // Initialize features for ALL screen sizes
+                initializeHelpButtons(); // Help modals work on desktop too
                 improveInfoButtonContent(); // Universal info button improvements
                 interceptActivityLinks(); // Intercept and style activity links
-                popupsInitialized = true;
+                fixInfoButtonModals(); // Fix info button modals on all screen sizes
+                
+                // Initialize View Answers enhancements for ALL devices
+                initializeViewAnswersEnhancement();
+                
+                // FIX VIEW ANSWERS BUTTON for ALL devices
+                fixViewAnswersButton();
+                setTimeout(fixViewAnswersButton, 500);
+                setTimeout(fixViewAnswersButton, 1000);
                 
                 // Mobile-specific initializations
                 if (isMobileDevice()) {
+                    initializeVespaPopups(); // Click to expand only on mobile
+                    initializeTextAreaFocus(); // Text area focus only on mobile
+                    
                     // Try multiple times to ensure button is hidden
                     hideShowAnswersButton();
                     setTimeout(hideShowAnswersButton, 500);
@@ -148,22 +157,17 @@
                     
                     // Fix all modal types on mobile
                     fixAllModalsForMobile();
-                    
-                    // FIX VIEW ANSWERS BUTTON - Remove circular class
-                    fixViewAnswersButton();
-                    setTimeout(fixViewAnswersButton, 500);
-                    setTimeout(fixViewAnswersButton, 1000);
                 }
                 
-                // Fix info button modals on all screen sizes
-                fixInfoButtonModals();
+                popupsInitialized = true;
             }
             
-            // Enable pinch-to-zoom on mobile
+            // Fix EFFORT section width issues for ALL devices
+            fixEffortSection();
+            
+            // Mobile-only features
             if (isMobileDevice()) {
                 enableZoom();
-                // Fix EFFORT section width issues
-                fixEffortSection();
                 // Add mobile section headings - THIS IS THE KEY MISSING PIECE!
                 addSectionHeadings();
             }
@@ -178,17 +182,26 @@
     function fixViewAnswersButton() {
         console.log('[Staff Mobile Report Enhancement] Fixing VIEW ANSWERS button');
         
+        // Debug: Log all buttons found
+        const allButtons = document.querySelectorAll('button.p-button');
+        console.log(`[Staff Mobile Report Enhancement] Found ${allButtons.length} p-button elements`);
+        
         // Find the VIEW ANSWERS button - it incorrectly has p-button-rounded class
-        const viewBtn = Array.from(document.querySelectorAll('button.p-button')).find(b => 
-            b.textContent.includes('VIEW ANSWERS'));
+        const viewBtn = Array.from(allButtons).find(b => {
+            const hasViewAnswers = b.textContent.includes('VIEW ANSWERS');
+            if (hasViewAnswers) {
+                console.log('[Staff Mobile Report Enhancement] Found VIEW ANSWERS button with classes:', b.className);
+            }
+            return hasViewAnswers;
+        });
         
         if (viewBtn) {
             // Remove the rounded class that makes it circular
             viewBtn.classList.remove('p-button-rounded');
             viewBtn.classList.remove('p-button-icon-only');
             
-            // Apply rectangular styling directly
-            viewBtn.style.cssText += `
+            // Apply rectangular styling directly with higher specificity
+            viewBtn.style.cssText = `
                 min-width: 140px !important;
                 width: auto !important;
                 height: 44px !important;
@@ -197,13 +210,24 @@
                 white-space: nowrap !important;
                 background-color: #00e5db !important;
                 color: #23356f !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border: none !important;
+                box-shadow: 0 2px 8px rgba(0, 229, 219, 0.3) !important;
             `;
             
-            console.log('[Staff Mobile Report Enhancement] VIEW ANSWERS button fixed');
+            // Also ensure the text is visible
+            const buttonLabel = viewBtn.querySelector('.p-button-label');
+            if (buttonLabel) {
+                buttonLabel.style.display = 'inline';
+                buttonLabel.style.visibility = 'visible';
+            }
+            
+            console.log('[Staff Mobile Report Enhancement] VIEW ANSWERS button fixed with enhanced styles');
         }
         
-        // Initialize View Answers modal enhancement
-        initializeViewAnswersEnhancement();
+        // View Answers enhancement is now initialized earlier for all devices
         
         // Fix header container wrapping
         const topHeader = document.getElementById('top-report-header-container');
@@ -655,9 +679,12 @@
     }
     
     function initializeViewAnswersEnhancement() {
-        console.log('[Staff Mobile Report Enhancement] Initializing View Answers enhancement...');
+        console.log('[Staff Mobile Report Enhancement] Initializing View Answers enhancement for ALL devices...');
         
         let currentCycle = 1;
+        
+        // Debug: Check if we're on the right page
+        console.log('[Staff Mobile Report Enhancement] Current URL hash:', window.location.hash);
         
         // Track cycle button clicks
         function initializeCycleTracking() {
@@ -806,13 +833,20 @@
             });
         }
         
-        // Watch for View Answers button click - with better selector
-        const viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+        // Watch for View Answers button click - improved selector
+        let viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(btn => 
             btn.textContent.includes('VIEW ANSWERS') || 
             btn.getAttribute('aria-label')?.includes('VIEW ANSWERS')
         );
         
+        console.log('[Staff Mobile Report Enhancement] View Answers button search result:', viewAnswersBtn ? 'FOUND' : 'NOT FOUND');
+        
         if (viewAnswersBtn) {
+            console.log('[Staff Mobile Report Enhancement] View Answers button details:', {
+                text: viewAnswersBtn.textContent,
+                classes: viewAnswersBtn.className,
+                ariaLabel: viewAnswersBtn.getAttribute('aria-label')
+            });
             viewAnswersBtn.addEventListener('click', function() {
                 console.log('[Staff Mobile Report Enhancement] View Answers clicked');
                 
@@ -823,8 +857,6 @@
                     }
                 }, 500);
             });
-        } else {
-            console.log('[Staff Mobile Report Enhancement] View Answers button not found during initialization');
         }
         
         // Watch for modal appearance via mutation observer
@@ -852,25 +884,17 @@
             subtree: true
         });
         
-        // Initialize cycle tracking with error handling
-        try {
-            initializeCycleTracking();
-            
-            // Re-initialize on hash change
-            window.addEventListener('hashchange', () => {
-                setTimeout(() => {
-                    try {
-                        initializeCycleTracking();
-                    } catch (e) {
-                        console.log('[Staff Mobile Report Enhancement] Could not initialize cycle tracking on hash change:', e.message);
-                    }
-                }, 500);
-            });
-            
-            console.log('[Staff Mobile Report Enhancement] View Answers enhancement initialized');
-        } catch (error) {
-            console.log('[Staff Mobile Report Enhancement] Could not initialize View Answers enhancement:', error.message);
-        }
+        // Initialize cycle tracking
+        initializeCycleTracking();
+        
+        // Re-initialize on hash change
+        window.addEventListener('hashchange', () => {
+            setTimeout(() => {
+                initializeCycleTracking();
+            }, 500);
+        });
+        
+        console.log('[Staff Mobile Report Enhancement] View Answers enhancement initialized');
     }
     
     function initializeHelpButtons() {
@@ -976,35 +1000,39 @@
         
         // Use setTimeout to ensure DOM is ready
         setTimeout(() => {
-            // Find all comment sections - look for ALL view containers that might have textareas
-            const viewSelectors = [
-                '#view_2776',
-                '#view_3015', 
-                '#kn-scene_1095'
+            // Debug: First check what view we're in
+            console.log('[Staff Mobile Report Enhancement] Checking for views and textareas...');
+            const views = ['#view_2776', '#view_3015', '#kn-scene_1095'];
+            views.forEach(v => {
+                const elem = document.querySelector(v);
+                if (elem) {
+                    const textareas = elem.querySelectorAll('textarea');
+                    console.log(`[Staff Mobile Report Enhancement] ${v}: Found ${textareas.length} textareas`);
+                }
+            });
+            
+            // Find all comment sections - look for textareas and their parent containers
+            const commentSelectors = [
+                'textarea',  // Find ALL textareas first
+                '.kn-input textarea',  // Main selector for text areas
+                '.kn-textarea',        // Alternative textarea selector
+                'textarea[name*="field"]',  // Field-based textareas
+                '.kn-comments',        // Comments section
+                '.field_211',          // Specific field selectors
+                '.field_209',
+                '.field_217'
             ];
             
             let commentSections = [];
-            const processedElements = new Set();
-            
-            viewSelectors.forEach(viewSelector => {
-                const viewElement = document.querySelector(viewSelector);
-                if (!viewElement) return;
-                
-                // Find all textareas within this view
-                const textareas = viewElement.querySelectorAll('textarea');
-                
-                textareas.forEach(textarea => {
+            commentSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
                     // Get the parent container that holds the textarea and label
-                    const parentContainer = textarea.closest('.kn-input-group') || 
-                                          textarea.closest('.kn-input') || 
-                                          textarea.closest('.field') ||
-                                          textarea.closest('div[class*="field"]') ||
-                                          textarea.parentElement;
-                    
-                    // Use a unique identifier to avoid duplicates
-                    const identifier = parentContainer ? parentContainer.outerHTML.substring(0, 100) : null;
-                    if (parentContainer && !processedElements.has(identifier)) {
-                        processedElements.add(identifier);
+                    const parentContainer = element.closest('.kn-input-group') || 
+                                          element.closest('.kn-input') || 
+                                          element.closest('.field') ||
+                                          element.parentElement;
+                    if (parentContainer && !commentSections.includes(parentContainer)) {
                         commentSections.push(parentContainer);
                     }
                 });
