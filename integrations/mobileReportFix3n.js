@@ -15,12 +15,10 @@
     let initAttempts = 0;
     const MAX_INIT_ATTEMPTS = 10;
     
-    // More robust mobile detection
+    // More robust mobile detection - FIXED
     function isMobileDevice() {
-        const isMobile = window.innerWidth <= 768 || 
-                        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                        ('ontouchstart' in window) ||
-                        (navigator.maxTouchPoints > 0);
+        // Only consider it mobile if width is small, not just because of touch support
+        const isMobile = (window.innerWidth <= 768);
         console.log('[Student Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'UserAgent:', navigator.userAgent);
         return isMobile;
     }
@@ -602,8 +600,8 @@
         setTimeout(() => {
             // Debug: First check what we have on the page
             console.log('[Student Report Enhancement] Checking for comment sections...');
-            const textareas = document.querySelectorAll('textarea');
-            console.log(`[Student Report Enhancement] Found ${textareas.length} textareas on page`);
+            const textareas = document.querySelectorAll('textarea, .ql-editor, [contenteditable="true"]');
+            console.log(`[Student Report Enhancement] Found ${textareas.length} textareas/editors on page`);
             
             // Find all comment sections - try multiple selectors
             let commentSections = document.querySelectorAll('#view_3041 .comment-section');
@@ -897,10 +895,15 @@
                 }
             }
             
-            // Add ESC key listener
+            // Add ESC key listener with proper closure
             const escHandler = (e) => {
                 if (e.key === 'Escape') {
-                    closeBtn.click();
+                    if (closeBtn) {
+                        closeBtn.click();
+                    } else {
+                        modal.style.display = 'none';
+                        modal.classList.remove('show', 'active');
+                    }
                     document.removeEventListener('keydown', escHandler);
                 }
             };
@@ -971,15 +974,17 @@
             subtree: true
         });
         
-        // Initialize cycle tracking
-        initializeCycleTracking();
+        // Initialize cycle tracking with safeguards
+        let cycleTrackingInitialized = false;
         
-        // Re-initialize on hash change
-        window.addEventListener('hashchange', () => {
-            setTimeout(() => {
+        if (!cycleTrackingInitialized) {
+            try {
                 initializeCycleTracking();
-            }, 500);
-        });
+                cycleTrackingInitialized = true;
+            } catch (error) {
+                console.error('[Student Report Enhancement] Error in cycle tracking:', error);
+            }
+        }
         
         console.log('[Student Report Enhancement] View Answers enhancement initialized');
     }
