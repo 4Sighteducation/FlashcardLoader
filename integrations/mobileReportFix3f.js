@@ -748,12 +748,12 @@
             
             const bgColor = scoreSection.style.backgroundColor;
             
-            // Updated colors to match VESPA branding
+            // Updated colors to match ACTUAL VESPA app RGB values
             if (bgColor.includes('255, 143, 0')) return '#ff6b35'; // VISION - Orange
-            if (bgColor.includes('134, 180, 240')) return '#7bd8d0'; // EFFORT - Light Blue  
-            if (bgColor.includes('114, 203, 68')) return '#4CAF50'; // SYSTEMS - Green
-            if (bgColor.includes('127, 49, 164')) return '#9C27B0'; // PRACTICE - Purple
-            if (bgColor.includes('240, 50, 230')) return '#E91E63'; // ATTITUDE - Pink
+            if (bgColor.includes('56, 182, 255')) return '#7bd8d0'; // EFFORT - Light Blue  
+            if (bgColor.includes('2, 230, 18')) return '#4CAF50'; // SYSTEMS - Green
+            if (bgColor.includes('140, 82, 255')) return '#9C27B0'; // PRACTICE - Purple
+            if (bgColor.includes('255, 102, 196')) return '#E91E63'; // ATTITUDE - Pink
             
             return '#1976d2';
         }
