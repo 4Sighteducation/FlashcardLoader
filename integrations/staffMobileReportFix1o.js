@@ -14,12 +14,12 @@
     let initAttempts = 0;
     const MAX_INIT_ATTEMPTS = 10;
     
-    // More robust mobile detection
+    // More robust mobile detection - fix to prevent false positives on desktop
     function isMobileDevice() {
-        const isMobile = window.innerWidth <= 768 || 
-                        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                        ('ontouchstart' in window) ||
-                        (navigator.maxTouchPoints > 0);
+        // Primary check is screen width - desktop is NOT mobile even if it has touch
+        const isMobile = window.innerWidth <= 768 && 
+                        (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                        ('ontouchstart' in window && window.innerWidth <= 768));
         console.log('[Staff Mobile Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'UserAgent:', navigator.userAgent);
         return isMobile;
     }
@@ -806,8 +806,12 @@
             });
         }
         
-        // Watch for View Answers button click
-        const viewAnswersBtn = document.querySelector('button[aria-label*="VIEW ANSWERS"], button:has-text("VIEW ANSWERS")');
+        // Watch for View Answers button click - with better selector
+        const viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+            btn.textContent.includes('VIEW ANSWERS') || 
+            btn.getAttribute('aria-label')?.includes('VIEW ANSWERS')
+        );
+        
         if (viewAnswersBtn) {
             viewAnswersBtn.addEventListener('click', function() {
                 console.log('[Staff Mobile Report Enhancement] View Answers clicked');
@@ -819,6 +823,8 @@
                     }
                 }, 500);
             });
+        } else {
+            console.log('[Staff Mobile Report Enhancement] View Answers button not found during initialization');
         }
         
         // Watch for modal appearance via mutation observer
@@ -846,17 +852,25 @@
             subtree: true
         });
         
-        // Initialize cycle tracking
-        initializeCycleTracking();
-        
-        // Re-initialize on hash change
-        window.addEventListener('hashchange', () => {
-            setTimeout(() => {
-                initializeCycleTracking();
-            }, 500);
-        });
-        
-        console.log('[Staff Mobile Report Enhancement] View Answers enhancement initialized');
+        // Initialize cycle tracking with error handling
+        try {
+            initializeCycleTracking();
+            
+            // Re-initialize on hash change
+            window.addEventListener('hashchange', () => {
+                setTimeout(() => {
+                    try {
+                        initializeCycleTracking();
+                    } catch (e) {
+                        console.log('[Staff Mobile Report Enhancement] Could not initialize cycle tracking on hash change:', e.message);
+                    }
+                }, 500);
+            });
+            
+            console.log('[Staff Mobile Report Enhancement] View Answers enhancement initialized');
+        } catch (error) {
+            console.log('[Staff Mobile Report Enhancement] Could not initialize View Answers enhancement:', error.message);
+        }
     }
     
     function initializeHelpButtons() {
@@ -962,27 +976,35 @@
         
         // Use setTimeout to ensure DOM is ready
         setTimeout(() => {
-            // Find all comment sections - look for textareas and their parent containers
-            const commentSelectors = [
-                '.kn-input textarea',  // Main selector for text areas
-                '.kn-textarea',        // Alternative textarea selector
-                'textarea[name*="field"]',  // Field-based textareas
-                '.kn-comments',        // Comments section
-                '.field_211',          // Specific field selectors
-                '.field_209',
-                '.field_217'
+            // Find all comment sections - look for ALL view containers that might have textareas
+            const viewSelectors = [
+                '#view_2776',
+                '#view_3015', 
+                '#kn-scene_1095'
             ];
             
             let commentSections = [];
-            commentSelectors.forEach(selector => {
-                const elements = document.querySelectorAll(selector);
-                elements.forEach(element => {
+            const processedElements = new Set();
+            
+            viewSelectors.forEach(viewSelector => {
+                const viewElement = document.querySelector(viewSelector);
+                if (!viewElement) return;
+                
+                // Find all textareas within this view
+                const textareas = viewElement.querySelectorAll('textarea');
+                
+                textareas.forEach(textarea => {
                     // Get the parent container that holds the textarea and label
-                    const parentContainer = element.closest('.kn-input-group') || 
-                                          element.closest('.kn-input') || 
-                                          element.closest('.field') ||
-                                          element.parentElement;
-                    if (parentContainer && !commentSections.includes(parentContainer)) {
+                    const parentContainer = textarea.closest('.kn-input-group') || 
+                                          textarea.closest('.kn-input') || 
+                                          textarea.closest('.field') ||
+                                          textarea.closest('div[class*="field"]') ||
+                                          textarea.parentElement;
+                    
+                    // Use a unique identifier to avoid duplicates
+                    const identifier = parentContainer ? parentContainer.outerHTML.substring(0, 100) : null;
+                    if (parentContainer && !processedElements.has(identifier)) {
+                        processedElements.add(identifier);
                         commentSections.push(parentContainer);
                     }
                 });
