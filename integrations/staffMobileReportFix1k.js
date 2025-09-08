@@ -202,6 +202,9 @@
             console.log('[Staff Mobile Report Enhancement] VIEW ANSWERS button fixed');
         }
         
+        // Initialize View Answers modal enhancement
+        initializeViewAnswersEnhancement();
+        
         // Fix header container wrapping
         const topHeader = document.getElementById('top-report-header-container');
         if (topHeader) {
@@ -649,6 +652,211 @@
                 console.log(`[Staff Mobile Report Enhancement] Updated activity link: ${newUrl}`);
             });
         });
+    }
+    
+    function initializeViewAnswersEnhancement() {
+        console.log('[Staff Mobile Report Enhancement] Initializing View Answers enhancement...');
+        
+        let currentCycle = 1;
+        
+        // Track cycle button clicks
+        function initializeCycleTracking() {
+            const cycleButtons = Array.from(document.querySelectorAll('button')).filter(btn => {
+                const text = btn.textContent.trim();
+                return text === '1' || text === '2' || text === '3' || 
+                       text.includes('Cycle 1') || text.includes('Cycle 2') || text.includes('Cycle 3');
+            });
+            
+            console.log(`[Staff Mobile Report Enhancement] Found ${cycleButtons.length} cycle buttons`);
+            
+            cycleButtons.forEach((btn, index) => {
+                btn.addEventListener('click', function() {
+                    const btnText = this.textContent.trim();
+                    if (btnText === '1' || btnText.includes('Cycle 1')) currentCycle = 1;
+                    else if (btnText === '2' || btnText.includes('Cycle 2')) currentCycle = 2;
+                    else if (btnText === '3' || btnText.includes('Cycle 3')) currentCycle = 3;
+                    
+                    console.log(`[Staff Mobile Report Enhancement] Cycle ${currentCycle} selected`);
+                    
+                    // Update button styles to show selection
+                    cycleButtons.forEach(b => b.style.opacity = '0.6');
+                    this.style.opacity = '1';
+                    this.style.boxShadow = '0 0 0 2px #079baa';
+                });
+            });
+        }
+        
+        // Enhance the modal when it opens
+        function enhanceViewAnswersModal(modal) {
+            console.log('[Staff Mobile Report Enhancement] Enhancing View Answers modal...');
+            
+            // Check if already enhanced
+            if (modal.querySelector('.cycle-indicator')) return;
+            
+            // Find the header
+            const header = modal.querySelector('.p-dialog-header, h2, h3');
+            if (header && !header.querySelector('.cycle-indicator')) {
+                const cycleIndicator = document.createElement('span');
+                cycleIndicator.className = 'cycle-indicator';
+                cycleIndicator.style.cssText = `
+                    display: inline-block;
+                    margin-left: 15px;
+                    padding: 4px 12px;
+                    background: #079baa;
+                    color: white;
+                    border-radius: 20px;
+                    font-size: 14px;
+                    font-weight: 500;
+                `;
+                cycleIndicator.textContent = `Cycle ${currentCycle}`;
+                header.appendChild(cycleIndicator);
+            }
+            
+            // Make modal responsive
+            modal.style.cssText += `
+                max-width: 95vw !important;
+                max-height: 90vh !important;
+                width: auto !important;
+                min-width: 300px !important;
+            `;
+            
+            // Fix modal content scrolling
+            const content = modal.querySelector('.p-dialog-content, .modal-body');
+            if (content) {
+                content.style.cssText += `
+                    max-height: 60vh !important;
+                    overflow-y: auto !important;
+                    padding: 20px !important;
+                `;
+            }
+            
+            // Ensure close button exists and works
+            let closeBtn = modal.querySelector('.p-dialog-header-close, .close, .modal-close');
+            if (!closeBtn) {
+                // Create close button matching our modal style
+                closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '×';
+                closeBtn.className = 'modal-close-btn';
+                closeBtn.style.cssText = `
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    border: none;
+                    background: rgba(255, 255, 255, 0.2);
+                    color: white;
+                    font-size: 28px;
+                    line-height: 1;
+                    cursor: pointer;
+                    z-index: 1000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                `;
+                
+                closeBtn.onmouseover = () => {
+                    closeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+                    closeBtn.style.transform = 'scale(1.1)';
+                };
+                
+                closeBtn.onmouseout = () => {
+                    closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+                    closeBtn.style.transform = 'scale(1)';
+                };
+                
+                closeBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    modal.classList.remove('show', 'active');
+                    const backdrop = document.querySelector('.p-dialog-mask, .modal-backdrop');
+                    if (backdrop) backdrop.remove();
+                    modal.remove();
+                };
+                
+                const dialogHeader = modal.querySelector('.p-dialog-header');
+                if (dialogHeader) {
+                    dialogHeader.appendChild(closeBtn);
+                } else {
+                    modal.appendChild(closeBtn);
+                }
+            }
+            
+            // Add ESC key listener
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    closeBtn.click();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+            
+            // Update cycle indicator when data changes
+            const observer = new MutationObserver(() => {
+                const indicator = modal.querySelector('.cycle-indicator');
+                if (indicator) {
+                    indicator.textContent = `Cycle ${currentCycle}`;
+                }
+            });
+            
+            observer.observe(modal, {
+                childList: true,
+                subtree: true
+            });
+        }
+        
+        // Watch for View Answers button click
+        const viewAnswersBtn = document.querySelector('button[aria-label*="VIEW ANSWERS"], button:has-text("VIEW ANSWERS")');
+        if (viewAnswersBtn) {
+            viewAnswersBtn.addEventListener('click', function() {
+                console.log('[Staff Mobile Report Enhancement] View Answers clicked');
+                
+                setTimeout(() => {
+                    const modal = document.querySelector('.p-dialog, [role="dialog"], .modal');
+                    if (modal) {
+                        enhanceViewAnswersModal(modal);
+                    }
+                }, 500);
+            });
+        }
+        
+        // Watch for modal appearance via mutation observer
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === 1) {
+                        if (node.classList?.contains('p-dialog') || 
+                            node.getAttribute?.('role') === 'dialog' ||
+                            node.querySelector?.('.p-dialog')) {
+                            
+                            const modal = node.classList?.contains('p-dialog') ? node : node.querySelector('.p-dialog');
+                            if (modal && modal.textContent.includes('Question')) {
+                                console.log('[Staff Mobile Report Enhancement] View Answers modal detected');
+                                enhanceViewAnswersModal(modal);
+                            }
+                        }
+                    }
+                });
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Initialize cycle tracking
+        initializeCycleTracking();
+        
+        // Re-initialize on hash change
+        window.addEventListener('hashchange', () => {
+            setTimeout(() => {
+                initializeCycleTracking();
+            }, 500);
+        });
+        
+        console.log('[Staff Mobile Report Enhancement] View Answers enhancement initialized');
     }
     
     function initializeHelpButtons() {
@@ -2703,4 +2911,3 @@
     
     console.log('[Staff Mobile Report Enhancement v1.0] Initialization complete');
 })();
-
