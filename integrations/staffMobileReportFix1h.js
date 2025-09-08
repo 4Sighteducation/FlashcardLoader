@@ -53,14 +53,29 @@
             return false;
         }
         
-        // SKIP FOR EMULATED STUDENTS - Check if user has both staff and student roles
+        // SKIP FOR EMULATED STUDENTS - Only skip if viewing their OWN report
         const user = Knack.getUserAttributes();
         if (user && user.roles) {
             const hasStaffRole = user.roles.includes('object_7');
             const hasStudentRole = user.roles.includes('object_6');
+            
+            // Only skip if it's an emulated student viewing their OWN report
+            // Check if the report being viewed belongs to the current user
             if (hasStaffRole && hasStudentRole && currentScene.includes('vespa-results')) {
-                console.log('[Staff Mobile Report Enhancement] Emulated student viewing own report - skipping mobile fixes to prevent score display issues');
-                return false;
+                // Look for the student name in the report to see if it matches current user
+                const studentNameElement = document.querySelector('#student-name');
+                const currentUserName = user.name || '';
+                
+                if (studentNameElement && currentUserName) {
+                    const reportStudentName = studentNameElement.textContent.trim();
+                    if (reportStudentName.toLowerCase().includes(currentUserName.toLowerCase())) {
+                        console.log('[Staff Mobile Report Enhancement] Emulated student viewing OWN report - skipping mobile fixes');
+                        return false;
+                    }
+                }
+                
+                // If we can't determine, allow the enhancements for staff viewing other students
+                console.log('[Staff Mobile Report Enhancement] Staff member viewing student report - applying enhancements');
             }
         }
         
@@ -533,11 +548,12 @@
             
             const bgColor = scoreSection.style.backgroundColor;
             
-            if (bgColor.includes('255, 143, 0')) return '#ff8f00'; // VISION
-            if (bgColor.includes('134, 180, 240')) return '#86b4f0'; // EFFORT
-            if (bgColor.includes('114, 203, 68')) return '#72cb44'; // SYSTEMS
-            if (bgColor.includes('127, 49, 164')) return '#7f31a4'; // PRACTICE
-            if (bgColor.includes('240, 50, 230')) return '#f032e6'; // ATTITUDE
+            // Updated colors to match VESPA branding
+            if (bgColor.includes('255, 143, 0')) return '#ff6b35'; // VISION - Orange
+            if (bgColor.includes('134, 180, 240')) return '#7bd8d0'; // EFFORT - Light Blue  
+            if (bgColor.includes('114, 203, 68')) return '#4CAF50'; // SYSTEMS - Green
+            if (bgColor.includes('127, 49, 164')) return '#9C27B0'; // PRACTICE - Purple
+            if (bgColor.includes('240, 50, 230')) return '#E91E63'; // ATTITUDE - Pink
             
             return '#1976d2';
         }
@@ -573,53 +589,47 @@
                 const themeColor = getThemeColor(link);
                 const isMobile = window.innerWidth <= 768;
                 
+                // Remove any icons first
+                link.innerHTML = link.innerHTML.replace('▸', '').replace('🎯', '').trim();
+                
                 if (isMobile) {
-                    // Mobile: Very compact chip style
+                    // Mobile: Ultra compact chip style
                     link.style.cssText = `
                         display: inline-flex;
                         align-items: center;
-                        padding: 4px 8px;
-                        margin: 2px;
+                        padding: 2px 6px;
+                        margin: 1px;
                         background: linear-gradient(135deg, ${themeColor}15 0%, ${themeColor}25 100%);
                         border: 1px solid ${themeColor}40;
-                        border-radius: 12px;
+                        border-radius: 10px;
+                        color: ${themeColor};
+                        text-decoration: none;
+                        font-size: 9px;
+                        font-weight: 500;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 1px 3px ${themeColor}10;
+                        white-space: nowrap;
+                        line-height: 1.1;
+                    `;
+                } else {
+                    // Desktop: Minimal button style
+                    link.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 3px 8px;
+                        margin: 2px;
+                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
+                        border: 1px solid ${themeColor}30;
+                        border-radius: 6px;
                         color: ${themeColor};
                         text-decoration: none;
                         font-size: 11px;
                         font-weight: 500;
                         transition: all 0.3s ease;
-                        box-shadow: 0 1px 4px ${themeColor}15;
+                        box-shadow: 0 1px 4px ${themeColor}08;
                         white-space: nowrap;
                         line-height: 1.2;
                     `;
-                    
-                    // Smaller icon
-                    if (!link.innerHTML.includes('▸')) {
-                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
-                    }
-                } else {
-                    // Desktop: Smaller button style
-                    link.style.cssText = `
-                        display: inline-flex;
-                        align-items: center;
-                        padding: 5px 10px;
-                        margin: 3px;
-                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
-                        border: 1.5px solid ${themeColor}30;
-                        border-radius: 8px;
-                        color: ${themeColor};
-                        text-decoration: none;
-                        font-size: 13px;
-                        font-weight: 500;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 2px 6px ${themeColor}10;
-                        white-space: nowrap;
-                    `;
-                    
-                    // Smaller icon
-                    if (!link.innerHTML.includes('▸')) {
-                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
-                    }
                 }
                 
                 // Add hover effects
@@ -644,25 +654,91 @@
     function initializeHelpButtons() {
         console.log('[Staff Mobile Report Enhancement] Initializing help buttons');
         
-        // Create response guide modal if it doesn't exist
-        if (!document.getElementById('staff-response-guide-modal')) {
-            const modalHtml = `
-                <div id="staff-response-guide-modal" class="help-modal-overlay">
+        // Create TWO modals: one for student response guide (what students see), one for coaching guide
+        
+        // 1. Student Response Guide Modal (shows what students see)
+        if (!document.getElementById('staff-student-guide-modal')) {
+            const studentModalHtml = `
+                <div id="staff-student-guide-modal" class="help-modal-overlay">
                     <div class="help-modal-content">
-                        <div class="help-modal-header">
-                            <h2>Response Guide</h2>
+                        <div class="help-modal-header" style="background: #079baa !important;">
+                            <h2>Student Response Guide (What Students See)</h2>
                             <button class="help-modal-close">&times;</button>
                         </div>
                         <div class="help-modal-body">
-                            <div id="staff-response-guide-content"></div>
+                            <div id="staff-student-guide-content"></div>
                         </div>
                     </div>
                 </div>
             `;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.body.insertAdjacentHTML('beforeend', studentModalHtml);
             
             // Add close handlers
-            const modal = document.getElementById('staff-response-guide-modal');
+            const modal = document.getElementById('staff-student-guide-modal');
+            const closeBtn = modal.querySelector('.help-modal-close');
+            
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        }
+        
+        // 2. Coaching Conversation Guide Modal (for staff)
+        if (!document.getElementById('staff-coaching-guide-modal')) {
+            const coachingModalHtml = `
+                <div id="staff-coaching-guide-modal" class="help-modal-overlay">
+                    <div class="help-modal-content">
+                        <div class="help-modal-header" style="background: #5899a8 !important;">
+                            <h2>Coaching Conversation Guide</h2>
+                            <button class="help-modal-close">&times;</button>
+                        </div>
+                        <div class="help-modal-body">
+                            <div id="staff-coaching-guide-content"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', coachingModalHtml);
+            
+            // Add close handlers
+            const modal = document.getElementById('staff-coaching-guide-modal');
+            const closeBtn = modal.querySelector('.help-modal-close');
+            
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        }
+        
+        // 3. Goal-Setting Guide Modal (shows what students see for goals)
+        if (!document.getElementById('staff-goals-guide-modal')) {
+            const goalsModalHtml = `
+                <div id="staff-goals-guide-modal" class="help-modal-overlay">
+                    <div class="help-modal-content">
+                        <div class="help-modal-header" style="background: #1976d2 !important;">
+                            <h2>Student Goal-Setting Guide (What Students See)</h2>
+                            <button class="help-modal-close">&times;</button>
+                        </div>
+                        <div class="help-modal-body">
+                            <div id="staff-goals-guide-content"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', goalsModalHtml);
+            
+            // Add close handlers
+            const modal = document.getElementById('staff-goals-guide-modal');
             const closeBtn = modal.querySelector('.help-modal-close');
             
             closeBtn.addEventListener('click', () => {
@@ -692,55 +768,286 @@
             });
             
             commentSections.forEach((section, index) => {
-                // Check if button already exists
+                // Check if buttons already exist
                 if (section.querySelector('.help-writing-btn')) {
                     return;
                 }
                 
-                // Add help button for staff coaching comments
-                const helpButton = document.createElement('button');
-                helpButton.className = 'help-writing-btn';
-                helpButton.innerHTML = '<span>💡</span> Need help writing coaching feedback?';
+                // Determine which section this is
+                const sectionLabel = section.querySelector('label');
+                const sectionText = sectionLabel ? sectionLabel.textContent.toLowerCase() : '';
+                const isStudentResponseSection = sectionText.includes('response') || index === 0;
+                const isGoalsSection = sectionText.includes('goal') || sectionText.includes('action')
                 
-                // Insert the button at the top of the comment section
-                const firstChild = section.firstElementChild;
-                if (firstChild) {
-                    section.insertBefore(helpButton, firstChild);
-                } else {
-                    section.appendChild(helpButton);
+                if (isStudentResponseSection) {
+                    // Add button to show what students see
+                    const studentGuideBtn = document.createElement('button');
+                    studentGuideBtn.className = 'help-writing-btn student-guide-btn';
+                    studentGuideBtn.innerHTML = '<span>👁️</span> See Student Response Guide';
+                    studentGuideBtn.style.cssText = 'background: #079baa !important; margin-bottom: 10px !important;';
+                    
+                    const firstChild = section.firstElementChild;
+                    if (firstChild) {
+                        section.insertBefore(studentGuideBtn, firstChild);
+                    } else {
+                        section.appendChild(studentGuideBtn);
+                    }
+                    
+                    studentGuideBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const modal = document.getElementById('staff-student-guide-modal');
+                        const contentDiv = document.getElementById('staff-student-guide-content');
+                        
+                        // Show the same content students see
+                        contentDiv.innerHTML = `
+                            <div class="response-guide-content">
+                                <div class="guide-intro">
+                                    <p>This is what students see when they click "Need help writing a response?"</p>
+                                    <p style="margin-top: 10px;">Your students are guided to provide detailed responses that help you understand their unique situation:</p>
+                                </div>
+                                
+                                <h3>📊 Reflecting on Your VESPA Scores</h3>
+                                <div class="guide-section">
+                                    <p>Students are asked to consider:</p>
+                                    <ul>
+                                        <li><strong>Score accuracy</strong> - Do the scores feel right?</li>
+                                        <li><strong>Surprises</strong> - Any unexpected highs or lows?</li>
+                                        <li><strong>Strengths & growth areas</strong> - What the scores reveal</li>
+                                    </ul>
+                                    
+                                    <div class="sentence-starters">
+                                        <h4>Sentence starters provided:</h4>
+                                        <p class="starter">"Looking at my scores, I was surprised to see..."</p>
+                                        <p class="starter">"My [highest/lowest] score in [area] makes sense because..."</p>
+                                    </div>
+                                </div>
+                                
+                                <h3>📚 Current Study Experience</h3>
+                                <div class="guide-section">
+                                    <p>Students describe:</p>
+                                    <ul>
+                                        <li><strong>Daily reality</strong> - Typical study sessions</li>
+                                        <li><strong>Challenges</strong> - Current difficulties</li>
+                                        <li><strong>Successes</strong> - What's working well</li>
+                                    </ul>
+                                    
+                                    <div class="sentence-starters">
+                                        <h4>Examples given:</h4>
+                                        <p class="starter">"Right now, I'm finding it hard to..."</p>
+                                        <p class="starter">"My biggest challenge with studying is..."</p>
+                                    </div>
+                                </div>
+                                
+                                <h3>🎯 Goals & Support Needed</h3>
+                                <div class="guide-section">
+                                    <p>Students share:</p>
+                                    <ul>
+                                        <li><strong>Immediate priorities</strong></li>
+                                        <li><strong>Long-term goals</strong></li>
+                                        <li><strong>Support they need</strong></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                        
+                        modal.classList.add('active');
+                        console.log('[Staff Mobile Report Enhancement] Opened student guide modal');
+                    });
                 }
                 
-                // Add click handler
-                helpButton.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const modal = document.getElementById('staff-response-guide-modal');
-                    const contentDiv = document.getElementById('staff-response-guide-content');
+                // Add goal-setting guide button if this is a goals section
+                if (isGoalsSection) {
+                    const goalsGuideBtn = document.createElement('button');
+                    goalsGuideBtn.className = 'help-writing-btn goals-guide-btn';
+                    goalsGuideBtn.innerHTML = '<span>🎯</span> See Student Goal-Setting Guide';
+                    goalsGuideBtn.style.cssText = 'background: #1976d2 !important; margin-bottom: 10px !important;';
                     
-                    // Generic coaching guidance content
+                    const firstChild = section.firstElementChild;
+                    if (firstChild) {
+                        section.insertBefore(goalsGuideBtn, firstChild);
+                    } else {
+                        section.appendChild(goalsGuideBtn);
+                    }
+                    
+                    goalsGuideBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const modal = document.getElementById('staff-goals-guide-modal');
+                        const contentDiv = document.getElementById('staff-goals-guide-content');
+                        
+                        // Show the same content students see for goal setting
+                        contentDiv.innerHTML = `
+                            <div class="goal-tips">
+                                <p style="background: #e8f4f8; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+                                    <strong>This is what students see when they click "Need help setting effective goals?"</strong>
+                                </p>
+                                
+                                <h3>Tips for Effective Study Goals</h3>
+                                <ul>
+                                    <li><strong>Keep them specific and achievable</strong> - Instead of "study more", try "complete 2 practice papers this week"</li>
+                                    <li><strong>Focus on approach goals</strong> - Set targets you're working towards, not things you're trying to avoid</li>
+                                    <li><strong>Make them measurable</strong> - Include numbers or specific outcomes so you know when you've achieved them</li>
+                                    <li><strong>Set a timeframe</strong> - Give yourself a deadline to create urgency and track progress</li>
+                                </ul>
+                                
+                                <h3>Types of Effective Approach Goals</h3>
+                                <div class="goal-type" style="background: #f8f9fa; padding: 12px; margin: 12px 0; border-radius: 6px; border-left: 4px solid #1976d2;">
+                                    <h4>🎯 Performance Goals</h4>
+                                    <p style="font-style: italic; color: #1976d2;">"I want to achieve 75% or higher in my next test"</p>
+                                    <p class="goal-description" style="color: #666; font-size: 14px;">Focus on achieving a specific ranking or score</p>
+                                </div>
+                                
+                                <div class="goal-type" style="background: #f8f9fa; padding: 12px; margin: 12px 0; border-radius: 6px; border-left: 4px solid #4CAF50;">
+                                    <h4>📈 Mastery Goals</h4>
+                                    <p style="font-style: italic; color: #4CAF50;">"I will improve my essay structure by practicing introductions daily"</p>
+                                    <p class="goal-description" style="color: #666; font-size: 14px;">Focus on developing specific skills</p>
+                                </div>
+                                
+                                <div class="goal-type" style="background: #f8f9fa; padding: 12px; margin: 12px 0; border-radius: 6px; border-left: 4px solid #ff6b35;">
+                                    <h4>🏆 Personal Best Goals</h4>
+                                    <p style="font-style: italic; color: #ff6b35;">"I aim to beat my previous score of 68% by at least 5%"</p>
+                                    <p class="goal-description" style="color: #666; font-size: 14px;">Focus on improving your own previous performance</p>
+                                </div>
+                                
+                                <div class="avoid-section" style="background: #fff3e0; border: 1px solid #ff9800; padding: 12px; margin: 20px 0; border-radius: 6px;">
+                                    <h4 style="color: #e65100;">❌ Students Are Encouraged to Avoid These Types of Goals</h4>
+                                    <ul style="color: #bf360c;">
+                                        <li>"I just don't want to fail" (avoidance goal)</li>
+                                        <li>"I hope I don't run out of time" (focuses on negative)</li>
+                                        <li>"As long as I pass" (lacks ambition)</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="goal-prompt" style="background: #e8f4f8; padding: 16px; border-radius: 8px; margin-top: 20px; border: 2px solid #1976d2;">
+                                    <p style="margin: 0; color: #0d47a1; font-weight: 600;">
+                                        Students are prompted to write goals focusing on what they want to achieve, not what they want to avoid!
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                        
+                        modal.classList.add('active');
+                        console.log('[Staff Mobile Report Enhancement] Opened student goals guide modal');
+                    });
+                }
+                
+                // Add coaching conversation guide button for all comment sections
+                const coachingBtn = document.createElement('button');
+                coachingBtn.className = 'help-writing-btn coaching-guide-btn';
+                coachingBtn.innerHTML = '<span>💬</span> Coaching Conversation Guide';
+                coachingBtn.style.cssText = 'background: #5899a8 !important;';
+                
+                // Insert after student guide button if it exists
+                const studentBtn = section.querySelector('.student-guide-btn');
+                if (studentBtn) {
+                    studentBtn.parentNode.insertBefore(coachingBtn, studentBtn.nextSibling);
+                } else {
+                    const firstChild = section.firstElementChild;
+                    if (firstChild) {
+                        section.insertBefore(coachingBtn, firstChild);
+                    } else {
+                        section.appendChild(coachingBtn);
+                    }
+                }
+                
+                coachingBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const modal = document.getElementById('staff-coaching-guide-modal');
+                    const contentDiv = document.getElementById('staff-coaching-guide-content');
+                    
+                    // Enhanced coaching conversation guide
                     contentDiv.innerHTML = `
-                        <div class="help-content">
-                            <h3>Effective Coaching Feedback Tips</h3>
-                            <ul>
-                                <li><strong>Be specific and actionable</strong> - Give concrete steps the student can take</li>
-                                <li><strong>Focus on growth</strong> - Highlight what they're doing well and how to build on it</li>
-                                <li><strong>Ask guiding questions</strong> - Help students discover insights themselves</li>
-                                <li><strong>Connect to goals</strong> - Relate feedback to their academic or personal objectives</li>
-                                <li><strong>Be encouraging</strong> - Maintain a positive, supportive tone</li>
-                            </ul>
+                        <div class="coaching-guide-content">
+                            <div class="guide-intro" style="background: #e8f4f8; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #5899a8;">
+                                <p style="margin: 0; color: #1a4d4d; font-weight: 500;">Effective coaching conversations build trust, encourage reflection, and empower students to take ownership of their learning journey.</p>
+                            </div>
                             
-                            <h4>Sample Coaching Phrases:</h4>
-                            <ul>
-                                <li>"I noticed you... Consider trying..."</li>
-                                <li>"Your strength in... could help you with..."</li>
-                                <li>"What would happen if you..."</li>
-                                <li>"How might you apply this to..."</li>
-                            </ul>
+                            <h3>🎯 Opening the Conversation</h3>
+                            <div class="guide-section">
+                                <p>Start with appreciation and curiosity:</p>
+                                <ul>
+                                    <li><strong>Acknowledge their effort:</strong> "Thank you for sharing your thoughts about..."</li>
+                                    <li><strong>Show you've read their response:</strong> "I noticed you mentioned..."</li>
+                                    <li><strong>Express genuine interest:</strong> "I'd love to understand more about..."</li>
+                                </ul>
+                                
+                                <div class="conversation-starters">
+                                    <h4>Opening phrases:</h4>
+                                    <p class="starter">"I appreciate your honesty about [specific challenge]..."</p>
+                                    <p class="starter">"Your reflection on [score/area] shows good self-awareness..."</p>
+                                    <p class="starter">"Let's explore what you said about..."</p>
+                                </div>
+                            </div>
+                            
+                            <h3>💭 Facilitating Reflection</h3>
+                            <div class="guide-section">
+                                <p>Guide students to deeper insights:</p>
+                                <ul>
+                                    <li><strong>Explore patterns:</strong> Help them see connections across themes</li>
+                                    <li><strong>Challenge gently:</strong> Question assumptions without judgment</li>
+                                    <li><strong>Celebrate progress:</strong> Highlight improvements, however small</li>
+                                    <li><strong>Normalize struggles:</strong> Share that challenges are part of growth</li>
+                                </ul>
+                                
+                                <div class="conversation-starters">
+                                    <h4>Reflective questions:</h4>
+                                    <p class="starter">"What do you think is behind your [high/low] score in...?"</p>
+                                    <p class="starter">"How does this connect to what you told me about...?"</p>
+                                    <p class="starter">"What would success look like for you in this area?"</p>
+                                    <p class="starter">"What's one small change that might make a difference?"</p>
+                                </div>
+                            </div>
+                            
+                            <h3>📝 Collaborative Action Planning</h3>
+                            <div class="guide-section">
+                                <p>Co-create next steps with the student:</p>
+                                <ul>
+                                    <li><strong>Start small:</strong> Focus on 1-2 achievable actions</li>
+                                    <li><strong>Be specific:</strong> "This week" not "soon"</li>
+                                    <li><strong>Student-led:</strong> Let them propose solutions first</li>
+                                    <li><strong>Remove barriers:</strong> Problem-solve obstacles together</li>
+                                </ul>
+                                
+                                <div class="conversation-starters">
+                                    <h4>Action-focused prompts:</h4>
+                                    <p class="starter">"Based on our discussion, what feels like a good first step?"</p>
+                                    <p class="starter">"How can I support you with...?"</p>
+                                    <p class="starter">"What might get in the way, and how can we plan for that?"</p>
+                                    <p class="starter">"When would be a good time to check in on progress?"</p>
+                                </div>
+                            </div>
+                            
+                            <h3>🌟 Closing with Confidence</h3>
+                            <div class="guide-section">
+                                <p>End on an empowering note:</p>
+                                <ul>
+                                    <li><strong>Summarize commitments:</strong> Both theirs and yours</li>
+                                    <li><strong>Express confidence:</strong> Show you believe in them</li>
+                                    <li><strong>Open door:</strong> Remind them you're available</li>
+                                    <li><strong>Set follow-up:</strong> Schedule next check-in</li>
+                                </ul>
+                                
+                                <div class="conversation-starters">
+                                    <h4>Closing statements:</h4>
+                                    <p class="starter">"I'm confident you can make progress with..."</p>
+                                    <p class="starter">"Remember, I'm here if you need support with..."</p>
+                                    <p class="starter">"I look forward to hearing how [specific action] goes..."</p>
+                                </div>
+                            </div>
+                            
+                            <div class="coaching-tips" style="background: #fff9e6; border: 1px solid #ffd700; padding: 16px; margin: 20px 0; border-radius: 8px;">
+                                <h4 style="color: #856404; margin: 0 0 12px 0;">🔑 Key Principles</h4>
+                                <ul style="margin: 0; padding-left: 24px;">
+                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Listen more than you speak</strong> - Their insights matter most</li>
+                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Ask, don't tell</strong> - Questions empower; advice can disempower</li>
+                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Focus on strengths</strong> - Build from what's working</li>
+                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Small steps count</strong> - Progress over perfection</li>
+                                    <li style="color: #704000;">                        <strong>Partnership approach</strong> - You're allies, not adversaries</li>
+                                </ul>
+                            </div>
                         </div>
                     `;
                     
-                    // Show modal
                     modal.classList.add('active');
-                    
                     console.log('[Staff Mobile Report Enhancement] Opened coaching guide modal');
                 });
             });
@@ -1358,6 +1665,115 @@
                 color: #079baa !important;
                 margin: 20px 0 12px 0 !important;
                 font-size: 18px !important;
+            }
+            
+            /* Staff-specific guide styles */
+            .response-guide-content,
+            .coaching-guide-content {
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+            }
+            
+            .guide-intro {
+                background: #e8f4f8 !important;
+                padding: 16px !important;
+                border-radius: 8px !important;
+                margin-bottom: 20px !important;
+                border-left: 4px solid #079baa !important;
+            }
+            
+            .guide-intro p {
+                margin: 0 0 8px 0 !important;
+                color: #1a4d4d !important;
+                font-weight: 500 !important;
+            }
+            
+            .guide-intro p:last-child {
+                margin-bottom: 0 !important;
+            }
+            
+            .guide-section {
+                background: #f8f9fa !important;
+                padding: 16px !important;
+                margin: 16px 0 !important;
+                border-radius: 6px !important;
+                border: 1px solid #e0e0e0 !important;
+            }
+            
+            .guide-section p {
+                margin: 0 0 12px 0 !important;
+                color: #333 !important;
+            }
+            
+            .guide-section ul {
+                margin: 12px 0 !important;
+                padding-left: 24px !important;
+            }
+            
+            .guide-section li {
+                margin-bottom: 10px !important;
+                color: #555 !important;
+            }
+            
+            .guide-section li strong {
+                color: #1a4d4d !important;
+            }
+            
+            .sentence-starters,
+            .conversation-starters {
+                background: white !important;
+                padding: 14px !important;
+                margin-top: 16px !important;
+                border-radius: 6px !important;
+                border: 1px solid #d0e5ea !important;
+            }
+            
+            .sentence-starters h4,
+            .conversation-starters h4 {
+                color: #079baa !important;
+                margin: 0 0 12px 0 !important;
+                font-size: 15px !important;
+                font-weight: 600 !important;
+            }
+            
+            .sentence-starters .starter,
+            .conversation-starters .starter {
+                background: #f0f8fa !important;
+                padding: 10px 14px !important;
+                margin: 8px 0 !important;
+                border-left: 3px solid #62d1d2 !important;
+                border-radius: 4px !important;
+                font-style: italic !important;
+                color: #2a3c7a !important;
+                font-size: 15px !important;
+            }
+            
+            .coaching-tips {
+                background: #fff9e6 !important;
+                border: 1px solid #ffd700 !important;
+                padding: 16px !important;
+                margin: 20px 0 !important;
+                border-radius: 8px !important;
+            }
+            
+            .coaching-tips h4 {
+                color: #856404 !important;
+                margin: 0 0 12px 0 !important;
+                font-size: 17px !important;
+            }
+            
+            .coaching-tips ul {
+                margin: 0 !important;
+                padding-left: 24px !important;
+            }
+            
+            .coaching-tips li {
+                margin-bottom: 10px !important;
+                color: #704000 !important;
+            }
+            
+            .coaching-tips li strong {
+                color: #856404 !important;
             }
             
             /* PrimeVue Dialog fixes for mobile */
