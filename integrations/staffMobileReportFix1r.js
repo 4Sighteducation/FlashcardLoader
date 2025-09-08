@@ -679,6 +679,13 @@
     function initializeViewAnswersEnhancement() {
         console.log('[Staff Mobile Report Enhancement] Initializing View Answers enhancement for ALL devices...');
         
+        // Check if already initialized to prevent duplicates
+        if (window._viewAnswersEnhancementInitialized) {
+            console.log('[Staff Mobile Report Enhancement] View Answers enhancement already initialized, skipping...');
+            return;
+        }
+        window._viewAnswersEnhancementInitialized = true;
+        
         let currentCycle = 1;
         
         // Debug: Check if we're on the right page
@@ -695,6 +702,10 @@
             console.log(`[Staff Mobile Report Enhancement] Found ${cycleButtons.length} cycle buttons`);
             
             cycleButtons.forEach((btn, index) => {
+                // Check if already has listener to prevent duplicates
+                if (btn.dataset.cycleListenerAdded) return;
+                btn.dataset.cycleListenerAdded = 'true';
+                
                 btn.addEventListener('click', function() {
                     const btnText = this.textContent.trim();
                     if (btnText === '1' || btnText.includes('Cycle 1')) currentCycle = 1;
@@ -844,48 +855,74 @@
         
         console.log('[Staff Mobile Report Enhancement] View Answers button search result:', viewAnswersBtn ? 'FOUND' : 'NOT FOUND');
         
-        if (viewAnswersBtn) {
+        if (viewAnswersBtn && !viewAnswersBtn.dataset.enhancementListenerAdded) {
+            viewAnswersBtn.dataset.enhancementListenerAdded = 'true';
             console.log('[Staff Mobile Report Enhancement] View Answers button details:', {
                 text: viewAnswersBtn.textContent,
                 classes: viewAnswersBtn.className,
                 ariaLabel: viewAnswersBtn.getAttribute('aria-label')
             });
-            viewAnswersBtn.addEventListener('click', function() {
+            
+            // Add a safe click handler that prevents hangs
+            viewAnswersBtn.addEventListener('click', function(e) {
                 console.log('[Staff Mobile Report Enhancement] View Answers clicked');
                 
+                // Use a single timeout to check for modal
                 setTimeout(() => {
-                    const modal = document.querySelector('.p-dialog, [role="dialog"], .modal');
-                    if (modal) {
-                        enhanceViewAnswersModal(modal);
+                    try {
+                        const modal = document.querySelector('.p-dialog, [role="dialog"], .modal, .view-answers-modal');
+                        if (modal && !modal.dataset.enhanced) {
+                            modal.dataset.enhanced = 'true';
+                            enhanceViewAnswersModal(modal);
+                        }
+                    } catch (error) {
+                        console.error('[Staff Mobile Report Enhancement] Error enhancing modal:', error);
                     }
                 }, 500);
             });
         }
         
-        // Watch for modal appearance via mutation observer
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === 1) {
-                        if (node.classList?.contains('p-dialog') || 
-                            node.getAttribute?.('role') === 'dialog' ||
-                            node.querySelector?.('.p-dialog')) {
-                            
-                            const modal = node.classList?.contains('p-dialog') ? node : node.querySelector('.p-dialog');
-                            if (modal && modal.textContent.includes('Question')) {
-                                console.log('[Staff Mobile Report Enhancement] View Answers modal detected');
-                                enhanceViewAnswersModal(modal);
+        // Only set up ONE mutation observer for modals to prevent performance issues
+        if (!window._modalObserverInitialized) {
+            window._modalObserverInitialized = true;
+            
+            const observer = new MutationObserver((mutations) => {
+                // Process mutations in batches to prevent performance issues
+                const modalsToEnhance = [];
+                
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) {
+                            if (node.classList?.contains('p-dialog') || 
+                                node.getAttribute?.('role') === 'dialog' ||
+                                node.querySelector?.('.p-dialog')) {
+                                
+                                const modal = node.classList?.contains('p-dialog') ? node : node.querySelector('.p-dialog');
+                                if (modal && modal.textContent.includes('Question') && !modal.dataset.enhanced) {
+                                    modal.dataset.enhanced = 'true';
+                                    modalsToEnhance.push(modal);
+                                }
                             }
                         }
+                    });
+                });
+                
+                // Enhance modals outside the mutation loop to prevent hangs
+                modalsToEnhance.forEach(modal => {
+                    try {
+                        console.log('[Staff Mobile Report Enhancement] View Answers modal detected via observer');
+                        enhanceViewAnswersModal(modal);
+                    } catch (error) {
+                        console.error('[Staff Mobile Report Enhancement] Error in modal enhancement:', error);
                     }
                 });
             });
-        });
-        
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
         
         // Initialize cycle tracking with safeguards
         let cycleTrackingInitialized = false;
@@ -1020,54 +1057,92 @@
                     return;
                 }
                 
-                // Get all text content from the section and nearby elements
-                const sectionText = section.textContent || '';
-                const prevElement = section.previousElementSibling;
-                const nextElement = section.nextElementSibling;
-                const parentText = section.parentElement?.textContent || '';
+                // Look for a label or header above this section for proper identification
+                const parent = section.parentElement;
+                const grandparent = parent?.parentElement;
                 
-                // Combine all text for analysis
-                const combinedText = (
-                    sectionText + ' ' + 
-                    (prevElement?.textContent || '') + ' ' +
-                    (nextElement?.textContent || '') + ' ' +
-                    parentText
-                ).toLowerCase();
+                // Search for labels in various locations
+                let sectionLabel = null;
                 
-                console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} text sample: "${combinedText.substring(0, 100)}..."`);
+                // Check previous siblings for labels
+                let prevSibling = section.previousElementSibling;
+                let checkCount = 0;
+                while (prevSibling && !sectionLabel && checkCount < 5) {
+                    // Check if this element is a label
+                    if (prevSibling.tagName === 'LABEL' || prevSibling.classList?.contains('kn-label') ||
+                        prevSibling.tagName === 'H3' || prevSibling.tagName === 'H4' ||
+                        prevSibling.querySelector?.('label, .kn-label')) {
+                        const labelEl = prevSibling.querySelector?.('label, .kn-label') || prevSibling;
+                        sectionLabel = labelEl.textContent?.trim();
+                        break;
+                    }
+                    prevSibling = prevSibling.previousElementSibling;
+                    checkCount++;
+                }
                 
-                // Determine section type by content analysis
+                // If no label found, check parent for labels
+                if (!sectionLabel && parent) {
+                    const parentLabel = parent.querySelector('label, .kn-label, h3, h4');
+                    if (parentLabel && parentLabel !== section) {
+                        sectionLabel = parentLabel.textContent?.trim();
+                    }
+                }
+                
+                // Check for field classes that might indicate the section type
+                const sectionClasses = section.className || '';
+                const parentClasses = parent?.className || '';
+                const grandparentClasses = grandparent?.className || '';
+                const allClasses = `${sectionClasses} ${parentClasses} ${grandparentClasses}`;
+                
+                const hasField211 = allClasses.includes('field_211'); // Likely Student Response
+                const hasField209 = allClasses.includes('field_209'); // Likely Coaching Record  
+                const hasField217 = allClasses.includes('field_217'); // Likely Goals
+                
+                console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} analysis:`);
+                console.log(`  - Label found: "${sectionLabel || 'none'}"`);
+                console.log(`  - Field classes: field_211=${hasField211}, field_209=${hasField209}, field_217=${hasField217}`);
+                console.log(`  - Position: ${index + 1} of ${commentSections.length}`);
+                
+                // Determine section type by label, field class, or position
                 let isStudentResponseSection = false;
                 let isCoachingSection = false;
                 let isGoalsSection = false;
                 
-                // Check for specific keywords in content
-                if (combinedText.includes('student response') || 
-                    (combinedText.includes('student') && combinedText.includes('response'))) {
+                const labelLower = (sectionLabel || '').toLowerCase();
+                
+                // First priority: Check label text
+                if (labelLower.includes('student') && (labelLower.includes('response') || labelLower.includes('reflection'))) {
                     isStudentResponseSection = true;
-                    console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} identified as: STUDENT RESPONSE`);
-                } else if (combinedText.includes('coaching record') || 
-                          combinedText.includes('coaching conversation') ||
-                          (combinedText.includes('coach') && combinedText.includes('record'))) {
+                    console.log(`  → Identified as: STUDENT RESPONSE (by label)`);//Changed arrow for consistency
+                } else if (labelLower.includes('coaching') || (labelLower.includes('coach') && labelLower.includes('record'))) {
                     isCoachingSection = true;
-                    console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} identified as: COACHING RECORD`);
-                } else if (combinedText.includes('study goal') || 
-                          combinedText.includes('action plan') || 
-                          combinedText.includes('goal') || 
-                          combinedText.includes('goal set')) {
+                    console.log(`  → Identified as: COACHING RECORD (by label)`);
+                } else if (labelLower.includes('goal') || labelLower.includes('action') || labelLower.includes('plan')) {
                     isGoalsSection = true;
-                    console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} identified as: GOALS/ACTION PLAN`);
-                } else {
-                    // Fallback: use position
+                    console.log(`  → Identified as: GOALS/ACTION PLAN (by label)`);
+                }
+                // Second priority: Check field classes
+                else if (hasField211) {
+                    isStudentResponseSection = true;
+                    console.log(`  → Identified as: STUDENT RESPONSE (by field_211)`);
+                } else if (hasField209) {
+                    isCoachingSection = true;
+                    console.log(`  → Identified as: COACHING RECORD (by field_209)`);
+                } else if (hasField217) {
+                    isGoalsSection = true;
+                    console.log(`  → Identified as: GOALS/ACTION PLAN (by field_217)`);
+                }
+                // Third priority: Use position (most reliable fallback)
+                else {
                     if (index === 0) {
                         isStudentResponseSection = true;
-                        console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} assumed as: STUDENT RESPONSE (first position)`);
+                        console.log(`  → Identified as: STUDENT RESPONSE (by position: first)`);
                     } else if (index === 1) {
                         isCoachingSection = true;
-                        console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} assumed as: COACHING RECORD (middle position)`);
+                        console.log(`  → Identified as: COACHING RECORD (by position: middle)`);
                     } else {
                         isGoalsSection = true;
-                        console.log(`[Staff Mobile Report Enhancement] Section ${index + 1} assumed as: GOALS (last position)`);
+                        console.log(`  → Identified as: GOALS/ACTION PLAN (by position: last)`);
                     }
                 }
                 
