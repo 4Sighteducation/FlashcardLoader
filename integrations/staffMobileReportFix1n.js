@@ -133,48 +133,7 @@
                 // Initialize for all screen sizes
                 initializeVespaPopups();
                 initializeTextAreaFocus();
-                
-                // Initialize help buttons with proper timing
-                const initHelpButtonsWithRetry = () => {
-                    const textareas = document.querySelectorAll('textarea');
-                    if (textareas.length > 0) {
-                        console.log(`[Staff Mobile Report Enhancement] Found ${textareas.length} textareas, initializing help buttons`);
-                        initializeHelpButtons();
-                    } else {
-                        console.log('[Staff Mobile Report Enhancement] No textareas found yet, will retry help buttons initialization');
-                        // Set up observer to wait for textareas
-                        const observer = new MutationObserver((mutations) => {
-                            const hasTextarea = document.querySelector('textarea');
-                            const hasHelpButton = document.querySelector('.help-button');
-                            
-                            if (hasTextarea && !hasHelpButton) {
-                                console.log('[Staff Mobile Report Enhancement] Textareas now detected, initializing help buttons');
-                                initializeHelpButtons();
-                                observer.disconnect();
-                            }
-                        });
-                        
-                        observer.observe(document.body, {
-                            childList: true,
-                            subtree: true
-                        });
-                        
-                        // Also try again after delay
-                        setTimeout(() => {
-                            const textareas = document.querySelectorAll('textarea');
-                            if (textareas.length > 0 && !document.querySelector('.help-button')) {
-                                console.log('[Staff Mobile Report Enhancement] Textareas found after delay, initializing help buttons');
-                                initializeHelpButtons();
-                                observer.disconnect();
-                            }
-                        }, 2000);
-                    }
-                };
-                
-                // Try immediately and with delay
-                initHelpButtonsWithRetry();
-                setTimeout(initHelpButtonsWithRetry, 1000);
-                
+                initializeHelpButtons();
                 improveInfoButtonContent(); // Universal info button improvements
                 interceptActivityLinks(); // Intercept and style activity links
                 popupsInitialized = true;
@@ -696,10 +655,9 @@
     }
     
     function initializeViewAnswersEnhancement() {
-        try {
-            console.log('[Staff Mobile Report Enhancement] Initializing View Answers enhancement...');
-            
-            let currentCycle = 1;
+        console.log('[Staff Mobile Report Enhancement] Initializing View Answers enhancement...');
+        
+        let currentCycle = 1;
         
         // Track cycle button clicks
         function initializeCycleTracking() {
@@ -849,10 +807,7 @@
         }
         
         // Watch for View Answers button click
-        const viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(b => 
-            b.textContent.includes('VIEW ANSWERS') || 
-            b.getAttribute('aria-label')?.includes('VIEW ANSWERS'));
-        
+        const viewAnswersBtn = document.querySelector('button[aria-label*="VIEW ANSWERS"], button:has-text("VIEW ANSWERS")');
         if (viewAnswersBtn) {
             viewAnswersBtn.addEventListener('click', function() {
                 console.log('[Staff Mobile Report Enhancement] View Answers clicked');
@@ -902,9 +857,6 @@
         });
         
         console.log('[Staff Mobile Report Enhancement] View Answers enhancement initialized');
-        } catch (error) {
-            console.error('[Staff Mobile Report Enhancement] Error initializing View Answers enhancement:', error);
-        }
     }
     
     function initializeHelpButtons() {
@@ -1008,17 +960,8 @@
             });
         }
         
-        // Function to actually add the help buttons
-        const addHelpButtonsToSections = () => {
-            // First check if textareas exist
-            const allTextareas = document.querySelectorAll('textarea');
-            console.log(`[Staff Mobile Report Enhancement] Total textareas on page: ${allTextareas.length}`);
-            
-            if (allTextareas.length === 0) {
-                console.log('[Staff Mobile Report Enhancement] No textareas found yet, will not add help buttons');
-                return false;
-            }
-            
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
             // Find all comment sections - look for textareas and their parent containers
             const commentSelectors = [
                 '.kn-input textarea',  // Main selector for text areas
@@ -1027,30 +970,20 @@
                 '.kn-comments',        // Comments section
                 '.field_211',          // Specific field selectors
                 '.field_209',
-                '.field_217',
-                'textarea'  // Fallback to all textareas
+                '.field_217'
             ];
             
             let commentSections = [];
             commentSelectors.forEach(selector => {
                 const elements = document.querySelectorAll(selector);
                 elements.forEach(element => {
-                    // If it's a textarea, get its container
-                    let container;
-                    if (element.tagName === 'TEXTAREA') {
-                        container = element.closest('.kn-input-group') || 
-                                   element.closest('.kn-input') || 
-                                   element.closest('.field') ||
-                                   element.closest('[class*="field"]') ||
-                                   element.parentElement?.parentElement ||
-                                   element.parentElement;
-                    } else {
-                        // It's already a container
-                        container = element;
-                    }
-                    
-                    if (container && !commentSections.includes(container)) {
-                        commentSections.push(container);
+                    // Get the parent container that holds the textarea and label
+                    const parentContainer = element.closest('.kn-input-group') || 
+                                          element.closest('.kn-input') || 
+                                          element.closest('.field') ||
+                                          element.parentElement;
+                    if (parentContainer && !commentSections.includes(parentContainer)) {
+                        commentSections.push(parentContainer);
                     }
                 });
             });
@@ -1410,16 +1343,7 @@
                     }
                 });
             }
-            
-            return commentSections.length > 0 || allTextareas.length > 0;
-        };
-        
-        // Call the function immediately and after delays
-        const result = addHelpButtonsToSections();
-        if (!result) {
-            setTimeout(addHelpButtonsToSections, 1500);
-            setTimeout(addHelpButtonsToSections, 3000);
-        }
+        }, 1000); // Increased timeout to ensure DOM is ready
     }
     
     function initializeVespaPopups() {
@@ -2987,4 +2911,3 @@
     
     console.log('[Staff Mobile Report Enhancement v1.0] Initialization complete');
 })();
-
