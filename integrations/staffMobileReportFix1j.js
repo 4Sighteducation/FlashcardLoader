@@ -754,18 +754,33 @@
         
         // Use setTimeout to ensure DOM is ready
         setTimeout(() => {
-            // Find all comment sections - adapt selectors for staff views
+            // Find all comment sections - look for textareas and their parent containers
             const commentSelectors = [
-                '#view_2776 .comment-section',
-                '#view_3015 .comment-section',
-                '#kn-scene_1095 .comment-section'
+                '.kn-input textarea',  // Main selector for text areas
+                '.kn-textarea',        // Alternative textarea selector
+                'textarea[name*="field"]',  // Field-based textareas
+                '.kn-comments',        // Comments section
+                '.field_211',          // Specific field selectors
+                '.field_209',
+                '.field_217'
             ];
             
             let commentSections = [];
             commentSelectors.forEach(selector => {
-                const sections = document.querySelectorAll(selector);
-                commentSections = commentSections.concat(Array.from(sections));
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    // Get the parent container that holds the textarea and label
+                    const parentContainer = element.closest('.kn-input-group') || 
+                                          element.closest('.kn-input') || 
+                                          element.closest('.field') ||
+                                          element.parentElement;
+                    if (parentContainer && !commentSections.includes(parentContainer)) {
+                        commentSections.push(parentContainer);
+                    }
+                });
             });
+            
+            console.log(`[Staff Mobile Report Enhancement] Found ${commentSections.length} comment sections`);
             
             commentSections.forEach((section, index) => {
                 // Check if buttons already exist
@@ -773,16 +788,49 @@
                     return;
                 }
                 
-                // Determine which section this is by looking at labels or headings
-                const sectionLabel = section.querySelector('label');
-                const sectionHeading = section.closest('.kn-view-group-5')?.querySelector('h3');
-                const sectionText = (sectionLabel ? sectionLabel.textContent : '') + ' ' + 
-                                  (sectionHeading ? sectionHeading.textContent : '');
+                // Determine which section this is by looking at various text elements
+                const label = section.querySelector('label');
+                const heading = section.closest('.kn-view-group-container')?.querySelector('h3, h4, .kn-title');
+                const textarea = section.querySelector('textarea');
+                const fieldName = textarea ? textarea.getAttribute('name') : '';
+                
+                // Check multiple sources for section identification
+                let sectionText = '';
+                if (label) sectionText += label.textContent + ' ';
+                if (heading) sectionText += heading.textContent + ' ';
+                
+                // Also check parent containers for headers
+                const parentView = section.closest('.kn-view');
+                if (parentView) {
+                    const viewHeader = parentView.querySelector('.view-header, .kn-title, h3');
+                    if (viewHeader) sectionText += viewHeader.textContent + ' ';
+                }
+                
+                // Check page text around the section
+                const prevSibling = section.previousElementSibling;
+                if (prevSibling && prevSibling.textContent) {
+                    sectionText += prevSibling.textContent + ' ';
+                }
+                
                 const lowerText = sectionText.toLowerCase();
                 
-                const isStudentResponseSection = lowerText.includes('student response');
-                const isCoachingSection = lowerText.includes('coaching record');
-                const isGoalsSection = lowerText.includes('study goal') || lowerText.includes('action plan')
+                console.log(`[Staff Mobile Report Enhancement] Section ${index}: "${sectionText.substring(0, 50)}..."`);
+                
+                // Determine section type with more flexible matching
+                const isStudentResponseSection = lowerText.includes('student response') || 
+                                                lowerText.includes('student') && lowerText.includes('response') ||
+                                                index === 0; // First section is usually student response
+                
+                const isCoachingSection = lowerText.includes('coaching record') || 
+                                        lowerText.includes('coaching') || 
+                                        lowerText.includes('coach') ||
+                                        (fieldName && fieldName.includes('209')); // Field 209 is often coaching
+                
+                const isGoalsSection = lowerText.includes('study goal') || 
+                                     lowerText.includes('action plan') || 
+                                     lowerText.includes('goal') ||
+                                     (fieldName && fieldName.includes('217')) || // Field 217 is often goals
+                                     index === commentSections.length - 1; // Last section is often goals
                 
                 if (isStudentResponseSection) {
                     // Add button to show what students see
@@ -1054,7 +1102,40 @@
             });
             
             console.log(`[Staff Mobile Report Enhancement] Added help buttons to ${commentSections.length} comment sections`);
-        }, 500);
+            
+            // If no sections were found, try a simpler approach
+            if (commentSections.length === 0) {
+                console.log('[Staff Mobile Report Enhancement] No sections found with primary method, trying fallback...');
+                
+                // Look for any textareas on the page
+                const allTextareas = document.querySelectorAll('textarea');
+                console.log(`[Staff Mobile Report Enhancement] Found ${allTextareas.length} textareas on page`);
+                
+                allTextareas.forEach((textarea, index) => {
+                    const container = textarea.closest('.kn-input') || textarea.parentElement;
+                    if (container && !container.querySelector('.help-writing-btn')) {
+                        // Add at least the coaching guide button
+                        const coachingBtn = document.createElement('button');
+                        coachingBtn.className = 'help-writing-btn coaching-guide-btn';
+                        coachingBtn.innerHTML = '<span>💬</span> Coaching Conversation Guide';
+                        coachingBtn.style.cssText = 'background: #5899a8 !important; margin-bottom: 10px !important;';
+                        
+                        container.insertBefore(coachingBtn, textarea);
+                        
+                        coachingBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const modal = document.getElementById('staff-coaching-guide-modal');
+                            if (modal) {
+                                modal.classList.add('active');
+                                console.log('[Staff Mobile Report Enhancement] Opened coaching guide modal (fallback)');
+                            }
+                        });
+                        
+                        console.log(`[Staff Mobile Report Enhancement] Added fallback coaching button to textarea ${index}`);
+                    }
+                });
+            }
+        }, 1000); // Increased timeout to ensure DOM is ready
     }
     
     function initializeVespaPopups() {
@@ -2569,6 +2650,10 @@
             popupsInitialized = false;
             initAttempts = 0;
             attemptInitialization();
+            // Also specifically re-init help buttons
+            setTimeout(() => {
+                initializeHelpButtons();
+            }, 1500);
         });
         
         $(document).on('knack-view-render.view_3015', function() {
@@ -2576,6 +2661,10 @@
             popupsInitialized = false;
             initAttempts = 0;
             attemptInitialization();
+            // Also specifically re-init help buttons
+            setTimeout(() => {
+                initializeHelpButtons();
+            }, 1500);
         });
         
         // Also watch for any view render in scene_1095
@@ -2585,6 +2674,14 @@
                 setTimeout(() => {
                     attemptInitialization();
                 }, 300);
+                // Also specifically re-init help buttons after longer delay
+                setTimeout(() => {
+                    const textareas = document.querySelectorAll('textarea');
+                    if (textareas.length > 0) {
+                        console.log('[Staff Mobile Report Enhancement] Re-initializing help buttons for coaching page');
+                        initializeHelpButtons();
+                    }
+                }, 2000);
             }
         });
     }
@@ -2606,3 +2703,4 @@
     
     console.log('[Staff Mobile Report Enhancement v1.0] Initialization complete');
 })();
+
