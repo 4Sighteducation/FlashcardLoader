@@ -574,51 +574,51 @@
                 const isMobile = window.innerWidth <= 768;
                 
                 if (isMobile) {
-                    // Mobile: Compact chip style
+                    // Mobile: Very compact chip style
                     link.style.cssText = `
                         display: inline-flex;
                         align-items: center;
-                        padding: 8px 14px;
-                        margin: 4px;
+                        padding: 4px 8px;
+                        margin: 2px;
                         background: linear-gradient(135deg, ${themeColor}15 0%, ${themeColor}25 100%);
-                        border: 1.5px solid ${themeColor}40;
-                        border-radius: 20px;
-                        color: ${themeColor};
-                        text-decoration: none;
-                        font-size: 14px;
-                        font-weight: 500;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 2px 8px ${themeColor}20;
-                        white-space: nowrap;
-                    `;
-                    
-                    // Add icon if not present
-                    if (!link.innerHTML.includes('🎯')) {
-                        link.innerHTML = '🎯 ' + link.innerHTML;
-                    }
-                } else {
-                    // Desktop: Button style
-                    link.style.cssText = `
-                        display: inline-flex;
-                        align-items: center;
-                        padding: 10px 18px;
-                        margin: 6px;
-                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
-                        border: 2px solid ${themeColor}30;
+                        border: 1px solid ${themeColor}40;
                         border-radius: 12px;
                         color: ${themeColor};
                         text-decoration: none;
-                        font-size: 15px;
+                        font-size: 11px;
                         font-weight: 500;
                         transition: all 0.3s ease;
-                        box-shadow: 0 3px 12px ${themeColor}15;
-                        min-width: 140px;
-                        justify-content: center;
+                        box-shadow: 0 1px 4px ${themeColor}15;
+                        white-space: nowrap;
+                        line-height: 1.2;
                     `;
                     
-                    // Add icon if not present
-                    if (!link.innerHTML.includes('🎯')) {
-                        link.innerHTML = '🎯 ' + link.innerHTML;
+                    // Smaller icon
+                    if (!link.innerHTML.includes('▸')) {
+                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
+                    }
+                } else {
+                    // Desktop: Smaller button style
+                    link.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 5px 10px;
+                        margin: 3px;
+                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
+                        border: 1.5px solid ${themeColor}30;
+                        border-radius: 8px;
+                        color: ${themeColor};
+                        text-decoration: none;
+                        font-size: 13px;
+                        font-weight: 500;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 2px 6px ${themeColor}10;
+                        white-space: nowrap;
+                    `;
+                    
+                    // Smaller icon
+                    if (!link.innerHTML.includes('▸')) {
+                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
                     }
                 }
                 
