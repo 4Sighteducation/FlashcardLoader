@@ -548,12 +548,12 @@
             
             const bgColor = scoreSection.style.backgroundColor;
             
-            // Updated colors to match VESPA branding
+            // Updated colors to match ACTUAL VESPA app RGB values
             if (bgColor.includes('255, 143, 0')) return '#ff6b35'; // VISION - Orange
-            if (bgColor.includes('134, 180, 240')) return '#7bd8d0'; // EFFORT - Light Blue  
-            if (bgColor.includes('114, 203, 68')) return '#4CAF50'; // SYSTEMS - Green
-            if (bgColor.includes('127, 49, 164')) return '#9C27B0'; // PRACTICE - Purple
-            if (bgColor.includes('240, 50, 230')) return '#E91E63'; // ATTITUDE - Pink
+            if (bgColor.includes('56, 182, 255')) return '#7bd8d0'; // EFFORT - Light Blue  
+            if (bgColor.includes('2, 230, 18')) return '#4CAF50'; // SYSTEMS - Green
+            if (bgColor.includes('140, 82, 255')) return '#9C27B0'; // PRACTICE - Purple
+            if (bgColor.includes('255, 102, 196')) return '#E91E63'; // ATTITUDE - Pink
             
             return '#1976d2';
         }
@@ -773,11 +773,16 @@
                     return;
                 }
                 
-                // Determine which section this is
+                // Determine which section this is by looking at labels or headings
                 const sectionLabel = section.querySelector('label');
-                const sectionText = sectionLabel ? sectionLabel.textContent.toLowerCase() : '';
-                const isStudentResponseSection = sectionText.includes('response') || index === 0;
-                const isGoalsSection = sectionText.includes('goal') || sectionText.includes('action')
+                const sectionHeading = section.closest('.kn-view-group-5')?.querySelector('h3');
+                const sectionText = (sectionLabel ? sectionLabel.textContent : '') + ' ' + 
+                                  (sectionHeading ? sectionHeading.textContent : '');
+                const lowerText = sectionText.toLowerCase();
+                
+                const isStudentResponseSection = lowerText.includes('student response');
+                const isCoachingSection = lowerText.includes('coaching record');
+                const isGoalsSection = lowerText.includes('study goal') || lowerText.includes('action plan')
                 
                 if (isStudentResponseSection) {
                     // Add button to show what students see
@@ -855,7 +860,124 @@
                     });
                 }
                 
-                // Add goal-setting guide button if this is a goals section
+                // Add coaching conversation guide button ONLY for coaching record section
+                if (isCoachingSection) {
+                    const coachingBtn = document.createElement('button');
+                    coachingBtn.className = 'help-writing-btn coaching-guide-btn';
+                    coachingBtn.innerHTML = '<span>💬</span> Coaching Conversation Guide';
+                    coachingBtn.style.cssText = 'background: #5899a8 !important;';
+                    
+                    const firstChild = section.firstElementChild;
+                    if (firstChild) {
+                        section.insertBefore(coachingBtn, firstChild);
+                    } else {
+                        section.appendChild(coachingBtn);
+                    }
+                    
+                    coachingBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const modal = document.getElementById('staff-coaching-guide-modal');
+                        const contentDiv = document.getElementById('staff-coaching-guide-content');
+                        
+                        // Enhanced coaching conversation guide
+                        contentDiv.innerHTML = `
+                            <div class="coaching-guide-content">
+                                <div class="guide-intro" style="background: #e8f4f8; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #5899a8;">
+                                    <p style="margin: 0; color: #1a4d4d; font-weight: 500;">Effective coaching conversations build trust, encourage reflection, and empower students to take ownership of their learning journey.</p>
+                                </div>
+                                
+                                <h3>🎯 Opening the Conversation</h3>
+                                <div class="guide-section">
+                                    <p>Start with appreciation and curiosity:</p>
+                                    <ul>
+                                        <li><strong>Acknowledge their effort:</strong> "Thank you for sharing your thoughts about..."</li>
+                                        <li><strong>Show you've read their response:</strong> "I noticed you mentioned..."</li>
+                                        <li><strong>Express genuine interest:</strong> "I'd love to understand more about..."</li>
+                                    </ul>
+                                    
+                                    <div class="conversation-starters">
+                                        <h4>Opening phrases:</h4>
+                                        <p class="starter">"I appreciate your honesty about [specific challenge]..."</p>
+                                        <p class="starter">"Your reflection on [score/area] shows good self-awareness..."</p>
+                                        <p class="starter">"Let's explore what you said about..."</p>
+                                    </div>
+                                </div>
+                                
+                                <h3>💭 Facilitating Reflection</h3>
+                                <div class="guide-section">
+                                    <p>Guide students to deeper insights:</p>
+                                    <ul>
+                                        <li><strong>Explore patterns:</strong> Help them see connections across themes</li>
+                                        <li><strong>Challenge gently:</strong> Question assumptions without judgment</li>
+                                        <li><strong>Celebrate progress:</strong> Highlight improvements, however small</li>
+                                        <li><strong>Normalize struggles:</strong> Share that challenges are part of growth</li>
+                                    </ul>
+                                    
+                                    <div class="conversation-starters">
+                                        <h4>Reflective questions:</h4>
+                                        <p class="starter">"What do you think is behind your [high/low] score in...?"</p>
+                                        <p class="starter">"How does this connect to what you told me about...?"</p>
+                                        <p class="starter">"What would success look like for you in this area?"</p>
+                                        <p class="starter">"What's one small change that might make a difference?"</p>
+                                    </div>
+                                </div>
+                                
+                                <h3>📝 Collaborative Action Planning</h3>
+                                <div class="guide-section">
+                                    <p>Co-create next steps with the student:</p>
+                                    <ul>
+                                        <li><strong>Start small:</strong> Focus on 1-2 achievable actions</li>
+                                        <li><strong>Be specific:</strong> "This week" not "soon"</li>
+                                        <li><strong>Student-led:</strong> Let them propose solutions first</li>
+                                        <li><strong>Remove barriers:</strong> Problem-solve obstacles together</li>
+                                    </ul>
+                                    
+                                    <div class="conversation-starters">
+                                        <h4>Action-focused prompts:</h4>
+                                        <p class="starter">"Based on our discussion, what feels like a good first step?"</p>
+                                        <p class="starter">"How can I support you with...?"</p>
+                                        <p class="starter">"What might get in the way, and how can we plan for that?"</p>
+                                        <p class="starter">"When would be a good time to check in on progress?"</p>
+                                    </div>
+                                </div>
+                                
+                                <h3>🌟 Closing with Confidence</h3>
+                                <div class="guide-section">
+                                    <p>End on an empowering note:</p>
+                                    <ul>
+                                        <li><strong>Summarize commitments:</strong> Both theirs and yours</li>
+                                        <li><strong>Express confidence:</strong> Show you believe in them</li>
+                                        <li><strong>Open door:</strong> Remind them you're available</li>
+                                        <li><strong>Set follow-up:</strong> Schedule next check-in</li>
+                                    </ul>
+                                    
+                                    <div class="conversation-starters">
+                                        <h4>Closing statements:</h4>
+                                        <p class="starter">"I'm confident you can make progress with..."</p>
+                                        <p class="starter">"Remember, I'm here if you need support with..."</p>
+                                        <p class="starter">"I look forward to hearing how [specific action] goes..."</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="coaching-tips" style="background: #fff9e6; border: 1px solid #ffd700; padding: 16px; margin: 20px 0; border-radius: 8px;">
+                                    <h4 style="color: #856404; margin: 0 0 12px 0;">🔑 Key Principles</h4>
+                                    <ul style="margin: 0; padding-left: 24px;">
+                                        <li style="color: #704000; margin-bottom: 8px;"><strong>Listen more than you speak</strong> - Their insights matter most</li>
+                                        <li style="color: #704000; margin-bottom: 8px;"><strong>Ask, don't tell</strong> - Questions empower; advice can disempower</li>
+                                        <li style="color: #704000; margin-bottom: 8px;"><strong>Focus on strengths</strong> - Build from what's working</li>
+                                        <li style="color: #704000; margin-bottom: 8px;"><strong>Small steps count</strong> - Progress over perfection</li>
+                                        <li style="color: #704000;">                        <strong>Partnership approach</strong> - You're allies, not adversaries</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                        
+                        modal.classList.add('active');
+                        console.log('[Staff Mobile Report Enhancement] Opened coaching guide modal');
+                    });
+                }
+                
+                // Add goal-setting guide button ONLY for goals section
                 if (isGoalsSection) {
                     const goalsGuideBtn = document.createElement('button');
                     goalsGuideBtn.className = 'help-writing-btn goals-guide-btn';
@@ -929,127 +1051,6 @@
                         console.log('[Staff Mobile Report Enhancement] Opened student goals guide modal');
                     });
                 }
-                
-                // Add coaching conversation guide button for all comment sections
-                const coachingBtn = document.createElement('button');
-                coachingBtn.className = 'help-writing-btn coaching-guide-btn';
-                coachingBtn.innerHTML = '<span>💬</span> Coaching Conversation Guide';
-                coachingBtn.style.cssText = 'background: #5899a8 !important;';
-                
-                // Insert after student guide button if it exists
-                const studentBtn = section.querySelector('.student-guide-btn');
-                if (studentBtn) {
-                    studentBtn.parentNode.insertBefore(coachingBtn, studentBtn.nextSibling);
-                } else {
-                    const firstChild = section.firstElementChild;
-                    if (firstChild) {
-                        section.insertBefore(coachingBtn, firstChild);
-                    } else {
-                        section.appendChild(coachingBtn);
-                    }
-                }
-                
-                coachingBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const modal = document.getElementById('staff-coaching-guide-modal');
-                    const contentDiv = document.getElementById('staff-coaching-guide-content');
-                    
-                    // Enhanced coaching conversation guide
-                    contentDiv.innerHTML = `
-                        <div class="coaching-guide-content">
-                            <div class="guide-intro" style="background: #e8f4f8; padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #5899a8;">
-                                <p style="margin: 0; color: #1a4d4d; font-weight: 500;">Effective coaching conversations build trust, encourage reflection, and empower students to take ownership of their learning journey.</p>
-                            </div>
-                            
-                            <h3>🎯 Opening the Conversation</h3>
-                            <div class="guide-section">
-                                <p>Start with appreciation and curiosity:</p>
-                                <ul>
-                                    <li><strong>Acknowledge their effort:</strong> "Thank you for sharing your thoughts about..."</li>
-                                    <li><strong>Show you've read their response:</strong> "I noticed you mentioned..."</li>
-                                    <li><strong>Express genuine interest:</strong> "I'd love to understand more about..."</li>
-                                </ul>
-                                
-                                <div class="conversation-starters">
-                                    <h4>Opening phrases:</h4>
-                                    <p class="starter">"I appreciate your honesty about [specific challenge]..."</p>
-                                    <p class="starter">"Your reflection on [score/area] shows good self-awareness..."</p>
-                                    <p class="starter">"Let's explore what you said about..."</p>
-                                </div>
-                            </div>
-                            
-                            <h3>💭 Facilitating Reflection</h3>
-                            <div class="guide-section">
-                                <p>Guide students to deeper insights:</p>
-                                <ul>
-                                    <li><strong>Explore patterns:</strong> Help them see connections across themes</li>
-                                    <li><strong>Challenge gently:</strong> Question assumptions without judgment</li>
-                                    <li><strong>Celebrate progress:</strong> Highlight improvements, however small</li>
-                                    <li><strong>Normalize struggles:</strong> Share that challenges are part of growth</li>
-                                </ul>
-                                
-                                <div class="conversation-starters">
-                                    <h4>Reflective questions:</h4>
-                                    <p class="starter">"What do you think is behind your [high/low] score in...?"</p>
-                                    <p class="starter">"How does this connect to what you told me about...?"</p>
-                                    <p class="starter">"What would success look like for you in this area?"</p>
-                                    <p class="starter">"What's one small change that might make a difference?"</p>
-                                </div>
-                            </div>
-                            
-                            <h3>📝 Collaborative Action Planning</h3>
-                            <div class="guide-section">
-                                <p>Co-create next steps with the student:</p>
-                                <ul>
-                                    <li><strong>Start small:</strong> Focus on 1-2 achievable actions</li>
-                                    <li><strong>Be specific:</strong> "This week" not "soon"</li>
-                                    <li><strong>Student-led:</strong> Let them propose solutions first</li>
-                                    <li><strong>Remove barriers:</strong> Problem-solve obstacles together</li>
-                                </ul>
-                                
-                                <div class="conversation-starters">
-                                    <h4>Action-focused prompts:</h4>
-                                    <p class="starter">"Based on our discussion, what feels like a good first step?"</p>
-                                    <p class="starter">"How can I support you with...?"</p>
-                                    <p class="starter">"What might get in the way, and how can we plan for that?"</p>
-                                    <p class="starter">"When would be a good time to check in on progress?"</p>
-                                </div>
-                            </div>
-                            
-                            <h3>🌟 Closing with Confidence</h3>
-                            <div class="guide-section">
-                                <p>End on an empowering note:</p>
-                                <ul>
-                                    <li><strong>Summarize commitments:</strong> Both theirs and yours</li>
-                                    <li><strong>Express confidence:</strong> Show you believe in them</li>
-                                    <li><strong>Open door:</strong> Remind them you're available</li>
-                                    <li><strong>Set follow-up:</strong> Schedule next check-in</li>
-                                </ul>
-                                
-                                <div class="conversation-starters">
-                                    <h4>Closing statements:</h4>
-                                    <p class="starter">"I'm confident you can make progress with..."</p>
-                                    <p class="starter">"Remember, I'm here if you need support with..."</p>
-                                    <p class="starter">"I look forward to hearing how [specific action] goes..."</p>
-                                </div>
-                            </div>
-                            
-                            <div class="coaching-tips" style="background: #fff9e6; border: 1px solid #ffd700; padding: 16px; margin: 20px 0; border-radius: 8px;">
-                                <h4 style="color: #856404; margin: 0 0 12px 0;">🔑 Key Principles</h4>
-                                <ul style="margin: 0; padding-left: 24px;">
-                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Listen more than you speak</strong> - Their insights matter most</li>
-                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Ask, don't tell</strong> - Questions empower; advice can disempower</li>
-                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Focus on strengths</strong> - Build from what's working</li>
-                                    <li style="color: #704000; margin-bottom: 8px;"><strong>Small steps count</strong> - Progress over perfection</li>
-                                    <li style="color: #704000;">                        <strong>Partnership approach</strong> - You're allies, not adversaries</li>
-                                </ul>
-                            </div>
-                        </div>
-                    `;
-                    
-                    modal.classList.add('active');
-                    console.log('[Staff Mobile Report Enhancement] Opened coaching guide modal');
-                });
             });
             
             console.log(`[Staff Mobile Report Enhancement] Added help buttons to ${commentSections.length} comment sections`);
