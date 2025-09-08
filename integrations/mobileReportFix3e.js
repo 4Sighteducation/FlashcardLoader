@@ -748,11 +748,12 @@
             
             const bgColor = scoreSection.style.backgroundColor;
             
-            if (bgColor.includes('255, 143, 0')) return '#ff8f00'; // VISION
-            if (bgColor.includes('134, 180, 240')) return '#86b4f0'; // EFFORT
-            if (bgColor.includes('114, 203, 68')) return '#72cb44'; // SYSTEMS
-            if (bgColor.includes('127, 49, 164')) return '#7f31a4'; // PRACTICE
-            if (bgColor.includes('240, 50, 230')) return '#f032e6'; // ATTITUDE
+            // Updated colors to match VESPA branding
+            if (bgColor.includes('255, 143, 0')) return '#ff6b35'; // VISION - Orange
+            if (bgColor.includes('134, 180, 240')) return '#7bd8d0'; // EFFORT - Light Blue  
+            if (bgColor.includes('114, 203, 68')) return '#4CAF50'; // SYSTEMS - Green
+            if (bgColor.includes('127, 49, 164')) return '#9C27B0'; // PRACTICE - Purple
+            if (bgColor.includes('240, 50, 230')) return '#E91E63'; // ATTITUDE - Pink
             
             return '#1976d2';
         }
@@ -782,53 +783,47 @@
                 const themeColor = getThemeColor(link);
                 const isMobile = window.innerWidth <= 768;
                 
+                // Remove any icons first
+                link.innerHTML = link.innerHTML.replace('▸', '').replace('🎯', '').trim();
+                
                 if (isMobile) {
-                    // Mobile: Very compact chip style
+                    // Mobile: Ultra compact chip style
                     link.style.cssText = `
                         display: inline-flex;
                         align-items: center;
-                        padding: 4px 8px;
-                        margin: 2px;
+                        padding: 2px 6px;
+                        margin: 1px;
                         background: linear-gradient(135deg, ${themeColor}15 0%, ${themeColor}25 100%);
                         border: 1px solid ${themeColor}40;
-                        border-radius: 12px;
+                        border-radius: 10px;
+                        color: ${themeColor};
+                        text-decoration: none;
+                        font-size: 9px;
+                        font-weight: 500;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 1px 3px ${themeColor}10;
+                        white-space: nowrap;
+                        line-height: 1.1;
+                    `;
+                } else {
+                    // Desktop: Minimal button style
+                    link.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 3px 8px;
+                        margin: 2px;
+                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
+                        border: 1px solid ${themeColor}30;
+                        border-radius: 6px;
                         color: ${themeColor};
                         text-decoration: none;
                         font-size: 11px;
                         font-weight: 500;
                         transition: all 0.3s ease;
-                        box-shadow: 0 1px 4px ${themeColor}15;
+                        box-shadow: 0 1px 4px ${themeColor}08;
                         white-space: nowrap;
                         line-height: 1.2;
                     `;
-                    
-                    // Smaller icon
-                    if (!link.innerHTML.includes('▸')) {
-                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
-                    }
-                } else {
-                    // Desktop: Smaller button style
-                    link.style.cssText = `
-                        display: inline-flex;
-                        align-items: center;
-                        padding: 5px 10px;
-                        margin: 3px;
-                        background: linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}20 100%);
-                        border: 1.5px solid ${themeColor}30;
-                        border-radius: 8px;
-                        color: ${themeColor};
-                        text-decoration: none;
-                        font-size: 13px;
-                        font-weight: 500;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 2px 6px ${themeColor}10;
-                        white-space: nowrap;
-                    `;
-                    
-                    // Smaller icon
-                    if (!link.innerHTML.includes('▸')) {
-                        link.innerHTML = '▸ ' + link.innerHTML.replace('🎯', '').trim();
-                    }
                 }
                 
                 // Add hover effects
@@ -2479,4 +2474,3 @@
     
     console.log('[Student Report Enhancement v5.1] Initialization complete');
 })();
-
