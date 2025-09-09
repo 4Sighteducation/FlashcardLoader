@@ -704,34 +704,104 @@
             console.log('[Staff Mobile Report Enhancement] Extracting cycle data from page...');
             
             try {
-                // For staff viewing student reports in scene_1095, the data is in view_2716
+                // Get the current student's ID
+                const currentStudentId = window.currentReportObject10Id;
+                if (!currentStudentId) {
+                    console.log('[Staff Mobile Report Enhancement] No student ID found');
+                    return {};
+                }
+                
+                console.log('[Staff Mobile Report Enhancement] Looking for student ID:', currentStudentId);
+                
+                // Get data from the Knack model for view_2716
+                if (window.Knack && window.Knack.models && window.Knack.models.view_2716) {
+                    const model = window.Knack.models.view_2716;
+                    
+                    if (model.data && model.data.models) {
+                        // Find the student's record by ID
+                        const studentRecord = model.data.models.find(record => {
+                            const attrs = record.attributes || record;
+                            return attrs.id === currentStudentId;
+                        });
+                        
+                        if (studentRecord) {
+                            const attrs = studentRecord.attributes || studentRecord;
+                            console.log('[Staff Mobile Report Enhancement] Found student record in Knack model');
+                            
+                            // Extract all questionnaire fields
+                            const data = {};
+                            Object.keys(attrs).forEach(key => {
+                                // Only get questionnaire fields (field_19xx, field_20xx, field_29xx)
+                                if (key.match(/^field_(19|20|29)\d{2}$/)) {
+                                    const value = attrs[key];
+                                    if (value !== undefined && value !== null && value !== '') {
+                                        data[key] = value.toString();
+                                    }
+                                }
+                            });
+                            
+                            console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} questionnaire fields`);
+                            
+                            // Debug: Log sample values
+                            if (Object.keys(data).length > 0) {
+                                console.log('[Staff Mobile Report Enhancement] Sample extracted values:', {
+                                    'field_1953 (Q1 C1)': data.field_1953 || 'missing',
+                                    'field_1955 (Q1 C2)': data.field_1955 || 'missing',  
+                                    'field_1956 (Q1 C3)': data.field_1956 || 'missing',
+                                    'field_1980 (Q10 C1)': data.field_1980 || 'missing',
+                                    'field_1981 (Q10 C2)': data.field_1981 || 'missing',
+                                    'field_1982 (Q10 C3)': data.field_1982 || 'missing'
+                                });
+                            }
+                            
+                            window.staffCycleDataFromAPI = data;
+                            return data;
+                        } else {
+                            console.log('[Staff Mobile Report Enhancement] Student record not found in Knack model');
+                        }
+                    }
+                }
+                
+                // Fallback: Try DOM extraction if Knack model doesn't work
+                console.log('[Staff Mobile Report Enhancement] Fallback: trying DOM extraction...');
                 const data = {};
                 const table = document.querySelector('#view_2716');
                 
-                if (table) {
-                    console.log('[Staff Mobile Report Enhancement] Found hidden table view_2716 in scene_1095');
+                if (table && currentStudentId) {
+                    console.log('[Staff Mobile Report Enhancement] Found DOM table view_2716');
                     
-                    // Get all table cells
-                    const cells = table.querySelectorAll('tbody tr td');
-                    cells.forEach(cell => {
-                        // Get field class
-                        const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
-                        if (fieldClass) {
-                            const value = cell.textContent.trim();
-                            if (value) {
-                                data[fieldClass] = value;
-                            }
+                    // Find the row that contains the student's data
+                    const rows = table.querySelectorAll('tbody tr');
+                    let studentRow = null;
+                    
+                    // Look for the row containing the student's name or ID
+                    rows.forEach(row => {
+                        const rowText = row.textContent;
+                        if (rowText.includes(currentStudentId) || 
+                            (window.currentReportStudentEmail && rowText.includes(window.currentReportStudentEmail))) {
+                            studentRow = row;
                         }
                     });
                     
-                    console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
-                    
-                    if (Object.keys(data).length > 0) {
+                    if (studentRow) {
+                        console.log('[Staff Mobile Report Enhancement] Found student row in DOM');
+                        const cells = studentRow.querySelectorAll('td');
+                        cells.forEach(cell => {
+                            const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                            if (fieldClass && fieldClass.match(/^field_(19|20|29)\d{2}$/)) {
+                                const value = cell.textContent.trim();
+                                if (value) {
+                                    data[fieldClass] = value;
+                                }
+                            }
+                        });
+                        
+                        console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from DOM`);
                         window.staffCycleDataFromAPI = data;
                         return data;
                     }
                 } else {
-                    console.log('[Staff Mobile Report Enhancement] Hidden table view_2716 not found, trying alternative extraction...');
+                    console.log('[Staff Mobile Report Enhancement] Could not extract from DOM table');
                 }
                 
                 // Fallback: try to get the selected student's questionnaire data
@@ -749,7 +819,7 @@
                     // List of views that might contain questionnaire data
                     // view_2716 is the primary view for staff viewing student data in scene_1095
                     // view_449 is the Object_10 grid with connected Object_29 fields
-                    const viewsToCheck = ['view_2716', 'view_449', 'view_2723', 'view_2751', 'view_69', 'view_3041'];
+                    const viewsToCheck = ['view_2716', 'view_71', 'view_449', 'view_2723', 'view_2751', 'view_69', 'view_3041'];
                     
                     for (const viewId of viewsToCheck) {
                         if (window.Knack.models[viewId]) {
@@ -857,9 +927,10 @@
             
             // For staff viewing student data, check these views in order:
             // view_2716 - Staff view of student questionnaire data in scene_1095 (primary)
-            // view_69 - Alternative questionnaire view (student version)
+            // view_71 - Alternative staff view (if exists)
+            // view_69 - Student version questionnaire view (fallback)
             // view_3041 - Main report view might have embedded data
-            const viewsToCheck = ['#view_2716', '#view_69', '#view_3041 .hidden-table', '#view_3041 table[style*="display: none"]'];
+            const viewsToCheck = ['#view_2716', '#view_71', '#view_69', '#view_3041 .hidden-table', '#view_3041 table[style*="display: none"]'];
             
             for (const selector of viewsToCheck) {
                 const table = document.querySelector(selector);
@@ -874,9 +945,19 @@
                         // Get all field classes (a cell might have multiple)
                         const classes = Array.from(cell.classList).filter(c => c.startsWith('field_'));
                         classes.forEach(fieldClass => {
-                            const value = cell.textContent.trim();
-                            // Store the value if it's not empty and is a cycle field we care about
-                            if (value && value !== '' && value !== 'N/A') {
+                            // Try multiple extraction methods
+                            let value = cell.textContent.trim();
+                            
+                            // Also check for span content (Knack often wraps values)
+                            const span = cell.querySelector('span');
+                            if (span) {
+                                const spanValue = span.textContent.trim();
+                                if (spanValue) value = spanValue;
+                            }
+                            
+                            // Store the value - including '0' and '1' which are valid Likert values!
+                            // Only exclude truly empty or N/A values
+                            if (value !== '' && value !== 'N/A' && value !== null && value !== undefined) {
                                 data[fieldClass] = value;
                             }
                         });
@@ -1157,15 +1238,38 @@
                                cycle === 2 ? mapping.fieldIdCycle2 : 
                                mapping.fieldIdCycle3;
                                
-                // Get the value from the data
-                let value = data[fieldKey];
+                // Get the value from the data - try both regular and raw
+                let value = data[fieldKey] || data[fieldKey + '_raw'] || '';
                 
-                // Handle display - keep zeros as zeros, empty as 0
+                // Debug specific problematic cycles
+                if (index < 3 || index === 9 || index === 31) {  // Log sample questions
+                    // Log after numValue is calculated
+                    // This will be logged below after numValue calculation
+                }
+                
+                // Handle display - parse the value properly
+                // Important: Don't default to '0' if value exists
                 if (value === undefined || value === null || value === '') {
                     value = '0';
                 }
                 
-                const numValue = parseInt(value) || 0;
+                // Parse as number - handle various formats (decimals, strings, etc.)
+                let numValue = 0;
+                if (value !== '0' && value) {
+                    // Remove any non-numeric characters except decimal point
+                    const cleanValue = value.toString().trim().replace(/[^\d.-]/g, '');
+                    numValue = Math.round(parseFloat(cleanValue)) || 0;
+                    
+                    // Ensure value is within Likert scale range (1-5)
+                    if (numValue < 0) numValue = 0;
+                    if (numValue > 5) numValue = 5;
+                }
+                
+                // Log debug info for sample questions
+                if (index < 3 || index === 9 || index === 31) {
+                    console.log(`[Staff Mobile Report Enhancement] C${cycle} Q${index+1} (${fieldKey}): raw="${value}" parsed=${numValue}`);
+                }
+                
                 const percentage = (numValue / 5) * 100;  // Likert scale 1-5
                 const color = categoryColors[mapping.vespaCategory] || '#079baa';
                 
