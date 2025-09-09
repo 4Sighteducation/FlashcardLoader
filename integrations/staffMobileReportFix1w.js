@@ -696,9 +696,6 @@
         
         let currentCycle = 1;
         
-        // INTERCEPT API CALLS TO INJECT CYCLE-SPECIFIC DATA
-        interceptQuestionnaireData();
-        
         // CORRECTED FIELD MAPPINGS from object_29json.json
         const cycleFieldMappings = [
             { questionId: "q1", currentCycleFieldId: "field_794", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
@@ -1009,6 +1006,9 @@
         }
         
         console.log('[Staff Mobile Report Enhancement] View Answers enhancement initialized');
+        
+        // Initialize the interceptor after all functions are defined
+        interceptQuestionnaireData();
     }
     
     function initializeHelpButtons() {
