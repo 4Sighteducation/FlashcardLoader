@@ -16,9 +16,15 @@
     
     // More robust mobile detection - FIXED
     function isMobileDevice() {
-        // Only consider it mobile if width is small, not just because of touch support
-        const isMobile = (window.innerWidth <= 768);
-        console.log('[Staff Mobile Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'UserAgent:', navigator.userAgent);
+        // Check multiple conditions for mobile detection
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const smallWidth = window.innerWidth <= 768;
+        const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Consider it mobile if it has touch AND (small width OR mobile user agent)
+        const isMobile = hasTouch && (smallWidth || mobileUserAgent);
+        
+        console.log('[Staff Mobile Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'Touch:', hasTouch, 'UA Mobile:', mobileUserAgent);
         return isMobile;
     }
     
@@ -142,9 +148,11 @@
                 setTimeout(fixViewAnswersButton, 500);
                 setTimeout(fixViewAnswersButton, 1000);
                 
+                // Initialize VESPA popups for ALL devices (tap to expand)
+                initializeVespaPopups(); // Now works on desktop too!
+                
                 // Mobile-specific initializations
                 if (isMobileDevice()) {
-                    initializeVespaPopups(); // Click to expand only on mobile
                     initializeTextAreaFocus(); // Text area focus only on mobile
                     
                     // Try multiple times to ensure button is hidden
@@ -1431,16 +1439,13 @@
     }
     
     function initializeVespaPopups() {
-        // Only initialize on mobile
-        if (!isMobileDevice()) {
-            console.log('[Staff Mobile Report Enhancement] Skipping VESPA popups on desktop');
-            return;
-        }
-        
-        console.log('[Staff Mobile Report Enhancement] Initializing VESPA popups for mobile');
+        // Initialize for ALL devices
+        console.log('[Staff Mobile Report Enhancement] Initializing VESPA popups (tap to expand) for ALL devices');
         
         // Add section headings to all VESPA sections (only on mobile)
-        addSectionHeadings();
+        if (isMobileDevice()) {
+            addSectionHeadings();
+        }
         
         // Create modal container if it doesn't exist
         if (!document.getElementById('staff-vespa-modal-container')) {
@@ -2737,6 +2742,47 @@
                 left: 0 !important;
                 right: 0 !important;
                 bottom: 0 !important;
+            }
+            
+            /* Make VESPA sections look clickable on ALL devices */
+            #view_2776 .vespa-report,
+            #view_3015 .vespa-report {
+                position: relative !important;
+                transition: transform 0.2s ease !important;
+                cursor: pointer !important;
+            }
+            
+            #view_2776 .vespa-report:hover,
+            #view_3015 .vespa-report:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+            }
+            
+            #view_2776 .vespa-report:active,
+            #view_3015 .vespa-report:active {
+                transform: scale(0.98) !important;
+            }
+            
+            /* Add a subtle click indicator */
+            #view_2776 .vespa-report::after,
+            #view_3015 .vespa-report::after {
+                content: "Click to expand >";
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 12px;
+                color: #666;
+                background: rgba(255,255,255,0.9);
+                padding: 4px 8px;
+                border-radius: 4px;
+                pointer-events: none;
+                transition: all 0.3s ease;
+            }
+            
+            #view_2776 .vespa-report:hover::after,
+            #view_3015 .vespa-report:hover::after {
+                background: #079baa;
+                color: white;
             }
             
             .vespa-modal-content {
