@@ -819,120 +819,42 @@
             return data;
         }
         
-        // Extract data from hidden table
+        // Extract data from hidden table - simpler version like student modal
         function extractFromHiddenTable() {
             const data = {};
             
-            // Try to find the hidden table
-            // view_449 is the Object_10 grid with connected Object_29 fields in scene_1014
-            // view_2716 is a fallback for other configurations
-            let table = document.querySelector('#view_449') || document.querySelector('#view_2716');
+            // Try to find the hidden table - prioritize view_449, then view_2716, then view_69
+            let table = document.querySelector('#view_449') || document.querySelector('#view_2716') || document.querySelector('#view_69');
             
             if (table) {
                 const viewId = table.id;
                 console.log(`[Staff Mobile Report Enhancement] Found hidden table ${viewId}`);
                 
-                // Get current student's Object_10 ID
-                const currentStudentId = getCurrentStudentObject10Id();
-                console.log('[Staff Mobile Report Enhancement] Current Object_10 ID:', currentStudentId || 'not found');
+                // SIMPLIFIED: Just extract all data from the table like the student version
+                // The table should already be showing the correct student's data
+                const cells = table.querySelectorAll('tbody tr td');
+                console.log(`[Staff Mobile Report Enhancement] Found ${cells.length} cells in table`);
                 
-                // If view_449, we need to find the correct row by field_792 or field_197
-                if (viewId === 'view_449' && currentStudentId) {
-                    // Find the row with matching field_792 (Object_10 connection) or field_197 (email)
-                    const rows = table.querySelectorAll('tbody tr');
-                    console.log(`[Staff Mobile Report Enhancement] Checking ${rows.length} rows for student: ${currentStudentId}`);
-                    
-                    for (const row of rows) {
-                        let isMatch = false;
-                        
-                        // Check field_792 (Object_29 -> Object_10 connection)
-                        const field792Cell = row.querySelector('.field_792');
-                        if (field792Cell) {
-                            const field792Text = field792Cell.textContent.trim();
-                            const field792HTML = field792Cell.innerHTML;
-                            
-                            // Connection fields can contain:
-                            // 1. The ID directly
-                            // 2. The email address (display value)
-                            // 3. HTML with span containing ID
-                            if (field792Text === currentStudentId || 
-                                field792Text.includes(currentStudentId) ||
-                                field792HTML.includes(currentStudentId)) {
-                                isMatch = true;
-                                console.log('[Staff Mobile Report Enhancement] Matched via field_792 (Object_10 connection)');
-                            }
-                        }
-                        
-                        // Also check field_197 (Object_10 email) as a backup
-                        if (!isMatch) {
-                            const field197Cell = row.querySelector('.field_197');
-                            if (field197Cell) {
-                                const field197Value = field197Cell.textContent.trim();
-                                if (field197Value === currentStudentId || field197Value.includes(currentStudentId)) {
-                                    isMatch = true;
-                                    console.log('[Staff Mobile Report Enhancement] Matched via field_197 (email)');
-                                }
-                            }
-                        }
-                        
-                        // Also check field_182 (Object_6 -> Object_10 connection) as another backup
-                        if (!isMatch) {
-                            const field182Cell = row.querySelector('.field_182');
-                            if (field182Cell) {
-                                const field182Text = field182Cell.textContent.trim();
-                                const field182HTML = field182Cell.innerHTML;
-                                if (field182Text === currentStudentId || 
-                                    field182Text.includes(currentStudentId) ||
-                                    field182HTML.includes(currentStudentId)) {
-                                    isMatch = true;
-                                    console.log('[Staff Mobile Report Enhancement] Matched via field_182 (Object_6 connection)');
-                                }
-                            }
-                        }
-                        
-                        if (isMatch) {
-                            console.log('[Staff Mobile Report Enhancement] Found matching student row!');
-                            
-                            // Extract all fields from this row
-                            const cells = row.querySelectorAll('td');
-                            cells.forEach(cell => {
-                                const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
-                                // Don't include the connection/email fields in the data
-                                if (fieldClass && fieldClass !== 'field_792' && fieldClass !== 'field_197' && fieldClass !== 'field_182') {
-                                    const value = extractCellValue(cell);
-                                    if (value !== '') {
-                                        data[fieldClass] = value;
-                                    } else {
-                                        data[fieldClass] = '0';
-                                    }
-                                    
-                                    // Debug key cycle fields
-                                    if (fieldClass === 'field_1953' || fieldClass === 'field_1955' || fieldClass === 'field_1956') {
-                                        console.log(`[Staff Mobile Report Enhancement] ${fieldClass}: "${value}"`);
-                                    }
-                                }
-                            });
-                            
-                            break; // Found our student, stop searching
+                cells.forEach(cell => {
+                    // Get field class
+                    const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                    if (fieldClass) {
+                        const value = cell.textContent.trim();
+                        if (value) {
+                            data[fieldClass] = value;
                         }
                     }
-                    
-                    if (Object.keys(data).length === 0) {
-                        console.log('[Staff Mobile Report Enhancement] No matching row found, trying fallback extraction');
-                        // Fallback to old method if no match found
-                        return extractAllTableData(table);
-                    }
-                } else {
-                    // Fallback for view_2716 or if no student ID found
-                    return extractAllTableData(table);
-                }
+                });
                 
-                console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from student row`);
+                console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
+                
+                // Debug sample values
                 console.log('[Staff Mobile Report Enhancement] Sample values:', {
                     'field_1953 (Vision C1)': data.field_1953,
                     'field_1955 (Vision C2)': data.field_1955, 
                     'field_1956 (Vision C3)': data.field_1956
                 });
+                
             } else {
                 console.log('[Staff Mobile Report Enhancement] Hidden table not found');
             }
@@ -984,15 +906,19 @@
         
         // Helper function to get the current student's Object_10 record ID or email
         function getCurrentStudentObject10Id() {
-            // Method 1: Get the student email from the profile name on page
-            const profileName = document.querySelector('.profile-name, .student-name');
-            if (profileName) {
-                const studentEmail = profileName.textContent.trim();
-                console.log('[Staff Mobile Report Enhancement] Found student email from profile:', studentEmail);
-                return studentEmail;
+            // Method 1: Check if ReportProfiles has already identified the Object_10 ID
+            if (window.currentReportObject10Id) {
+                console.log('[Staff Mobile Report Enhancement] Using Object_10 ID from ReportProfiles:', window.currentReportObject10Id);
+                return window.currentReportObject10Id;
             }
             
-            // Method 2: Try to extract from visible student profile views
+            // Method 2: Check if we have the student email from ReportProfiles
+            if (window.currentReportStudentEmail) {
+                console.log('[Staff Mobile Report Enhancement] Using student email from ReportProfiles:', window.currentReportStudentEmail);
+                return window.currentReportStudentEmail;
+            }
+            
+            // Method 3: Try to extract from visible student profile views
             // These views should contain the Object_10 record
             const profileViews = ['view_3015', 'view_2776', 'view_3047'];
             for (const viewId of profileViews) {
@@ -1024,12 +950,20 @@
                 }
             }
             
-            // Method 3: Check URL parameters
+            // Method 4: Check URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             let studentId = urlParams.get('student_id') || urlParams.get('id');
             if (studentId) {
                 console.log('[Staff Mobile Report Enhancement] Found student ID from URL:', studentId);
                 return studentId;
+            }
+            
+            // Method 5: Get the student email from the profile name on page (fallback)
+            const profileName = document.querySelector('.profile-name, .student-name');
+            if (profileName) {
+                const studentText = profileName.textContent.trim();
+                console.log('[Staff Mobile Report Enhancement] Found student text from profile (fallback):', studentText);
+                return studentText;
             }
             
             console.log('[Staff Mobile Report Enhancement] Warning: Could not identify current student');
@@ -1135,9 +1069,9 @@
             
             if (!data) {
                 contentDiv.innerHTML = '<p style="text-align: center; color: #666;">Unable to load student cycle data. Please try again.</p>';
-                // Remove the loading div entirely to prevent white space
+                // Hide loading div instead of removing it
                 if (loadingDiv) {
-                    loadingDiv.remove();
+                    loadingDiv.style.display = 'none';
                 }
                 contentDiv.style.display = 'block';
                 return;
@@ -1195,11 +1129,11 @@
             
             html += '</div>';
             
-            // Update modal and remove loading div completely
+            // Update modal and hide loading div
             contentDiv.innerHTML = html;
             if (loadingDiv) {
-                // Remove the loading div entirely to prevent white space
-                loadingDiv.remove();
+                // Hide loading div instead of removing it
+                loadingDiv.style.display = 'none';
             }
             contentDiv.style.display = 'block';
             contentDiv.style.visibility = 'visible';
