@@ -840,18 +840,18 @@
                 <div id="customStudentCycleModal" class="custom-cycle-modal-overlay">
                     <div class="custom-cycle-modal-container">
                         <div class="custom-cycle-modal-header">
-                            <h2>Your VESPA Responses - Cycle <span id="studentCycleNumber">${currentCycle}</span></h2>
-                            <div class="cycle-selector">
-                                <button class="cycle-btn ${currentCycle === 1 ? 'active' : ''}" data-cycle="1">Cycle 1</button>
-                                <button class="cycle-btn ${currentCycle === 2 ? 'active' : ''}" data-cycle="2">Cycle 2</button>
-                                <button class="cycle-btn ${currentCycle === 3 ? 'active' : ''}" data-cycle="3">Cycle 3</button>
-                            </div>
+                            <h2>VESPA Questionnaire Responses</h2>
                             <button class="custom-cycle-modal-close">✕</button>
+                        </div>
+                        <div class="cycle-selector-bar">
+                            <button class="cycle-btn ${currentCycle === 1 ? 'active' : ''}" data-cycle="1">Cycle 1</button>
+                            <button class="cycle-btn ${currentCycle === 2 ? 'active' : ''}" data-cycle="2">Cycle 2</button>
+                            <button class="cycle-btn ${currentCycle === 3 ? 'active' : ''}" data-cycle="3">Cycle 3</button>
                         </div>
                         <div class="custom-cycle-modal-body">
                             <div class="cycle-data-loading">
                                 <div class="spinner"></div>
-                                <p>Loading your cycle data...</p>
+                                <p>Loading cycle <span id="studentCycleNumber">${currentCycle}</span> data...</p>
                             </div>
                             <div class="cycle-data-content" style="display: none;"></div>
                         </div>
@@ -873,10 +873,13 @@
                 }
             });
             
-            // Cycle button listeners
+            // Cycle button listeners - handle new location in cycle-selector-bar
             modal.querySelectorAll('.cycle-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     currentCycle = parseInt(btn.dataset.cycle);
+                    // Update active state
+                    modal.querySelectorAll('.cycle-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
                     renderModalContent(currentCycle);
                 });
             });
@@ -905,20 +908,41 @@
                 return;
             }
             
-            // Render the data
+            // Render the data with progress bars and category colors
             const cycleFieldMappings = getCycleFieldMappings();
-            let html = '<div class="cycle-questions-grid">';
+            let html = '<div class="cycle-questions-list">';
             
-            cycleFieldMappings.forEach(mapping => {
+            // Category colors
+            const categoryColors = {
+                'VISION': '#ff8f00',
+                'EFFORT': '#38b6ff',
+                'SYSTEMS': '#02e612',
+                'PRACTICE': '#8c52ff',
+                'ATTITUDE': '#ff66c4'
+            };
+            
+            cycleFieldMappings.forEach((mapping, index) => {
                 const fieldKey = cycle === 1 ? mapping.fieldIdCycle1 : 
                                cycle === 2 ? mapping.fieldIdCycle2 : 
                                mapping.fieldIdCycle3;
-                const value = data[fieldKey] || data[fieldKey + '_raw'] || '—';
+                const value = data[fieldKey] || data[fieldKey + '_raw'] || '0';
+                const numValue = parseInt(value) || 0;
+                const percentage = (numValue / 7) * 100;
+                const color = categoryColors[mapping.vespaCategory] || '#079baa';
                 
                 html += `
-                    <div class="cycle-question-item">
-                        <div class="question-label">${mapping.questionId}</div>
-                        <div class="question-value">${value}</div>
+                    <div class="cycle-question-item-enhanced">
+                        <div class="question-number">Q${index + 1}</div>
+                        <div class="question-content">
+                            <div class="question-text">${mapping.questionText}</div>
+                            <div class="question-response">
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" style="width: ${percentage}%; background: ${color};"></div>
+                                    <div class="progress-bar-value">${numValue}/7</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="question-category" style="background: ${color}">${mapping.vespaCategory}</div>
                     </div>
                 `;
             });
@@ -939,38 +963,38 @@
             });
         }
         
-        // Helper function to get field mappings with proper question labels
+        // Helper function to get field mappings with actual VESPA question text
         function getCycleFieldMappings() {
             return [
-                { questionId: "Vision", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
-                { questionId: "Goals", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
-                { questionId: "Motivation", fieldIdCycle1: "field_1959", fieldIdCycle2: "field_1960", fieldIdCycle3: "field_1961" },
-                { questionId: "Hard Work", fieldIdCycle1: "field_1962", fieldIdCycle2: "field_1963", fieldIdCycle3: "field_1964" },
-                { questionId: "Persistence", fieldIdCycle1: "field_1965", fieldIdCycle2: "field_1966", fieldIdCycle3: "field_1967" },
-                { questionId: "Time Management", fieldIdCycle1: "field_1968", fieldIdCycle2: "field_1969", fieldIdCycle3: "field_1970" },
-                { questionId: "Response to Setbacks", fieldIdCycle1: "field_1971", fieldIdCycle2: "field_1972", fieldIdCycle3: "field_1973" },
-                { questionId: "Self-Discipline", fieldIdCycle1: "field_1974", fieldIdCycle2: "field_1975", fieldIdCycle3: "field_1976" },
-                { questionId: "Note-Taking", fieldIdCycle1: "field_1977", fieldIdCycle2: "field_1978", fieldIdCycle3: "field_1979" },
-                { questionId: "Homework", fieldIdCycle1: "field_1980", fieldIdCycle2: "field_1981", fieldIdCycle3: "field_1982" },
-                { questionId: "Organisation", fieldIdCycle1: "field_1983", fieldIdCycle2: "field_1984", fieldIdCycle3: "field_1985" },
-                { questionId: "Reading", fieldIdCycle1: "field_1986", fieldIdCycle2: "field_1987", fieldIdCycle3: "field_1988" },
-                { questionId: "Revision Planning", fieldIdCycle1: "field_1989", fieldIdCycle2: "field_1990", fieldIdCycle3: "field_1991" },
-                { questionId: "Memory Techniques", fieldIdCycle1: "field_1992", fieldIdCycle2: "field_1993", fieldIdCycle3: "field_1994" },
-                { questionId: "Understanding", fieldIdCycle1: "field_1995", fieldIdCycle2: "field_1996", fieldIdCycle3: "field_1997" },
-                { questionId: "Critical Thinking", fieldIdCycle1: "field_1998", fieldIdCycle2: "field_1999", fieldIdCycle3: "field_2000" },
-                { questionId: "Practice Testing", fieldIdCycle1: "field_2001", fieldIdCycle2: "field_2002", fieldIdCycle3: "field_2003" },
-                { questionId: "Spacing", fieldIdCycle1: "field_2004", fieldIdCycle2: "field_2005", fieldIdCycle3: "field_2006" },
-                { questionId: "Interleaving", fieldIdCycle1: "field_2007", fieldIdCycle2: "field_2008", fieldIdCycle3: "field_2009" },
-                { questionId: "Elaboration", fieldIdCycle1: "field_2010", fieldIdCycle2: "field_2011", fieldIdCycle3: "field_2012" },
-                { questionId: "Enjoyment", fieldIdCycle1: "field_2013", fieldIdCycle2: "field_2014", fieldIdCycle3: "field_2015" },
-                { questionId: "Self-Belief", fieldIdCycle1: "field_2016", fieldIdCycle2: "field_2017", fieldIdCycle3: "field_2018" },
-                { questionId: "Stress Management", fieldIdCycle1: "field_2019", fieldIdCycle2: "field_2020", fieldIdCycle3: "field_2021" },
-                { questionId: "Wellbeing", fieldIdCycle1: "field_2022", fieldIdCycle2: "field_2023", fieldIdCycle3: "field_2024" },
-                { questionId: "Support-Seeking", fieldIdCycle1: "field_2025", fieldIdCycle2: "field_2026", fieldIdCycle3: "field_2027" },
-                { questionId: "Curiosity", fieldIdCycle1: "field_2028", fieldIdCycle2: "field_2029", fieldIdCycle3: "field_2030" },
-                { questionId: "Creativity", fieldIdCycle1: "field_2031", fieldIdCycle2: "field_2032", fieldIdCycle3: "field_2033" },
-                { questionId: "Collaboration", fieldIdCycle1: "field_2034", fieldIdCycle2: "field_2035", fieldIdCycle3: "field_2036" },
-                { questionId: "Leadership", fieldIdCycle1: "field_2927", fieldIdCycle2: "field_2928", fieldIdCycle3: "field_2929" }
+                { questionText: "I've worked out the next steps...", vespaCategory: "VISION", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
+                { questionText: "I plan and organise my time...", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
+                { questionText: "I give a lot of attention to my career planning", vespaCategory: "VISION", fieldIdCycle1: "field_1959", fieldIdCycle2: "field_1960", fieldIdCycle3: "field_1961" },
+                { questionText: "I complete all my homework on time", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1962", fieldIdCycle2: "field_1963", fieldIdCycle3: "field_1964" },
+                { questionText: "No matter who you are, you can change your intelligence a lot", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_1965", fieldIdCycle2: "field_1966", fieldIdCycle3: "field_1967" },
+                { questionText: "I use all my independent study time effectively", vespaCategory: "EFFORT", fieldIdCycle1: "field_1968", fieldIdCycle2: "field_1969", fieldIdCycle3: "field_1970" },
+                { questionText: "I test myself on important topics until I remember them", vespaCategory: "PRACTICE", fieldIdCycle1: "field_1971", fieldIdCycle2: "field_1972", fieldIdCycle3: "field_1973" },
+                { questionText: "I have a positive view of myself", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_1974", fieldIdCycle2: "field_1975", fieldIdCycle3: "field_1976" },
+                { questionText: "I am a hard working student", vespaCategory: "EFFORT", fieldIdCycle1: "field_1977", fieldIdCycle2: "field_1978", fieldIdCycle3: "field_1979" },
+                { questionText: "I am confident in my academic ability", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_1980", fieldIdCycle2: "field_1981", fieldIdCycle3: "field_1982" },
+                { questionText: "I always meet deadlines", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1983", fieldIdCycle2: "field_1984", fieldIdCycle3: "field_1985" },
+                { questionText: "I spread out my revision, rather than cramming at the last minute", vespaCategory: "PRACTICE", fieldIdCycle1: "field_1986", fieldIdCycle2: "field_1987", fieldIdCycle3: "field_1988" },
+                { questionText: "I don't let a poor test/assessment result get me down for too long", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_1989", fieldIdCycle2: "field_1990", fieldIdCycle3: "field_1991" },
+                { questionText: "I strive to achieve the goals I set for myself", vespaCategory: "VISION", fieldIdCycle1: "field_1992", fieldIdCycle2: "field_1993", fieldIdCycle3: "field_1994" },
+                { questionText: "I summarise important information in diagrams, tables or lists", vespaCategory: "PRACTICE", fieldIdCycle1: "field_1995", fieldIdCycle2: "field_1996", fieldIdCycle3: "field_1997" },
+                { questionText: "I enjoy learning new things", vespaCategory: "VISION", fieldIdCycle1: "field_1998", fieldIdCycle2: "field_1999", fieldIdCycle3: "field_2000" },
+                { questionText: "I'm not happy unless my work is the best it can be", vespaCategory: "EFFORT", fieldIdCycle1: "field_2001", fieldIdCycle2: "field_2002", fieldIdCycle3: "field_2003" },
+                { questionText: "I take good notes in class which are useful for revision", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_2004", fieldIdCycle2: "field_2005", fieldIdCycle3: "field_2006" },
+                { questionText: "When revising I mix different kinds of topics/subjects in one study session", vespaCategory: "PRACTICE", fieldIdCycle1: "field_2007", fieldIdCycle2: "field_2008", fieldIdCycle3: "field_2009" },
+                { questionText: "I feel I can cope with the pressure at school/college/University", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2010", fieldIdCycle2: "field_2011", fieldIdCycle3: "field_2012" },
+                { questionText: "I work as hard as I can in most classes", vespaCategory: "EFFORT", fieldIdCycle1: "field_2013", fieldIdCycle2: "field_2014", fieldIdCycle3: "field_2015" },
+                { questionText: "My books/files are organised", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_2016", fieldIdCycle2: "field_2017", fieldIdCycle3: "field_2018" },
+                { questionText: "I study by explaining difficult topics out loud", vespaCategory: "PRACTICE", fieldIdCycle1: "field_2019", fieldIdCycle2: "field_2020", fieldIdCycle3: "field_2021" },
+                { questionText: "I'm happy to ask questions in front of a group", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2022", fieldIdCycle2: "field_2023", fieldIdCycle3: "field_2024" },
+                { questionText: "When revising, I work under timed conditions answering exam-style questions", vespaCategory: "PRACTICE", fieldIdCycle1: "field_2025", fieldIdCycle2: "field_2026", fieldIdCycle3: "field_2027" },
+                { questionText: "Your intelligence is something about you that you can change very much", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2028", fieldIdCycle2: "field_2029", fieldIdCycle3: "field_2030" },
+                { questionText: "I like hearing feedback about how I can improve", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2031", fieldIdCycle2: "field_2032", fieldIdCycle3: "field_2033" },
+                { questionText: "I can control my nerves in tests/practical assessments", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2034", fieldIdCycle2: "field_2035", fieldIdCycle3: "field_2036" },
+                { questionText: "I know what grades I want to achieve", vespaCategory: "VISION", fieldIdCycle1: "field_2927", fieldIdCycle2: "field_2928", fieldIdCycle3: "field_2929" }
             ];
         }
         
@@ -3004,14 +3028,14 @@
                 color: white !important;
             }
             
-            /* Custom Cycle Modal Styles */
+            /* Custom Cycle Modal Styles - Enhanced Design */
             .custom-cycle-modal-overlay {
                 position: fixed !important;
                 top: 0 !important;
                 left: 0 !important;
                 right: 0 !important;
                 bottom: 0 !important;
-                background: rgba(0, 0, 0, 0.7) !important;
+                background: rgba(0, 0, 0, 0.85) !important;
                 z-index: 999999 !important;
                 display: none;
                 align-items: center !important;
@@ -3028,19 +3052,19 @@
             
             .custom-cycle-modal-container {
                 background: white !important;
-                width: 90% !important;
-                max-width: 900px !important;
-                max-height: 85vh !important;
-                border-radius: 20px !important;
+                width: 95% !important;
+                max-width: 1200px !important;
+                max-height: 90vh !important;
+                border-radius: 16px !important;
                 overflow: hidden !important;
                 display: flex !important;
                 flex-direction: column !important;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+                box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4) !important;
             }
             
             .custom-cycle-modal-header {
-                padding: 25px 30px !important;
-                background: linear-gradient(135deg, #079baa 0%, #7bd8d0 100%) !important;
+                padding: 20px 30px !important;
+                background: linear-gradient(135deg, #23356f 0%, #079baa 100%) !important;
                 color: white !important;
                 display: flex !important;
                 justify-content: space-between !important;
@@ -3049,35 +3073,43 @@
             
             .custom-cycle-modal-header h2 {
                 margin: 0 !important;
-                font-size: 24px !important;
+                font-size: 22px !important;
                 font-weight: 600 !important;
+                letter-spacing: 0.5px !important;
             }
             
-            .cycle-selector {
+            .cycle-selector-bar {
                 display: flex !important;
-                gap: 10px !important;
+                justify-content: center !important;
+                gap: 15px !important;
+                padding: 15px !important;
+                background: #f0f7f9 !important;
+                border-bottom: 1px solid #e0e0e0 !important;
             }
             
             .cycle-btn {
-                padding: 8px 20px !important;
-                background: rgba(255, 255, 255, 0.2) !important;
-                border: 2px solid rgba(255, 255, 255, 0.5) !important;
-                color: white !important;
+                padding: 10px 30px !important;
+                background: white !important;
+                border: 2px solid #079baa !important;
+                color: #079baa !important;
                 border-radius: 25px !important;
                 cursor: pointer !important;
                 transition: all 0.3s ease !important;
-                font-weight: 500 !important;
+                font-weight: 600 !important;
+                font-size: 15px !important;
             }
             
             .cycle-btn:hover {
-                background: rgba(255, 255, 255, 0.3) !important;
+                background: #e8f4f6 !important;
                 transform: translateY(-2px) !important;
+                box-shadow: 0 4px 12px rgba(7, 155, 170, 0.2) !important;
             }
             
             .cycle-btn.active {
-                background: white !important;
-                color: #079baa !important;
-                border-color: white !important;
+                background: #079baa !important;
+                color: white !important;
+                border-color: #079baa !important;
+                box-shadow: 0 4px 15px rgba(7, 155, 170, 0.3) !important;
             }
             
             .custom-cycle-modal-close {
@@ -3085,11 +3117,14 @@
                 border: none !important;
                 color: white !important;
                 font-size: 24px !important;
-                width: 40px !important;
-                height: 40px !important;
+                width: 36px !important;
+                height: 36px !important;
                 border-radius: 50% !important;
                 cursor: pointer !important;
                 transition: all 0.3s ease !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
             }
             
             .custom-cycle-modal-close:hover {
@@ -3100,8 +3135,8 @@
             .custom-cycle-modal-body {
                 flex: 1 !important;
                 overflow-y: auto !important;
-                padding: 30px !important;
-                background: #f8f9fa !important;
+                padding: 20px !important;
+                background: #fafbfc !important;
             }
             
             .cycle-data-loading {
@@ -3126,30 +3161,121 @@
                 100% { transform: rotate(360deg); }
             }
             
-            .cycle-questions-grid {
-                display: grid !important;
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
-                gap: 20px !important;
+            /* Enhanced Question List with Progress Bars */
+            .cycle-questions-list {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 12px !important;
             }
             
-            .cycle-question-item {
+            .cycle-question-item-enhanced {
                 background: white !important;
-                padding: 20px !important;
                 border-radius: 10px !important;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+                padding: 15px 20px !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 15px !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+                transition: transform 0.2s ease, box-shadow 0.2s ease !important;
             }
             
-            .question-label {
+            .cycle-question-item-enhanced:hover {
+                transform: translateX(5px) !important;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12) !important;
+            }
+            
+            .question-number {
                 font-size: 14px !important;
+                font-weight: 700 !important;
                 color: #666 !important;
-                margin-bottom: 10px !important;
-                font-weight: 600 !important;
+                min-width: 35px !important;
+                text-align: center !important;
+                padding: 5px !important;
+                background: #f0f0f0 !important;
+                border-radius: 6px !important;
             }
             
-            .question-value {
-                font-size: 28px !important;
-                font-weight: bold !important;
-                color: #079baa !important;
+            .question-content {
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 10px !important;
+            }
+            
+            .question-text {
+                font-size: 15px !important;
+                color: #333 !important;
+                line-height: 1.4 !important;
+            }
+            
+            .question-response {
+                display: flex !important;
+                align-items: center !important;
+                gap: 10px !important;
+            }
+            
+            .progress-bar-container {
+                flex: 1 !important;
+                height: 28px !important;
+                background: #e8e8e8 !important;
+                border-radius: 14px !important;
+                position: relative !important;
+                overflow: hidden !important;
+            }
+            
+            .progress-bar-fill {
+                height: 100% !important;
+                border-radius: 14px !important;
+                transition: width 0.5s ease !important;
+                position: relative !important;
+            }
+            
+            .progress-bar-value {
+                position: absolute !important;
+                right: 10px !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                font-size: 13px !important;
+                font-weight: 600 !important;
+                color: #333 !important;
+                background: rgba(255, 255, 255, 0.9) !important;
+                padding: 2px 8px !important;
+                border-radius: 10px !important;
+            }
+            
+            .question-category {
+                padding: 5px 12px !important;
+                border-radius: 15px !important;
+                color: white !important;
+                font-size: 11px !important;
+                font-weight: 600 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+                white-space: nowrap !important;
+            }
+            
+            /* Mobile responsiveness for modal */
+            @media (max-width: 768px) {
+                .custom-cycle-modal-container {
+                    width: 100% !important;
+                    height: 100% !important;
+                    max-height: 100% !important;
+                    border-radius: 0 !important;
+                }
+                
+                .cycle-question-item-enhanced {
+                    flex-direction: column !important;
+                    align-items: stretch !important;
+                    gap: 10px !important;
+                }
+                
+                .question-category {
+                    align-self: flex-start !important;
+                }
+                
+                .question-text {
+                    font-size: 14px !important;
+                }
             }
         `;
         
