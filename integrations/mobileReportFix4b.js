@@ -891,9 +891,11 @@
             const contentDiv = modal.querySelector('.cycle-data-content');
             const loadingDiv = modal.querySelector('.cycle-data-loading');
             
-            // Show loading
-            loadingDiv.style.display = 'flex';
-            contentDiv.style.display = 'none';
+            // Hide loading immediately - data is already loaded
+            if (loadingDiv) {
+                loadingDiv.style.display = 'none';
+            }
+            contentDiv.style.display = 'block';
             
             // Get or fetch data
             let data = window.studentCycleDataFromAPI;
