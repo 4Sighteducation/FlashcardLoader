@@ -688,6 +688,99 @@
         
         let currentCycle = 1;
         
+        // CORRECTED FIELD MAPPINGS from object_29json.json
+        const cycleFieldMappings = [
+            { questionId: "q1", currentCycleFieldId: "field_794", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
+            { questionId: "q2", currentCycleFieldId: "field_795", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
+            { questionId: "q3", currentCycleFieldId: "field_796", fieldIdCycle1: "field_1959", fieldIdCycle2: "field_1960", fieldIdCycle3: "field_1961" },
+            { questionId: "q4", currentCycleFieldId: "field_797", fieldIdCycle1: "field_1962", fieldIdCycle2: "field_1963", fieldIdCycle3: "field_1964" },
+            { questionId: "q5", currentCycleFieldId: "field_798", fieldIdCycle1: "field_1965", fieldIdCycle2: "field_1966", fieldIdCycle3: "field_1967" },
+            { questionId: "q6", currentCycleFieldId: "field_799", fieldIdCycle1: "field_1968", fieldIdCycle2: "field_1969", fieldIdCycle3: "field_1970" },
+            { questionId: "q7", currentCycleFieldId: "field_800", fieldIdCycle1: "field_1971", fieldIdCycle2: "field_1972", fieldIdCycle3: "field_1973" },
+            { questionId: "q8", currentCycleFieldId: "field_801", fieldIdCycle1: "field_1974", fieldIdCycle2: "field_1975", fieldIdCycle3: "field_1976" },
+            { questionId: "q9", currentCycleFieldId: "field_802", fieldIdCycle1: "field_1977", fieldIdCycle2: "field_1978", fieldIdCycle3: "field_1979" },
+            { questionId: "q10", currentCycleFieldId: "field_803", fieldIdCycle1: "field_1980", fieldIdCycle2: "field_1981", fieldIdCycle3: "field_1982" },
+            { questionId: "q11", currentCycleFieldId: "field_804", fieldIdCycle1: "field_1983", fieldIdCycle2: "field_1984", fieldIdCycle3: "field_1985" },
+            { questionId: "q12", currentCycleFieldId: "field_805", fieldIdCycle1: "field_1986", fieldIdCycle2: "field_1987", fieldIdCycle3: "field_1988" },
+            { questionId: "q13", currentCycleFieldId: "field_806", fieldIdCycle1: "field_1989", fieldIdCycle2: "field_1990", fieldIdCycle3: "field_1991" },
+            { questionId: "q14", currentCycleFieldId: "field_807", fieldIdCycle1: "field_1992", fieldIdCycle2: "field_1993", fieldIdCycle3: "field_1994" },
+            { questionId: "q15", currentCycleFieldId: "field_808", fieldIdCycle1: "field_1995", fieldIdCycle2: "field_1996", fieldIdCycle3: "field_1997" },
+            { questionId: "q16", currentCycleFieldId: "field_809", fieldIdCycle1: "field_1998", fieldIdCycle2: "field_1999", fieldIdCycle3: "field_2000" },
+            { questionId: "q17", currentCycleFieldId: "field_810", fieldIdCycle1: "field_2001", fieldIdCycle2: "field_2002", fieldIdCycle3: "field_2003" },
+            { questionId: "q18", currentCycleFieldId: "field_811", fieldIdCycle1: "field_2004", fieldIdCycle2: "field_2005", fieldIdCycle3: "field_2006" },
+            { questionId: "q19", currentCycleFieldId: "field_812", fieldIdCycle1: "field_2007", fieldIdCycle2: "field_2008", fieldIdCycle3: "field_2009" },
+            { questionId: "q20", currentCycleFieldId: "field_813", fieldIdCycle1: "field_2010", fieldIdCycle2: "field_2011", fieldIdCycle3: "field_2012" },
+            { questionId: "q21", currentCycleFieldId: "field_814", fieldIdCycle1: "field_2013", fieldIdCycle2: "field_2014", fieldIdCycle3: "field_2015" },
+            { questionId: "q22", currentCycleFieldId: "field_815", fieldIdCycle1: "field_2016", fieldIdCycle2: "field_2017", fieldIdCycle3: "field_2018" },
+            { questionId: "q23", currentCycleFieldId: "field_816", fieldIdCycle1: "field_2019", fieldIdCycle2: "field_2020", fieldIdCycle3: "field_2021" },
+            { questionId: "q24", currentCycleFieldId: "field_817", fieldIdCycle1: "field_2022", fieldIdCycle2: "field_2023", fieldIdCycle3: "field_2024" },
+            { questionId: "q25", currentCycleFieldId: "field_818", fieldIdCycle1: "field_2025", fieldIdCycle2: "field_2026", fieldIdCycle3: "field_2027" },
+            { questionId: "q26", currentCycleFieldId: "field_819", fieldIdCycle1: "field_2028", fieldIdCycle2: "field_2029", fieldIdCycle3: "field_2030" },
+            { questionId: "q27", currentCycleFieldId: "field_820", fieldIdCycle1: "field_2031", fieldIdCycle2: "field_2032", fieldIdCycle3: "field_2033" },
+            { questionId: "q28", currentCycleFieldId: "field_821", fieldIdCycle1: "field_2034", fieldIdCycle2: "field_2035", fieldIdCycle3: "field_2036" },
+            { questionId: "q29", currentCycleFieldId: "field_2317", fieldIdCycle1: "field_2927", fieldIdCycle2: "field_2928", fieldIdCycle3: "field_2929" },
+            { questionId: "outcome_support", currentCycleFieldId: "field_1816", fieldIdCycle1: "field_2037", fieldIdCycle2: "field_2038", fieldIdCycle3: "field_2039" },
+            { questionId: "outcome_equipped", currentCycleFieldId: "field_1817", fieldIdCycle1: "field_2040", fieldIdCycle2: "field_2041", fieldIdCycle3: "field_2042" },
+            { questionId: "outcome_confident", currentCycleFieldId: "field_1818", fieldIdCycle1: "field_2043", fieldIdCycle2: "field_2044", fieldIdCycle3: "field_2045" }
+        ];
+        
+        // Extract cycle data from hidden table (view_2716)
+        function extractCycleData() {
+            const allData = {};
+            
+            // Check Knack model
+            if (window.Knack?.models?.view_2716?.data) {
+                const dataCollection = window.Knack.models.view_2716.data;
+                if (dataCollection.models && dataCollection.models.length > 0) {
+                    dataCollection.models.forEach(model => {
+                        const record = model.attributes || model.toJSON();
+                        Object.assign(allData, record);
+                    });
+                }
+            }
+            
+            // Also check DOM
+            const table = document.querySelector('#view_2716');
+            if (table) {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach(cell => {
+                        const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                        if (fieldClass) {
+                            const value = cell.textContent.trim();
+                            if (value) {
+                                allData[fieldClass] = value;
+                            }
+                        }
+                    });
+                });
+            }
+            
+            return allData;
+        }
+        
+        // Get cycle-specific data
+        function getCycleSpecificData(cycle) {
+            const allData = extractCycleData();
+            const cycleData = {};
+            const cycleFieldKey = `fieldIdCycle${cycle}`;
+            
+            cycleFieldMappings.forEach(mapping => {
+                const cycleField = mapping[cycleFieldKey];
+                const value = allData[cycleField];
+                
+                if (value !== undefined && value !== '') {
+                    cycleData[mapping.currentCycleFieldId] = value;
+                    console.log(`[Staff Mobile Report Enhancement] ${mapping.questionId}: ${value} (Cycle ${cycle})`);
+                }
+            });
+            
+            window.staffCycleData = cycleData;
+            console.log(`[Staff Mobile Report Enhancement] Loaded ${Object.keys(cycleData).length} values for Cycle ${cycle}`);
+            return cycleData;
+        }
+        
         // Debug: Check if we're on the right page
         console.log('[Staff Mobile Report Enhancement] Current URL hash:', window.location.hash);
         
@@ -754,12 +847,17 @@
                 ariaLabel: viewAnswersBtn.getAttribute('aria-label')
             });
             
-            // Add a safe click handler that prevents hangs
+            // Add a safe click handler that loads cycle data
             viewAnswersBtn.addEventListener('click', function(e) {
-                console.log('[Staff Mobile Report Enhancement] View Answers clicked');
+                console.log('[Staff Mobile Report Enhancement] View Answers clicked - Cycle', currentCycle);
                 
-                // Log that button was clicked but don't interfere with modal
-                console.log('[Staff Mobile Report Enhancement] Modal enhancement disabled to prevent crashes');
+                // Load cycle-specific data when button is clicked
+                const cycleData = getCycleSpecificData(currentCycle);
+                console.log('[Staff Mobile Report Enhancement] Cycle data loaded:', Object.keys(cycleData).length, 'fields');
+                
+                // Store globally for debugging
+                window.staffCycleData = cycleData;
+                console.log('[Staff Mobile Report Enhancement] Cycle data available at window.staffCycleData');
             });
         }
         
