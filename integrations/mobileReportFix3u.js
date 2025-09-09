@@ -786,81 +786,47 @@
         // ========== CREATE CUSTOM CYCLE MODAL ==========
         createCustomCycleModal();
         
-        // ========== API-BASED DATA FETCHING ==========
-        async function fetchCycleDataFromAPI() {
-            console.log('[Student Report Enhancement] Fetching cycle data from API...');
+        // ========== SIMPLER DATA EXTRACTION FROM PAGE ==========
+        function fetchCycleDataFromAPI() {
+            console.log('[Student Report Enhancement] Extracting cycle data from page...');
             
             try {
-                // Get current student ID
-                const user = Knack.getUserAttributes();
-                const studentId = user.id;
-                console.log(`[Student Report Enhancement] Student ID: ${studentId}`);
+                // Try to extract from the hidden table (view_69 for students)
+                const data = {};
+                const table = document.querySelector('#view_69');
                 
-                // Get Object_10 ID from Object_6 record
-                const studentUrl = `https://api.knack.com/v1/objects/object_6/records/${studentId}`;
-                const studentRecord = await $.ajax({
-                    url: studentUrl,
-                    type: 'GET',
-                    headers: {
-                        'X-Knack-Application-Id': Knack.application_id,
-                        'X-Knack-REST-API-Key': 'knack',
-                        'Authorization': Knack.getUserToken()
-                    }
-                });
-                
-                // Extract Object_10 ID from field_182
-                let object10Id = null;
-                if (studentRecord && studentRecord.field_182) {
-                    if (Array.isArray(studentRecord.field_182) && studentRecord.field_182.length > 0) {
-                        object10Id = studentRecord.field_182[0].id;
-                    } else if (studentRecord.field_182.id) {
-                        object10Id = studentRecord.field_182.id;
-                    }
-                }
-                
-                if (!object10Id) {
-                    console.error('[Student Report Enhancement] No Object_10 ID found');
-                    return null;
-                }
-                
-                console.log(`[Student Report Enhancement] Object_10 ID: ${object10Id}`);
-                
-                // Get Object_29 record
-                const filters = {
-                    match: 'and',
-                    rules: [{
-                        field: 'field_792',
-                        operator: 'is',
-                        value: object10Id
-                    }]
-                };
-                
-                const object29Url = `https://api.knack.com/v1/objects/object_29/records?filters=${encodeURIComponent(JSON.stringify(filters))}`;
-                const object29Response = await $.ajax({
-                    url: object29Url,
-                    type: 'GET',
-                    headers: {
-                        'X-Knack-Application-Id': Knack.application_id,
-                        'X-Knack-REST-API-Key': 'knack',
-                        'Authorization': Knack.getUserToken()
-                    }
-                });
-                
-                if (object29Response && object29Response.records && object29Response.records.length > 0) {
-                    const cycleData = object29Response.records[0];
-                    console.log(`[Student Report Enhancement] Found Object_29 data with ${Object.keys(cycleData).length} fields`);
+                if (table) {
+                    console.log('[Student Report Enhancement] Found hidden table view_69');
                     
-                    // Store globally for modal to use
-                    window.studentCycleDataFromAPI = cycleData;
-                    return cycleData;
+                    // Get all table cells
+                    const cells = table.querySelectorAll('tbody tr td');
+                    cells.forEach(cell => {
+                        // Get field class
+                        const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                        if (fieldClass) {
+                            const value = cell.textContent.trim();
+                            if (value) {
+                                data[fieldClass] = value;
+                            }
+                        }
+                    });
+                    
+                    console.log(`[Student Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
+                    
+                    if (Object.keys(data).length > 0) {
+                        window.studentCycleDataFromAPI = data;
+                        return data;
+                    }
+                } else {
+                    console.log('[Student Report Enhancement] Hidden table not found');
                 }
                 
-                console.warn('[Student Report Enhancement] No Object_29 record found');
-                return null;
+                // Return empty object if no data found
+                return {};
                 
             } catch (error) {
-                console.error('[Student Report Enhancement] Error fetching cycle data:', error);
-                return null;
+                console.error('[Student Report Enhancement] Error extracting cycle data:', error);
+                return {};
             }
         }
         
@@ -917,7 +883,7 @@
         }
         
         // ========== RENDER MODAL CONTENT ==========
-        async function renderModalContent(cycle) {
+        function renderModalContent(cycle) {
             const modal = document.getElementById('customStudentCycleModal');
             const contentDiv = modal.querySelector('.cycle-data-content');
             const loadingDiv = modal.querySelector('.cycle-data-loading');
@@ -929,7 +895,7 @@
             // Get or fetch data
             let data = window.studentCycleDataFromAPI;
             if (!data) {
-                data = await fetchCycleDataFromAPI();
+                data = fetchCycleDataFromAPI();
             }
             
             if (!data) {
@@ -1024,7 +990,7 @@
                     viewAnswersBtn.parentNode.replaceChild(newBtn, viewAnswersBtn);
                     
                     // Add our custom handler
-                    newBtn.addEventListener('click', async (e) => {
+                    newBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         
@@ -1046,7 +1012,11 @@
                         // Show modal
                         const modal = document.getElementById('customStudentCycleModal');
                         modal.style.display = 'flex';
-                        await renderModalContent(currentCycle);
+                        
+                        // Render content after a small delay to ensure modal is visible
+                        setTimeout(() => {
+                            renderModalContent(currentCycle);
+                        }, 100);
                     });
                     
                     console.log('[Student Report Enhancement] View Answers button overridden with custom modal');
