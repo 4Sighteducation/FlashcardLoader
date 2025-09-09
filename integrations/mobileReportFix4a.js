@@ -903,9 +903,9 @@
             
             if (!data) {
                 contentDiv.innerHTML = '<p style="text-align: center; color: #666;">Unable to load cycle data. Please try again.</p>';
-                // Remove the loading div entirely to prevent white space
+                // Hide loading div instead of removing it
                 if (loadingDiv) {
-                    loadingDiv.remove();
+                    loadingDiv.style.display = 'none';
                 }
                 contentDiv.style.display = 'block';
                 return;
@@ -954,8 +954,8 @@
             // Update modal and ensure loading is hidden
             contentDiv.innerHTML = html;
             if (loadingDiv) {
-                // Remove the loading div entirely to prevent white space
-                loadingDiv.remove();
+                // Hide loading div instead of removing it
+                loadingDiv.style.display = 'none';
             }
             contentDiv.style.display = 'block';
             contentDiv.style.visibility = 'visible';
