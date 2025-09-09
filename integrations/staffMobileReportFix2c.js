@@ -704,17 +704,7 @@
             console.log('[Staff Mobile Report Enhancement] Extracting cycle data from page...');
             
             try {
-                // First check if we already have Object_10 ID from ReportProfiles
-                const object10Id = window.currentReportObject10Id;
-                if (!object10Id) {
-                    console.log('[Staff Mobile Report Enhancement] No Object_10 ID available yet');
-                    // Try to get from the hidden table
-                    return extractFromHiddenTable();
-                }
-                
-                console.log(`[Staff Mobile Report Enhancement] Using Object_10 ID: ${object10Id}`);
-                
-                // Try to extract from the hidden table first (view_2716)
+                // Method 1: Try to extract from the hidden table first (view_2716)
                 const tableData = extractFromHiddenTable();
                 if (tableData && Object.keys(tableData).length > 0) {
                     console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(tableData).length} fields from hidden table`);
@@ -722,59 +712,354 @@
                     return tableData;
                 }
                 
-                // If no table data, return empty object (will show "no data" message)
+                // Method 2: Try Knack models - check multiple views
+                if (window.Knack && window.Knack.models) {
+                    console.log('[Staff Mobile Report Enhancement] Checking Knack models for questionnaire data...');
+                    
+                    // List of views that might contain questionnaire data
+                    // view_449 is the Object_10 grid with connected Object_29 fields
+                    const viewsToCheck = ['view_449', 'view_2716', 'view_2723', 'view_2751', 'view_69', 'view_3041'];
+                    
+                    for (const viewId of viewsToCheck) {
+                        if (window.Knack.models[viewId]) {
+                            console.log(`[Staff Mobile Report Enhancement] Checking model ${viewId}`);
+                            
+                            // Try to get data from the model
+                            let modelData = null;
+                            
+                            // Check if there's a data collection
+                            if (window.Knack.models[viewId].data) {
+                                if (typeof window.Knack.models[viewId].data.toJSON === 'function') {
+                                    modelData = window.Knack.models[viewId].data.toJSON();
+                                } else if (window.Knack.models[viewId].data.models) {
+                                    // It's a collection with models array
+                                    modelData = window.Knack.models[viewId].data.models.map(m => 
+                                        m.attributes || m.toJSON()
+                                    );
+                                } else {
+                                    modelData = window.Knack.models[viewId].data;
+                                }
+                            } else if (window.Knack.models[viewId].attributes) {
+                                // Direct attributes
+                                modelData = window.Knack.models[viewId].attributes;
+                            }
+                            
+                            // Check if we found questionnaire data
+                            if (modelData) {
+                                // Handle array of records
+                                if (Array.isArray(modelData)) {
+                                    for (const record of modelData) {
+                                        if (hasQuestionnaireData(record)) {
+                                            console.log(`[Staff Mobile Report Enhancement] Found questionnaire data in ${viewId}`);
+                                            window.staffCycleDataFromAPI = record;
+                                            return record;
+                                        }
+                                    }
+                                } 
+                                // Handle single record
+                                else if (hasQuestionnaireData(modelData)) {
+                                    console.log(`[Staff Mobile Report Enhancement] Found questionnaire data in ${viewId}`);
+                                    window.staffCycleDataFromAPI = modelData;
+                                    return modelData;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Method 3: Try to find data in the DOM directly
+                console.log('[Staff Mobile Report Enhancement] Trying to extract from DOM elements...');
+                const domData = extractFromDOM();
+                if (domData && Object.keys(domData).length > 0) {
+                    console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(domData).length} fields from DOM`);
+                    window.staffCycleDataFromAPI = domData;
+                    return domData;
+                }
+                
                 console.log('[Staff Mobile Report Enhancement] No cycle data found on page');
                 return {};
                 
             } catch (error) {
                 console.error('[Staff Mobile Report Enhancement] Error extracting cycle data:', error);
-                return extractFromHiddenTable() || {};
+                return {};
             }
+        }
+        
+        // Helper function to check if an object has questionnaire data
+        function hasQuestionnaireData(obj) {
+            if (!obj || typeof obj !== 'object') return false;
+            
+            // Check for any of the questionnaire fields
+            const questionnaireFields = [
+                'field_1953', 'field_1954', 'field_1955', 'field_1956', 'field_1957', 'field_1958',
+                'field_1959', 'field_1960', 'field_1961', 'field_1962', 'field_1963', 'field_1964',
+                'field_1965', 'field_1966', 'field_1967', 'field_1968', 'field_1969', 'field_1970'
+            ];
+            
+            return questionnaireFields.some(field => obj[field] !== undefined && obj[field] !== null);
+        }
+        
+        // Extract data from DOM elements
+        function extractFromDOM() {
+            const data = {};
+            
+            // Look for any elements with field classes
+            const fieldElements = document.querySelectorAll('[class*="field_19"], [class*="field_20"], [class*="field_29"]');
+            fieldElements.forEach(elem => {
+                const classes = Array.from(elem.classList);
+                const fieldClass = classes.find(c => c.match(/^field_\d+$/));
+                if (fieldClass) {
+                    const value = elem.textContent.trim();
+                    if (value) {
+                        data[fieldClass] = value;
+                    }
+                }
+            });
+            
+            return data;
         }
         
         // Extract data from hidden table
         function extractFromHiddenTable() {
             const data = {};
             
-            // Try to find the hidden table (view_2716 for staff)
-            const table = document.querySelector('#view_2716');
+            // Try to find the hidden table
+            // view_449 is the Object_10 grid with connected Object_29 fields in scene_1014
+            // view_2716 is a fallback for other configurations
+            let table = document.querySelector('#view_449') || document.querySelector('#view_2716');
+            
             if (table) {
-                console.log('[Staff Mobile Report Enhancement] Found hidden table view_2716');
+                const viewId = table.id;
+                console.log(`[Staff Mobile Report Enhancement] Found hidden table ${viewId}`);
                 
-                // Get all table cells
-                const cells = table.querySelectorAll('tbody tr td');
-                console.log(`[Staff Mobile Report Enhancement] Found ${cells.length} cells in table`);
+                // Get current student's Object_10 ID
+                const currentStudentId = getCurrentStudentObject10Id();
+                console.log('[Staff Mobile Report Enhancement] Current Object_10 ID:', currentStudentId || 'not found');
                 
-                cells.forEach((cell, index) => {
-                    // Get field class
-                    const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
-                    if (fieldClass) {
-                        const value = cell.textContent.trim();
-                        // Store value even if it's "0" or empty
-                        data[fieldClass] = value || '0';
+                // If view_449, we need to find the correct row by field_792 or field_197
+                if (viewId === 'view_449' && currentStudentId) {
+                    // Find the row with matching field_792 (Object_10 connection) or field_197 (email)
+                    const rows = table.querySelectorAll('tbody tr');
+                    console.log(`[Staff Mobile Report Enhancement] Checking ${rows.length} rows for student: ${currentStudentId}`);
+                    
+                    for (const row of rows) {
+                        let isMatch = false;
                         
-                        // Debug key cycle fields
-                        if (fieldClass === 'field_1953' || fieldClass === 'field_1955' || fieldClass === 'field_1956' ||
-                            fieldClass === 'field_1954' || fieldClass === 'field_1957' || fieldClass === 'field_1958') {
-                            console.log(`[Staff Mobile Report Enhancement] Found ${fieldClass}: "${value}" at cell ${index}`);
+                        // Check field_792 (Object_29 -> Object_10 connection)
+                        const field792Cell = row.querySelector('.field_792');
+                        if (field792Cell) {
+                            const field792Text = field792Cell.textContent.trim();
+                            const field792HTML = field792Cell.innerHTML;
+                            
+                            // Connection fields can contain:
+                            // 1. The ID directly
+                            // 2. The email address (display value)
+                            // 3. HTML with span containing ID
+                            if (field792Text === currentStudentId || 
+                                field792Text.includes(currentStudentId) ||
+                                field792HTML.includes(currentStudentId)) {
+                                isMatch = true;
+                                console.log('[Staff Mobile Report Enhancement] Matched via field_792 (Object_10 connection)');
+                            }
+                        }
+                        
+                        // Also check field_197 (Object_10 email) as a backup
+                        if (!isMatch) {
+                            const field197Cell = row.querySelector('.field_197');
+                            if (field197Cell) {
+                                const field197Value = field197Cell.textContent.trim();
+                                if (field197Value === currentStudentId || field197Value.includes(currentStudentId)) {
+                                    isMatch = true;
+                                    console.log('[Staff Mobile Report Enhancement] Matched via field_197 (email)');
+                                }
+                            }
+                        }
+                        
+                        // Also check field_182 (Object_6 -> Object_10 connection) as another backup
+                        if (!isMatch) {
+                            const field182Cell = row.querySelector('.field_182');
+                            if (field182Cell) {
+                                const field182Text = field182Cell.textContent.trim();
+                                const field182HTML = field182Cell.innerHTML;
+                                if (field182Text === currentStudentId || 
+                                    field182Text.includes(currentStudentId) ||
+                                    field182HTML.includes(currentStudentId)) {
+                                    isMatch = true;
+                                    console.log('[Staff Mobile Report Enhancement] Matched via field_182 (Object_6 connection)');
+                                }
+                            }
+                        }
+                        
+                        if (isMatch) {
+                            console.log('[Staff Mobile Report Enhancement] Found matching student row!');
+                            
+                            // Extract all fields from this row
+                            const cells = row.querySelectorAll('td');
+                            cells.forEach(cell => {
+                                const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                                // Don't include the connection/email fields in the data
+                                if (fieldClass && fieldClass !== 'field_792' && fieldClass !== 'field_197' && fieldClass !== 'field_182') {
+                                    const value = extractCellValue(cell);
+                                    if (value !== '') {
+                                        data[fieldClass] = value;
+                                    } else {
+                                        data[fieldClass] = '0';
+                                    }
+                                    
+                                    // Debug key cycle fields
+                                    if (fieldClass === 'field_1953' || fieldClass === 'field_1955' || fieldClass === 'field_1956') {
+                                        console.log(`[Staff Mobile Report Enhancement] ${fieldClass}: "${value}"`);
+                                    }
+                                }
+                            });
+                            
+                            break; // Found our student, stop searching
                         }
                     }
-                });
+                    
+                    if (Object.keys(data).length === 0) {
+                        console.log('[Staff Mobile Report Enhancement] No matching row found, trying fallback extraction');
+                        // Fallback to old method if no match found
+                        return extractAllTableData(table);
+                    }
+                } else {
+                    // Fallback for view_2716 or if no student ID found
+                    return extractAllTableData(table);
+                }
                 
-                console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
+                console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from student row`);
                 console.log('[Staff Mobile Report Enhancement] Sample values:', {
                     'field_1953 (Vision C1)': data.field_1953,
                     'field_1955 (Vision C2)': data.field_1955, 
-                    'field_1956 (Vision C3)': data.field_1956,
-                    'field_1954 (Goals C1)': data.field_1954,
-                    'field_1957 (Goals C2)': data.field_1957,
-                    'field_1958 (Goals C3)': data.field_1958
+                    'field_1956 (Vision C3)': data.field_1956
                 });
             } else {
                 console.log('[Staff Mobile Report Enhancement] Hidden table not found');
             }
             
             return data;
+        }
+        
+        // Helper function to extract value from a cell
+        function extractCellValue(cell) {
+            const cellHTML = cell.innerHTML;
+            let value = '';
+            
+            // Check if this is HTML with span elements
+            if (cellHTML.includes('<span') && cellHTML.includes('data-kn="connection-value"')) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = cellHTML;
+                const spans = tempDiv.querySelectorAll('span[data-kn="connection-value"]');
+                
+                if (spans.length >= 1) {
+                    value = spans[0].textContent.trim();
+                }
+            } else {
+                // Plain text value
+                value = cell.textContent.trim();
+            }
+            
+            return value;
+        }
+        
+        // Fallback function to extract all data from table (old method)
+        function extractAllTableData(table) {
+            const data = {};
+            const cells = table.querySelectorAll('tbody tr td');
+            
+            cells.forEach(cell => {
+                const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                if (fieldClass) {
+                    const value = extractCellValue(cell);
+                    if (value !== '') {
+                        data[fieldClass] = value;
+                    } else {
+                        data[fieldClass] = '0';
+                    }
+                }
+            });
+            
+            return data;
+        }
+        
+        // Helper function to get the current student's Object_10 record ID or email
+        function getCurrentStudentObject10Id() {
+            // Method 1: Get the student email from the profile name on page
+            const profileName = document.querySelector('.profile-name, .student-name');
+            if (profileName) {
+                const studentEmail = profileName.textContent.trim();
+                console.log('[Staff Mobile Report Enhancement] Found student email from profile:', studentEmail);
+                return studentEmail;
+            }
+            
+            // Method 2: Try to extract from visible student profile views
+            // These views should contain the Object_10 record
+            const profileViews = ['view_3015', 'view_2776', 'view_3047'];
+            for (const viewId of profileViews) {
+                if (window.Knack && window.Knack.models && window.Knack.models[viewId]) {
+                    const model = window.Knack.models[viewId];
+                    
+                    // Try to get the ID
+                    if (model.id) {
+                        console.log(`[Staff Mobile Report Enhancement] Found student ID from ${viewId}:`, model.id);
+                        return model.id;
+                    }
+                    if (model.attributes) {
+                        // Try to get ID
+                        if (model.attributes.id) {
+                            console.log(`[Staff Mobile Report Enhancement] Found student ID from ${viewId} attributes:`, model.attributes.id);
+                            return model.attributes.id;
+                        }
+                        // Try to get email (field_197)
+                        if (model.attributes.field_197) {
+                            console.log(`[Staff Mobile Report Enhancement] Found student email from ${viewId}:`, model.attributes.field_197);
+                            return model.attributes.field_197;
+                        }
+                        // Try raw email field
+                        if (model.attributes.field_197_raw && model.attributes.field_197_raw.email) {
+                            console.log(`[Staff Mobile Report Enhancement] Found student email from ${viewId} raw:`, model.attributes.field_197_raw.email);
+                            return model.attributes.field_197_raw.email;
+                        }
+                    }
+                }
+            }
+            
+            // Method 3: Check URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            let studentId = urlParams.get('student_id') || urlParams.get('id');
+            if (studentId) {
+                console.log('[Staff Mobile Report Enhancement] Found student ID from URL:', studentId);
+                return studentId;
+            }
+            
+            console.log('[Staff Mobile Report Enhancement] Warning: Could not identify current student');
+            return null;
+        }
+        
+        // Helper function to get the current student's name from the page
+        function getCurrentStudentName() {
+            // Look for student name in various places
+            const selectors = [
+                '.profile-name',
+                '.student-name',
+                '[class*="student"][class*="name"]',
+                '#view_3015 .field_197', // Student name field
+                '#view_2776 h2',
+                '#view_3047 h2'
+            ];
+            
+            for (const selector of selectors) {
+                const elem = document.querySelector(selector);
+                if (elem) {
+                    const text = elem.textContent.trim();
+                    // Make sure it's not a generic title
+                    if (text && !text.includes('VESPA') && !text.includes('Report') && !text.includes('Profile') && text.length > 2) {
+                        return text;
+                    }
+                }
+            }
+            
+            return null;
         }
         
         // ========== CREATE CUSTOM MODAL HTML ==========
@@ -791,9 +1076,9 @@
                             <button class="custom-cycle-modal-close">✕</button>
                         </div>
                         <div class="cycle-selector-bar">
-                            <button class="cycle-btn ${currentCycle === 1 ? 'active' : ''}" data-cycle="1">Cycle 1</button>
-                            <button class="cycle-btn ${currentCycle === 2 ? 'active' : ''}" data-cycle="2">Cycle 2</button>
-                            <button class="cycle-btn ${currentCycle === 3 ? 'active' : ''}" data-cycle="3">Cycle 3</button>
+                                <button class="cycle-btn ${currentCycle === 1 ? 'active' : ''}" data-cycle="1">Cycle 1</button>
+                                <button class="cycle-btn ${currentCycle === 2 ? 'active' : ''}" data-cycle="2">Cycle 2</button>
+                                <button class="cycle-btn ${currentCycle === 3 ? 'active' : ''}" data-cycle="3">Cycle 3</button>
                         </div>
                         <div class="custom-cycle-modal-body">
                             <div class="cycle-data-loading">
@@ -850,7 +1135,10 @@
             
             if (!data) {
                 contentDiv.innerHTML = '<p style="text-align: center; color: #666;">Unable to load student cycle data. Please try again.</p>';
-                loadingDiv.style.display = 'none';
+                // Remove the loading div entirely to prevent white space
+                if (loadingDiv) {
+                    loadingDiv.remove();
+                }
                 contentDiv.style.display = 'block';
                 return;
             }
@@ -907,11 +1195,11 @@
             
             html += '</div>';
             
-            // Update modal and ensure loading is hidden
+            // Update modal and remove loading div completely
             contentDiv.innerHTML = html;
             if (loadingDiv) {
-                loadingDiv.style.display = 'none';
-                loadingDiv.style.visibility = 'hidden';
+                // Remove the loading div entirely to prevent white space
+                loadingDiv.remove();
             }
             contentDiv.style.display = 'block';
             contentDiv.style.visibility = 'visible';
