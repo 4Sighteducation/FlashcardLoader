@@ -766,6 +766,13 @@
     function initializeViewAnswersEnhancement() {
         console.log('[Student Report Enhancement] Initializing View Answers enhancement for ALL devices...');
         
+        // Check if already initialized to prevent duplicates
+        if (window._studentViewAnswersEnhancementInitialized) {
+            console.log('[Student Report Enhancement] View Answers enhancement already initialized, skipping...');
+            return;
+        }
+        window._studentViewAnswersEnhancementInitialized = true;
+        
         let currentCycle = 1;
         
         // Debug: Check if we're on the right page
@@ -782,6 +789,10 @@
             console.log(`[Student Report Enhancement] Found ${cycleButtons.length} cycle buttons`);
             
             cycleButtons.forEach((btn, index) => {
+                // Check if already has listener to prevent duplicates
+                if (btn.dataset.studentCycleListenerAdded) return;
+                btn.dataset.studentCycleListenerAdded = 'true';
+                
                 btn.addEventListener('click', function() {
                     const btnText = this.textContent.trim();
                     if (btnText === '1' || btnText.includes('Cycle 1')) currentCycle = 1;
@@ -798,130 +809,21 @@
             });
         }
         
-        // Enhance the modal when it opens
+        // DISABLED: This function was causing the modal to crash
+        // The Vue app needs to render without interference
         function enhanceViewAnswersModal(modal) {
-            console.log('[Student Report Enhancement] Enhancing View Answers modal...');
-            
-            // Check if already enhanced
-            if (modal.querySelector('.cycle-indicator')) return;
-            
-            // Find the header
-            const header = modal.querySelector('.p-dialog-header, h2, h3');
-            if (header && !header.querySelector('.cycle-indicator')) {
-                const cycleIndicator = document.createElement('span');
-                cycleIndicator.className = 'cycle-indicator';
-                cycleIndicator.style.cssText = `
-                    display: inline-block;
-                    margin-left: 15px;
-                    padding: 4px 12px;
-                    background: #079baa;
-                    color: white;
-                    border-radius: 20px;
-                    font-size: 14px;
-                    font-weight: 500;
-                `;
-                cycleIndicator.textContent = `Cycle ${currentCycle}`;
-                header.appendChild(cycleIndicator);
-            }
-            
-            // Make modal responsive
-            modal.style.cssText += `
-                max-width: 95vw !important;
-                max-height: 90vh !important;
-                width: auto !important;
-                min-width: 300px !important;
-            `;
-            
-            // Fix modal content scrolling
-            const content = modal.querySelector('.p-dialog-content, .modal-body');
-            if (content) {
-                content.style.cssText += `
-                    max-height: 60vh !important;
-                    overflow-y: auto !important;
-                    padding: 20px !important;
-                `;
-            }
-            
-            // Ensure close button exists and works
-            let closeBtn = modal.querySelector('.p-dialog-header-close, .close, .modal-close');
-            if (!closeBtn) {
-                // Create close button matching our modal style
-                closeBtn = document.createElement('button');
-                closeBtn.innerHTML = '×';
-                closeBtn.className = 'modal-close-btn';
-                closeBtn.style.cssText = `
-                    position: absolute;
-                    top: 15px;
-                    right: 15px;
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    border: none;
-                    background: rgba(255, 255, 255, 0.2);
-                    color: white;
-                    font-size: 28px;
-                    line-height: 1;
-                    cursor: pointer;
-                    z-index: 1000;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                `;
-                
-                closeBtn.onmouseover = () => {
-                    closeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
-                    closeBtn.style.transform = 'scale(1.1)';
-                };
-                
-                closeBtn.onmouseout = () => {
-                    closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-                    closeBtn.style.transform = 'scale(1)';
-                };
-                
-                closeBtn.onclick = () => {
-                    modal.style.display = 'none';
-                    modal.classList.remove('show', 'active');
-                    const backdrop = document.querySelector('.p-dialog-mask, .modal-backdrop');
-                    if (backdrop) backdrop.remove();
-                    modal.remove();
-                };
-                
-                const dialogHeader = modal.querySelector('.p-dialog-header');
-                if (dialogHeader) {
-                    dialogHeader.appendChild(closeBtn);
-                } else {
-                    modal.appendChild(closeBtn);
-                }
-            }
-            
-            // Add ESC key listener with proper closure
-            const escHandler = (e) => {
-                if (e.key === 'Escape') {
-                    if (closeBtn) {
-                        closeBtn.click();
-                    } else {
-                        modal.style.display = 'none';
-                        modal.classList.remove('show', 'active');
-                    }
-                    document.removeEventListener('keydown', escHandler);
-                }
-            };
-            document.addEventListener('keydown', escHandler);
-            
-            // Update cycle indicator when data changes
-            const observer = new MutationObserver(() => {
-                const indicator = modal.querySelector('.cycle-indicator');
-                if (indicator) {
-                    indicator.textContent = `Cycle ${currentCycle}`;
-                }
-            });
-            
-            observer.observe(modal, {
-                childList: true,
-                subtree: true
-            });
+            console.log('[Student Report Enhancement] Modal enhancement DISABLED to prevent crashes');
+            // DO NOT modify the modal DOM while Vue is rendering
+            // This was causing infinite loading spinner
+            return;
         }
+        
+        // TODO: Implement proper data interception for cycle switching
+        // Need to intercept the API call or data loading to use:
+        // - Cycle 1: field_3309, field_3312, etc.
+        // - Cycle 2: field_3310, field_3313, etc.
+        // - Cycle 3: field_3311, field_3314, etc.
+        // Instead of currentCycleFieldId (field_794, field_795, etc.)
         
         // Watch for View Answers button click - improved selector
         let viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(btn => 
@@ -931,48 +833,59 @@
         
         console.log('[Student Report Enhancement] View Answers button search result:', viewAnswersBtn ? 'FOUND' : 'NOT FOUND');
         
-        if (viewAnswersBtn) {
+        if (viewAnswersBtn && !viewAnswersBtn.dataset.studentEnhancementListenerAdded) {
+            viewAnswersBtn.dataset.studentEnhancementListenerAdded = 'true';
             console.log('[Student Report Enhancement] View Answers button details:', {
                 text: viewAnswersBtn.textContent,
                 classes: viewAnswersBtn.className,
                 ariaLabel: viewAnswersBtn.getAttribute('aria-label')
             });
-            viewAnswersBtn.addEventListener('click', function() {
+            
+            // Add a safe click handler that prevents hangs
+            viewAnswersBtn.addEventListener('click', function(e) {
                 console.log('[Student Report Enhancement] View Answers clicked');
                 
-                setTimeout(() => {
-                    const modal = document.querySelector('.p-dialog, [role="dialog"], .modal');
-                    if (modal) {
-                        enhanceViewAnswersModal(modal);
-                    }
-                }, 500);
+                // Log that button was clicked but don't interfere with modal
+                console.log('[Student Report Enhancement] Modal enhancement disabled to prevent crashes');
             });
         }
         
-        // Watch for modal appearance via mutation observer
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === 1) {
-                        if (node.classList?.contains('p-dialog') || 
-                            node.getAttribute?.('role') === 'dialog' ||
-                            node.querySelector?.('.p-dialog')) {
-                            
-                            const modal = node.classList?.contains('p-dialog') ? node : node.querySelector('.p-dialog');
-                            if (modal && modal.textContent.includes('Question')) {
-                                console.log('[Student Report Enhancement] View Answers modal detected');
-                                enhanceViewAnswersModal(modal);
+        // Only set up ONE mutation observer for modals to prevent performance issues
+        if (!window._studentModalObserverInitialized) {
+            window._studentModalObserverInitialized = true;
+            
+            const observer = new MutationObserver((mutations) => {
+                // Process mutations in batches to prevent performance issues
+                const modalsToEnhance = [];
+                
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) {
+                            if (node.classList?.contains('p-dialog') || 
+                                node.getAttribute?.('role') === 'dialog' ||
+                                node.querySelector?.('.p-dialog')) {
+                                
+                                const modal = node.classList?.contains('p-dialog') ? node : node.querySelector('.p-dialog');
+                                if (modal && modal.textContent.includes('Question') && !modal.dataset.studentEnhanced) {
+                                    modal.dataset.studentEnhanced = 'true';
+                                    modalsToEnhance.push(modal);
+                                }
                             }
                         }
-                    }
+                    });
                 });
+                
+                // Do not enhance modals - this was causing crashes
+                if (modalsToEnhance.length > 0) {
+                    console.log('[Student Report Enhancement] Modal detected but enhancement disabled to prevent crashes');
+                }
             });
-        });
-        
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
         
         // Initialize cycle tracking with safeguards
         let cycleTrackingInitialized = false;
