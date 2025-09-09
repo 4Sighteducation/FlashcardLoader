@@ -15,11 +15,17 @@
     let initAttempts = 0;
     const MAX_INIT_ATTEMPTS = 10;
     
-    // More robust mobile detection - FIXED
+    // More robust mobile detection - FIXED v2
     function isMobileDevice() {
-        // Only consider it mobile if width is small, not just because of touch support
-        const isMobile = (window.innerWidth <= 768);
-        console.log('[Student Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'UserAgent:', navigator.userAgent);
+        // Check multiple conditions for mobile detection
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const smallWidth = window.innerWidth <= 768;
+        const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Consider it mobile if it has touch AND (small width OR mobile user agent)
+        const isMobile = hasTouch && (smallWidth || mobileUserAgent);
+        
+        console.log('[Student Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'Touch:', hasTouch, 'UA Mobile:', mobileUserAgent);
         return isMobile;
     }
     
@@ -104,14 +110,16 @@
                     // Initialize View Answers enhancements for ALL devices
                     initializeViewAnswersEnhancement();
                     
-                    // FIX VIEW ANSWERS BUTTON for ALL devices (not just mobile)
+                    // FIX VIEW ANSWERS BUTTON for ALL devices
                     fixViewAnswersButton();
                     setTimeout(fixViewAnswersButton, 500);
                     setTimeout(fixViewAnswersButton, 1000);
                     
+                    // Initialize VESPA popups for ALL devices (tap to expand)
+                    initializeVespaPopups(); // Now works on desktop too!
+                    
                     // Mobile-specific initializations
                     if (isMobileDevice()) {
-                        initializeVespaPopups(); // Click to expand only on mobile
                         initializeTextAreaFocus(); // Text area focus only on mobile
                         
                         // Try multiple times to ensure button is hidden
@@ -1126,16 +1134,13 @@
     }
     
     function initializeVespaPopups() {
-        // Only initialize on mobile
-        if (!isMobileDevice()) {
-            console.log('[Student Report Enhancement] Skipping VESPA popups on desktop');
-            return;
-        }
-        
-        console.log('[Student Report Enhancement] Initializing VESPA popups for mobile');
+        // Initialize for ALL devices
+        console.log('[Student Report Enhancement] Initializing VESPA popups (tap to expand) for ALL devices');
         
         // Add section headings to all VESPA sections (only on mobile)
-        addSectionHeadings();
+        if (isMobileDevice()) {
+            addSectionHeadings();
+        }
         
         // IMPORTANT: Keep the original modal creation from happyreport1.js
         // Create modal container if it doesn't exist
@@ -1969,6 +1974,42 @@
                 z-index: 9998 !important; /* Below our modals */
             }
             
+            /* Make VESPA sections look clickable on ALL devices */
+            #view_3041 .vespa-report {
+                position: relative !important;
+                transition: transform 0.2s ease !important;
+                cursor: pointer !important;
+            }
+            
+            #view_3041 .vespa-report:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+            }
+            
+            #view_3041 .vespa-report:active {
+                transform: scale(0.98) !important;
+            }
+            
+            /* Add a subtle tap/click indicator */
+            #view_3041 .vespa-report::after {
+                content: "Click to expand >";
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 12px;
+                color: #666;
+                background: rgba(255,255,255,0.9);
+                padding: 4px 8px;
+                border-radius: 4px;
+                pointer-events: none;
+                transition: all 0.3s ease;
+            }
+            
+            #view_3041 .vespa-report:hover::after {
+                background: #079baa;
+                color: white;
+            }
+            
             /* PrimeVue Dialog fixes for mobile */
             @media (max-width: 768px) {
                 /* Fix PrimeVue dialog overlay */
@@ -2403,29 +2444,7 @@
                     }
                 }
                 
-                /* Make VESPA sections look clickable on mobile */
-                #view_3041 .vespa-report {
-                    position: relative !important;
-                    transition: transform 0.2s ease !important;
-                }
-                
-                #view_3041 .vespa-report:active {
-                    transform: scale(0.98) !important;
-                }
-                
-                /* Add a subtle tap indicator */
-                #view_3041 .vespa-report::after {
-                    content: "Tap to expand >";
-                    position: absolute;
-                    top: 10px;
-                    right: 10px;
-                    font-size: 12px;
-                    color: #666;
-                    background: rgba(255,255,255,0.9);
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    pointer-events: none;
-                }
+                /* Make VESPA sections look clickable - REMOVED MOBILE RESTRICTION */
                 
                 /* Prevent tap indicator on comment sections */
                 #view_3041 .comment-section {
