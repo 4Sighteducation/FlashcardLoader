@@ -733,7 +733,17 @@
                             Object.keys(attrs).forEach(key => {
                                 // Only get questionnaire fields (field_19xx, field_20xx, field_29xx)
                                 if (key.match(/^field_(19|20|29)\d{2}$/)) {
-                                    const value = attrs[key];
+                                    // Use the _raw value if available (numeric), otherwise try to extract from HTML
+                                    let value = attrs[key + '_raw'] !== undefined ? attrs[key + '_raw'] : attrs[key];
+                                    
+                                    // If value is HTML string, extract the number from it
+                                    if (typeof value === 'string' && value.includes('<span')) {
+                                        const match = value.match(/>(\d+)</);
+                                        if (match) {
+                                            value = match[1];
+                                        }
+                                    }
+                                    
                                     if (value !== undefined && value !== null && value !== '') {
                                         data[key] = value.toString();
                                     }
