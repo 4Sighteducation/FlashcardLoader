@@ -704,10 +704,40 @@
             console.log('[Staff Mobile Report Enhancement] Extracting cycle data from page...');
             
             try {
-                // Method 1: Try to extract from the hidden table first (view_2716)
-                const tableData = extractFromHiddenTable();
+                // For staff viewing student reports in scene_1095, the data is in view_2716
+                const data = {};
+                const table = document.querySelector('#view_2716');
+                
+                if (table) {
+                    console.log('[Staff Mobile Report Enhancement] Found hidden table view_2716 in scene_1095');
+                    
+                    // Get all table cells
+                    const cells = table.querySelectorAll('tbody tr td');
+                    cells.forEach(cell => {
+                        // Get field class
+                        const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                        if (fieldClass) {
+                            const value = cell.textContent.trim();
+                            if (value) {
+                                data[fieldClass] = value;
+                            }
+                        }
+                    });
+                    
+                    console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
+                    
+                    if (Object.keys(data).length > 0) {
+                        window.staffCycleDataFromAPI = data;
+                        return data;
+                    }
+                } else {
+                    console.log('[Staff Mobile Report Enhancement] Hidden table view_2716 not found, trying alternative extraction...');
+                }
+                
+                // Fallback: try to get the selected student's questionnaire data
+                const tableData = extractStudentQuestionnaireData();
                 if (tableData && Object.keys(tableData).length > 0) {
-                    console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(tableData).length} fields from hidden table`);
+                    console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(tableData).length} fields from student data`);
                     window.staffCycleDataFromAPI = tableData;
                     return tableData;
                 }
@@ -717,8 +747,9 @@
                     console.log('[Staff Mobile Report Enhancement] Checking Knack models for questionnaire data...');
                     
                     // List of views that might contain questionnaire data
+                    // view_2716 is the primary view for staff viewing student data in scene_1095
                     // view_449 is the Object_10 grid with connected Object_29 fields
-                    const viewsToCheck = ['view_449', 'view_2716', 'view_2723', 'view_2751', 'view_69', 'view_3041'];
+                    const viewsToCheck = ['view_2716', 'view_449', 'view_2723', 'view_2751', 'view_69', 'view_3041'];
                     
                     for (const viewId of viewsToCheck) {
                         if (window.Knack.models[viewId]) {
@@ -820,46 +851,83 @@
         }
         
         // Extract data from hidden table - simpler version like student modal
-        function extractFromHiddenTable() {
+        // New function to extract student questionnaire data properly
+        function extractStudentQuestionnaireData() {
             const data = {};
             
-            // Try to find the hidden table - prioritize view_449, then view_2716, then view_69
-            let table = document.querySelector('#view_449') || document.querySelector('#view_2716') || document.querySelector('#view_69');
+            // For staff viewing student data, check these views in order:
+            // view_2716 - Staff view of student questionnaire data in scene_1095 (primary)
+            // view_69 - Alternative questionnaire view (student version)
+            // view_3041 - Main report view might have embedded data
+            const viewsToCheck = ['#view_2716', '#view_69', '#view_3041 .hidden-table', '#view_3041 table[style*="display: none"]'];
             
-            if (table) {
-                const viewId = table.id;
-                console.log(`[Staff Mobile Report Enhancement] Found hidden table ${viewId}`);
-                
-                // SIMPLIFIED: Just extract all data from the table like the student version
-                // The table should already be showing the correct student's data
-                const cells = table.querySelectorAll('tbody tr td');
-                console.log(`[Staff Mobile Report Enhancement] Found ${cells.length} cells in table`);
-                
-                cells.forEach(cell => {
-                    // Get field class
-                    const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
-                    if (fieldClass) {
-                        const value = cell.textContent.trim();
-                        if (value) {
-                            data[fieldClass] = value;
-                        }
+            for (const selector of viewsToCheck) {
+                const table = document.querySelector(selector);
+                if (table) {
+                    console.log(`[Staff Mobile Report Enhancement] Found data table: ${selector}`);
+                    
+                    // Extract all field data from the table
+                    const cells = table.querySelectorAll('td[class*="field_"]');
+                    console.log(`[Staff Mobile Report Enhancement] Found ${cells.length} field cells`);
+                    
+                    cells.forEach(cell => {
+                        // Get all field classes (a cell might have multiple)
+                        const classes = Array.from(cell.classList).filter(c => c.startsWith('field_'));
+                        classes.forEach(fieldClass => {
+                            const value = cell.textContent.trim();
+                            // Store the value if it's not empty and is a cycle field we care about
+                            if (value && value !== '' && value !== 'N/A') {
+                                data[fieldClass] = value;
+                            }
+                        });
+                    });
+                    
+                    // If we found cycle data, stop searching
+                    if (Object.keys(data).length > 0) {
+                        // Debug: Check if we have all three cycles of data
+                        console.log('[Staff Mobile Report Enhancement] Sample cycle data:', {
+                            'Cycle 1 (field_1953)': data.field_1953 || 'missing',
+                            'Cycle 2 (field_1955)': data.field_1955 || 'missing',
+                            'Cycle 3 (field_1956)': data.field_1956 || 'missing',
+                            'Total fields': Object.keys(data).length
+                        });
+                        break;
                     }
-                });
-                
-                console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
-                
-                // Debug sample values
-                console.log('[Staff Mobile Report Enhancement] Sample values:', {
-                    'field_1953 (Vision C1)': data.field_1953,
-                    'field_1955 (Vision C2)': data.field_1955, 
-                    'field_1956 (Vision C3)': data.field_1956
-                });
-                
-            } else {
-                console.log('[Staff Mobile Report Enhancement] Hidden table not found');
+                }
+            }
+            
+            // If still no data, try to extract from any visible grid/table with questionnaire fields
+            if (Object.keys(data).length === 0) {
+                console.log('[Staff Mobile Report Enhancement] Trying alternative extraction from visible tables...');
+                const allTables = document.querySelectorAll('table');
+                for (const table of allTables) {
+                    // Skip if table is not visible or is a navigation table
+                    if (table.offsetHeight === 0 || table.classList.contains('kn-table-nav')) continue;
+                    
+                    const cells = table.querySelectorAll('td');
+                    cells.forEach(cell => {
+                        const fieldClasses = Array.from(cell.classList).filter(c => c.match(/^field_(1953|1955|1956|1954|1957|1958|1959|1960|1961|1962|1963|1964|1965|1966|1967|1968|1969|1970|1971|1972|1973|1974|1975|1976|1977|1978|1979|1980|1981|1982|1983|1984|1985|1986|1987|1988|1989|1990|1991|1992|1993|1994|1995|1996|1997|1998|1999|2000|2001|2002|2003|2004|2005|2006|2007|2008|2009|2010|2011|2012|2013|2014|2015|2016|2017|2018|2019|2020|2021|2022|2023|2024|2025|2026|2027|2028|2029|2030|2031|2032|2033|2034|2035|2036|2037|2038|2039|2040|2041|2042|2043|2044|2045|2927|2928|2929)$/));
+                        fieldClasses.forEach(fieldClass => {
+                            const value = cell.textContent.trim();
+                            if (value && value !== '' && value !== 'N/A') {
+                                data[fieldClass] = value;
+                            }
+                        });
+                    });
+                    
+                    if (Object.keys(data).length > 0) {
+                        console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(data).length} fields from visible table`);
+                        break;
+                    }
+                }
             }
             
             return data;
+        }
+        
+        // Keep the old function for backwards compatibility but rename it
+        function extractFromHiddenTable() {
+            return extractStudentQuestionnaireData();
         }
         
         // Helper function to extract value from a cell
@@ -1006,7 +1074,7 @@
                 <div id="customStaffCycleModal" class="custom-cycle-modal-overlay">
                     <div class="custom-cycle-modal-container">
                         <div class="custom-cycle-modal-header">
-                            <h2>Student VESPA Questionnaire Responses</h2>
+                            <h2>Student VESPA Questionnaire Responses - Cycle <span id="staffCycleNumber">${currentCycle}</span></h2>
                             <button class="custom-cycle-modal-close">✕</button>
                         </div>
                         <div class="cycle-selector-bar">
@@ -1015,11 +1083,7 @@
                                 <button class="cycle-btn ${currentCycle === 3 ? 'active' : ''}" data-cycle="3">Cycle 3</button>
                         </div>
                         <div class="custom-cycle-modal-body">
-                            <div class="cycle-data-loading">
-                                <div class="spinner"></div>
-                                <p>Loading student cycle <span id="staffCycleNumber">${currentCycle}</span> data...</p>
-                            </div>
-                            <div class="cycle-data-content" style="display: none;"></div>
+                            <div class="cycle-data-content"></div>
                         </div>
                     </div>
                 </div>
@@ -1055,11 +1119,10 @@
         function renderModalContent(cycle) {
             const modal = document.getElementById('customStaffCycleModal');
             const contentDiv = modal.querySelector('.cycle-data-content');
-            const loadingDiv = modal.querySelector('.cycle-data-loading');
             
-            // Show loading
-            loadingDiv.style.display = 'flex';
-            contentDiv.style.display = 'none';
+            // Clear any existing content first
+            contentDiv.innerHTML = '';
+            contentDiv.style.display = 'block';
             
             // Get or fetch data
             let data = window.staffCycleDataFromAPI;
@@ -1067,12 +1130,8 @@
                 data = fetchCycleDataFromAPI();
             }
             
-            if (!data) {
+            if (!data || Object.keys(data).length === 0) {
                 contentDiv.innerHTML = '<p style="text-align: center; color: #666;">Unable to load student cycle data. Please try again.</p>';
-                // Hide loading div instead of removing it
-                if (loadingDiv) {
-                    loadingDiv.style.display = 'none';
-                }
                 contentDiv.style.display = 'block';
                 return;
             }
@@ -1129,22 +1188,21 @@
             
             html += '</div>';
             
-            // Update modal and hide loading div
+            // Update modal content
             contentDiv.innerHTML = html;
-            if (loadingDiv) {
-                // Hide loading div instead of removing it
-                loadingDiv.style.display = 'none';
-            }
             contentDiv.style.display = 'block';
             contentDiv.style.visibility = 'visible';
-            
-            // Update header
-            document.getElementById('staffCycleNumber').textContent = cycle;
             
             // Update active button
             modal.querySelectorAll('.cycle-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.cycle == cycle);
             });
+            
+            // Update header cycle number
+            const cycleSpan = document.getElementById('staffCycleNumber');
+            if (cycleSpan) {
+                cycleSpan.textContent = cycle;
+            }
         }
         
         // Helper function to get field mappings with proper question labels
@@ -3663,27 +3721,9 @@
                 background: #fafbfc !important;
             }
             
-            .cycle-data-loading {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                min-height: 400px !important;
-            }
+            /* Loading spinner removed - no longer needed */
             
-            .spinner {
-                width: 50px !important;
-                height: 50px !important;
-                border: 4px solid #e0e0e0 !important;
-                border-top: 4px solid #079baa !important;
-                border-radius: 50% !important;
-                animation: spin 1s linear infinite !important;
-            }
-            
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
+            /* Spinner animation removed - no longer needed */
             
             /* Enhanced Question List with Progress Bars */
             .cycle-questions-list {
