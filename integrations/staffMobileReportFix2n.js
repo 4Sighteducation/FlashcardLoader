@@ -687,12 +687,8 @@
     function initializeViewAnswersEnhancement() {
         console.log('[Staff Mobile Report Enhancement] Initializing View Answers enhancement for ALL devices...');
         
-        // Check if already initialized to prevent duplicates
-        if (window._viewAnswersEnhancementInitialized) {
-            console.log('[Staff Mobile Report Enhancement] View Answers enhancement already initialized, skipping...');
-            return;
-        }
-        window._viewAnswersEnhancementInitialized = true;
+        // Clear any cached data when re-initializing
+        window.staffCycleDataFromAPI = null;
         
         let currentCycle = 1;
         
@@ -1366,7 +1362,10 @@
                     btn.textContent.includes('VIEW ANSWERS') || btn.textContent.includes('View Answers')
                 );
                 
-                if (viewAnswersBtn && !viewAnswersBtn.dataset.customModalOverride) {
+                // Always override, even if already done (for when navigating to new student)
+                if (viewAnswersBtn) {
+                    // Clear any existing flag to allow re-override
+                    delete viewAnswersBtn.dataset.customModalOverride;
                     viewAnswersBtn.dataset.customModalOverride = 'true';
                     
                     // Clone and replace to remove existing listeners
@@ -4022,6 +4021,8 @@
     if (typeof $ !== 'undefined') {
         $(document).on('knack-scene-render.scene_1095', function() {
             console.log('[Staff Mobile Report Enhancement] Scene 1095 rendered');
+            // Clear cached data when scene changes
+            window.staffCycleDataFromAPI = null;
             popupsInitialized = false;
             initAttempts = 0;
             attemptInitialization();
@@ -4029,7 +4030,9 @@
         
         // Re-apply on view render for staff views
         $(document).on('knack-view-render.view_2776', function() {
-            console.log('[Staff Mobile Report Enhancement] View 2776 rendered');
+            console.log('[Staff Mobile Report Enhancement] View 2776 rendered - new student report');
+            // Clear cached data when new student is loaded
+            window.staffCycleDataFromAPI = null;
             popupsInitialized = false;
             initAttempts = 0;
             attemptInitialization();
@@ -4040,7 +4043,9 @@
         });
         
         $(document).on('knack-view-render.view_3015', function() {
-            console.log('[Staff Mobile Report Enhancement] View 3015 rendered');
+            console.log('[Staff Mobile Report Enhancement] View 3015 rendered - profile view');
+            // Clear cached data
+            window.staffCycleDataFromAPI = null;
             popupsInitialized = false;
             initAttempts = 0;
             attemptInitialization();
