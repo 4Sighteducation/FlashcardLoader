@@ -171,21 +171,26 @@
             viewBtn.classList.remove('p-button-rounded');
             viewBtn.classList.remove('p-button-icon-only');
             
-            // Apply rectangular styling directly with higher specificity
+            // Apply rectangular styling to match staff version (turquoise theme)
             viewBtn.style.cssText = `
                 min-width: 140px !important;
                 width: auto !important;
                 height: 44px !important;
-                border-radius: 6px !important;
-                padding: 10px 20px !important;
+                border-radius: 22px !important;
+                padding: 10px 24px !important;
                 white-space: nowrap !important;
                 background-color: #00e5db !important;
                 color: #23356f !important;
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                border: none !important;
-                box-shadow: 0 2px 8px rgba(0, 229, 219, 0.3) !important;
+                border: 2px solid transparent !important;
+                box-shadow: 0 2px 10px rgba(0, 229, 219, 0.3) !important;
+                font-weight: 600 !important;
+                font-size: 14px !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+                transition: all 0.3s ease !important;
             `;
             
             // Also ensure the text is visible
@@ -3085,28 +3090,35 @@
             }
             
             .cycle-btn {
-                padding: 10px 30px !important;
-                background: white !important;
-                border: 2px solid #079baa !important;
-                color: #079baa !important;
-                border-radius: 25px !important;
+                width: 40px !important;
+                height: 40px !important;
+                padding: 0 !important;
+                background: #00e5db !important;
+                border: 2px solid transparent !important;
+                color: white !important;
+                border-radius: 50% !important;
                 cursor: pointer !important;
                 transition: all 0.3s ease !important;
-                font-weight: 600 !important;
-                font-size: 15px !important;
+                font-weight: 700 !important;
+                font-size: 16px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 5px !important;
+                opacity: 0.7 !important;
             }
             
             .cycle-btn:hover {
-                background: #e8f4f6 !important;
-                transform: translateY(-2px) !important;
-                box-shadow: 0 4px 12px rgba(7, 155, 170, 0.2) !important;
+                transform: scale(1.1) !important;
+                box-shadow: 0 4px 12px rgba(0, 229, 219, 0.4) !important;
+                opacity: 0.9 !important;
             }
             
             .cycle-btn.active {
-                background: #079baa !important;
-                color: white !important;
-                border-color: #079baa !important;
-                box-shadow: 0 4px 15px rgba(7, 155, 170, 0.3) !important;
+                opacity: 1 !important;
+                background: #00e5db !important;
+                box-shadow: 0 0 0 3px rgba(0, 229, 219, 0.3) !important;
+                transform: scale(1.05) !important;
             }
             
             .custom-cycle-modal-close {
