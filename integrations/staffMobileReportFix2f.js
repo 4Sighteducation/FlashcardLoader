@@ -701,10 +701,88 @@
         
         // ========== SIMPLER DATA EXTRACTION FROM PAGE ==========
         function fetchCycleDataFromAPI() {
-            // EXACT COPY OF STUDENT VERSION - SIMPLE!
-            const tableData = extractFromHiddenTable();
-            window.staffCycleDataFromAPI = tableData;
-            return tableData;
+            console.log('[Staff Mobile Report Enhancement] Extracting cycle data from page...');
+            
+            try {
+                // Method 1: Try to extract from the hidden table first (view_2716)
+                const tableData = extractFromHiddenTable();
+                if (tableData && Object.keys(tableData).length > 0) {
+                    console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(tableData).length} fields from hidden table`);
+                    window.staffCycleDataFromAPI = tableData;
+                    return tableData;
+                }
+                
+                // Method 2: Try Knack models - check multiple views
+                if (window.Knack && window.Knack.models) {
+                    console.log('[Staff Mobile Report Enhancement] Checking Knack models for questionnaire data...');
+                    
+                    // List of views that might contain questionnaire data
+                    // view_449 is the Object_10 grid with connected Object_29 fields
+                    const viewsToCheck = ['view_449', 'view_2716', 'view_2723', 'view_2751', 'view_69', 'view_3041'];
+                    
+                    for (const viewId of viewsToCheck) {
+                        if (window.Knack.models[viewId]) {
+                            console.log(`[Staff Mobile Report Enhancement] Checking model ${viewId}`);
+                            
+                            // Try to get data from the model
+                            let modelData = null;
+                            
+                            // Check if there's a data collection
+                            if (window.Knack.models[viewId].data) {
+                                if (typeof window.Knack.models[viewId].data.toJSON === 'function') {
+                                    modelData = window.Knack.models[viewId].data.toJSON();
+                                } else if (window.Knack.models[viewId].data.models) {
+                                    // It's a collection with models array
+                                    modelData = window.Knack.models[viewId].data.models.map(m => 
+                                        m.attributes || m.toJSON()
+                                    );
+                                } else {
+                                    modelData = window.Knack.models[viewId].data;
+                                }
+                            } else if (window.Knack.models[viewId].attributes) {
+                                // Direct attributes
+                                modelData = window.Knack.models[viewId].attributes;
+                            }
+                            
+                            // Check if we found questionnaire data
+                            if (modelData) {
+                                // Handle array of records
+                                if (Array.isArray(modelData)) {
+                                    for (const record of modelData) {
+                                        if (hasQuestionnaireData(record)) {
+                                            console.log(`[Staff Mobile Report Enhancement] Found questionnaire data in ${viewId}`);
+                                            window.staffCycleDataFromAPI = record;
+                                            return record;
+                                        }
+                                    }
+                                } 
+                                // Handle single record
+                                else if (hasQuestionnaireData(modelData)) {
+                                    console.log(`[Staff Mobile Report Enhancement] Found questionnaire data in ${viewId}`);
+                                    window.staffCycleDataFromAPI = modelData;
+                                    return modelData;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Method 3: Try to find data in the DOM directly
+                console.log('[Staff Mobile Report Enhancement] Trying to extract from DOM elements...');
+                const domData = extractFromDOM();
+                if (domData && Object.keys(domData).length > 0) {
+                    console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(domData).length} fields from DOM`);
+                    window.staffCycleDataFromAPI = domData;
+                    return domData;
+                }
+                
+                console.log('[Staff Mobile Report Enhancement] No cycle data found on page');
+                return {};
+                
+            } catch (error) {
+                console.error('[Staff Mobile Report Enhancement] Error extracting cycle data:', error);
+                return {};
+            }
         }
         
         // Helper function to check if an object has questionnaire data
@@ -741,46 +819,47 @@
             return data;
         }
         
-        // Extract data from hidden table - EXACT COPY OF STUDENT VERSION
+        // Extract data from hidden table - simpler version like student modal
         function extractFromHiddenTable() {
-            console.log('[Staff Mobile Report Enhancement] Extracting cycle data from page...');
+            const data = {};
             
-            try {
-                // Try to find the hidden table - PRIORITIZE view_69 which works for students
-                const data = {};
-                const table = document.querySelector('#view_69') || document.querySelector('#view_449') || document.querySelector('#view_2716');
+            // Try to find the hidden table - prioritize view_449, then view_2716, then view_69
+            let table = document.querySelector('#view_449') || document.querySelector('#view_2716') || document.querySelector('#view_69');
+            
+            if (table) {
+                const viewId = table.id;
+                console.log(`[Staff Mobile Report Enhancement] Found hidden table ${viewId}`);
                 
-                if (table) {
-                    console.log(`[Staff Mobile Report Enhancement] Found hidden table ${table.id}`);
-                    
-                    // Get all table cells - EXACTLY like student version
-                    const cells = table.querySelectorAll('tbody tr td');
-                    cells.forEach(cell => {
-                        // Get field class
-                        const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
-                        if (fieldClass) {
-                            const value = cell.textContent.trim();
-                            if (value) {
-                                data[fieldClass] = value;
-                            }
+                // SIMPLIFIED: Just extract all data from the table like the student version
+                // The table should already be showing the correct student's data
+                const cells = table.querySelectorAll('tbody tr td');
+                console.log(`[Staff Mobile Report Enhancement] Found ${cells.length} cells in table`);
+                
+                cells.forEach(cell => {
+                    // Get field class
+                    const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                    if (fieldClass) {
+                        const value = cell.textContent.trim();
+                        if (value) {
+                            data[fieldClass] = value;
                         }
-                    });
-                    
-                    console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
-                    
-                    if (Object.keys(data).length > 0) {
-                        return data;
                     }
-                } else {
-                    console.log('[Staff Mobile Report Enhancement] Hidden table not found');
-                }
+                });
                 
-                return data;
+                console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
                 
-            } catch (error) {
-                console.error('[Staff Mobile Report Enhancement] Error extracting cycle data:', error);
-                return {};
+                // Debug sample values
+                console.log('[Staff Mobile Report Enhancement] Sample values:', {
+                    'field_1953 (Vision C1)': data.field_1953,
+                    'field_1955 (Vision C2)': data.field_1955, 
+                    'field_1956 (Vision C3)': data.field_1956
+                });
+                
+            } else {
+                console.log('[Staff Mobile Report Enhancement] Hidden table not found');
             }
+            
+            return data;
         }
         
         // Helper function to extract value from a cell
@@ -978,11 +1057,9 @@
             const contentDiv = modal.querySelector('.cycle-data-content');
             const loadingDiv = modal.querySelector('.cycle-data-loading');
             
-            // Hide loading immediately - data is already loaded
-            if (loadingDiv) {
-                loadingDiv.style.display = 'none';
-            }
-            contentDiv.style.display = 'block';
+            // Show loading
+            loadingDiv.style.display = 'flex';
+            contentDiv.style.display = 'none';
             
             // Get or fetch data
             let data = window.staffCycleDataFromAPI;
