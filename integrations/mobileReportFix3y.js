@@ -918,7 +918,8 @@
                 'EFFORT': '#38b6ff',
                 'SYSTEMS': '#02e612',
                 'PRACTICE': '#8c52ff',
-                'ATTITUDE': '#ff66c4'
+                'ATTITUDE': '#ff66c4',
+                'OUTCOME': '#2196f3'  // Blue for outcome questions
             };
             
             cycleFieldMappings.forEach((mapping, index) => {
@@ -927,18 +928,16 @@
                                mapping.fieldIdCycle3;
                 const value = data[fieldKey] || data[fieldKey + '_raw'] || '0';
                 const numValue = parseInt(value) || 0;
-                const percentage = (numValue / 7) * 100;
+                const percentage = (numValue / 5) * 100;  // Likert scale 1-5
                 const color = categoryColors[mapping.vespaCategory] || '#079baa';
                 
                 html += `
                     <div class="cycle-question-item-enhanced">
-                        <div class="question-number">Q${index + 1}</div>
                         <div class="question-content">
                             <div class="question-text">${mapping.questionText}</div>
                             <div class="question-response">
                                 <div class="progress-bar-container">
                                     <div class="progress-bar-fill" style="width: ${percentage}%; background: ${color};"></div>
-                                    <div class="progress-bar-value">${numValue}/7</div>
                                 </div>
                             </div>
                         </div>
@@ -949,10 +948,14 @@
             
             html += '</div>';
             
-            // Update modal
+            // Update modal and ensure loading is hidden
             contentDiv.innerHTML = html;
-            loadingDiv.style.display = 'none';
+            if (loadingDiv) {
+                loadingDiv.style.display = 'none';
+                loadingDiv.style.visibility = 'hidden';
+            }
             contentDiv.style.display = 'block';
+            contentDiv.style.visibility = 'visible';
             
             // Update header
             document.getElementById('studentCycleNumber').textContent = cycle;
@@ -966,8 +969,8 @@
         // Helper function to get field mappings with actual VESPA question text
         function getCycleFieldMappings() {
             return [
-                { questionText: "I've worked out the next steps...", vespaCategory: "VISION", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
-                { questionText: "I plan and organise my time...", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
+                { questionText: "I've worked out the next steps I need to take to reach my career goals", vespaCategory: "VISION", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
+                { questionText: "I plan and organise my time so that I can fit in all my school work as well as other activities", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
                 { questionText: "I give a lot of attention to my career planning", vespaCategory: "VISION", fieldIdCycle1: "field_1959", fieldIdCycle2: "field_1960", fieldIdCycle3: "field_1961" },
                 { questionText: "I complete all my homework on time", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1962", fieldIdCycle2: "field_1963", fieldIdCycle3: "field_1964" },
                 { questionText: "No matter who you are, you can change your intelligence a lot", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_1965", fieldIdCycle2: "field_1966", fieldIdCycle3: "field_1967" },
@@ -994,7 +997,11 @@
                 { questionText: "Your intelligence is something about you that you can change very much", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2028", fieldIdCycle2: "field_2029", fieldIdCycle3: "field_2030" },
                 { questionText: "I like hearing feedback about how I can improve", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2031", fieldIdCycle2: "field_2032", fieldIdCycle3: "field_2033" },
                 { questionText: "I can control my nerves in tests/practical assessments", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2034", fieldIdCycle2: "field_2035", fieldIdCycle3: "field_2036" },
-                { questionText: "I know what grades I want to achieve", vespaCategory: "VISION", fieldIdCycle1: "field_2927", fieldIdCycle2: "field_2928", fieldIdCycle3: "field_2929" }
+                { questionText: "I know what grades I want to achieve", vespaCategory: "VISION", fieldIdCycle1: "field_2927", fieldIdCycle2: "field_2928", fieldIdCycle3: "field_2929" },
+                // Outcome questions
+                { questionText: "I have the support I need to achieve this year", vespaCategory: "OUTCOME", fieldIdCycle1: "field_2037", fieldIdCycle2: "field_2038", fieldIdCycle3: "field_2039" },
+                { questionText: "I feel equipped to face the study and revision challenges this year", vespaCategory: "OUTCOME", fieldIdCycle1: "field_2040", fieldIdCycle2: "field_2041", fieldIdCycle3: "field_2042" },
+                { questionText: "I am confident I will achieve my potential in my final exams", vespaCategory: "OUTCOME", fieldIdCycle1: "field_2043", fieldIdCycle2: "field_2044", fieldIdCycle3: "field_2045" }
             ];
         }
         
@@ -3174,7 +3181,7 @@
                 padding: 15px 20px !important;
                 display: flex !important;
                 align-items: center !important;
-                gap: 15px !important;
+                gap: 12px !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
                 transition: transform 0.2s ease, box-shadow 0.2s ease !important;
             }
@@ -3184,15 +3191,9 @@
                 box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12) !important;
             }
             
+            /* Question numbers removed for students */
             .question-number {
-                font-size: 14px !important;
-                font-weight: 700 !important;
-                color: #666 !important;
-                min-width: 35px !important;
-                text-align: center !important;
-                padding: 5px !important;
-                background: #f0f0f0 !important;
-                border-radius: 6px !important;
+                display: none !important;
             }
             
             .question-content {
@@ -3230,17 +3231,9 @@
                 position: relative !important;
             }
             
+            /* Progress bar value removed for students to prevent score gaming */
             .progress-bar-value {
-                position: absolute !important;
-                right: 10px !important;
-                top: 50% !important;
-                transform: translateY(-50%) !important;
-                font-size: 13px !important;
-                font-weight: 600 !important;
-                color: #333 !important;
-                background: rgba(255, 255, 255, 0.9) !important;
-                padding: 2px 8px !important;
-                border-radius: 10px !important;
+                display: none !important;
             }
             
             .question-category {
