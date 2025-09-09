@@ -849,11 +849,7 @@
                             <button class="cycle-btn ${currentCycle === 3 ? 'active' : ''}" data-cycle="3">Cycle 3</button>
                         </div>
                         <div class="custom-cycle-modal-body">
-                            <div class="cycle-data-loading">
-                                <div class="spinner"></div>
-                                <p>Loading cycle <span id="studentCycleNumber">${currentCycle}</span> data...</p>
-                            </div>
-                            <div class="cycle-data-content" style="display: none;"></div>
+                            <div class="cycle-data-content"></div>
                         </div>
                     </div>
                 </div>
@@ -889,12 +885,9 @@
         function renderModalContent(cycle) {
             const modal = document.getElementById('customStudentCycleModal');
             const contentDiv = modal.querySelector('.cycle-data-content');
-            const loadingDiv = modal.querySelector('.cycle-data-loading');
             
-            // Hide loading immediately - data is already loaded
-            if (loadingDiv) {
-                loadingDiv.style.display = 'none';
-            }
+            // Clear any existing content first
+            contentDiv.innerHTML = '';
             contentDiv.style.display = 'block';
             
             // Get or fetch data
@@ -905,10 +898,6 @@
             
             if (!data) {
                 contentDiv.innerHTML = '<p style="text-align: center; color: #666;">Unable to load cycle data. Please try again.</p>';
-                // Hide loading div instead of removing it
-                if (loadingDiv) {
-                    loadingDiv.style.display = 'none';
-                }
                 contentDiv.style.display = 'block';
                 return;
             }
@@ -953,17 +942,10 @@
             
             html += '</div>';
             
-            // Update modal and ensure loading is hidden
+            // Update modal content
             contentDiv.innerHTML = html;
-            if (loadingDiv) {
-                // Hide loading div instead of removing it
-                loadingDiv.style.display = 'none';
-            }
             contentDiv.style.display = 'block';
             contentDiv.style.visibility = 'visible';
-            
-            // Update header
-            document.getElementById('studentCycleNumber').textContent = cycle;
             
             // Update active button
             modal.querySelectorAll('.cycle-btn').forEach(btn => {
@@ -3151,27 +3133,9 @@
                 background: #fafbfc !important;
             }
             
-            .cycle-data-loading {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                min-height: 400px !important;
-            }
+            /* Loading spinner removed - no longer needed */
             
-            .spinner {
-                width: 50px !important;
-                height: 50px !important;
-                border: 4px solid #e0e0e0 !important;
-                border-top: 4px solid #079baa !important;
-                border-radius: 50% !important;
-                animation: spin 1s linear infinite !important;
-            }
-            
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
+            /* Spinner animation removed - no longer needed */
             
             /* Enhanced Question List with Progress Bars */
             .cycle-questions-list {
