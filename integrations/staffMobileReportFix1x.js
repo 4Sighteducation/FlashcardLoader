@@ -696,6 +696,304 @@
         
         let currentCycle = 1;
         
+        // ========== CREATE CUSTOM CYCLE MODAL ==========
+        createCustomCycleModal();
+        
+        // ========== API-BASED DATA FETCHING ==========
+        async function fetchCycleDataFromAPI() {
+            console.log('[Staff Mobile Report Enhancement] Fetching cycle data from API...');
+            
+            try {
+                // Get student ID (staff viewing student report)
+                let studentId = null;
+                
+                // Try different sources for student ID
+                if (window.currentReportStudentObject6Id) {
+                    studentId = window.currentReportStudentObject6Id;
+                    console.log(`[Staff Mobile Report Enhancement] Student ID from global: ${studentId}`);
+                } else {
+                    // Try to get from URL hash
+                    const hash = window.location.hash;
+                    const matches = hash.match(/student[\/=]([a-f0-9]{24})/i);
+                    if (matches) {
+                        studentId = matches[1];
+                        console.log(`[Staff Mobile Report Enhancement] Student ID from URL: ${studentId}`);
+                    }
+                }
+                
+                if (!studentId) {
+                    console.error('[Staff Mobile Report Enhancement] Could not determine student ID');
+                    return null;
+                }
+                
+                // Get Object_10 ID from Object_6 record
+                const studentUrl = `https://api.knack.com/v1/objects/object_6/records/${studentId}`;
+                const studentRecord = await $.ajax({
+                    url: studentUrl,
+                    type: 'GET',
+                    headers: {
+                        'X-Knack-Application-Id': Knack.application_id,
+                        'X-Knack-REST-API-Key': 'knack',
+                        'Authorization': Knack.getUserToken()
+                    }
+                });
+                
+                // Extract Object_10 ID from field_182
+                let object10Id = null;
+                if (studentRecord && studentRecord.field_182) {
+                    if (Array.isArray(studentRecord.field_182) && studentRecord.field_182.length > 0) {
+                        object10Id = studentRecord.field_182[0].id;
+                    } else if (studentRecord.field_182.id) {
+                        object10Id = studentRecord.field_182.id;
+                    }
+                }
+                
+                if (!object10Id) {
+                    console.error('[Staff Mobile Report Enhancement] No Object_10 ID found');
+                    return null;
+                }
+                
+                console.log(`[Staff Mobile Report Enhancement] Object_10 ID: ${object10Id}`);
+                
+                // Get Object_29 record
+                const filters = {
+                    match: 'and',
+                    rules: [{
+                        field: 'field_792',
+                        operator: 'is',
+                        value: object10Id
+                    }]
+                };
+                
+                const object29Url = `https://api.knack.com/v1/objects/object_29/records?filters=${encodeURIComponent(JSON.stringify(filters))}`;
+                const object29Response = await $.ajax({
+                    url: object29Url,
+                    type: 'GET',
+                    headers: {
+                        'X-Knack-Application-Id': Knack.application_id,
+                        'X-Knack-REST-API-Key': 'knack',
+                        'Authorization': Knack.getUserToken()
+                    }
+                });
+                
+                if (object29Response && object29Response.records && object29Response.records.length > 0) {
+                    const cycleData = object29Response.records[0];
+                    console.log(`[Staff Mobile Report Enhancement] Found Object_29 data with ${Object.keys(cycleData).length} fields`);
+                    
+                    // Store globally for modal to use
+                    window.staffCycleDataFromAPI = cycleData;
+                    return cycleData;
+                }
+                
+                console.warn('[Staff Mobile Report Enhancement] No Object_29 record found');
+                return null;
+                
+            } catch (error) {
+                console.error('[Staff Mobile Report Enhancement] Error fetching cycle data:', error);
+                return null;
+            }
+        }
+        
+        // ========== CREATE CUSTOM MODAL HTML ==========
+        function createCustomCycleModal() {
+            // Remove existing modal if present
+            const existing = document.getElementById('customStaffCycleModal');
+            if (existing) existing.remove();
+            
+            const modalHtml = `
+                <div id="customStaffCycleModal" class="custom-cycle-modal-overlay">
+                    <div class="custom-cycle-modal-container">
+                        <div class="custom-cycle-modal-header">
+                            <h2>Student VESPA Responses - Cycle <span id="staffCycleNumber">${currentCycle}</span></h2>
+                            <div class="cycle-selector">
+                                <button class="cycle-btn ${currentCycle === 1 ? 'active' : ''}" data-cycle="1">Cycle 1</button>
+                                <button class="cycle-btn ${currentCycle === 2 ? 'active' : ''}" data-cycle="2">Cycle 2</button>
+                                <button class="cycle-btn ${currentCycle === 3 ? 'active' : ''}" data-cycle="3">Cycle 3</button>
+                            </div>
+                            <button class="custom-cycle-modal-close">✕</button>
+                        </div>
+                        <div class="custom-cycle-modal-body">
+                            <div class="cycle-data-loading">
+                                <div class="spinner"></div>
+                                <p>Loading student cycle data...</p>
+                            </div>
+                            <div class="cycle-data-content" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Add event listeners
+            const modal = document.getElementById('customStaffCycleModal');
+            modal.querySelector('.custom-cycle-modal-close').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Cycle button listeners
+            modal.querySelectorAll('.cycle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentCycle = parseInt(btn.dataset.cycle);
+                    renderModalContent(currentCycle);
+                });
+            });
+        }
+        
+        // ========== RENDER MODAL CONTENT ==========
+        async function renderModalContent(cycle) {
+            const modal = document.getElementById('customStaffCycleModal');
+            const contentDiv = modal.querySelector('.cycle-data-content');
+            const loadingDiv = modal.querySelector('.cycle-data-loading');
+            
+            // Show loading
+            loadingDiv.style.display = 'flex';
+            contentDiv.style.display = 'none';
+            
+            // Get or fetch data
+            let data = window.staffCycleDataFromAPI;
+            if (!data) {
+                data = await fetchCycleDataFromAPI();
+            }
+            
+            if (!data) {
+                contentDiv.innerHTML = '<p style="text-align: center; color: #666;">Unable to load student cycle data. Please try again.</p>';
+                loadingDiv.style.display = 'none';
+                contentDiv.style.display = 'block';
+                return;
+            }
+            
+            // Render the data
+            const cycleFieldMappings = getCycleFieldMappings();
+            let html = '<div class="cycle-questions-grid">';
+            
+            cycleFieldMappings.forEach(mapping => {
+                const fieldKey = cycle === 1 ? mapping.fieldIdCycle1 : 
+                               cycle === 2 ? mapping.fieldIdCycle2 : 
+                               mapping.fieldIdCycle3;
+                const value = data[fieldKey] || data[fieldKey + '_raw'] || '—';
+                
+                html += `
+                    <div class="cycle-question-item">
+                        <div class="question-label">${mapping.questionId}</div>
+                        <div class="question-value">${value}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            // Update modal
+            contentDiv.innerHTML = html;
+            loadingDiv.style.display = 'none';
+            contentDiv.style.display = 'block';
+            
+            // Update header
+            document.getElementById('staffCycleNumber').textContent = cycle;
+            
+            // Update active button
+            modal.querySelectorAll('.cycle-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.cycle == cycle);
+            });
+        }
+        
+        // Helper function to get field mappings
+        function getCycleFieldMappings() {
+            return [
+                { questionId: "Q1", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
+                { questionId: "Q2", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
+                { questionId: "Q3", fieldIdCycle1: "field_1959", fieldIdCycle2: "field_1960", fieldIdCycle3: "field_1961" },
+                { questionId: "Q4", fieldIdCycle1: "field_1962", fieldIdCycle2: "field_1963", fieldIdCycle3: "field_1964" },
+                { questionId: "Q5", fieldIdCycle1: "field_1965", fieldIdCycle2: "field_1966", fieldIdCycle3: "field_1967" },
+                { questionId: "Q6", fieldIdCycle1: "field_1968", fieldIdCycle2: "field_1969", fieldIdCycle3: "field_1970" },
+                { questionId: "Q7", fieldIdCycle1: "field_1971", fieldIdCycle2: "field_1972", fieldIdCycle3: "field_1973" },
+                { questionId: "Q8", fieldIdCycle1: "field_1974", fieldIdCycle2: "field_1975", fieldIdCycle3: "field_1976" },
+                { questionId: "Q9", fieldIdCycle1: "field_1977", fieldIdCycle2: "field_1978", fieldIdCycle3: "field_1979" },
+                { questionId: "Q10", fieldIdCycle1: "field_1980", fieldIdCycle2: "field_1981", fieldIdCycle3: "field_1982" },
+                { questionId: "Q11", fieldIdCycle1: "field_1983", fieldIdCycle2: "field_1984", fieldIdCycle3: "field_1985" },
+                { questionId: "Q12", fieldIdCycle1: "field_1986", fieldIdCycle2: "field_1987", fieldIdCycle3: "field_1988" },
+                { questionId: "Q13", fieldIdCycle1: "field_1989", fieldIdCycle2: "field_1990", fieldIdCycle3: "field_1991" },
+                { questionId: "Q14", fieldIdCycle1: "field_1992", fieldIdCycle2: "field_1993", fieldIdCycle3: "field_1994" },
+                { questionId: "Q15", fieldIdCycle1: "field_1995", fieldIdCycle2: "field_1996", fieldIdCycle3: "field_1997" },
+                { questionId: "Q16", fieldIdCycle1: "field_1998", fieldIdCycle2: "field_1999", fieldIdCycle3: "field_2000" },
+                { questionId: "Q17", fieldIdCycle1: "field_2001", fieldIdCycle2: "field_2002", fieldIdCycle3: "field_2003" },
+                { questionId: "Q18", fieldIdCycle1: "field_2004", fieldIdCycle2: "field_2005", fieldIdCycle3: "field_2006" },
+                { questionId: "Q19", fieldIdCycle1: "field_2007", fieldIdCycle2: "field_2008", fieldIdCycle3: "field_2009" },
+                { questionId: "Q20", fieldIdCycle1: "field_2010", fieldIdCycle2: "field_2011", fieldIdCycle3: "field_2012" },
+                { questionId: "Q21", fieldIdCycle1: "field_2013", fieldIdCycle2: "field_2014", fieldIdCycle3: "field_2015" },
+                { questionId: "Q22", fieldIdCycle1: "field_2016", fieldIdCycle2: "field_2017", fieldIdCycle3: "field_2018" },
+                { questionId: "Q23", fieldIdCycle1: "field_2019", fieldIdCycle2: "field_2020", fieldIdCycle3: "field_2021" },
+                { questionId: "Q24", fieldIdCycle1: "field_2022", fieldIdCycle2: "field_2023", fieldIdCycle3: "field_2024" },
+                { questionId: "Q25", fieldIdCycle1: "field_2025", fieldIdCycle2: "field_2026", fieldIdCycle3: "field_2027" },
+                { questionId: "Q26", fieldIdCycle1: "field_2028", fieldIdCycle2: "field_2029", fieldIdCycle3: "field_2030" },
+                { questionId: "Q27", fieldIdCycle1: "field_2031", fieldIdCycle2: "field_2032", fieldIdCycle3: "field_2033" },
+                { questionId: "Q28", fieldIdCycle1: "field_2034", fieldIdCycle2: "field_2035", fieldIdCycle3: "field_2036" },
+                { questionId: "Q29", fieldIdCycle1: "field_2037", fieldIdCycle2: "field_2038", fieldIdCycle3: "field_2039" }
+            ];
+        }
+        
+        // ========== OVERRIDE VIEW ANSWERS BUTTON ==========
+        function overrideViewAnswersButton() {
+            // Find the View Answers button
+            const findAndOverride = () => {
+                const viewAnswersBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+                    btn.textContent.includes('VIEW ANSWERS') || btn.textContent.includes('View Answers')
+                );
+                
+                if (viewAnswersBtn && !viewAnswersBtn.dataset.customModalOverride) {
+                    viewAnswersBtn.dataset.customModalOverride = 'true';
+                    
+                    // Clone and replace to remove existing listeners
+                    const newBtn = viewAnswersBtn.cloneNode(true);
+                    viewAnswersBtn.parentNode.replaceChild(newBtn, viewAnswersBtn);
+                    
+                    // Add our custom handler
+                    newBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('[Staff Mobile Report Enhancement] View Answers clicked - showing custom modal');
+                        
+                        // Update current cycle from page buttons
+                        const cycleButtons = Array.from(document.querySelectorAll('button')).filter(btn => {
+                            const text = btn.textContent.trim();
+                            return text === '1' || text === '2' || text === '3';
+                        });
+                        
+                        cycleButtons.forEach((btn, index) => {
+                            const opacity = window.getComputedStyle(btn).opacity;
+                            if (opacity === '1') {
+                                currentCycle = index + 1;
+                            }
+                        });
+                        
+                        // Show modal
+                        const modal = document.getElementById('customStaffCycleModal');
+                        modal.style.display = 'flex';
+                        await renderModalContent(currentCycle);
+                    });
+                    
+                    console.log('[Staff Mobile Report Enhancement] View Answers button overridden with custom modal');
+                }
+            };
+            
+            // Try immediately and after delays
+            findAndOverride();
+            setTimeout(findAndOverride, 500);
+            setTimeout(findAndOverride, 1000);
+            setTimeout(findAndOverride, 2000);
+        }
+        
+        // Call the override function
+        overrideViewAnswersButton();
+        
+        /* OLD INTERCEPTOR CODE - DISABLED
         // CORRECTED FIELD MAPPINGS from object_29json.json
         const cycleFieldMappings = [
             { questionId: "q1", currentCycleFieldId: "field_794", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
@@ -842,7 +1140,7 @@
                                                 const cycleField = mapping[`cycle${currentCycle}`];
                                                 const cycleValue = allData[cycleField];
                                                 
-                                                if (cycleValue && cycleValue !== '0') {
+                                                if (cycleValue !== undefined && cycleValue !== null) {
                                                     console.log(`[Staff Mobile Report Enhancement] Replacing ${currentField}: ${record[currentField]} → ${cycleValue} (Cycle ${currentCycle})`);
                                                     record[currentField] = cycleValue;
                                                     record[currentField + '_raw'] = cycleValue;
@@ -1009,6 +1307,7 @@
         
         // Initialize the interceptor after all functions are defined
         interceptQuestionnaireData();
+        */ // END OF OLD INTERCEPTOR CODE
     }
     
     function initializeHelpButtons() {
@@ -2999,6 +3298,154 @@
             .vespa-modal-activities a:active {
                 background: #1976d2 !important;
                 color: white !important;
+            }
+            
+            /* Custom Cycle Modal Styles */
+            .custom-cycle-modal-overlay {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: rgba(0, 0, 0, 0.7) !important;
+                z-index: 999999 !important;
+                display: none;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            
+            #customStaffCycleModal {
+                display: none;
+            }
+            
+            #customStaffCycleModal[style*="display: flex"] {
+                display: flex !important;
+            }
+            
+            .custom-cycle-modal-container {
+                background: white !important;
+                width: 90% !important;
+                max-width: 900px !important;
+                max-height: 85vh !important;
+                border-radius: 20px !important;
+                overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+            }
+            
+            .custom-cycle-modal-header {
+                padding: 25px 30px !important;
+                background: linear-gradient(135deg, #079baa 0%, #7bd8d0 100%) !important;
+                color: white !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+            }
+            
+            .custom-cycle-modal-header h2 {
+                margin: 0 !important;
+                font-size: 24px !important;
+                font-weight: 600 !important;
+            }
+            
+            .cycle-selector {
+                display: flex !important;
+                gap: 10px !important;
+            }
+            
+            .cycle-btn {
+                padding: 8px 20px !important;
+                background: rgba(255, 255, 255, 0.2) !important;
+                border: 2px solid rgba(255, 255, 255, 0.5) !important;
+                color: white !important;
+                border-radius: 25px !important;
+                cursor: pointer !important;
+                transition: all 0.3s ease !important;
+                font-weight: 500 !important;
+            }
+            
+            .cycle-btn:hover {
+                background: rgba(255, 255, 255, 0.3) !important;
+                transform: translateY(-2px) !important;
+            }
+            
+            .cycle-btn.active {
+                background: white !important;
+                color: #079baa !important;
+                border-color: white !important;
+            }
+            
+            .custom-cycle-modal-close {
+                background: rgba(255, 255, 255, 0.2) !important;
+                border: none !important;
+                color: white !important;
+                font-size: 24px !important;
+                width: 40px !important;
+                height: 40px !important;
+                border-radius: 50% !important;
+                cursor: pointer !important;
+                transition: all 0.3s ease !important;
+            }
+            
+            .custom-cycle-modal-close:hover {
+                background: rgba(255, 255, 255, 0.3) !important;
+                transform: rotate(90deg) !important;
+            }
+            
+            .custom-cycle-modal-body {
+                flex: 1 !important;
+                overflow-y: auto !important;
+                padding: 30px !important;
+                background: #f8f9fa !important;
+            }
+            
+            .cycle-data-loading {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                min-height: 400px !important;
+            }
+            
+            .spinner {
+                width: 50px !important;
+                height: 50px !important;
+                border: 4px solid #e0e0e0 !important;
+                border-top: 4px solid #079baa !important;
+                border-radius: 50% !important;
+                animation: spin 1s linear infinite !important;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .cycle-questions-grid {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+                gap: 20px !important;
+            }
+            
+            .cycle-question-item {
+                background: white !important;
+                padding: 20px !important;
+                border-radius: 10px !important;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+            }
+            
+            .question-label {
+                font-size: 14px !important;
+                color: #666 !important;
+                margin-bottom: 10px !important;
+                font-weight: 600 !important;
+            }
+            
+            .question-value {
+                font-size: 28px !important;
+                font-weight: bold !important;
+                color: #079baa !important;
             }
         `;
         
