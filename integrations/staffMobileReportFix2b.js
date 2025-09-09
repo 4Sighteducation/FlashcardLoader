@@ -867,7 +867,8 @@
                 'EFFORT': '#38b6ff',
                 'SYSTEMS': '#02e612',
                 'PRACTICE': '#8c52ff',
-                'ATTITUDE': '#ff66c4'
+                'ATTITUDE': '#ff66c4',
+                'OUTCOME': '#2196f3'  // Blue for outcome questions
             };
             
             cycleFieldMappings.forEach((mapping, index) => {
@@ -884,7 +885,7 @@
                 }
                 
                 const numValue = parseInt(value) || 0;
-                const percentage = (numValue / 7) * 100;
+                const percentage = (numValue / 5) * 100;  // Likert scale 1-5
                 const color = categoryColors[mapping.vespaCategory] || '#079baa';
                 
                 html += `
@@ -895,7 +896,7 @@
                             <div class="question-response">
                                 <div class="progress-bar-container">
                                     <div class="progress-bar-fill" style="width: ${percentage}%; background: ${color};"></div>
-                                    <div class="progress-bar-value">${numValue}/7</div>
+                                    <div class="progress-bar-value">${numValue}/5</div>
                                 </div>
                             </div>
                         </div>
@@ -906,10 +907,14 @@
             
             html += '</div>';
             
-            // Update modal
+            // Update modal and ensure loading is hidden
             contentDiv.innerHTML = html;
-            loadingDiv.style.display = 'none';
+            if (loadingDiv) {
+                loadingDiv.style.display = 'none';
+                loadingDiv.style.visibility = 'hidden';
+            }
             contentDiv.style.display = 'block';
+            contentDiv.style.visibility = 'visible';
             
             // Update header
             document.getElementById('staffCycleNumber').textContent = cycle;
@@ -923,8 +928,8 @@
         // Helper function to get field mappings with proper question labels
         function getCycleFieldMappings() {
             return [
-                { questionText: "I've worked out the next steps...", vespaCategory: "VISION", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
-                { questionText: "I plan and organise my time...", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
+                { questionText: "I've worked out the next steps I need to take to reach my career goals", vespaCategory: "VISION", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
+                { questionText: "I plan and organise my time so that I can fit in all my school work as well as other activities", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1954", fieldIdCycle2: "field_1957", fieldIdCycle3: "field_1958" },
                 { questionText: "I give a lot of attention to my career planning", vespaCategory: "VISION", fieldIdCycle1: "field_1959", fieldIdCycle2: "field_1960", fieldIdCycle3: "field_1961" },
                 { questionText: "I complete all my homework on time", vespaCategory: "SYSTEMS", fieldIdCycle1: "field_1962", fieldIdCycle2: "field_1963", fieldIdCycle3: "field_1964" },
                 { questionText: "No matter who you are, you can change your intelligence a lot", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_1965", fieldIdCycle2: "field_1966", fieldIdCycle3: "field_1967" },
@@ -951,7 +956,11 @@
                 { questionText: "Your intelligence is something about you that you can change very much", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2028", fieldIdCycle2: "field_2029", fieldIdCycle3: "field_2030" },
                 { questionText: "I like hearing feedback about how I can improve", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2031", fieldIdCycle2: "field_2032", fieldIdCycle3: "field_2033" },
                 { questionText: "I can control my nerves in tests/practical assessments", vespaCategory: "ATTITUDE", fieldIdCycle1: "field_2034", fieldIdCycle2: "field_2035", fieldIdCycle3: "field_2036" },
-                { questionText: "I know what grades I want to achieve", vespaCategory: "VISION", fieldIdCycle1: "field_2927", fieldIdCycle2: "field_2928", fieldIdCycle3: "field_2929" }
+                { questionText: "I know what grades I want to achieve", vespaCategory: "VISION", fieldIdCycle1: "field_2927", fieldIdCycle2: "field_2928", fieldIdCycle3: "field_2929" },
+                // Outcome questions
+                { questionText: "I have the support I need to achieve this year", vespaCategory: "OUTCOME", fieldIdCycle1: "field_2037", fieldIdCycle2: "field_2038", fieldIdCycle3: "field_2039" },
+                { questionText: "I feel equipped to face the study and revision challenges this year", vespaCategory: "OUTCOME", fieldIdCycle1: "field_2040", fieldIdCycle2: "field_2041", fieldIdCycle3: "field_2042" },
+                { questionText: "I am confident I will achieve my potential in my final exams", vespaCategory: "OUTCOME", fieldIdCycle1: "field_2043", fieldIdCycle2: "field_2044", fieldIdCycle3: "field_2045" }
             ];
         }
         
