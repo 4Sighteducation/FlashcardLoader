@@ -783,6 +783,9 @@
         
         let currentCycle = 1;
         
+        // INTERCEPT API CALLS TO INJECT CYCLE-SPECIFIC DATA
+        interceptQuestionnaireData();
+        
         // CORRECTED FIELD MAPPINGS from object_29json.json
         const cycleFieldMappings = [
             { questionId: "q1", currentCycleFieldId: "field_794", fieldIdCycle1: "field_1953", fieldIdCycle2: "field_1955", fieldIdCycle3: "field_1956" },
@@ -874,6 +877,93 @@
             window.studentCycleData = cycleData;
             console.log(`[Student Report Enhancement] Loaded ${Object.keys(cycleData).length} values for Cycle ${cycle}`);
             return cycleData;
+        }
+        
+        // INTERCEPT API CALLS TO REPLACE WITH CYCLE DATA
+        function interceptQuestionnaireData() {
+            console.log('[Student Report Enhancement] Installing questionnaire data interceptor...');
+            
+            // Create field mapping lookup
+            const fieldMap = {};
+            cycleFieldMappings.forEach(mapping => {
+                fieldMap[mapping.currentCycleFieldId] = {
+                    cycle1: mapping.fieldIdCycle1,
+                    cycle2: mapping.fieldIdCycle2,
+                    cycle3: mapping.fieldIdCycle3
+                };
+            });
+            
+            // Override XMLHttpRequest to intercept API responses
+            const originalOpen = XMLHttpRequest.prototype.open;
+            const originalSend = XMLHttpRequest.prototype.send;
+            
+            if (!window._studentXHRIntercepted) {
+                window._studentXHRIntercepted = true;
+                
+                XMLHttpRequest.prototype.open = function(method, url) {
+                    this._interceptUrl = url;
+                    this._interceptMethod = method;
+                    return originalOpen.apply(this, arguments);
+                };
+                
+                XMLHttpRequest.prototype.send = function(body) {
+                    const xhr = this;
+                    
+                    // Check if this is a questionnaire request
+                    if (xhr._interceptUrl && (xhr._interceptUrl.includes('questionnaire') || xhr._interceptUrl.includes('view_2775'))) {
+                        const originalOnLoad = xhr.onload;
+                        
+                        xhr.onload = function() {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                console.log('[Student Report Enhancement] Intercepted questionnaire response');
+                                
+                                // Get all available cycle data
+                                const allData = extractCycleData();
+                                const cycleKey = `fieldIdCycle${currentCycle}`;
+                                
+                                // Modify response if it contains records
+                                if (response && response.records && response.records.length > 0) {
+                                    response.records.forEach(record => {
+                                        // Replace current cycle fields with historical cycle fields
+                                        Object.keys(fieldMap).forEach(currentField => {
+                                            if (record[currentField] !== undefined) {
+                                                const mapping = fieldMap[currentField];
+                                                const cycleField = mapping[`cycle${currentCycle}`];
+                                                const cycleValue = allData[cycleField];
+                                                
+                                                if (cycleValue && cycleValue !== '0') {
+                                                    console.log(`[Student Report Enhancement] Replacing ${currentField}: ${record[currentField]} → ${cycleValue} (Cycle ${currentCycle})`);
+                                                    record[currentField] = cycleValue;
+                                                    record[currentField + '_raw'] = cycleValue;
+                                                }
+                                            }
+                                        });
+                                    });
+                                    
+                                    // Replace response text
+                                    Object.defineProperty(xhr, 'responseText', {
+                                        writable: true,
+                                        value: JSON.stringify(response)
+                                    });
+                                    
+                                    console.log(`[Student Report Enhancement] Modified response for Cycle ${currentCycle}`);
+                                }
+                            } catch (error) {
+                                console.error('[Student Report Enhancement] Error intercepting response:', error);
+                            }
+                            
+                            if (originalOnLoad) {
+                                originalOnLoad.apply(xhr, arguments);
+                            }
+                        };
+                    }
+                    
+                    return originalSend.apply(this, arguments);
+                };
+                
+                console.log('[Student Report Enhancement] XMLHttpRequest interceptor installed');
+            }
         }
         
         // Debug: Check if we're on the right page
