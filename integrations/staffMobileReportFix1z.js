@@ -699,99 +699,67 @@
         // ========== CREATE CUSTOM CYCLE MODAL ==========
         createCustomCycleModal();
         
-        // ========== API-BASED DATA FETCHING ==========
-        async function fetchCycleDataFromAPI() {
-            console.log('[Staff Mobile Report Enhancement] Fetching cycle data from API...');
+        // ========== SIMPLER DATA EXTRACTION FROM PAGE ==========
+        function fetchCycleDataFromAPI() {
+            console.log('[Staff Mobile Report Enhancement] Extracting cycle data from page...');
             
             try {
-                // Get student ID (staff viewing student report)
-                let studentId = null;
-                
-                // Try different sources for student ID
-                if (window.currentReportStudentObject6Id) {
-                    studentId = window.currentReportStudentObject6Id;
-                    console.log(`[Staff Mobile Report Enhancement] Student ID from global: ${studentId}`);
-                } else {
-                    // Try to get from URL hash
-                    const hash = window.location.hash;
-                    const matches = hash.match(/student[\/=]([a-f0-9]{24})/i);
-                    if (matches) {
-                        studentId = matches[1];
-                        console.log(`[Staff Mobile Report Enhancement] Student ID from URL: ${studentId}`);
-                    }
-                }
-                
-                if (!studentId) {
-                    console.error('[Staff Mobile Report Enhancement] Could not determine student ID');
-                    return null;
-                }
-                
-                // Get Object_10 ID from Object_6 record
-                const studentUrl = `https://api.knack.com/v1/objects/object_6/records/${studentId}`;
-                const studentRecord = await $.ajax({
-                    url: studentUrl,
-                    type: 'GET',
-                    headers: {
-                        'X-Knack-Application-Id': Knack.application_id,
-                        'X-Knack-REST-API-Key': 'knack',
-                        'Authorization': Knack.getUserToken()
-                    }
-                });
-                
-                // Extract Object_10 ID from field_182
-                let object10Id = null;
-                if (studentRecord && studentRecord.field_182) {
-                    if (Array.isArray(studentRecord.field_182) && studentRecord.field_182.length > 0) {
-                        object10Id = studentRecord.field_182[0].id;
-                    } else if (studentRecord.field_182.id) {
-                        object10Id = studentRecord.field_182.id;
-                    }
-                }
-                
+                // First check if we already have Object_10 ID from ReportProfiles
+                const object10Id = window.currentReportObject10Id;
                 if (!object10Id) {
-                    console.error('[Staff Mobile Report Enhancement] No Object_10 ID found');
-                    return null;
+                    console.log('[Staff Mobile Report Enhancement] No Object_10 ID available yet');
+                    // Try to get from the hidden table
+                    return extractFromHiddenTable();
                 }
                 
-                console.log(`[Staff Mobile Report Enhancement] Object_10 ID: ${object10Id}`);
+                console.log(`[Staff Mobile Report Enhancement] Using Object_10 ID: ${object10Id}`);
                 
-                // Get Object_29 record
-                const filters = {
-                    match: 'and',
-                    rules: [{
-                        field: 'field_792',
-                        operator: 'is',
-                        value: object10Id
-                    }]
-                };
-                
-                const object29Url = `https://api.knack.com/v1/objects/object_29/records?filters=${encodeURIComponent(JSON.stringify(filters))}`;
-                const object29Response = await $.ajax({
-                    url: object29Url,
-                    type: 'GET',
-                    headers: {
-                        'X-Knack-Application-Id': Knack.application_id,
-                        'X-Knack-REST-API-Key': 'knack',
-                        'Authorization': Knack.getUserToken()
-                    }
-                });
-                
-                if (object29Response && object29Response.records && object29Response.records.length > 0) {
-                    const cycleData = object29Response.records[0];
-                    console.log(`[Staff Mobile Report Enhancement] Found Object_29 data with ${Object.keys(cycleData).length} fields`);
-                    
-                    // Store globally for modal to use
-                    window.staffCycleDataFromAPI = cycleData;
-                    return cycleData;
+                // Try to extract from the hidden table first (view_2716)
+                const tableData = extractFromHiddenTable();
+                if (tableData && Object.keys(tableData).length > 0) {
+                    console.log(`[Staff Mobile Report Enhancement] Found ${Object.keys(tableData).length} fields from hidden table`);
+                    window.staffCycleDataFromAPI = tableData;
+                    return tableData;
                 }
                 
-                console.warn('[Staff Mobile Report Enhancement] No Object_29 record found');
-                return null;
+                // If no table data, return empty object (will show "no data" message)
+                console.log('[Staff Mobile Report Enhancement] No cycle data found on page');
+                return {};
                 
             } catch (error) {
-                console.error('[Staff Mobile Report Enhancement] Error fetching cycle data:', error);
-                return null;
+                console.error('[Staff Mobile Report Enhancement] Error extracting cycle data:', error);
+                return extractFromHiddenTable() || {};
             }
+        }
+        
+        // Extract data from hidden table
+        function extractFromHiddenTable() {
+            const data = {};
+            
+            // Try to find the hidden table (view_2716 for staff)
+            const table = document.querySelector('#view_2716');
+            if (table) {
+                console.log('[Staff Mobile Report Enhancement] Found hidden table view_2716');
+                
+                // Get all table cells
+                const cells = table.querySelectorAll('tbody tr td');
+                cells.forEach(cell => {
+                    // Get field class
+                    const fieldClass = Array.from(cell.classList).find(c => c.startsWith('field_'));
+                    if (fieldClass) {
+                        const value = cell.textContent.trim();
+                        if (value) {
+                            data[fieldClass] = value;
+                        }
+                    }
+                });
+                
+                console.log(`[Staff Mobile Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
+            } else {
+                console.log('[Staff Mobile Report Enhancement] Hidden table not found');
+            }
+            
+            return data;
         }
         
         // ========== CREATE CUSTOM MODAL HTML ==========
@@ -847,7 +815,7 @@
         }
         
         // ========== RENDER MODAL CONTENT ==========
-        async function renderModalContent(cycle) {
+        function renderModalContent(cycle) {
             const modal = document.getElementById('customStaffCycleModal');
             const contentDiv = modal.querySelector('.cycle-data-content');
             const loadingDiv = modal.querySelector('.cycle-data-loading');
@@ -859,7 +827,7 @@
             // Get or fetch data
             let data = window.staffCycleDataFromAPI;
             if (!data) {
-                data = await fetchCycleDataFromAPI();
+                data = fetchCycleDataFromAPI();
             }
             
             if (!data) {
@@ -954,7 +922,7 @@
                     viewAnswersBtn.parentNode.replaceChild(newBtn, viewAnswersBtn);
                     
                     // Add our custom handler
-                    newBtn.addEventListener('click', async (e) => {
+                    newBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         
@@ -976,7 +944,11 @@
                         // Show modal
                         const modal = document.getElementById('customStaffCycleModal');
                         modal.style.display = 'flex';
-                        await renderModalContent(currentCycle);
+                        
+                        // Render content after a small delay to ensure modal is visible
+                        setTimeout(() => {
+                            renderModalContent(currentCycle);
+                        }, 100);
                     });
                     
                     console.log('[Staff Mobile Report Enhancement] View Answers button overridden with custom modal');
