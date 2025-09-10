@@ -3597,11 +3597,18 @@ async function updateConnectedStudentToggles(schoolId, fieldName, value) {
     console.log(`[Staff Homepage] Initiating bulk update via backend service`);
     console.log(`[Staff Homepage] School ID: ${schoolId}, Field: ${fieldName}, Value: ${value}`);
     
-    // Show loading notification
-    showNotification('Updating student accounts in background...', 'info');
+    // Single background notification - no more popups after this
+    const fieldLabel = fieldName === 'field_289' ? 'Academic Profile' :
+                      fieldName === 'field_290' ? 'Productivity Hub' :
+                      fieldName === 'field_291' ? 'AI Coach' : 'feature';
+    
+    showNotification(`${fieldLabel} update processing in background. This may take a few minutes for large cohorts.`, 'info');
     
     // Call backend service for bulk update
-    const response = await fetch(`${BACKEND_SERVICE.getUrl()}/api/toggle-bulk-update`, {
+    const backendUrl = `${BACKEND_SERVICE.getUrl()}/api/toggle-bulk-update`;
+    console.log(`[Staff Homepage] Calling backend at: ${backendUrl}`);
+    
+    const response = await fetch(backendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3618,25 +3625,25 @@ async function updateConnectedStudentToggles(schoolId, fieldName, value) {
     });
     
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Backend service error: ${error}`);
+      const errorText = await response.text();
+      console.error(`[Staff Homepage] Backend error response (${response.status}):`, errorText);
+      throw new Error(`Backend service error (${response.status}): ${errorText}`);
     }
     
     const result = await response.json();
     console.log('[Staff Homepage] Backend service response:', result);
     
     if (result.jobId) {
-      // Start monitoring the job status
-      monitorToggleJobStatus(result.jobId, fieldName);
-      
-      // Show immediate success feedback
-      showNotification(`Update initiated for ${result.totalRecords || 'all'} student accounts. Processing in background...`, 'success');
-    } else {
-      showNotification('Update initiated successfully', 'success');
+      // Silently monitor in background - no more notifications
+      monitorToggleJobStatusSilently(result.jobId, fieldName, fieldLabel);
     }
     
+    // No success notification here - let it process silently
+    
   } catch (error) {
-    console.error('[Staff Homepage] Error initiating bulk update:', error);
+    console.error('[Staff Homepage] Error initiating bulk update - Full error:', error);
+    console.error('[Staff Homepage] Error message:', error.message);
+    console.error('[Staff Homepage] Error stack:', error.stack);
     
     // Fallback to client-side update if backend fails
     console.log('[Staff Homepage] Falling back to client-side update');
@@ -3644,10 +3651,10 @@ async function updateConnectedStudentToggles(schoolId, fieldName, value) {
   }
 }
 
-// Monitor job status and provide feedback
-async function monitorToggleJobStatus(jobId, fieldName) {
-  const checkInterval = 5000; // Check every 5 seconds
-  const maxChecks = 60; // Max 5 minutes
+// Monitor job status silently in background
+async function monitorToggleJobStatusSilently(jobId, fieldName, fieldLabel) {
+  const checkInterval = 10000; // Check every 10 seconds (less frequent)
+  const maxChecks = 30; // Max 5 minutes
   let checkCount = 0;
   
   const checkStatus = async () => {
@@ -3655,7 +3662,7 @@ async function monitorToggleJobStatus(jobId, fieldName) {
       const response = await fetch(`${BACKEND_SERVICE.getUrl()}/api/toggle-status/${jobId}`);
       
       if (!response.ok) {
-        console.error('[Staff Homepage] Failed to check job status');
+        console.log('[Staff Homepage] Job status check failed - stopping monitor');
         return;
       }
       
@@ -3663,11 +3670,8 @@ async function monitorToggleJobStatus(jobId, fieldName) {
       console.log(`[Staff Homepage] Job ${jobId} status:`, status);
       
       if (status.status === 'completed') {
-        const fieldLabel = fieldName === 'field_289' ? 'Academic Profile' :
-                          fieldName === 'field_290' ? 'Productivity Hub' :
-                          fieldName === 'field_291' ? 'AI Coach' : 'feature';
-        
-        showNotification(`✅ ${fieldLabel} update completed! ${status.processed} of ${status.total} accounts updated.`, 'success');
+        // Log success but don't show notification
+        console.log(`[Staff Homepage] ✅ ${fieldLabel} update completed! ${status.processed} of ${status.total} accounts updated.`);
         
         // Log any errors
         if (status.errors && status.errors.length > 0) {
@@ -3678,7 +3682,8 @@ async function monitorToggleJobStatus(jobId, fieldName) {
       }
       
       if (status.status === 'failed') {
-        showNotification(`Update failed: ${status.error || 'Unknown error'}`, 'error');
+        // Log failure but don't show notification
+        console.error(`[Staff Homepage] Update failed: ${status.error || 'Unknown error'}`);
         return;
       }
       
@@ -3689,12 +3694,20 @@ async function monitorToggleJobStatus(jobId, fieldName) {
       }
       
     } catch (error) {
-      console.error('[Staff Homepage] Error checking job status:', error);
+      console.log('[Staff Homepage] Error checking job status:', error);
     }
   };
   
   // Start checking after a short delay
-  setTimeout(checkStatus, 3000);
+  setTimeout(checkStatus, 5000);
+}
+
+// Keep the old function for backward compatibility
+async function monitorToggleJobStatus(jobId, fieldName) {
+  const fieldLabel = fieldName === 'field_289' ? 'Academic Profile' :
+                    fieldName === 'field_290' ? 'Productivity Hub' :
+                    fieldName === 'field_291' ? 'AI Coach' : 'feature';
+  return monitorToggleJobStatusSilently(jobId, fieldName, fieldLabel);
 }
 
 // Fallback function for client-side updates (original implementation)
@@ -3706,6 +3719,8 @@ async function updateConnectedStudentTogglesFallback(schoolId, fieldName, value)
   
   try {
     console.log(`[Staff Homepage] Using fallback client-side update`);
+    // Remove any loading indicators that might be stuck
+    KnackAPIQueue.hideLoadingIndicator();
     
     // Find all Object_3 records connected by field_122 (school connection)
     const filters = encodeURIComponent(JSON.stringify({
@@ -7619,5 +7634,7 @@ if (feedbackRequest.screenshot) {
 
   console.log('[Student Emulation Setup] Module initialized and ready');
 })();
+
+})(); // Close main IIFE
 
 })(); // Close main IIFE
