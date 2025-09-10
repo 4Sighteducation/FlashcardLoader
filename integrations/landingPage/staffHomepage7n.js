@@ -7636,5 +7636,3 @@ if (feedbackRequest.screenshot) {
 })();
 
 })(); // Close main IIFE
-
-})(); // Close main IIFE
