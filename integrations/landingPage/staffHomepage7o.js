@@ -3608,12 +3608,20 @@ async function updateConnectedStudentToggles(schoolId, fieldName, value) {
     const backendUrl = `${BACKEND_SERVICE.getUrl()}/api/toggle-bulk-update`;
     console.log(`[Staff Homepage] Calling backend at: ${backendUrl}`);
     
+    // Get Knack credentials from config (same as getKnackHeaders function uses)
+    const config = window.STAFFHOMEPAGE_CONFIG;
+    const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
+    const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '';
+    
+    console.log(`[Staff Homepage] Using Knack App ID: ${knackAppId ? 'Found' : 'Missing'}`);
+    console.log(`[Staff Homepage] Using Knack API Key: ${knackApiKey ? 'Found' : 'Missing'}`);
+    
     const response = await fetch(backendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Knack-Application-Id': KnackAppConfig.APP_ID,
-        'X-Knack-REST-API-Key': KnackAppConfig.API_KEY
+        'X-Knack-Application-Id': knackAppId,
+        'X-Knack-REST-API-Key': knackApiKey
       },
       body: JSON.stringify({
         schoolId: schoolId,
