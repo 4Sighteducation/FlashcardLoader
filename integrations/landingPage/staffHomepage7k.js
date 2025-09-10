@@ -3575,7 +3575,18 @@ function showToggleUpdateModal(toggleName, isEnabled) {
   }, 8000);
 }
 
-// Update all connected Object_3 records
+// Backend service configuration for bulk toggle operations
+const BACKEND_SERVICE = {
+  // Production URL for your Vercel backend
+  PRODUCTION_URL: 'https://homepagebackend.vercel.app',
+  
+  // Get the appropriate URL
+  getUrl() {
+    return this.PRODUCTION_URL;
+  }
+};
+
+// Update all connected Object_3 records using backend service
 async function updateConnectedStudentToggles(schoolId, fieldName, value) {
   if (!schoolId) {
     console.warn('[Staff Homepage] No school ID provided for student updates');
@@ -3583,7 +3594,118 @@ async function updateConnectedStudentToggles(schoolId, fieldName, value) {
   }
   
   try {
-    console.log(`[Staff Homepage] Searching for Object_3 records with school ID: "${schoolId}"`);
+    console.log(`[Staff Homepage] Initiating bulk update via backend service`);
+    console.log(`[Staff Homepage] School ID: ${schoolId}, Field: ${fieldName}, Value: ${value}`);
+    
+    // Show loading notification
+    showNotification('Updating student accounts in background...', 'info');
+    
+    // Call backend service for bulk update
+    const response = await fetch(`${BACKEND_SERVICE.getUrl()}/api/toggle-bulk-update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Knack-Application-Id': KnackAppConfig.APP_ID,
+        'X-Knack-REST-API-Key': KnackAppConfig.API_KEY
+      },
+      body: JSON.stringify({
+        schoolId: schoolId,
+        fieldName: fieldName,
+        value: value,
+        schoolConnectionField: 'field_122',
+        objectId: 'object_3'
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Backend service error: ${error}`);
+    }
+    
+    const result = await response.json();
+    console.log('[Staff Homepage] Backend service response:', result);
+    
+    if (result.jobId) {
+      // Start monitoring the job status
+      monitorToggleJobStatus(result.jobId, fieldName);
+      
+      // Show immediate success feedback
+      showNotification(`Update initiated for ${result.totalRecords || 'all'} student accounts. Processing in background...`, 'success');
+    } else {
+      showNotification('Update initiated successfully', 'success');
+    }
+    
+  } catch (error) {
+    console.error('[Staff Homepage] Error initiating bulk update:', error);
+    
+    // Fallback to client-side update if backend fails
+    console.log('[Staff Homepage] Falling back to client-side update');
+    await updateConnectedStudentTogglesFallback(schoolId, fieldName, value);
+  }
+}
+
+// Monitor job status and provide feedback
+async function monitorToggleJobStatus(jobId, fieldName) {
+  const checkInterval = 5000; // Check every 5 seconds
+  const maxChecks = 60; // Max 5 minutes
+  let checkCount = 0;
+  
+  const checkStatus = async () => {
+    try {
+      const response = await fetch(`${BACKEND_SERVICE.getUrl()}/api/toggle-status/${jobId}`);
+      
+      if (!response.ok) {
+        console.error('[Staff Homepage] Failed to check job status');
+        return;
+      }
+      
+      const status = await response.json();
+      console.log(`[Staff Homepage] Job ${jobId} status:`, status);
+      
+      if (status.status === 'completed') {
+        const fieldLabel = fieldName === 'field_289' ? 'Academic Profile' :
+                          fieldName === 'field_290' ? 'Productivity Hub' :
+                          fieldName === 'field_291' ? 'AI Coach' : 'feature';
+        
+        showNotification(`✅ ${fieldLabel} update completed! ${status.processed} of ${status.total} accounts updated.`, 'success');
+        
+        // Log any errors
+        if (status.errors && status.errors.length > 0) {
+          console.warn('[Staff Homepage] Some updates failed:', status.errors);
+        }
+        
+        return; // Stop monitoring
+      }
+      
+      if (status.status === 'failed') {
+        showNotification(`Update failed: ${status.error || 'Unknown error'}`, 'error');
+        return;
+      }
+      
+      // Continue checking if still processing
+      if (status.status === 'processing' && checkCount < maxChecks) {
+        checkCount++;
+        setTimeout(checkStatus, checkInterval);
+      }
+      
+    } catch (error) {
+      console.error('[Staff Homepage] Error checking job status:', error);
+    }
+  };
+  
+  // Start checking after a short delay
+  setTimeout(checkStatus, 3000);
+}
+
+// Fallback function for client-side updates (original implementation)
+async function updateConnectedStudentTogglesFallback(schoolId, fieldName, value) {
+  if (!schoolId) {
+    console.warn('[Staff Homepage] No school ID provided for student updates');
+    return;
+  }
+  
+  try {
+    console.log(`[Staff Homepage] Using fallback client-side update`);
     
     // Find all Object_3 records connected by field_122 (school connection)
     const filters = encodeURIComponent(JSON.stringify({
@@ -3602,45 +3724,55 @@ async function updateConnectedStudentToggles(schoolId, fieldName, value) {
       });
     });
     
-    console.log(`[Staff Homepage] Object_3 search response:`, response);
-    
     if (response && response.records && response.records.length > 0) {
       console.log(`[Staff Homepage] Found ${response.records.length} connected student accounts to update`);
-      console.log(`[Staff Homepage] Sample record field_122 values:`, response.records.slice(0, 3).map(r => r.field_122));
       
-      // Update each connected record
-      const updateData = {};
-      updateData[fieldName] = value;
+      // Batch process in smaller chunks to avoid overwhelming the API
+      const batchSize = 10;
+      const batches = [];
       
-      console.log(`[Staff Homepage] Updating ${fieldName} to ${value} for ${response.records.length} records`);
+      for (let i = 0; i < response.records.length; i += batchSize) {
+        batches.push(response.records.slice(i, i + batchSize));
+      }
       
-      const updatePromises = response.records.map(record => {
-        console.log(`[Staff Homepage] Updating record ${record.id} with:`, updateData);
-        return retryApiCall(() => {
-          return KnackAPIQueue.addRequest({
-            url: `${KNACK_API_URL}/objects/object_3/records/${record.id}`,
-            type: 'PUT',
-            headers: getKnackHeaders(),
-            data: JSON.stringify(updateData)
+      console.log(`[Staff Homepage] Processing ${batches.length} batches of ${batchSize} records`);
+      
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        const updateData = {};
+        updateData[fieldName] = value;
+        
+        const updatePromises = batch.map(record => {
+          return retryApiCall(() => {
+            return KnackAPIQueue.addRequest({
+              url: `${KNACK_API_URL}/objects/object_3/records/${record.id}`,
+              type: 'PUT',
+              headers: getKnackHeaders(),
+              data: JSON.stringify(updateData)
+            });
           });
         });
-      });
+        
+        await Promise.all(updatePromises);
+        console.log(`[Staff Homepage] Completed batch ${i + 1} of ${batches.length}`);
+        
+        // Add delay between batches to avoid rate limiting
+        if (i < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
       
-      const results = await Promise.all(updatePromises);
-      console.log(`[Staff Homepage] Update results:`, results);
       console.log(`[Staff Homepage] Successfully updated ${response.records.length} student accounts`);
+      showNotification(`Successfully updated ${response.records.length} student accounts`, 'success');
       
     } else {
-      console.log(`[Staff Homepage] No connected student accounts found for school ID: "${schoolId}"`);
-      console.log(`[Staff Homepage] Response details:`, {
-        hasResponse: !!response,
-        hasRecords: !!(response && response.records),
-        recordCount: response && response.records ? response.records.length : 0
-      });
+      console.log(`[Staff Homepage] No connected student accounts found`);
+      showNotification('No student accounts found to update', 'info');
     }
     
   } catch (error) {
     console.error('[Staff Homepage] Error updating connected student accounts:', error);
+    showNotification('Failed to update student accounts. Please try again.', 'error');
     throw error;
   }
 }
