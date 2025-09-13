@@ -5,7 +5,7 @@
 (function() {
     'use strict';
     
-    const DEBUG = true;
+    const DEBUG = false;
     const log = (msg, data) => {
         if (DEBUG) console.log(`[CoachingNavFix] ${msg}`, data || '');
     };
