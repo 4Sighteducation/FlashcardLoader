@@ -6,7 +6,7 @@
 if (typeof window.REPORT_PROFILES_DEBUG_MODE === 'undefined') {
   window.REPORT_PROFILES_DEBUG_MODE = false; 
 }
-var DEBUG_MODE = window.REPORT_PROFILES_DEBUG_MODE; // CHANGED from const to var
+var DEBUG_MODE = false; // Force debug mode to false to hide all console logs
 
 // Global config variable - will be set by loader
 // let REPORTPROFILE_CONFIG = null; // Moved to prevent re-declaration errors
@@ -107,11 +107,11 @@ if (window.reportProfilesInitialized) {
       debugLog("Using config from loader:", window.REPORTPROFILE_CONFIG);
       REPORTPROFILE_CONFIG = window.REPORTPROFILE_CONFIG;
       
-      // Update debug mode from config
-      if (typeof REPORTPROFILE_CONFIG.debugMode !== 'undefined') {
-        DEBUG_MODE = REPORTPROFILE_CONFIG.debugMode;
-        window.REPORT_PROFILES_DEBUG_MODE = DEBUG_MODE;
-      }
+      // Update debug mode from config - DISABLED to force quiet mode
+      // if (typeof REPORTPROFILE_CONFIG.debugMode !== 'undefined') {
+      //   DEBUG_MODE = REPORTPROFILE_CONFIG.debugMode;
+      //   window.REPORT_PROFILES_DEBUG_MODE = DEBUG_MODE;
+      // }
     }
     
     // Add CSS styles
