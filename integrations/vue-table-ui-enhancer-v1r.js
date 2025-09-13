@@ -5,7 +5,7 @@
 (function() {
     'use strict';
     
-    const DEBUG = true;
+    const DEBUG = false; // Disabled to hide console logs
     const log = (msg, data) => {
         if (DEBUG) console.log(`[VueTableV2] ${msg}`, data || '');
     };
