@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = false; // Set to true for development/testing
+  const DEBUG_MODE = true; // Set to true for development/testing - ENABLED FOR DEBUGGING STAFF ADMIN CHART ISSUE
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
@@ -40,7 +40,7 @@ const IS_DEVELOPMENT = window.location.hostname === 'localhost' ||
                      window.location.hostname === '127.0.0.1' ||
                      window.location.hostname.includes('dev') ||
                      window.location.hostname.includes('staging');
-const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
+const CURRENT_LOG_LEVEL = LOG_LEVELS.DEBUG; // Temporarily set to DEBUG for troubleshooting
 
 (function() {
   // Save original console methods
@@ -1392,18 +1392,27 @@ try {
 
 // Helper function to check if user has a Staff Admin role
 function isStaffAdmin(roles) {
+  console.log('[Staff Homepage - DEBUG] isStaffAdmin called with:', roles);
+  
   if (!roles || !Array.isArray(roles)) {
+    console.log('[Staff Homepage - DEBUG] isStaffAdmin: Invalid roles array, returning false');
     return false;
   }
-  
+
   const result = roles.some(role => {
     if (typeof role !== 'string') return false;
-    
+
     const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
-    return normalizedRole.includes('staffadmin') || normalizedRole === 'admin';
+    const isAdmin = normalizedRole.includes('staffadmin') || normalizedRole === 'admin' || normalizedRole === 'profile_5';
+    
+    if (isAdmin) {
+      console.log('[Staff Homepage - DEBUG] Found admin role match:', role, '-> normalized:', normalizedRole);
+    }
+    
+    return isAdmin;
   });
-  
-  console.log(`[Staff Homepage] isStaffAdmin check with roles ${JSON.stringify(roles)} returned: ${result}`);
+
+  console.log(`[Staff Homepage - DEBUG] isStaffAdmin final result: ${result}`);
   return result;
 }
 
@@ -1438,6 +1447,7 @@ async function getStaffProfileData() {
     debugLog("Getting staff profile data for:", user);
     
     // Find the staff record based on user email
+    console.log('[Staff Homepage - DEBUG] Looking for staff record with email:', user.email);
     const staffRecord = await findStaffRecord(user.email);
     if (!staffRecord) {
       console.error("[Staff Homepage] Staff record not found for email:", user.email);
@@ -1445,13 +1455,17 @@ async function getStaffProfileData() {
         name: user.name || "Staff Member",
         roles: ["Unknown Role"],
         school: null,
+        schoolId: null,  // DEBUG: Explicitly set to null
         email: user.email,
         userId: user.id
       };
     }
+    console.log('[Staff Homepage - DEBUG] Found staff record:', staffRecord);
     
     // Extract school ID for later use
+    console.log('[Staff Homepage - DEBUG] Extracting school ID from staffRecord:', staffRecord[FIELD_MAPPING.schoolConnection]);
     const schoolId = extractValidRecordId(staffRecord[FIELD_MAPPING.schoolConnection]);
+    console.log('[Staff Homepage - DEBUG] Extracted schoolId:', schoolId);
     
     // Get school details if we have a school ID
     let schoolRecord = null;
@@ -1573,6 +1587,15 @@ async function getStaffProfileData() {
     };
     
     debugLog("Compiled staff profile data:", profileData);
+    
+    // Final validation check for critical fields
+    if (!profileData.schoolId) {
+      console.error('[Staff Homepage - CRITICAL] NO SCHOOL ID IN PROFILE DATA - Dashboard charts will not display!');
+      console.error('[Staff Homepage - CRITICAL] Profile data:', profileData);
+    } else {
+      console.log('[Staff Homepage - DEBUG] Profile data contains valid schoolId:', profileData.schoolId);
+    }
+    
     return profileData;
   } catch (error) {
     console.error("[Staff Homepage] Error getting staff profile data:", error);
@@ -1788,6 +1811,7 @@ async function findSchoolLogoOnline(schoolName, schoolId) {
 // --- VESPA Results Data Management ---
 // Get VESPA results for the school
 async function getSchoolVESPAResults(schoolId) {
+console.log('[Staff Homepage - DEBUG] getSchoolVESPAResults called with schoolId:', schoolId);
 if (!schoolId) {
   console.error("[Staff Homepage] Cannot get VESPA results: Missing schoolId");
   return null;
@@ -1829,14 +1853,17 @@ try {
   console.log(`[Staff Homepage] Trying VESPA results filter with schoolId:`, schoolIdFilter);
   
   // Use pagination to get ALL records - not just the default 25 or limited 500
+  console.log('[Staff Homepage - DEBUG] Fetching object_10 records with filter:', schoolIdFilter);
   let allRecords = await getAllRecordsWithPagination(
-    `${KNACK_API_URL}/objects/object_10/records`, 
+    `${KNACK_API_URL}/objects/object_10/records`,
     encodeURIComponent(schoolIdFilter),
     20 // Allow up to 20 pages = 20,000 student records with 1000 per page
   ).catch(error => {
-    console.warn('[Staff Homepage] Error with schoolId pagination:', error);
+    console.error('[Staff Homepage - DEBUG] Error with schoolId pagination:', error);
     return [];
   });
+  
+  console.log(`[Staff Homepage - DEBUG] getAllRecordsWithPagination returned ${allRecords.length} records`);
   
   // If we got results with the ID approach, use them
   if (allRecords && allRecords.length > 0) {
@@ -1992,12 +2019,12 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     console.log(`[Staff Homepage] DEBUG - Looking for records where connection fields contain email ${staffEmail}`);
     console.log(`[Staff Homepage] DEBUG - Staff roles: ${JSON.stringify(userRoles)}`);
     
-    // Determine which roles the user has - check all roles without breaking
+// Determine which roles the user has - check all roles without breaking
     let useTutorRole = false;
     let useHeadOfYearRole = false;
     let useSubjectTeacherRole = false;
     let useStaffAdminRole = false;
-    
+
     for (const role of userRoles) {
       const normalizedRole = role.toLowerCase();
       if (normalizedRole.includes('tutor')) {
@@ -2012,6 +2039,11 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       if (normalizedRole.includes('staff admin') || normalizedRole.includes('staffadmin')) {
         useStaffAdminRole = true;
       }
+    }
+    
+    // For Staff Admin users, return all school results if no connected students
+    if (useStaffAdminRole) {
+      console.log('[Staff Homepage - DEBUG] Staff Admin user - will show all school results if no connected students');  
     }
     
     console.log(`[Staff Homepage] Detected roles - Tutor: ${useTutorRole}, HoY: ${useHeadOfYearRole}, SubjectTeacher: ${useSubjectTeacherRole}, StaffAdmin: ${useStaffAdminRole}`);
@@ -2656,6 +2688,7 @@ function renderGroupSection(hasAdminRole = false) {
   const groupApps = APP_SECTIONS.group.map(app => {
     // If this is the Coaching button, return the appropriate version
     if (app.name === "Coaching") {
+      console.log('[Staff Homepage - DEBUG] Configuring Coaching button, hasAdminRole:', hasAdminRole);
       if (hasAdminRole) {
         // Return admin coaching configuration
         return {
@@ -2852,11 +2885,16 @@ window.trackFeatureUse = function(featureName) {
 
 // Render the VESPA dashboard
 function renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleData) {
+  console.log('[Staff Homepage - DEBUG] renderVESPADashboard called with:');
+  console.log('[Staff Homepage - DEBUG] - schoolResults:', schoolResults);
+  console.log('[Staff Homepage - DEBUG] - hasAdminRole:', hasAdminRole);
+  
   if (!schoolResults) {
+    console.error('[Staff Homepage - DEBUG] NO SCHOOL RESULTS - Chart will not display!');
     return `
       <section class="vespa-section dashboard-section">
         <h2 class="vespa-section-title">VESPA Dashboard</h2>
-        <div class="no-results">No VESPA results available for your school.</div>
+        <div class="no-results">No VESPA results available for your school. (DEBUG: schoolResults is null/undefined)</div>
       </section>
     `;
   }
@@ -3598,9 +3636,9 @@ async function updateConnectedStudentToggles(schoolId, fieldName, value) {
     console.log(`[Staff Homepage] School ID: ${schoolId}, Field: ${fieldName}, Value: ${value}`);
     
     // Single background notification - no more popups after this
-    const fieldLabel = fieldName === 'field_289' ? 'Academic Profile' :
-                      fieldName === 'field_290' ? 'Productivity Hub' :
-                      fieldName === 'field_291' ? 'AI Coach' : 'feature';
+    const fieldLabel = fieldName === 'field_3646' ? 'Academic Profile' :
+                      fieldName === 'field_3647' ? 'Productivity Hub' :
+                      fieldName === 'field_3579' ? 'AI Coach' : 'feature';
     
     showNotification(`${fieldLabel} update processing in background. This may take a few minutes for large cohorts.`, 'info');
     
@@ -3712,9 +3750,9 @@ async function monitorToggleJobStatusSilently(jobId, fieldName, fieldLabel) {
 
 // Keep the old function for backward compatibility
 async function monitorToggleJobStatus(jobId, fieldName) {
-  const fieldLabel = fieldName === 'field_289' ? 'Academic Profile' :
-                    fieldName === 'field_290' ? 'Productivity Hub' :
-                    fieldName === 'field_291' ? 'AI Coach' : 'feature';
+  const fieldLabel = fieldName === 'field_3646' ? 'Academic Profile' :
+                    fieldName === 'field_3647' ? 'Productivity Hub' :
+                    fieldName === 'field_3579' ? 'AI Coach' : 'feature';
   return monitorToggleJobStatusSilently(jobId, fieldName, fieldLabel);
 }
 
@@ -5445,8 +5483,12 @@ try {
   }
   
   // Initialize student emulation setup if module is loaded
-  if (window.StaffStudentEmulationSetup && profileData.email) {
-    console.log('[Staff Homepage] Initializing student emulation setup...');
+  // BUT SKIP FOR STAFF ADMIN USERS to avoid potential conflicts
+  const skipEmulation = isStaffAdmin(profileData.roles);
+  console.log('[Staff Homepage - DEBUG] Skip student emulation for Staff Admin?', skipEmulation);
+  
+  if (window.StaffStudentEmulationSetup && profileData.email && !skipEmulation) {
+    console.log('[Staff Homepage] Initializing student emulation setup (non-admin user)...');
     
     try {
       const emulationResult = await window.StaffStudentEmulationSetup.setup(
@@ -5473,23 +5515,33 @@ try {
       console.error('[Staff Homepage] Error during student emulation setup:', setupError);
       // Continue with homepage rendering even if setup fails
     }
+  } else if (skipEmulation) {
+    console.log('[Staff Homepage - DEBUG] Student emulation skipped for Staff Admin user');
   }
   
   // Check if user is a staff admin
   const hasAdminRole = isStaffAdmin(profileData.roles);
-  console.log(`[Staff Homepage] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
-  console.log(`[Staff Homepage] Has Admin Role: ${hasAdminRole}, Management section will ${hasAdminRole ? 'be shown' : 'NOT be shown'}`);
+  console.log(`[Staff Homepage - DEBUG] User ${profileData.name} has roles: ${JSON.stringify(profileData.roles)}`);
+  console.log(`[Staff Homepage - DEBUG] Has Admin Role: ${hasAdminRole}`);
+  console.log(`[Staff Homepage - DEBUG] School ID: ${profileData.schoolId}`);
+  console.log(`[Staff Homepage - DEBUG] User Email: ${profileData.email}`);
   
   // Update loading progress
   if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
     window.VespaLoadingScreen.updateProgress('Loading VESPA data...');
   }
   
+  console.log('[Staff Homepage - DEBUG] About to fetch VESPA data...');
   const [schoolResults, staffResults, cycleData] = await Promise.all([
     getSchoolVESPAResults(profileData.schoolId),
     profileData.email ? getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null,
     profileData.userId ? getQuestionnaireCycleData(profileData.userId, profileData.schoolId) : null
   ]);
+  
+  console.log('[Staff Homepage - DEBUG] VESPA Data Fetched:');
+  console.log('[Staff Homepage - DEBUG] - schoolResults:', schoolResults ? `Found ${schoolResults.count} students` : 'NULL');
+  console.log('[Staff Homepage - DEBUG] - staffResults:', staffResults ? `Found ${staffResults.count} students` : 'NULL');
+  console.log('[Staff Homepage - DEBUG] - cycleData:', cycleData ? 'Available' : 'NULL');
   
   // Build the homepage HTML with updated layout
   const homepageHTML = `
