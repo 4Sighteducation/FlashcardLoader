@@ -898,6 +898,24 @@ const CacheManager = {
 DEFAULT_TTL: 60,
 CACHE_OBJECT: 'object_115',
 
+// Check if cache is disabled via URL parameter or localStorage
+isCacheDisabled() {
+  // Check URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('nocache') === 'true') {
+    console.log('[Staff Homepage] Cache disabled via URL parameter');
+    return true;
+  }
+  
+  // Check localStorage setting
+  if (localStorage.getItem('disableCache') === 'true') {
+    console.log('[Staff Homepage] Cache disabled via localStorage setting');
+    return true;
+  }
+  
+  return false;
+},
+
 // Create a unique cache key - now includes user email for uniqueness
 createKey(type, identifier, userSpecific = true) {
   // Only include user email for user-specific caches
@@ -927,6 +945,12 @@ getLocalizedDate() {
   // Retrieve cache from Knack
 async get(cacheKey, type) {
   try {
+    // Check if cache is disabled
+    if (this.isCacheDisabled()) {
+      console.log(`[Staff Homepage] Cache is disabled, skipping cache lookup for: ${cacheKey}`);
+      return null;
+    }
+    
     console.log(`[Staff Homepage] Checking cache for: ${cacheKey} (${type})`);
     
     // Create a filter to find the cache entry
@@ -1021,6 +1045,12 @@ async get(cacheKey, type) {
 // Store data in cache
 async set(cacheKey, data, type, ttlMinutes = this.DEFAULT_TTL) {
   try {
+    // Check if cache is disabled
+    if (this.isCacheDisabled()) {
+      console.log(`[Staff Homepage] Cache is disabled, skipping cache storage for: ${cacheKey}`);
+      return true; // Return true to indicate "success" even though we didn't store
+    }
+    
     const user = Knack.getUserAttributes();
     console.log(`[Staff Homepage] Storing data in cache: ${cacheKey} (${type})`);
     
@@ -5500,6 +5530,16 @@ if (!container) {
   return;
 }
 
+// Add cache status indicator if cache is disabled
+const cacheStatusIndicator = CacheManager.isCacheDisabled() ? `
+<div id="cache-disabled-indicator" style="position: fixed; top: 10px; right: 10px; background: #ff9800; color: white; padding: 8px 15px; border-radius: 5px; z-index: 9999; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+  <i class="fas fa-exclamation-triangle"></i>
+  <div>
+    <strong>Cache Disabled</strong>
+    <div style="font-size: 12px;">Loading fresh data on each request</div>
+  </div>
+</div>` : '';
+
 // Add loading indicator HTML to the document
 const loadingIndicator = `
 <div id="api-loading-indicator" class="api-loading-indicator">
@@ -5744,6 +5784,7 @@ try {
   const homepageHTML = `
     <div id="staff-homepage">
     ${welcomeBanner}
+    ${cacheStatusIndicator}
     <div>
     <div class="top-row">
         <div class="profile-container">
@@ -8185,12 +8226,29 @@ function showCycleModal(state, cycles, customerId) {
     return;
   }
   
+  // Helper function to convert DD/MM/YYYY to YYYY-MM-DD for date input
+  const convertToInputDate = (dateStr) => {
+    if (!dateStr || dateStr === '') return '';
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2];
+      return `${year}-${month}-${day}`;
+    }
+    return '';
+  };
+  
   // Build the full modal with cycle data
   let cycleFormsHTML = '';
   
   for (let i = 1; i <= 3; i++) {
     const cycle = cycles[i];
     const isNew = cycle.isNew || false;
+    
+    // Convert UK dates to format needed for date input
+    const startDateValue = convertToInputDate(cycle.startDate);
+    const endDateValue = convertToInputDate(cycle.endDate);
     
     cycleFormsHTML += `
       <div class="cycle-form-section" data-cycle="${i}">
@@ -8201,22 +8259,24 @@ function showCycleModal(state, cycles, customerId) {
         <div class="cycle-form-row">
           <div class="cycle-form-group">
             <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Start Date</label>
-            <input type="text" 
+            <input type="date" 
                    id="cycle-${i}-start" 
                    class="cycle-date-input" 
-                   value="${cycle.startDate}" 
-                   placeholder="DD/MM/YYYY"
-                   maxlength="10"
+                   value="${startDateValue}" 
+                   min="2020-01-01"
+                   max="2030-12-31"
+                   data-original-value="${cycle.startDate}"
                    style="color: #333 !important; background: white !important;">
           </div>
           <div class="cycle-form-group">
             <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">End Date</label>
-            <input type="text" 
+            <input type="date" 
                    id="cycle-${i}-end" 
                    class="cycle-date-input" 
-                   value="${cycle.endDate}" 
-                   placeholder="DD/MM/YYYY"
-                   maxlength="10"
+                   value="${endDateValue}" 
+                   min="2020-01-01"
+                   max="2030-12-31"
+                   data-original-value="${cycle.endDate}"
                    style="color: #333 !important; background: white !important;">
           </div>
         </div>
@@ -8236,20 +8296,20 @@ function showCycleModal(state, cycles, customerId) {
   }
   
   const modalHTML = `
-    <div id="cycle-management-modal" class="vespa-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
-      <div class="vespa-modal-content" style="width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; background: #ffffff; color: #333; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 0;">
-        <div style="position: sticky; top: 0; background: linear-gradient(135deg, #0a2b8c 0%, #15348e 100%); padding: 20px 25px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; z-index: 10;">
+    <div id="cycle-management-modal" class="vespa-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; overflow-y: auto; padding: 20px;">
+      <div class="vespa-modal-content" style="width: 100%; max-width: 700px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: #ffffff; color: #333; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); margin: auto;">
+        <div style="flex-shrink: 0; background: linear-gradient(135deg, #0a2b8c 0%, #15348e 100%); padding: 20px 25px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
           <h3 style="margin: 0; color: white; font-size: 24px;">Manage Questionnaire Cycles</h3>
           <span class="vespa-modal-close" id="cycle-modal-close" style="color: white; font-size: 32px; cursor: pointer; line-height: 1; padding: 0 5px;">&times;</span>
         </div>
-        <div style="padding: 25px;">
+        <div style="flex: 1; overflow-y: auto; padding: 25px;">
         
         ${extraRecordsWarning}
         
         <div class="cycle-instructions" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 18px; margin-bottom: 25px; border-radius: 8px; border-left: 4px solid #00e5db;">
           <p style="margin: 0 0 12px 0; color: #0a2b8c; font-weight: 600; font-size: 16px;">📋 Instructions:</p>
           <ul style="margin: 0; padding-left: 20px; color: #333; line-height: 1.6;">
-            <li>Enter dates in UK format: <strong>DD/MM/YYYY</strong></li>
+            <li>Use the date pickers to select dates</li>
             <li>Cycles cannot overlap</li>
             <li>Recommended: Leave at least <strong>6 weeks</strong> between cycles</li>
             <li>All 3 cycles must have valid dates</li>
@@ -8306,10 +8366,18 @@ function showCycleModal(state, cycles, customerId) {
           gap: 15px;
         }
         
+        #cycle-management-modal {
+          padding: 10px;
+        }
+        
         #cycle-management-modal .vespa-modal-content {
-          width: 95%;
+          width: 100%;
           max-width: none;
-          margin: 10px;
+          max-height: calc(100vh - 20px);
+        }
+        
+        #cycle-management-modal h3 {
+          font-size: 18px !important;
         }
       }
       
@@ -8398,58 +8466,47 @@ function showCycleModal(state, cycles, customerId) {
     });
   }
   
-  // Add date input formatting
+  // Add date input change listeners for HTML5 date inputs
   document.querySelectorAll('.cycle-date-input').forEach(input => {
-    input.addEventListener('input', function(e) {
-      formatDateInput(e.target);
-    });
-    
-    input.addEventListener('blur', function(e) {
-      validateSingleDate(e.target);
+    input.addEventListener('change', function(e) {
+      // Date inputs automatically validate format
+      const dateValue = e.target.value;
+      if (dateValue) {
+        e.target.style.borderColor = '#66bb6a';
+      } else {
+        e.target.style.borderColor = '#e0e0e0';
+      }
     });
   });
 }
 
-// Format date input as user types
-function formatDateInput(input) {
-  let value = input.value.replace(/[^0-9]/g, '');
-  
-  if (value.length >= 3 && value.length <= 4) {
-    value = value.slice(0, 2) + '/' + value.slice(2);
-  } else if (value.length >= 5) {
-    value = value.slice(0, 2) + '/' + value.slice(2, 4) + '/' + value.slice(4, 8);
+// Convert YYYY-MM-DD to DD/MM/YYYY
+function convertFromInputDate(dateValue) {
+  if (!dateValue) return '';
+  const parts = dateValue.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const month = parts[1];
+    const day = parts[2];
+    return `${day}/${month}/${year}`;
   }
-  
-  input.value = value;
+  return '';
 }
 
-// Validate a single date input
+// Validate a date input (now using HTML5 date)
 function validateSingleDate(input) {
-  const dateStr = input.value;
-  if (!dateStr) return true;
+  const dateValue = input.value;
+  if (!dateValue) return false;
   
-  const parts = dateStr.split('/');
-  if (parts.length !== 3) {
-    input.style.borderColor = '#ef5350';
-    return false;
+  // HTML5 date inputs handle validation automatically
+  // Just check if a value exists
+  if (dateValue) {
+    input.style.borderColor = '#66bb6a';
+    return true;
   }
   
-  const day = parseInt(parts[0]);
-  const month = parseInt(parts[1]);
-  const year = parseInt(parts[2]);
-  
-  if (isNaN(day) || isNaN(month) || isNaN(year)) {
-    input.style.borderColor = '#ef5350';
-    return false;
-  }
-  
-  if (day < 1 || day > 31 || month < 1 || month > 12 || year < 2020 || year > 2030) {
-    input.style.borderColor = '#ef5350';
-    return false;
-  }
-  
-  input.style.borderColor = '#66bb6a';
-  return true;
+  input.style.borderColor = '#ef5350';
+  return false;
 }
 
 // Close the cycle modal
@@ -8477,24 +8534,22 @@ window.saveCycles = async function(customerId, existingCycles) {
     
     if (!startInput || !endInput) continue;
     
-    const startDate = startInput.value.trim();
-    const endDate = endInput.value.trim();
+    const startDateValue = startInput.value.trim();
+    const endDateValue = endInput.value.trim();
     
     // Validate required fields
-    if (!startDate || !endDate) {
+    if (!startDateValue || !endDateValue) {
       validationErrors.push(`Cycle ${i}: Both start and end dates are required`);
       continue;
     }
     
-    // Validate date formats
-    if (!validateSingleDate(startInput) || !validateSingleDate(endInput)) {
-      validationErrors.push(`Cycle ${i}: Invalid date format. Use DD/MM/YYYY`);
-      continue;
-    }
+    // Convert YYYY-MM-DD to DD/MM/YYYY for API
+    const startDate = convertFromInputDate(startDateValue);
+    const endDate = convertFromInputDate(endDateValue);
     
-    // Parse dates for comparison
-    const start = parseUKDate(startDate);
-    const end = parseUKDate(endDate);
+    // Parse dates for comparison (HTML5 date values are in YYYY-MM-DD format)
+    const start = new Date(startDateValue);
+    const end = new Date(endDateValue);
     
     if (start >= end) {
       validationErrors.push(`Cycle ${i}: End date must be after start date`);
@@ -8577,9 +8632,29 @@ window.saveCycles = async function(customerId, existingCycles) {
     }
     
     globalValidation.className = 'cycle-validation-message success';
-    globalValidation.innerHTML = 'Cycles saved successfully! Reloading page...';
+    globalValidation.innerHTML = 'Cycles saved successfully! Clearing cache and reloading...';
     
-    // Clear cache and reload
+    // Clear the cycle cache before reloading
+    try {
+      const user = Knack.getUserAttributes();
+      if (user && user.id) {
+        // Build cache keys to invalidate
+        const userCacheKey = CacheManager.createKey('user_cycles', `${user.id}_school_${customerId}`);
+        const schoolCacheKey = CacheManager.createKey('school_vespa', customerId, false);
+        
+        // Invalidate the caches
+        await Promise.all([
+          CacheManager.invalidate(userCacheKey, 'UserCycles'),
+          CacheManager.invalidate(schoolCacheKey, 'SchoolResults')
+        ]);
+        
+        console.log('[Staff Homepage] Cycle caches invalidated successfully');
+      }
+    } catch (cacheError) {
+      console.error('[Staff Homepage] Error invalidating cache:', cacheError);
+    }
+    
+    // Reload the page after a short delay
     setTimeout(() => {
       window.location.reload();
     }, 1500);
@@ -8593,7 +8668,9 @@ window.saveCycles = async function(customerId, existingCycles) {
 
 // Parse UK date string to Date object
 function parseUKDate(dateStr) {
+  if (!dateStr) return null;
   const parts = dateStr.split('/');
+  if (parts.length !== 3) return null;
   return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
 }
 
