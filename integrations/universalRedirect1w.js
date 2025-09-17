@@ -35,14 +35,14 @@ console.log('[Universal Redirect] Script loaded!');
     }
     
     function getUserType() {
-        console.log('[Universal Redirect] getUserType called');
+        log('getUserType called');
         const user = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes() : null;
         
-        console.log('[Universal Redirect] Raw user object:', user);
+        log('Raw user object:', user);
         
         if (!user) {
             log('No user found - showing default home page');
-            console.log('[Universal Redirect] No user found, returning null');
+            log('No user found, returning null');
             return null;
         }
         
@@ -59,16 +59,16 @@ console.log('[Universal Redirect] Script loaded!');
         let hasStaffRole = false;
         let hasStudentRole = false;
         
-        console.log('[Universal Redirect] DEBUG - Raw field_73 value:', user.values?.field_73);
-        console.log('[Universal Redirect] DEBUG - User values object:', user.values);
+        log('DEBUG - Raw field_73 value:', user.values?.field_73);
+        log('DEBUG - User values object:', user.values);
         
         if (user.values && (user.values.field_73 || user.values.profile_keys)) {
             // Check both field_73 (object_XX format) and profile_keys (profile_XX format)
             const field73Roles = user.values.field_73 ? (Array.isArray(user.values.field_73) ? user.values.field_73 : [user.values.field_73]) : [];
             const profileKeys = user.values.profile_keys ? (Array.isArray(user.values.profile_keys) ? user.values.profile_keys : [user.values.profile_keys]) : [];
             
-            console.log('[Universal Redirect] DEBUG - field_73 roles:', field73Roles);
-            console.log('[Universal Redirect] DEBUG - profile_keys:', profileKeys);
+            log('DEBUG - field_73 roles:', field73Roles);
+            log('DEBUG - profile_keys:', profileKeys);
             
             // Check for different role types using both formats
             hasSuperUserRole = profileKeys.includes('profile_21') || field73Roles.includes('object_21');
@@ -77,7 +77,7 @@ console.log('[Universal Redirect] Script loaded!');
             hasStudentRole = profileKeys.includes('profile_6') || profileKeys.includes('profile_4') || 
                             field73Roles.includes('object_6') || field73Roles.includes('object_4');
             
-            console.log('[Universal Redirect] DEBUG - Role detection results:', {
+            log('DEBUG - Role detection results:', {
                 hasSuperUserRole,
                 hasStaffAdminRole,
                 hasStaffRole,
@@ -95,7 +95,7 @@ console.log('[Universal Redirect] Script loaded!');
                 profileKeys
             });
         } else {
-            console.log('[Universal Redirect] DEBUG - No field_73 found in user.values');
+            log('DEBUG - No field_73 found in user.values');
         }
         
         // If user has super user role, check for session storage selection
@@ -166,30 +166,30 @@ console.log('[Universal Redirect] Script loaded!');
     }
     
     function redirectUser(userType) {
-        console.log('[Universal Redirect] redirectUser called with userType:', userType);
+        log('redirectUser called with userType:', userType);
         
         // CRITICAL: Check if navigation is in progress or redirect is bypassed
         if (window._bypassUniversalRedirect || window._universalRedirectCompleted || window._navigationInProgress) {
-            console.log('[Universal Redirect] Redirect bypassed due to navigation flags');
+            log('Redirect bypassed due to navigation flags');
             return;
         }
         
         // Check if there's a navigation target in session
         const navigationTarget = sessionStorage.getItem('navigationTarget');
         if (navigationTarget) {
-            console.log('[Universal Redirect] Navigation target exists:', navigationTarget, '- skipping redirect');
+            log('Navigation target exists:', navigationTarget + ' - skipping redirect');
             return;
         }
         
         // Prevent multiple redirects
         if (hasRedirected) {
-            console.log('[Universal Redirect] Already redirected, skipping');
+            log('Already redirected, skipping');
             return;
         }
         
         if (!userType) {
             log('No redirect needed - staying on home page');
-            console.log('[Universal Redirect] No user type detected');
+            log('No user type detected');
             // Don't show welcome page - let Knack handle the display
             return;
         }
@@ -240,14 +240,14 @@ console.log('[Universal Redirect] Script loaded!');
                            document.querySelector('input[type="password"]');
         
         if (hasLoginForm) {
-            console.log('[Universal Redirect] Login form detected, not showing welcome page');
+            log('Login form detected, not showing welcome page');
             return;
         }
         
         // Only show welcome page if container is empty or has default content
         const container = document.querySelector('.kn-scene-content') || document.querySelector('#kn-scene_1');
         if (container && container.children.length < 2) {
-            console.log('[Universal Redirect] Showing welcome page');
+            log('Showing welcome page');
             container.innerHTML = `
                 <div style="text-align: center; padding: 50px;">
                     <h1 style="color: #0a2b8c;">Welcome to VESPA Academy</h1>
@@ -265,33 +265,33 @@ console.log('[Universal Redirect] Script loaded!');
     }
     
     function initializeUniversalRedirect() {
-        console.log('[Universal Redirect] initializeUniversalRedirect called!');
+        log('initializeUniversalRedirect called!');
         
         // CRITICAL: Check if Universal Redirect is bypassed
         if (window._bypassUniversalRedirect || window._universalRedirectCompleted) {
-            console.log('[Universal Redirect] Bypass flag set, skipping redirect');
+            log('Bypass flag set, skipping redirect');
             return;
         }
         
         // Check if navigation is in progress
         if (window._navigationInProgress) {
-            console.log('[Universal Redirect] Navigation in progress, skipping redirect');
+            log('Navigation in progress, skipping redirect');
             return;
         }
         
         // Check session storage flags
         if (sessionStorage.getItem('universalRedirectCompleted') === 'true') {
-            console.log('[Universal Redirect] Session flag indicates redirect completed, skipping');
+            log('Session flag indicates redirect completed, skipping');
             return;
         }
         
         // Don't run if we've already redirected
         if (hasRedirected) {
-            console.log('[Universal Redirect] Already redirected, skipping initialization');
+            log('Already redirected, skipping initialization');
             return;
         }
         
-        console.log('[Universal Redirect] DEBUG - Starting initialization');
+        log('DEBUG - Starting initialization');
         log('Initializing Universal Redirect');
         
         // Multiple ways to check if we're on scene_1
@@ -303,7 +303,7 @@ console.log('[Universal Redirect] Script loaded!');
         const hasScene1Element = document.getElementById('kn-scene_1') || 
                                 document.querySelector('[data-scene-key="scene_1"]');
         
-        console.log('[Universal Redirect] Detection info:', {
+        log('Detection info:', {
             currentScene: currentScene,
             urlHash: urlHash,
             isHomeUrl: isHomeUrl,
@@ -313,7 +313,7 @@ console.log('[Universal Redirect] Script loaded!');
         // If we can't detect scene from Knack but we're on #home URL, proceed
         if (!currentScene && !isHomeUrl && !hasScene1Element) {
             log('Not on home scene, skipping redirect logic');
-            console.log('[Universal Redirect] Not on scene_1, exiting');
+            log('Not on scene_1, exiting');
             return;
         }
         
@@ -325,30 +325,30 @@ console.log('[Universal Redirect] Script loaded!');
             return;
         }
         
-        console.log('[Universal Redirect] On scene_1, will check user after delay');
+        log('On scene_1, will check user after delay');
         
         // Increased delay to ensure Knack user data is loaded
         setTimeout(() => {
-            console.log('[Universal Redirect] DEBUG - Timeout fired, checking user type...');
+            log('DEBUG - Timeout fired, checking user type...');
             
             // First check if user is logged in at all
             const user = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes() : null;
-            console.log('[Universal Redirect] DEBUG - User object from Knack:', user);
+            log('DEBUG - User object from Knack:', user);
             
             if (!user || !user.email) {
-                console.log('[Universal Redirect] No user logged in, not redirecting');
+                log('No user logged in, not redirecting');
                 // Don't show welcome page or do anything - let Knack handle the login
                 return;
             }
             
-            console.log('[Universal Redirect] DEBUG - User is logged in, proceeding with type detection');
+            log('DEBUG - User is logged in, proceeding with type detection');
             
             // Check if we're already on the correct page to avoid unnecessary redirects
             const userType = getUserType();
-            console.log('[Universal Redirect] DEBUG - Detected user type:', userType);
+            log('DEBUG - Detected user type:', userType);
             
             const currentUrl = window.location.hash;
-            console.log('[Universal Redirect] DEBUG - Current URL hash:', currentUrl);
+            log('DEBUG - Current URL hash:', currentUrl);
             
             // Don't redirect if user is already on their correct page
             if ((userType === 'student' && currentUrl.includes('#landing-page')) ||
@@ -357,11 +357,11 @@ console.log('[Universal Redirect] Script loaded!');
                 (userType === 'staffAdminCoaching' && currentUrl.includes('#staff-landing-page')) ||
                 (userType === 'staffAdminResource' && currentUrl.includes('#resources-homepage')) ||
                 (userType === 'superUser' && currentUrl.includes('#oversight-page'))) {
-                console.log('[Universal Redirect] User already on correct page, no redirect needed');
+                log('User already on correct page, no redirect needed');
                 return;
             }
             
-            console.log('[Universal Redirect] User type detected:', userType);
+            log('User type detected:', userType);
             redirectUser(userType);
         }, 1500); // Slightly longer delay to let homepages load first
     }
@@ -371,12 +371,12 @@ console.log('[Universal Redirect] Script loaded!');
     
     // Auto-initialize on scene render
     $(document).on('knack-scene-render.scene_1', function(event, scene) {
-        console.log('[Universal Redirect] Scene 1 render event fired!', scene);
+        log('Scene 1 render event fired!', scene);
         
         // Check if we should skip
         if (window._bypassUniversalRedirect || window._universalRedirectCompleted || 
             window._navigationInProgress || sessionStorage.getItem('universalRedirectCompleted') === 'true') {
-            console.log('[Universal Redirect] Skipping auto-initialize due to bypass flags');
+            log('Skipping auto-initialize due to bypass flags');
             return;
         }
         
