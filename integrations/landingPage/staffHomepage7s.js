@@ -1,10 +1,10 @@
 // Staff Homepage Integration Script for Knack - v1.0
 
 (function() {
-  window.STAFFHOMEPAGE_ACTIVE = true;
+  window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = false; // Set to true for development/testing
+  const DEBUG_MODE = true; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
