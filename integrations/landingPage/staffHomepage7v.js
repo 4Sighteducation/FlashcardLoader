@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = true; // Set to true for development/testing
+  const DEBUG_MODE = false; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
@@ -8194,25 +8194,30 @@ function showCycleModal(state, cycles, customerId) {
     
     cycleFormsHTML += `
       <div class="cycle-form-section" data-cycle="${i}">
-        <h4 style="color: #0a2b8c; margin-top: 0;">Cycle ${i} ${isNew ? '<span style="color: #ff6b6b;">(New - Not Yet Created)</span>' : ''}</h4>
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+          <div style="background: linear-gradient(135deg, #00e5db 0%, #00b8d4 100%); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px;">${i}</div>
+          <h4 style="color: #0a2b8c; margin: 0; flex: 1;">Cycle ${i} ${isNew ? '<span style="color: #ff6b6b; font-size: 14px; font-weight: normal;">(New - Not Yet Created)</span>' : ''}</h4>
+        </div>
         <div class="cycle-form-row">
           <div class="cycle-form-group">
-            <label>Start Date (DD/MM/YYYY)</label>
+            <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Start Date</label>
             <input type="text" 
                    id="cycle-${i}-start" 
                    class="cycle-date-input" 
                    value="${cycle.startDate}" 
                    placeholder="DD/MM/YYYY"
-                   maxlength="10">
+                   maxlength="10"
+                   style="color: #333 !important; background: white !important;">
           </div>
           <div class="cycle-form-group">
-            <label>End Date (DD/MM/YYYY)</label>
+            <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">End Date</label>
             <input type="text" 
                    id="cycle-${i}-end" 
                    class="cycle-date-input" 
                    value="${cycle.endDate}" 
                    placeholder="DD/MM/YYYY"
-                   maxlength="10">
+                   maxlength="10"
+                   style="color: #333 !important; background: white !important;">
           </div>
         </div>
         <div id="cycle-${i}-validation" class="cycle-validation-message"></div>
@@ -8231,19 +8236,22 @@ function showCycleModal(state, cycles, customerId) {
   }
   
   const modalHTML = `
-    <div id="cycle-management-modal" class="vespa-modal" style="display: block; z-index: 10000;">
-      <div class="vespa-modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto; background: white; color: #333;">
-        <span class="vespa-modal-close" id="cycle-modal-close" style="color: #333; font-size: 32px;">&times;</span>
-        <h3 style="margin-bottom: 20px; color: #0a2b8c;">Manage Questionnaire Cycles</h3>
+    <div id="cycle-management-modal" class="vespa-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+      <div class="vespa-modal-content" style="width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; background: #ffffff; color: #333; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 0;">
+        <div style="position: sticky; top: 0; background: linear-gradient(135deg, #0a2b8c 0%, #15348e 100%); padding: 20px 25px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; z-index: 10;">
+          <h3 style="margin: 0; color: white; font-size: 24px;">Manage Questionnaire Cycles</h3>
+          <span class="vespa-modal-close" id="cycle-modal-close" style="color: white; font-size: 32px; cursor: pointer; line-height: 1; padding: 0 5px;">&times;</span>
+        </div>
+        <div style="padding: 25px;">
         
         ${extraRecordsWarning}
         
-        <div class="cycle-instructions" style="background-color: #e3f2fd; padding: 15px; margin-bottom: 20px; border-radius: 4px; color: #0a2b8c;">
-          <p style="margin: 0 0 10px 0; color: #0a2b8c;"><strong>Instructions:</strong></p>
-          <ul style="margin: 0; padding-left: 20px; color: #333;">
-            <li>Enter dates in UK format: DD/MM/YYYY</li>
+        <div class="cycle-instructions" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 18px; margin-bottom: 25px; border-radius: 8px; border-left: 4px solid #00e5db;">
+          <p style="margin: 0 0 12px 0; color: #0a2b8c; font-weight: 600; font-size: 16px;">📋 Instructions:</p>
+          <ul style="margin: 0; padding-left: 20px; color: #333; line-height: 1.6;">
+            <li>Enter dates in UK format: <strong>DD/MM/YYYY</strong></li>
             <li>Cycles cannot overlap</li>
-            <li>Recommended: Leave at least 6 weeks between cycles</li>
+            <li>Recommended: Leave at least <strong>6 weeks</strong> between cycles</li>
             <li>All 3 cycles must have valid dates</li>
           </ul>
         </div>
@@ -8254,40 +8262,55 @@ function showCycleModal(state, cycles, customerId) {
         
         <div id="cycle-global-validation" class="cycle-validation-message" style="margin-top: 20px;"></div>
         
-        <div class="vespa-modal-buttons" style="margin-top: 30px;">
-          <button class="vespa-btn vespa-btn-primary" id="cycle-save-btn">Save Cycles</button>
-          <button id="cycle-cancel-btn" class="vespa-btn vespa-btn-neutral">Cancel</button>
+        <div class="vespa-modal-buttons" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 15px; justify-content: flex-end;">
+          <button id="cycle-cancel-btn" style="padding: 12px 30px; background: #f5f5f5; color: #333; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s;">Cancel</button>
+          <button class="vespa-btn vespa-btn-primary" id="cycle-save-btn" style="padding: 12px 30px; background: linear-gradient(135deg, #00e5db 0%, #00b8d4 100%); color: #0a2b8c; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,229,219,0.3);">Save Cycles</button>
+        </div>
         </div>
       </div>
     </div>
     
     <style>
-      #cycle-management-modal .vespa-modal-content {
-        background: white !important;
+      #cycle-management-modal * {
+        box-sizing: border-box;
       }
       
-      #cycle-management-modal h3,
-      #cycle-management-modal h4 {
-        color: #0a2b8c !important;
+      #cycle-management-modal .vespa-modal-close:hover {
+        opacity: 0.8;
+        transform: scale(1.1);
       }
       
-      #cycle-management-modal label {
-        color: #333 !important;
+      #cycle-management-modal button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       }
       
       .cycle-form-section {
-        background: #f9f9f9;
-        padding: 15px;
-        margin-bottom: 15px;
-        border-radius: 8px;
-        border: 1px solid #ddd;
+        background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       }
       
       .cycle-form-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 20px;
-        margin-top: 15px;
+      }
+      
+      @media (max-width: 600px) {
+        .cycle-form-row {
+          grid-template-columns: 1fr;
+          gap: 15px;
+        }
+        
+        #cycle-management-modal .vespa-modal-content {
+          width: 95%;
+          max-width: none;
+          margin: 10px;
+        }
       }
       
       .cycle-form-group {
@@ -8302,16 +8325,25 @@ function showCycleModal(state, cycles, customerId) {
       }
       
       .cycle-date-input {
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 14px;
+        padding: 12px 14px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 15px;
+        color: #333 !important;
+        background-color: #ffffff !important;
+        transition: all 0.2s;
+        width: 100%;
       }
       
       .cycle-date-input:focus {
         outline: none;
         border-color: #00e5db;
-        box-shadow: 0 0 0 2px rgba(0, 229, 219, 0.2);
+        box-shadow: 0 0 0 3px rgba(0, 229, 219, 0.15);
+        background-color: #ffffff !important;
+      }
+      
+      .cycle-date-input::placeholder {
+        color: #999 !important;
       }
       
       .cycle-validation-message {
