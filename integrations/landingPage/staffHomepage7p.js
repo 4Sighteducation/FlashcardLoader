@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = true; // Set to true for development/testing - ENABLED FOR DEBUGGING STAFF ADMIN CHART ISSUE
+  const DEBUG_MODE = false; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
@@ -40,7 +40,7 @@ const IS_DEVELOPMENT = window.location.hostname === 'localhost' ||
                      window.location.hostname === '127.0.0.1' ||
                      window.location.hostname.includes('dev') ||
                      window.location.hostname.includes('staging');
-const CURRENT_LOG_LEVEL = LOG_LEVELS.DEBUG; // Temporarily set to DEBUG for troubleshooting
+const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
 
 (function() {
   // Save original console methods
@@ -1828,8 +1828,15 @@ try {
   // Try to get from cache first
   const cachedResults = await CacheManager.get(cacheKey, 'SchoolResults');
   if (cachedResults) {
-    console.log(`[Staff Homepage] Using cached VESPA results for school ${schoolId}`);
-    return cachedResults;
+    // Validate cached data - don't use if it has 0 results (likely stale/wrong)
+    if (cachedResults.count && cachedResults.count > 0) {
+      console.log(`[Staff Homepage] Using cached VESPA results for school ${schoolId} (${cachedResults.count} students)`);
+      return cachedResults;
+    } else {
+      console.warn(`[Staff Homepage - DEBUG] Cached results had 0 students - clearing bad cache and fetching fresh data`);
+      // Clear the bad cache entry
+      await CacheManager.clear(cacheKey, 'SchoolResults');
+    }
   }
   
   console.log(`[Staff Homepage] Cache miss for school ${schoolId}, fetching fresh data`);
@@ -1977,8 +1984,13 @@ try {
       
     debugLog("Calculated school VESPA averages:", averages);
     
-    // Store in cache for future use
-    await CacheManager.set(cacheKey, averages, 'SchoolResults', 120); // 2 hour TTL
+    // Store in cache for future use - but only if we have actual results
+    if (averages.count > 0) {
+      await CacheManager.set(cacheKey, averages, 'SchoolResults', 120); // 2 hour TTL
+      console.log(`[Staff Homepage - DEBUG] Cached ${averages.count} school VESPA results`);
+    } else {
+      console.warn('[Staff Homepage - DEBUG] Not caching empty school results - will fetch fresh next time');
+    }
     
     return averages;
   }
@@ -2336,8 +2348,13 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     
     debugLog("Calculated staff connected students VESPA averages:", averages);
     
-    // Store in cache for future use (120 minutes TTL = 2 hours)
-    await CacheManager.set(staffCacheKey, averages, 'StaffResults', 120);
+    // Store in cache for future use (120 minutes TTL = 2 hours) - but only if we have results
+    if (averages.count > 0) {
+      await CacheManager.set(staffCacheKey, averages, 'StaffResults', 120);
+      console.log(`[Staff Homepage - DEBUG] Cached ${averages.count} staff VESPA results`);
+    } else {
+      console.warn('[Staff Homepage - DEBUG] Not caching empty staff results');
+    }
     
     return averages;
   } catch (error) {
@@ -2539,6 +2556,101 @@ if (unassignedRecords.length > 0) {
     return cycles;
   } catch (error) {
     console.error('[Staff Homepage] Error getting cycle data:', error);
+    return null;
+  }
+}
+
+// Function to determine current academic year
+function getCurrentAcademicYear() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0-indexed (0 = January)
+  const day = today.getDate();
+  
+  // Academic year starts September 1st
+  // If we're in September or later, we're in the new academic year
+  // If we're before September, we're in the previous academic year
+  if (month >= 8) { // September (8) or later
+    return `${year}-${year + 1}`;
+  } else {
+    return `${year - 1}-${year}`;
+  }
+}
+
+// Function to fetch national benchmark data from object_120
+async function getNationalBenchmarkData() {
+  try {
+    const academicYear = getCurrentAcademicYear();
+    console.log('[Staff Homepage] Fetching national benchmark data for academic year:', academicYear);
+    
+    // Create cache key for national data
+    const cacheKey = `national_benchmark_${academicYear}`;
+    
+    // Try cache first
+    const cached = await CacheManager.get(cacheKey, 'NationalBenchmarks');
+    if (cached) {
+      console.log('[Staff Homepage] Using cached national benchmark data');
+      return cached;
+    }
+    
+    // Filter by academic year (field_3308)
+    const filters = encodeURIComponent(JSON.stringify({
+      match: 'and',
+      rules: [
+        { field: 'field_3308', operator: 'is', value: academicYear }
+      ]
+    }));
+    
+    const response = await KnackAPIQueue.addRequest({
+      url: `${KNACK_API_URL}/objects/object_120/records?filters=${filters}`,
+      type: 'GET',
+      headers: getKnackHeaders()
+    });
+    
+    if (!response.records || response.records.length === 0) {
+      console.warn('[Staff Homepage] No national benchmark data found for', academicYear);
+      return null;
+    }
+    
+    // Extract the benchmark data for all cycles
+    const record = response.records[0];
+    const benchmarkData = {
+      academicYear,
+      cycle1: {
+        vision: parseFloat(record.field_3292) || 0,
+        effort: parseFloat(record.field_3293) || 0,
+        systems: parseFloat(record.field_3294) || 0,
+        practice: parseFloat(record.field_3295) || 0,
+        attitude: parseFloat(record.field_3296) || 0,
+        overall: parseFloat(record.field_3406) || 0
+      },
+      cycle2: {
+        vision: parseFloat(record.field_3297) || 0,
+        effort: parseFloat(record.field_3298) || 0,
+        systems: parseFloat(record.field_3299) || 0,
+        practice: parseFloat(record.field_3300) || 0,
+        attitude: parseFloat(record.field_3301) || 0,
+        overall: parseFloat(record.field_3407) || 0
+      },
+      cycle3: {
+        vision: parseFloat(record.field_3302) || 0,
+        effort: parseFloat(record.field_3303) || 0,
+        systems: parseFloat(record.field_3304) || 0,
+        practice: parseFloat(record.field_3305) || 0,
+        attitude: parseFloat(record.field_3306) || 0,
+        overall: parseFloat(record.field_3307) || 0
+      }
+    };
+    
+    console.log('[Staff Homepage] National benchmark data:', benchmarkData);
+    
+    // Cache for 24 hours
+    await CacheManager.set(cacheKey, benchmarkData, 'NationalBenchmarks', 1440);
+    
+    return benchmarkData;
+    
+  } catch (error) {
+    console.error('[Staff Homepage] Error fetching national benchmark data:', error);
     return null;
   }
 }
@@ -2972,11 +3084,10 @@ function renderCycleSection(cycleData, hasAdminRole) {
   
   // Admin button HTML - only shown for staff admin users
   const adminButton = hasAdminRole ? `
-    <a href="https://vespaacademy.knack.com/vespa-academy#manage-cycles/" 
-       class="cycle-admin-button" 
-       target="_blank">
-      <i class="fas fa-cog"></i> Update Cycles
-    </a>
+    <button id="manage-cycles-btn"
+       class="cycle-admin-button">
+      <i class="fas fa-cog"></i> Manage Cycles
+    </button>
   ` : '';
   
   // Render the complete section
@@ -3014,7 +3125,7 @@ function initializeVESPACharts(schoolResults, staffResults, hasAdminRole) {
       script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
       script.onload = () => {
         debugLog("Chart.js loaded successfully");
-        createCharts(schoolResults, staffResults, hasAdminRole);
+        createCharts(schoolResults, staffResults, hasAdminRole, nationalData, cycleData);
       };
       script.onerror = (error) => {
         console.error("[Staff Homepage] Failed to load Chart.js:", error);
@@ -3030,13 +3141,15 @@ function initializeVESPACharts(schoolResults, staffResults, hasAdminRole) {
 }
 
 // Lazy load VESPA charts using Intersection Observer
-function lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole) {
+function lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole, nationalData, cycleData) {
 try {
   // Store chart data in window for when we need it
   window.chartData = {
     schoolResults,
     staffResults,
-    hasAdminRole
+    hasAdminRole,
+    nationalData,
+    cycleData
   };
   
   // Add placeholder/loading indicator to chart wrapper
@@ -3070,9 +3183,11 @@ try {
               debugLog("Chart.js loaded successfully");
               // Create chart with stored data
               createCharts(
-                window.chartData.schoolResults, 
-                window.chartData.staffResults, 
-                window.chartData.hasAdminRole
+                window.chartData.schoolResults,
+                window.chartData.staffResults,
+                window.chartData.hasAdminRole,
+                window.chartData.nationalData,
+                window.chartData.cycleData
               );
             };
             script.onerror = (error) => {
@@ -3083,11 +3198,13 @@ try {
             document.head.appendChild(script);
           } else {
             // Chart.js already loaded, create charts immediately
-            createCharts(
-              window.chartData.schoolResults, 
-              window.chartData.staffResults, 
-              window.chartData.hasAdminRole
-            );
+              createCharts(
+                window.chartData.schoolResults,
+                window.chartData.staffResults,
+                window.chartData.hasAdminRole,
+                window.chartData.nationalData,
+                window.chartData.cycleData
+              );
           }
           
           // Disconnect observer after loading
@@ -3108,7 +3225,7 @@ try {
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js';
       script.onload = () => {
-        createCharts(schoolResults, staffResults, hasAdminRole);
+        createCharts(schoolResults, staffResults, hasAdminRole, nationalData, cycleData);
       };
       document.head.appendChild(script);
     } else {
@@ -3121,8 +3238,12 @@ try {
 }
 
 // Create the actual charts once Chart.js is loaded
-function createCharts(schoolResults, staffResults, hasAdminRole) {
+function createCharts(schoolResults, staffResults, hasAdminRole, nationalData, cycleData) {
   if (!schoolResults) return;
+  
+  // Determine current cycle for national data
+  const currentCycle = cycleData?.currentCycle || 1;
+  console.log('[Staff Homepage - DEBUG] Using cycle', currentCycle, 'for national benchmarks');
   
   // Calculate percentage differences between staff and school results
   if (staffResults && schoolResults) {
@@ -3214,13 +3335,67 @@ function createCharts(schoolResults, staffResults, hasAdminRole) {
     });
   }
   
-  // Create the grouped bar chart
-  new Chart(chartCtx, {
+  // Prepare national benchmark data if available
+  let nationalBenchmarks = null;
+  if (nationalData && currentCycle) {
+    const cycleKey = `cycle${currentCycle}`;
+    const cycleBenchmarks = nationalData[cycleKey];
+    
+    if (cycleBenchmarks) {
+      nationalBenchmarks = [
+        cycleBenchmarks.vision,
+        cycleBenchmarks.effort,
+        cycleBenchmarks.systems,
+        cycleBenchmarks.practice,
+        cycleBenchmarks.attitude
+      ];
+      
+      console.log('[Staff Homepage] National benchmarks for cycle', currentCycle, ':', nationalBenchmarks);
+    }
+  }
+  
+  // Create chart configuration with national benchmark plugin if available
+  const chartConfig = {
     type: 'bar',
     data: {
       labels: ['Vision', 'Effort', 'Systems', 'Practice', 'Attitude'],
       datasets: datasets
     },
+    plugins: nationalBenchmarks ? [{
+      id: 'nationalBenchmarks',
+      afterDatasetsDraw: function(chart) {
+        const ctx = chart.ctx;
+        const meta = chart.getDatasetMeta(0); // Use first dataset for positioning
+        const yScale = chart.scales.y;
+        
+        // Draw benchmark lines for each VESPA category
+        nationalBenchmarks.forEach((value, index) => {
+          if (value > 0 && meta.data[index]) {
+            const y = yScale.getPixelForValue(value);
+            const barData = meta.data[index];
+            const x = barData.x;
+            const barWidth = barData.width || 60;
+            
+            // Draw horizontal line across the bar width
+            ctx.save();
+            ctx.strokeStyle = '#FF0000'; // Red color for national average
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 3]); // Dashed line
+            ctx.beginPath();
+            ctx.moveTo(x - barWidth/2 - 10, y);
+            ctx.lineTo(x + barWidth/2 + 10, y);
+            ctx.stroke();
+            
+            // Add label for the national average
+            ctx.fillStyle = '#FF0000';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`UK: ${value.toFixed(1)}`, x, y - 5);
+            ctx.restore();
+          }
+        });
+      }
+    }] : [],
     options: {
       scales: {
         y: {
@@ -3289,7 +3464,18 @@ function createCharts(schoolResults, staffResults, hasAdminRole) {
             footer: function(tooltipItems) {
               const datasetIndex = tooltipItems[0].datasetIndex;
               const count = datasetIndex === 0 ? schoolResults.count : staffResults?.count;
-              return `Based on ${count} students`;
+              const footer = [`Based on ${count} students`];
+              
+              // Add national benchmark to tooltip if available
+              if (nationalBenchmarks) {
+                const categoryIndex = tooltipItems[0].dataIndex;
+                const nationalValue = nationalBenchmarks[categoryIndex];
+                if (nationalValue > 0) {
+                  footer.push(`UK Average: ${nationalValue.toFixed(1)}`);
+                }
+              }
+              
+              return footer;
             }
           }
         }
@@ -3297,7 +3483,10 @@ function createCharts(schoolResults, staffResults, hasAdminRole) {
       responsive: true,
       maintainAspectRatio: false
     }
-  });
+  };
+  
+  // Create the chart
+  new Chart(chartCtx, chartConfig);
 }
 
 // Set up tooltips for app cards
@@ -5532,16 +5721,18 @@ try {
   }
   
   console.log('[Staff Homepage - DEBUG] About to fetch VESPA data...');
-  const [schoolResults, staffResults, cycleData] = await Promise.all([
+  const [schoolResults, staffResults, cycleData, nationalData] = await Promise.all([
     getSchoolVESPAResults(profileData.schoolId),
     profileData.email ? getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null,
-    profileData.userId ? getQuestionnaireCycleData(profileData.userId, profileData.schoolId) : null
+    profileData.userId ? getQuestionnaireCycleData(profileData.userId, profileData.schoolId) : null,
+    getNationalBenchmarkData() // Fetch national benchmark data
   ]);
   
   console.log('[Staff Homepage - DEBUG] VESPA Data Fetched:');
   console.log('[Staff Homepage - DEBUG] - schoolResults:', schoolResults ? `Found ${schoolResults.count} students` : 'NULL');
   console.log('[Staff Homepage - DEBUG] - staffResults:', staffResults ? `Found ${staffResults.count} students` : 'NULL');
   console.log('[Staff Homepage - DEBUG] - cycleData:', cycleData ? 'Available' : 'NULL');
+  console.log('[Staff Homepage - DEBUG] - nationalData:', nationalData ? 'Available' : 'NULL');
   
   // Build the homepage HTML with updated layout
   const homepageHTML = `
@@ -5650,9 +5841,9 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   container.innerHTML = '';
   container.appendChild(fragment);
   
-  // Initialize charts with lazy loading
+  // Initialize charts with lazy loading - pass national data
   if (schoolResults) {
-    lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole);
+    lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole, nationalData, cycleData);
   }
   
   // Initialize tooltips
@@ -5698,6 +5889,17 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
 // Setup cycle refresh button
 if (profileData && profileData.userId) {
   setupCycleRefresh(profileData.userId, profileData.schoolId);
+}
+
+// Setup cycle management button for admins
+if (hasAdminRole) {
+  setTimeout(() => {
+    const manageCyclesBtn = document.getElementById('manage-cycles-btn');
+    if (manageCyclesBtn) {
+      manageCyclesBtn.addEventListener('click', window.openCycleManagementModal);
+      console.log('[Staff Homepage] Cycle management button initialized');
+    }
+  }, 100);
 }
 
 // Setup welcome banner close button
@@ -7694,5 +7896,572 @@ if (feedbackRequest.screenshot) {
 
   console.log('[Student Emulation Setup] Module initialized and ready');
 })();
+
+// === CYCLE MANAGEMENT MODAL FUNCTIONS ===
+
+// Function to open the cycle management modal
+window.openCycleManagementModal = async function() {
+  console.log('[Staff Homepage] Opening cycle management modal...');
+  
+  try {
+    // Get the current user and their school ID
+    const user = Knack.getUserAttributes();
+    if (!user || !user.email) {
+      alert('Unable to verify user authentication');
+      return;
+    }
+    
+    // Get the staff record to find the connected customer
+    const staffRecord = await findStaffRecord(user.email);
+    if (!staffRecord) {
+      alert('Unable to find staff record');
+      return;
+    }
+    
+    // Extract the customer ID from field_122
+    const customerConnection = staffRecord.field_122;
+    let customerId = null;
+    
+    if (customerConnection) {
+      if (Array.isArray(customerConnection) && customerConnection.length > 0) {
+        customerId = customerConnection[0];
+      } else if (typeof customerConnection === 'string') {
+        customerId = customerConnection;
+      } else if (customerConnection.id) {
+        customerId = customerConnection.id;
+      }
+    }
+    
+    if (!customerId) {
+      alert('Unable to find your connected school/customer');
+      return;
+    }
+    
+    console.log('[Staff Homepage] Customer ID for cycles:', customerId);
+    
+    // Show loading state
+    showCycleModal('loading');
+    
+    // Fetch existing cycle records from object_66
+    const cycles = await fetchCycleRecords(customerId);
+    
+    // Show the modal with cycle data
+    showCycleModal('loaded', cycles, customerId);
+    
+  } catch (error) {
+    console.error('[Staff Homepage] Error opening cycle management:', error);
+    alert('Error loading cycle management. Please try again.');
+  }
+};
+
+// Function to fetch cycle records from object_66
+async function fetchCycleRecords(customerId) {
+  console.log('[Staff Homepage] Fetching cycle records for customer:', customerId);
+  
+  const filters = encodeURIComponent(JSON.stringify({
+    match: 'and',
+    rules: [
+      { field: 'field_1585', operator: 'is', value: customerId }
+    ]
+  }));
+  
+  try {
+    const response = await KnackAPIQueue.addRequest({
+      url: `${KNACK_API_URL}/objects/object_66/records?filters=${filters}&rows_per_page=100`,
+      type: 'GET',
+      headers: getKnackHeaders()
+    });
+    
+    console.log(`[Staff Homepage] Found ${response.records?.length || 0} cycle records`);
+    
+    // Process and validate cycles
+    return processCycleRecords(response.records || [], customerId);
+    
+  } catch (error) {
+    console.error('[Staff Homepage] Error fetching cycles:', error);
+    throw error;
+  }
+}
+
+// Process and validate cycle records
+function processCycleRecords(records, customerId) {
+  const cycles = {
+    1: null,
+    2: null,
+    3: null,
+    extras: []
+  };
+  
+  // Sort records into cycles
+  records.forEach(record => {
+    const cycleNum = parseInt(record.field_1579) || 0;
+    
+    if (cycleNum >= 1 && cycleNum <= 3) {
+      if (cycles[cycleNum]) {
+        // Duplicate cycle number - add to extras for cleanup
+        cycles.extras.push(record);
+      } else {
+        cycles[cycleNum] = {
+          id: record.id,
+          cycleNumber: cycleNum,
+          startDate: record.field_1678 || '',
+          endDate: record.field_1580 || '',
+          staffAdmins: record.field_2671 || []
+        };
+      }
+    } else {
+      // Invalid cycle number
+      cycles.extras.push(record);
+    }
+  });
+  
+  // Log any issues found
+  if (cycles.extras.length > 0) {
+    console.warn(`[Staff Homepage] Found ${cycles.extras.length} extra/invalid cycle records that need cleanup`);
+  }
+  
+  // Check for missing cycles
+  const missingCycles = [];
+  for (let i = 1; i <= 3; i++) {
+    if (!cycles[i]) {
+      missingCycles.push(i);
+      // Initialize empty cycle
+      cycles[i] = {
+        id: null,
+        cycleNumber: i,
+        startDate: '',
+        endDate: '',
+        staffAdmins: [],
+        isNew: true
+      };
+    }
+  }
+  
+  if (missingCycles.length > 0) {
+    console.log(`[Staff Homepage] Missing cycles: ${missingCycles.join(', ')} - will prompt to create`);
+  }
+  
+  return cycles;
+}
+
+// Show the cycle management modal
+function showCycleModal(state, cycles, customerId) {
+  // Remove any existing modal
+  const existingModal = document.getElementById('cycle-management-modal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  if (state === 'loading') {
+    // Show loading modal
+    const loadingModal = `
+      <div id="cycle-management-modal" class="vespa-modal" style="display: block;">
+        <div class="vespa-modal-content" style="max-width: 600px;">
+          <h3>Loading Cycle Management...</h3>
+          <div style="text-align: center; padding: 40px;">
+            <div class="api-loading-spinner" style="margin: 0 auto;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', loadingModal);
+    return;
+  }
+  
+  // Build the full modal with cycle data
+  let cycleFormsHTML = '';
+  
+  for (let i = 1; i <= 3; i++) {
+    const cycle = cycles[i];
+    const isNew = cycle.isNew || false;
+    
+    cycleFormsHTML += `
+      <div class="cycle-form-section" data-cycle="${i}">
+        <h4>Cycle ${i} ${isNew ? '<span style="color: #ff6b6b;">(New - Not Yet Created)</span>' : ''}</h4>
+        <div class="cycle-form-row">
+          <div class="cycle-form-group">
+            <label>Start Date (DD/MM/YYYY)</label>
+            <input type="text" 
+                   id="cycle-${i}-start" 
+                   class="cycle-date-input" 
+                   value="${cycle.startDate}" 
+                   placeholder="DD/MM/YYYY"
+                   maxlength="10">
+          </div>
+          <div class="cycle-form-group">
+            <label>End Date (DD/MM/YYYY)</label>
+            <input type="text" 
+                   id="cycle-${i}-end" 
+                   class="cycle-date-input" 
+                   value="${cycle.endDate}" 
+                   placeholder="DD/MM/YYYY"
+                   maxlength="10">
+          </div>
+        </div>
+        <div id="cycle-${i}-validation" class="cycle-validation-message"></div>
+      </div>
+    `;
+  }
+  
+  // Add extra records warning if needed
+  let extraRecordsWarning = '';
+  if (cycles.extras && cycles.extras.length > 0) {
+    extraRecordsWarning = `
+      <div class="cycle-warning" style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin-bottom: 20px; border-radius: 4px;">
+        <strong>⚠️ Warning:</strong> Found ${cycles.extras.length} duplicate/invalid cycle records that will be cleaned up when you save.
+      </div>
+    `;
+  }
+  
+  const modalHTML = `
+    <div id="cycle-management-modal" class="vespa-modal" style="display: block;">
+      <div class="vespa-modal-content" style="max-width: 700px;">
+        <span class="vespa-modal-close" onclick="closeCycleModal()">&times;</span>
+        <h3 style="margin-bottom: 20px;">Manage Questionnaire Cycles</h3>
+        
+        ${extraRecordsWarning}
+        
+        <div class="cycle-instructions" style="background-color: #e3f2fd; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+          <p style="margin: 0 0 10px 0;"><strong>Instructions:</strong></p>
+          <ul style="margin: 0; padding-left: 20px;">
+            <li>Enter dates in UK format: DD/MM/YYYY</li>
+            <li>Cycles cannot overlap</li>
+            <li>Recommended: Leave at least 6 weeks between cycles</li>
+            <li>All 3 cycles must have valid dates</li>
+          </ul>
+        </div>
+        
+        <div id="cycle-forms">
+          ${cycleFormsHTML}
+        </div>
+        
+        <div id="cycle-global-validation" class="cycle-validation-message" style="margin-top: 20px;"></div>
+        
+        <div class="vespa-modal-buttons" style="margin-top: 30px;">
+          <button onclick="saveCycles('${customerId}', ${JSON.stringify(cycles).replace(/"/g, '&quot;')})" class="vespa-btn vespa-btn-primary">Save Cycles</button>
+          <button onclick="closeCycleModal()" class="vespa-btn vespa-btn-neutral">Cancel</button>
+        </div>
+      </div>
+    </div>
+    
+    <style>
+      .cycle-form-section {
+        background: #f5f5f5;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+      }
+      
+      .cycle-form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 15px;
+      }
+      
+      .cycle-form-group {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .cycle-form-group label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+      }
+      
+      .cycle-date-input {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      
+      .cycle-date-input:focus {
+        outline: none;
+        border-color: #00e5db;
+        box-shadow: 0 0 0 2px rgba(0, 229, 219, 0.2);
+      }
+      
+      .cycle-validation-message {
+        margin-top: 10px;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        display: none;
+      }
+      
+      .cycle-validation-message.error {
+        display: block;
+        background-color: #ffebee;
+        color: #c62828;
+        border: 1px solid #ef5350;
+      }
+      
+      .cycle-validation-message.warning {
+        display: block;
+        background-color: #fff3e0;
+        color: #e65100;
+        border: 1px solid #ff9800;
+      }
+      
+      .cycle-validation-message.success {
+        display: block;
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        border: 1px solid #66bb6a;
+      }
+    </style>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  // Add date input formatting
+  document.querySelectorAll('.cycle-date-input').forEach(input => {
+    input.addEventListener('input', function(e) {
+      formatDateInput(e.target);
+    });
+    
+    input.addEventListener('blur', function(e) {
+      validateSingleDate(e.target);
+    });
+  });
+}
+
+// Format date input as user types
+function formatDateInput(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  
+  if (value.length >= 3 && value.length <= 4) {
+    value = value.slice(0, 2) + '/' + value.slice(2);
+  } else if (value.length >= 5) {
+    value = value.slice(0, 2) + '/' + value.slice(2, 4) + '/' + value.slice(4, 8);
+  }
+  
+  input.value = value;
+}
+
+// Validate a single date input
+function validateSingleDate(input) {
+  const dateStr = input.value;
+  if (!dateStr) return true;
+  
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) {
+    input.style.borderColor = '#ef5350';
+    return false;
+  }
+  
+  const day = parseInt(parts[0]);
+  const month = parseInt(parts[1]);
+  const year = parseInt(parts[2]);
+  
+  if (isNaN(day) || isNaN(month) || isNaN(year)) {
+    input.style.borderColor = '#ef5350';
+    return false;
+  }
+  
+  if (day < 1 || day > 31 || month < 1 || month > 12 || year < 2020 || year > 2030) {
+    input.style.borderColor = '#ef5350';
+    return false;
+  }
+  
+  input.style.borderColor = '#66bb6a';
+  return true;
+}
+
+// Close the cycle modal
+window.closeCycleModal = function() {
+  const modal = document.getElementById('cycle-management-modal');
+  if (modal) {
+    modal.remove();
+  }
+};
+
+// Save cycles function
+window.saveCycles = async function(customerId, existingCycles) {
+  console.log('[Staff Homepage] Saving cycles for customer:', customerId);
+  
+  // Collect and validate all cycle data
+  const newCycles = {};
+  const validationErrors = [];
+  const warnings = [];
+  
+  // Collect all dates
+  for (let i = 1; i <= 3; i++) {
+    const startInput = document.getElementById(`cycle-${i}-start`);
+    const endInput = document.getElementById(`cycle-${i}-end`);
+    
+    if (!startInput || !endInput) continue;
+    
+    const startDate = startInput.value.trim();
+    const endDate = endInput.value.trim();
+    
+    // Validate required fields
+    if (!startDate || !endDate) {
+      validationErrors.push(`Cycle ${i}: Both start and end dates are required`);
+      continue;
+    }
+    
+    // Validate date formats
+    if (!validateSingleDate(startInput) || !validateSingleDate(endInput)) {
+      validationErrors.push(`Cycle ${i}: Invalid date format. Use DD/MM/YYYY`);
+      continue;
+    }
+    
+    // Parse dates for comparison
+    const start = parseUKDate(startDate);
+    const end = parseUKDate(endDate);
+    
+    if (start >= end) {
+      validationErrors.push(`Cycle ${i}: End date must be after start date`);
+      continue;
+    }
+    
+    newCycles[i] = {
+      startDate,
+      endDate,
+      start,
+      end
+    };
+  }
+  
+  // Check for overlaps and proximity
+  for (let i = 1; i <= 3; i++) {
+    if (!newCycles[i]) continue;
+    
+    for (let j = i + 1; j <= 3; j++) {
+      if (!newCycles[j]) continue;
+      
+      // Check for overlap
+      if (
+        (newCycles[i].start <= newCycles[j].end && newCycles[i].end >= newCycles[j].start) ||
+        (newCycles[j].start <= newCycles[i].end && newCycles[j].end >= newCycles[i].start)
+      ) {
+        validationErrors.push(`Cycles ${i} and ${j} overlap. Please adjust the dates.`);
+      }
+      
+      // Check proximity (6 weeks = 42 days)
+      const gap = Math.abs(newCycles[j].start - newCycles[i].end) / (1000 * 60 * 60 * 24);
+      if (gap < 42 && gap >= 0) {
+        warnings.push(`Warning: Only ${Math.floor(gap)} days between Cycle ${i} end and Cycle ${j} start (recommended: 42+ days)`);
+      }
+    }
+  }
+  
+  // Show validation errors
+  const globalValidation = document.getElementById('cycle-global-validation');
+  
+  if (validationErrors.length > 0) {
+    globalValidation.className = 'cycle-validation-message error';
+    globalValidation.innerHTML = '<strong>Errors:</strong><br>' + validationErrors.join('<br>');
+    return;
+  }
+  
+  // Show warnings but allow save
+  if (warnings.length > 0) {
+    const proceed = confirm(warnings.join('\n\n') + '\n\nDo you want to continue anyway?');
+    if (!proceed) return;
+  }
+  
+  // Show saving state
+  globalValidation.className = 'cycle-validation-message success';
+  globalValidation.innerHTML = 'Saving cycles...';
+  
+  try {
+    // Clean up extra records first
+    if (existingCycles.extras && existingCycles.extras.length > 0) {
+      await cleanupExtraCycles(existingCycles.extras);
+    }
+    
+    // Save each cycle
+    for (let i = 1; i <= 3; i++) {
+      const cycle = newCycles[i];
+      if (!cycle) continue;
+      
+      const existingCycle = existingCycles[i];
+      
+      if (existingCycle && !existingCycle.isNew) {
+        // Update existing cycle
+        await updateCycleRecord(existingCycle.id, {
+          field_1678: cycle.startDate,
+          field_1580: cycle.endDate
+        });
+      } else {
+        // Create new cycle
+        await createCycleRecord(customerId, i, cycle.startDate, cycle.endDate);
+      }
+    }
+    
+    globalValidation.className = 'cycle-validation-message success';
+    globalValidation.innerHTML = 'Cycles saved successfully! Reloading page...';
+    
+    // Clear cache and reload
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+    
+  } catch (error) {
+    console.error('[Staff Homepage] Error saving cycles:', error);
+    globalValidation.className = 'cycle-validation-message error';
+    globalValidation.innerHTML = 'Error saving cycles. Please try again.';
+  }
+};
+
+// Parse UK date string to Date object
+function parseUKDate(dateStr) {
+  const parts = dateStr.split('/');
+  return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+}
+
+// Clean up extra cycle records
+async function cleanupExtraCycles(extraRecords) {
+  console.log(`[Staff Homepage] Cleaning up ${extraRecords.length} extra cycle records`);
+  
+  for (const record of extraRecords) {
+    try {
+      await KnackAPIQueue.addRequest({
+        url: `${KNACK_API_URL}/objects/object_66/records/${record.id}`,
+        type: 'DELETE',
+        headers: getKnackHeaders()
+      });
+      console.log(`[Staff Homepage] Deleted extra cycle record: ${record.id}`);
+    } catch (error) {
+      console.error(`[Staff Homepage] Error deleting record ${record.id}:`, error);
+    }
+  }
+}
+
+// Update existing cycle record
+async function updateCycleRecord(recordId, data) {
+  console.log(`[Staff Homepage] Updating cycle record: ${recordId}`);
+  
+  return await KnackAPIQueue.addRequest({
+    url: `${KNACK_API_URL}/objects/object_66/records/${recordId}`,
+    type: 'PUT',
+    headers: getKnackHeaders(),
+    data: JSON.stringify(data)
+  });
+}
+
+// Create new cycle record
+async function createCycleRecord(customerId, cycleNumber, startDate, endDate) {
+  console.log(`[Staff Homepage] Creating new cycle ${cycleNumber} for customer: ${customerId}`);
+  
+  const data = {
+    field_1585: [customerId], // Connected customer
+    field_1579: cycleNumber.toString(), // Cycle number
+    field_1678: startDate, // Start date
+    field_1580: endDate // End date
+  };
+  
+  return await KnackAPIQueue.addRequest({
+    url: `${KNACK_API_URL}/objects/object_66/records`,
+    type: 'POST',
+    headers: getKnackHeaders(),
+    data: JSON.stringify(data)
+  });
+}
 
 })(); // Close main IIFE
