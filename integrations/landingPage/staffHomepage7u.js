@@ -4,7 +4,7 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
-  const DEBUG_MODE = true; // Set to true for development/testing
+  const DEBUG_MODE = false; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
   const VESPA_COLORS = {
@@ -7982,21 +7982,47 @@ window.openCycleManagementModal = async function() {
         if (typeof firstItem === 'object' && firstItem.id) {
           customerId = firstItem.id;
         } else if (typeof firstItem === 'string') {
-          customerId = firstItem;
+          // Check if it's HTML and extract the class name (which contains the ID)
+          if (firstItem.includes('class="')) {
+            const match = firstItem.match(/class="([^"]+)"/);
+            if (match && match[1]) {
+              customerId = match[1];
+            } else {
+              customerId = firstItem;
+            }
+          } else {
+            customerId = firstItem;
+          }
         } else {
           customerId = firstItem;
         }
       } else if (typeof customerConnection === 'string') {
-        customerId = customerConnection;
+        // Check if it's HTML and extract the class name (which contains the ID)
+        if (customerConnection.includes('class="')) {
+          const match = customerConnection.match(/class="([^"]+)"/);
+          if (match && match[1]) {
+            customerId = match[1];
+          } else {
+            customerId = customerConnection;
+          }
+        } else {
+          customerId = customerConnection;
+        }
       } else if (typeof customerConnection === 'object' && customerConnection.id) {
         customerId = customerConnection.id;
       }
     }
     
-    // Ensure customerId is a string, not an object
+    // Ensure customerId is a string, not an object or HTML
     if (customerId && typeof customerId === 'object' && customerId.id) {
       console.log('[Staff Homepage] Extracting ID from customer object:', customerId);
       customerId = customerId.id;
+    } else if (customerId && typeof customerId === 'string' && customerId.includes('<')) {
+      // Extract ID from HTML if it still contains HTML
+      const match = customerId.match(/class="([^"]+)"/);
+      if (match && match[1]) {
+        customerId = match[1];
+      }
     }
     
     if (!customerId) {
@@ -8023,15 +8049,21 @@ window.openCycleManagementModal = async function() {
 
 // Function to fetch cycle records from object_66
 async function fetchCycleRecords(customerId) {
-  // Ensure customerId is a string
+  // Ensure customerId is a string and not HTML
   if (customerId && typeof customerId === 'object' && customerId.id) {
     customerId = customerId.id;
+  } else if (customerId && typeof customerId === 'string' && customerId.includes('<')) {
+    // Extract ID from HTML span if needed
+    const match = customerId.match(/class="([^"]+)"/);
+    if (match && match[1]) {
+      customerId = match[1];
+    }
   }
   
   console.log('[Staff Homepage] Fetching cycle records for customer ID:', customerId);
   
-  // Validate customerId is a valid string
-  if (!customerId || typeof customerId !== 'string') {
+  // Validate customerId is a valid string and looks like a Knack ID
+  if (!customerId || typeof customerId !== 'string' || customerId.includes('<')) {
     console.error('[Staff Homepage] Invalid customer ID:', customerId);
     throw new Error('Invalid customer ID');
   }
@@ -8162,7 +8194,7 @@ function showCycleModal(state, cycles, customerId) {
     
     cycleFormsHTML += `
       <div class="cycle-form-section" data-cycle="${i}">
-        <h4>Cycle ${i} ${isNew ? '<span style="color: #ff6b6b;">(New - Not Yet Created)</span>' : ''}</h4>
+        <h4 style="color: #0a2b8c; margin-top: 0;">Cycle ${i} ${isNew ? '<span style="color: #ff6b6b;">(New - Not Yet Created)</span>' : ''}</h4>
         <div class="cycle-form-row">
           <div class="cycle-form-group">
             <label>Start Date (DD/MM/YYYY)</label>
@@ -8199,16 +8231,16 @@ function showCycleModal(state, cycles, customerId) {
   }
   
   const modalHTML = `
-    <div id="cycle-management-modal" class="vespa-modal" style="display: block;">
-      <div class="vespa-modal-content" style="max-width: 700px;">
-        <span class="vespa-modal-close" id="cycle-modal-close">&times;</span>
-        <h3 style="margin-bottom: 20px;">Manage Questionnaire Cycles</h3>
+    <div id="cycle-management-modal" class="vespa-modal" style="display: block; z-index: 10000;">
+      <div class="vespa-modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto; background: white; color: #333;">
+        <span class="vespa-modal-close" id="cycle-modal-close" style="color: #333; font-size: 32px;">&times;</span>
+        <h3 style="margin-bottom: 20px; color: #0a2b8c;">Manage Questionnaire Cycles</h3>
         
         ${extraRecordsWarning}
         
-        <div class="cycle-instructions" style="background-color: #e3f2fd; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-          <p style="margin: 0 0 10px 0;"><strong>Instructions:</strong></p>
-          <ul style="margin: 0; padding-left: 20px;">
+        <div class="cycle-instructions" style="background-color: #e3f2fd; padding: 15px; margin-bottom: 20px; border-radius: 4px; color: #0a2b8c;">
+          <p style="margin: 0 0 10px 0; color: #0a2b8c;"><strong>Instructions:</strong></p>
+          <ul style="margin: 0; padding-left: 20px; color: #333;">
             <li>Enter dates in UK format: DD/MM/YYYY</li>
             <li>Cycles cannot overlap</li>
             <li>Recommended: Leave at least 6 weeks between cycles</li>
@@ -8230,12 +8262,25 @@ function showCycleModal(state, cycles, customerId) {
     </div>
     
     <style>
+      #cycle-management-modal .vespa-modal-content {
+        background: white !important;
+      }
+      
+      #cycle-management-modal h3,
+      #cycle-management-modal h4 {
+        color: #0a2b8c !important;
+      }
+      
+      #cycle-management-modal label {
+        color: #333 !important;
+      }
+      
       .cycle-form-section {
-        background: #f5f5f5;
+        background: #f9f9f9;
         padding: 15px;
         margin-bottom: 15px;
         border-radius: 8px;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #ddd;
       }
       
       .cycle-form-row {
@@ -8253,7 +8298,7 @@ function showCycleModal(state, cycles, customerId) {
       .cycle-form-group label {
         font-weight: 600;
         margin-bottom: 5px;
-        color: #333;
+        color: #333 !important;
       }
       
       .cycle-date-input {
