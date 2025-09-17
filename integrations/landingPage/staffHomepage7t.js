@@ -3378,19 +3378,25 @@ function createCharts(schoolResults, staffResults, hasAdminRole, nationalData, c
             
             // Draw horizontal line across the bar width
             ctx.save();
-            ctx.strokeStyle = '#FF0000'; // Red color for national average
-            ctx.lineWidth = 3;
-            ctx.setLineDash([5, 3]); // Dashed line
+            ctx.strokeStyle = '#FFD700'; // Yellow/gold color for national average
+            ctx.lineWidth = 2; // Narrower line
+            ctx.setLineDash([4, 2]); // Smaller dashes
             ctx.beginPath();
-            ctx.moveTo(x - barWidth/2 - 10, y);
-            ctx.lineTo(x + barWidth/2 + 10, y);
+            ctx.moveTo(x - barWidth/2 - 5, y);
+            ctx.lineTo(x + barWidth/2 + 5, y);
             ctx.stroke();
             
-            // Add label for the national average
-            ctx.fillStyle = '#FF0000';
-            ctx.font = 'bold 10px Arial';
+            // Add label for the national average with better spacing
+            ctx.fillStyle = '#FFD700';
+            ctx.font = '600 11px Arial'; // Slightly bolder font
             ctx.textAlign = 'center';
-            ctx.fillText(`UK: ${value.toFixed(1)}`, x, y - 5);
+            // Add background for better readability
+            const text = `UK: ${value.toFixed(1)}`;
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(10, 27, 80, 0.8)'; // Dark background
+            ctx.fillRect(x - textWidth/2 - 3, y - 18, textWidth + 6, 14);
+            ctx.fillStyle = '#FFD700';
+            ctx.fillText(text, x, y - 7); // More spacing from line
             ctx.restore();
           }
         });
@@ -7899,6 +7905,31 @@ if (feedbackRequest.screenshot) {
 
 // === CYCLE MANAGEMENT MODAL FUNCTIONS ===
 
+// Define constants if not already available
+const CYCLE_KNACK_API_URL = 'https://api.knack.com/v1';
+
+// Helper function to get API headers for cycle management
+function getCycleHeaders() {
+  try {
+    // Try to use global getKnackHeaders if available
+    if (typeof getKnackHeaders === 'function') {
+      return getKnackHeaders();
+    }
+  } catch (e) {
+    // Continue to fallback
+  }
+  
+  // Fallback to manual header construction
+  const appId = window.Knack?.application_id || '5ee90912c38ae7001510c1a9';
+  const apiKey = '8f733aa5-dd35-4464-8348-64824d1f5f0d';
+  
+  return {
+    'X-Knack-Application-Id': appId,
+    'X-Knack-REST-API-Key': apiKey,
+    'Content-Type': 'application/json'
+  };
+}
+
 // Function to open the cycle management modal
 window.openCycleManagementModal = async function() {
   console.log('[Staff Homepage] Opening cycle management modal...');
@@ -7912,8 +7943,30 @@ window.openCycleManagementModal = async function() {
     }
     
     // Get the staff record to find the connected customer
-    const staffRecord = await findStaffRecord(user.email);
-    if (!staffRecord) {
+    let staffRecord;
+    try {
+      // Use the API directly since findStaffRecord might not be in global scope
+      const filters = encodeURIComponent(JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: 'field_70', operator: 'is', value: user.email }
+        ]
+      }));
+      
+      const response = await $.ajax({
+        url: `${CYCLE_KNACK_API_URL}/objects/object_3/records?filters=${filters}`,
+        type: 'GET',
+        headers: getCycleHeaders()
+      });
+      
+      if (response && response.records && response.records.length > 0) {
+        staffRecord = response.records[0];
+      } else {
+        alert('Unable to find staff record');
+        return;
+      }
+    } catch (error) {
+      console.error('[Staff Homepage] Error finding staff record:', error);
       alert('Unable to find staff record');
       return;
     }
@@ -7924,12 +7977,26 @@ window.openCycleManagementModal = async function() {
     
     if (customerConnection) {
       if (Array.isArray(customerConnection) && customerConnection.length > 0) {
-        customerId = customerConnection[0];
+        // Handle array of objects or strings
+        const firstItem = customerConnection[0];
+        if (typeof firstItem === 'object' && firstItem.id) {
+          customerId = firstItem.id;
+        } else if (typeof firstItem === 'string') {
+          customerId = firstItem;
+        } else {
+          customerId = firstItem;
+        }
       } else if (typeof customerConnection === 'string') {
         customerId = customerConnection;
-      } else if (customerConnection.id) {
+      } else if (typeof customerConnection === 'object' && customerConnection.id) {
         customerId = customerConnection.id;
       }
+    }
+    
+    // Ensure customerId is a string, not an object
+    if (customerId && typeof customerId === 'object' && customerId.id) {
+      console.log('[Staff Homepage] Extracting ID from customer object:', customerId);
+      customerId = customerId.id;
     }
     
     if (!customerId) {
@@ -7956,7 +8023,18 @@ window.openCycleManagementModal = async function() {
 
 // Function to fetch cycle records from object_66
 async function fetchCycleRecords(customerId) {
-  console.log('[Staff Homepage] Fetching cycle records for customer:', customerId);
+  // Ensure customerId is a string
+  if (customerId && typeof customerId === 'object' && customerId.id) {
+    customerId = customerId.id;
+  }
+  
+  console.log('[Staff Homepage] Fetching cycle records for customer ID:', customerId);
+  
+  // Validate customerId is a valid string
+  if (!customerId || typeof customerId !== 'string') {
+    console.error('[Staff Homepage] Invalid customer ID:', customerId);
+    throw new Error('Invalid customer ID');
+  }
   
   const filters = encodeURIComponent(JSON.stringify({
     match: 'and',
@@ -7966,10 +8044,11 @@ async function fetchCycleRecords(customerId) {
   }));
   
   try {
-    const response = await KnackAPIQueue.addRequest({
-      url: `${KNACK_API_URL}/objects/object_66/records?filters=${filters}&rows_per_page=100`,
+    // Use jQuery ajax directly for reliability
+    const response = await $.ajax({
+      url: `${CYCLE_KNACK_API_URL}/objects/object_66/records?filters=${filters}&rows_per_page=100`,
       type: 'GET',
-      headers: getKnackHeaders()
+      headers: getCycleHeaders()
     });
     
     console.log(`[Staff Homepage] Found ${response.records?.length || 0} cycle records`);
@@ -7979,7 +8058,13 @@ async function fetchCycleRecords(customerId) {
     
   } catch (error) {
     console.error('[Staff Homepage] Error fetching cycles:', error);
-    throw error;
+    // Return empty cycles instead of throwing
+    return {
+      1: { id: null, cycleNumber: 1, startDate: '', endDate: '', staffAdmins: [], isNew: true },
+      2: { id: null, cycleNumber: 2, startDate: '', endDate: '', staffAdmins: [], isNew: true },
+      3: { id: null, cycleNumber: 3, startDate: '', endDate: '', staffAdmins: [], isNew: true },
+      extras: []
+    };
   }
 }
 
@@ -8116,7 +8201,7 @@ function showCycleModal(state, cycles, customerId) {
   const modalHTML = `
     <div id="cycle-management-modal" class="vespa-modal" style="display: block;">
       <div class="vespa-modal-content" style="max-width: 700px;">
-        <span class="vespa-modal-close" onclick="closeCycleModal()">&times;</span>
+        <span class="vespa-modal-close" id="cycle-modal-close">&times;</span>
         <h3 style="margin-bottom: 20px;">Manage Questionnaire Cycles</h3>
         
         ${extraRecordsWarning}
@@ -8138,8 +8223,8 @@ function showCycleModal(state, cycles, customerId) {
         <div id="cycle-global-validation" class="cycle-validation-message" style="margin-top: 20px;"></div>
         
         <div class="vespa-modal-buttons" style="margin-top: 30px;">
-          <button onclick="saveCycles('${customerId}', ${JSON.stringify(cycles).replace(/"/g, '&quot;')})" class="vespa-btn vespa-btn-primary">Save Cycles</button>
-          <button onclick="closeCycleModal()" class="vespa-btn vespa-btn-neutral">Cancel</button>
+          <button class="vespa-btn vespa-btn-primary" id="cycle-save-btn">Save Cycles</button>
+          <button id="cycle-cancel-btn" class="vespa-btn vespa-btn-neutral">Cancel</button>
         </div>
       </div>
     </div>
@@ -8217,6 +8302,25 @@ function showCycleModal(state, cycles, customerId) {
   
   document.body.insertAdjacentHTML('beforeend', modalHTML);
   
+  // Add event listeners for close buttons
+  const closeBtn = document.getElementById('cycle-modal-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeCycleModal);
+  }
+  
+  const cancelBtn = document.getElementById('cycle-cancel-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeCycleModal);
+  }
+  
+  // Add save button listener
+  const saveBtn = document.getElementById('cycle-save-btn');
+  if (saveBtn && customerId && cycles) {
+    saveBtn.addEventListener('click', function() {
+      saveCycles(customerId, cycles);
+    });
+  }
+  
   // Add date input formatting
   document.querySelectorAll('.cycle-date-input').forEach(input => {
     input.addEventListener('input', function(e) {
@@ -8272,12 +8376,13 @@ function validateSingleDate(input) {
 }
 
 // Close the cycle modal
-window.closeCycleModal = function() {
+function closeCycleModal() {
   const modal = document.getElementById('cycle-management-modal');
   if (modal) {
     modal.remove();
   }
-};
+}
+window.closeCycleModal = closeCycleModal;
 
 // Save cycles function
 window.saveCycles = async function(customerId, existingCycles) {
@@ -8421,10 +8526,10 @@ async function cleanupExtraCycles(extraRecords) {
   
   for (const record of extraRecords) {
     try {
-      await KnackAPIQueue.addRequest({
-        url: `${KNACK_API_URL}/objects/object_66/records/${record.id}`,
+      await $.ajax({
+        url: `${CYCLE_KNACK_API_URL}/objects/object_66/records/${record.id}`,
         type: 'DELETE',
-        headers: getKnackHeaders()
+        headers: getCycleHeaders()
       });
       console.log(`[Staff Homepage] Deleted extra cycle record: ${record.id}`);
     } catch (error) {
@@ -8437,11 +8542,12 @@ async function cleanupExtraCycles(extraRecords) {
 async function updateCycleRecord(recordId, data) {
   console.log(`[Staff Homepage] Updating cycle record: ${recordId}`);
   
-  return await KnackAPIQueue.addRequest({
-    url: `${KNACK_API_URL}/objects/object_66/records/${recordId}`,
+  return await $.ajax({
+    url: `${CYCLE_KNACK_API_URL}/objects/object_66/records/${recordId}`,
     type: 'PUT',
-    headers: getKnackHeaders(),
-    data: JSON.stringify(data)
+    headers: getCycleHeaders(),
+    data: JSON.stringify(data),
+    contentType: 'application/json'
   });
 }
 
@@ -8456,11 +8562,12 @@ async function createCycleRecord(customerId, cycleNumber, startDate, endDate) {
     field_1580: endDate // End date
   };
   
-  return await KnackAPIQueue.addRequest({
-    url: `${KNACK_API_URL}/objects/object_66/records`,
+  return await $.ajax({
+    url: `${CYCLE_KNACK_API_URL}/objects/object_66/records`,
     type: 'POST',
-    headers: getKnackHeaders(),
-    data: JSON.stringify(data)
+    headers: getCycleHeaders(),
+    data: JSON.stringify(data),
+    contentType: 'application/json'
   });
 }
 
