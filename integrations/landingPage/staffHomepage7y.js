@@ -2394,25 +2394,30 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
 }
 
 // Get questionnaire cycle data for the current user
-async function getQuestionnaireCycleData(userId, schoolId) {
+async function getQuestionnaireCycleData(userId, schoolId, forceRefresh = false) {
   if (!userId) {
     console.error("[Staff Homepage] Cannot get cycle data: Missing userId");
     return null;
   }
   
   try {
-    // Create a unique cache key for this user's cycle data
+    // DISABLED CACHE FOR CYCLES - Always fetch fresh data
+    // Cycles are critical data that should always be current
+    console.log(`[Staff Homepage] Fetching fresh cycle data (cache disabled for cycles)`);
+    
+    // Skip cache entirely for cycle data
+    /*
     const cacheKey = `user_cycles_${userId}_school_${schoolId}`;
-    console.log(`[Staff Homepage] Using cache key: ${cacheKey}`);
-    
-    // Try to get from cache first
-    const cachedCycles = await CacheManager.get(cacheKey, 'UserCycles');
-    if (cachedCycles) {
-      console.log(`[Staff Homepage] Using cached cycle data for user ${userId}`);
-      return cachedCycles;
+    if (!forceRefresh) {
+      const cachedCycles = await CacheManager.get(cacheKey, 'UserCycles');
+      if (cachedCycles) {
+        console.log(`[Staff Homepage] Using cached cycle data for user ${userId}`);
+        return cachedCycles;
+      }
     }
+    */
     
-    console.log(`[Staff Homepage] Cache miss for cycles, fetching fresh data for user ${userId}`);
+    console.log(`[Staff Homepage] Always fetching fresh cycle data (caching permanently disabled for cycles)`);
     
     // Get the current user record to find connected customer
     const user = Knack.getUserAttributes();
@@ -2489,8 +2494,8 @@ if (response) {
         currentCycle: 1
       };
       
-      // Cache the empty result to prevent repeated failed API calls
-      await CacheManager.set(cacheKey, emptyCycles, 'UserCycles', 30); // 30 min TTL
+      // DISABLED: Don't cache cycle data anymore
+      // await CacheManager.set(cacheKey, emptyCycles, 'UserCycles', 30);
       
       return emptyCycles;
     }
@@ -2580,8 +2585,9 @@ if (unassignedRecords.length > 0) {
     // Determine the current cycle
     cycles.currentCycle = determineCurrentCycle(cycles);
     
-    // Store in cache
-    await CacheManager.set(cacheKey, cycles, 'UserCycles', 60); // 60 min TTL
+    // DISABLED: Don't cache cycle data anymore - always fetch fresh
+    // await CacheManager.set(cacheKey, cycles, 'UserCycles', 60);
+    console.log('[Staff Homepage] Returning fresh cycle data (cache disabled for cycles)');
     
     return cycles;
   } catch (error) {
@@ -7963,12 +7969,20 @@ function getCycleHeaders() {
   // Fallback to manual header construction
   const appId = window.Knack?.application_id || '5ee90912c38ae7001510c1a9';
   const apiKey = '8f733aa5-dd35-4464-8348-64824d1f5f0d';
+  const userToken = typeof Knack !== 'undefined' ? Knack.getUserToken() : null;
   
-  return {
+  const headers = {
     'X-Knack-Application-Id': appId,
     'X-Knack-REST-API-Key': apiKey,
     'Content-Type': 'application/json'
   };
+  
+  // Add authorization if available
+  if (userToken) {
+    headers['Authorization'] = userToken;
+  }
+  
+  return headers;
 }
 
 // Function to open the cycle management modal
@@ -8518,6 +8532,111 @@ function closeCycleModal() {
 }
 window.closeCycleModal = closeCycleModal;
 
+// Update the cycle display in the DOM without page reload
+function updateCycleDisplay(cycleData) {
+  console.log('[Staff Homepage] Updating cycle display with fresh data:', cycleData);
+  
+  if (!cycleData) {
+    console.error('[Staff Homepage] No cycle data to update display');
+    return;
+  }
+  
+  // Find the cycle section container
+  const cycleSection = document.querySelector('.cycle-section-container');
+  if (!cycleSection) {
+    console.error('[Staff Homepage] Cycle section container not found in DOM');
+    return;
+  }
+  
+  // Determine current cycle
+  const currentCycle = cycleData.currentCycle || determineCurrentCycle([
+    cycleData.cycle1,
+    cycleData.cycle2,
+    cycleData.cycle3
+  ]);
+  
+  // Update each cycle column
+  const cycleColumns = cycleSection.querySelectorAll('.cycle-column');
+  
+  if (cycleColumns.length === 3) {
+    // Update existing columns
+    [cycleData.cycle1, cycleData.cycle2, cycleData.cycle3].forEach((cycle, index) => {
+      const column = cycleColumns[index];
+      if (column && cycle) {
+        // Update dates
+        const dateValues = column.querySelectorAll('.date-value');
+        if (dateValues.length >= 2) {
+          dateValues[0].textContent = cycle.start || 'No date set';
+          dateValues[1].textContent = cycle.end || 'No date set';
+        }
+        
+        // Update current badge
+        const isCurrent = (index + 1) === currentCycle;
+        column.classList.toggle('current-cycle', isCurrent);
+        
+        const header = column.querySelector('.cycle-header');
+        let badge = header?.querySelector('.current-badge');
+        
+        if (isCurrent) {
+          if (!badge) {
+            // Add current badge if it doesn't exist
+            header?.insertAdjacentHTML('beforeend', '<span class="current-badge">Current</span>');
+          }
+        } else {
+          // Remove current badge if it exists
+          badge?.remove();
+        }
+      }
+    });
+    
+    console.log('[Staff Homepage] Cycle display updated successfully');
+  } else {
+    console.log('[Staff Homepage] Regenerating entire cycle section');
+    
+    // Get admin status
+    const hasAdminRole = document.getElementById('manage-cycles-btn') !== null;
+    
+    // Regenerate the entire cycle section HTML
+    const newCycleHTML = renderCycleSection(cycleData, hasAdminRole);
+    
+    // Replace the old content
+    cycleSection.innerHTML = newCycleHTML;
+    
+    // Re-attach event listeners
+    setupCycleRefresh(Knack.getUserAttributes().id, cycleData.schoolId);
+    
+    // Re-attach manage cycles button if admin
+    if (hasAdminRole) {
+      const manageCyclesBtn = document.getElementById('manage-cycles-btn');
+      if (manageCyclesBtn) {
+        manageCyclesBtn.addEventListener('click', async () => {
+          console.log('[Staff Homepage] Manage Cycles button clicked');
+          
+          // Show loading modal first
+          showCycleModal('loading', null, null);
+          
+          // Fetch the customer ID and cycles
+          const profileData = await getStaffProfileData();
+          const schoolId = profileData?.schoolId;
+          
+          if (schoolId) {
+            const cycles = await fetchCycleRecords(schoolId);
+            const processedCycles = processCycleRecords(cycles, schoolId);
+            
+            // Show the modal with data
+            showCycleModal('data', processedCycles, schoolId);
+          } else {
+            console.error('[Staff Homepage] Could not determine school ID for cycles');
+            closeCycleModal();
+            alert('Unable to load cycle management. Please refresh and try again.');
+          }
+        });
+      }
+    }
+  }
+}
+window.updateCycleDisplay = updateCycleDisplay;
+
 // Save cycles function
 window.saveCycles = async function(customerId, existingCycles) {
   console.log('[Staff Homepage] Saving cycles for customer:', customerId);
@@ -8632,9 +8751,9 @@ window.saveCycles = async function(customerId, existingCycles) {
     }
     
     globalValidation.className = 'cycle-validation-message success';
-    globalValidation.innerHTML = 'Cycles saved successfully! Clearing cache and reloading...';
+    globalValidation.innerHTML = 'Cycles saved successfully! Updating display...';
     
-    // Clear the cycle cache before reloading
+    // Clear the cycle cache before updating
     try {
       const user = Knack.getUserAttributes();
       if (user && user.id) {
@@ -8654,10 +8773,68 @@ window.saveCycles = async function(customerId, existingCycles) {
       console.error('[Staff Homepage] Error invalidating cache:', cacheError);
     }
     
-    // Reload the page after a short delay
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
+    // Update the cycle display directly without page reload
+    try {
+      // Fetch fresh cycle data with force refresh to bypass cache
+      const user = Knack.getUserAttributes();
+      const profileData = await getStaffProfileData();
+      
+      // If schoolId is null, try to get it from the customerId we're using
+      let schoolId = profileData?.schoolId || customerId;
+      console.log('[Staff Homepage] Using schoolId for refresh:', schoolId);
+      
+      // Alternative approach: Build the cycle data from what we just saved
+      // This is more reliable since we know exactly what we saved
+      const savedCycleData = {
+        cycle1: { 
+          number: 1, 
+          start: newCycles[1]?.startDate || 'No date set', 
+          end: newCycles[1]?.endDate || 'No date set' 
+        },
+        cycle2: { 
+          number: 2, 
+          start: newCycles[2]?.startDate || 'No date set', 
+          end: newCycles[2]?.endDate || 'No date set' 
+        },
+        cycle3: { 
+          number: 3, 
+          start: newCycles[3]?.startDate || 'No date set', 
+          end: newCycles[3]?.endDate || 'No date set' 
+        },
+        currentCycle: determineCurrentCycle([
+          newCycles[1] ? { start: newCycles[1].startDate, end: newCycles[1].endDate } : null,
+          newCycles[2] ? { start: newCycles[2].startDate, end: newCycles[2].endDate } : null,
+          newCycles[3] ? { start: newCycles[3].startDate, end: newCycles[3].endDate } : null
+        ].filter(Boolean))
+      };
+      
+      console.log('[Staff Homepage] Using saved data to update display:', savedCycleData);
+      
+      // Update the display with the saved data
+      updateCycleDisplay(savedCycleData);
+      
+      // Close the modal
+      closeCycleModal();
+      
+      // Show success message
+      showNotification('Cycles updated successfully!', 'success');
+      
+      // Optionally, try to fetch fresh data in the background to update cache
+      // But don't wait for it or let it block the UI update
+      getQuestionnaireCycleData(user.id, schoolId, true).then(freshData => {
+        if (freshData) {
+          console.log('[Staff Homepage] Background refresh completed');
+        }
+      }).catch(err => {
+        console.log('[Staff Homepage] Background refresh failed, but display already updated:', err);
+      });
+    } catch (updateError) {
+      console.error('[Staff Homepage] Error updating cycle display:', updateError);
+      // Fallback to page reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
     
   } catch (error) {
     console.error('[Staff Homepage] Error saving cycles:', error);
@@ -8726,3 +8903,4 @@ async function createCycleRecord(customerId, cycleNumber, startDate, endDate) {
 }
 
 })(); // Close main IIFE
+
