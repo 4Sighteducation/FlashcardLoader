@@ -4,6 +4,49 @@
   // REMOVED: Initial config check - Loader will provide config before calling init.
   // if (!window.STUDYPLANNER_CONFIG) { ... }
 
+  // --- Debug Mode Configuration ---
+  // Set this to false in production to disable all console logging
+  const DEBUG_MODE = false; // Change to true to enable debug logging
+  
+  // Debug logging wrapper
+  const debugLog = function(title, data) {
+    if (!DEBUG_MODE) return data;
+    console.log(`%c[StudyPlanner] ${title}`, 'color: #5d00ff; font-weight: bold; font-size: 12px;');
+    try {
+      console.log(JSON.parse(JSON.stringify(data, null, 2)));
+    } catch (e) {
+      console.log("Data could not be fully serialized for logging:", data);
+    }
+    return data;
+  };
+
+  // Wrapped console methods
+  const safeConsole = {
+    log: function(...args) {
+      if (DEBUG_MODE) console.log(...args);
+    },
+    warn: function(...args) {
+      if (DEBUG_MODE) console.warn(...args);
+    },
+    error: function(...args) {
+      // Always log errors but with less detail in production
+      if (DEBUG_MODE) {
+        console.error(...args);
+      } else {
+        // In production, only log error messages without sensitive data
+        const errorMsg = args[0];
+        if (typeof errorMsg === 'string') {
+          console.error('StudyPlanner Error:', errorMsg.split(':')[0]);
+        } else {
+          console.error('StudyPlanner Error: An error occurred');
+        }
+      }
+    },
+    info: function(...args) {
+      if (DEBUG_MODE) console.info(...args);
+    }
+  };
+
   // --- Constants and Configuration ---
   // Use constants provided by the loader via window.STUDYPLANNER_CONFIG
   // These will be accessed inside initializeStudyPlannerApp when it's called.
@@ -48,12 +91,12 @@
     try {
       return decodeURIComponent(str.replace(/\+/g, ' '));
     } catch (error) {
-      console.error("StudyPlanner: Error decoding URI component:", error, "String:", String(str).substring(0, 100));
+      safeConsole.error("StudyPlanner: Error decoding URI component:", error, "String:", String(str).substring(0, 100));
       try {
         const cleaned = String(str).replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
         return decodeURIComponent(cleaned.replace(/\+/g, ' '));
       } catch (secondError) {
-        console.error("StudyPlanner: Second attempt to decode failed:", secondError);
+        safeConsole.error("StudyPlanner: Second attempt to decode failed:", secondError);
         return String(str);
       }
     }
@@ -64,7 +107,7 @@
     try {
       return encodeURIComponent(String(str));
     } catch (e) {
-      console.error("Error encoding URI component:", e, "Input:", str);
+      safeConsole.error("Error encoding URI component:", e, "Input:", str);
       return String(str);
     }
   }
@@ -77,17 +120,17 @@
       if (typeof jsonString === 'object' && jsonString !== null) return jsonString;
       return JSON.parse(jsonString);
     } catch (error) {
-      console.warn("StudyPlanner: Initial JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
+      safeConsole.warn("StudyPlanner: Initial JSON parse failed:", error, "String:", String(jsonString).substring(0, 100));
       try {
         const cleanedString = String(jsonString).trim().replace(/^\uFEFF/, '');
         const recovered = cleanedString
           .replace(/\\"/g, '"')
           .replace(/,\s*([}\]])/g, '$1');
         const result = JSON.parse(recovered);
-        console.log("StudyPlanner: JSON recovery successful.");
+        safeConsole.log("StudyPlanner: JSON recovery successful.");
         return result;
       } catch (secondError) {
-        console.error("StudyPlanner: JSON recovery failed:", secondError);
+        safeConsole.error("StudyPlanner: JSON recovery failed:", secondError);
         return defaultVal;
       }
     }
@@ -145,16 +188,7 @@
     return sanitized.trim();
   }
 
-  // Debug logging helper
-  function debugLog(title, data) {
-    console.log(`%c[StudyPlanner] ${title}`, 'color: #5d00ff; font-weight: bold; font-size: 12px;');
-    try {
-      console.log(JSON.parse(JSON.stringify(data, null, 2)));
-    } catch (e) {
-      console.log("Data could not be fully serialized for logging:", data);
-    }
-    return data;
-  }
+  // debugLog function is now defined at the top of the file with DEBUG_MODE control
 
   // Generic retry function for API calls
   function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
@@ -164,14 +198,14 @@
           .then(resolve)
           .catch((error) => {
             const attemptsMade = retryCount + 1;
-            console.warn(`API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
+            safeConsole.warn(`API call failed (Attempt ${attemptsMade}/${maxRetries}):`, error.status, error.statusText, error.responseText);
 
             if (retryCount < maxRetries - 1) {
               const retryDelay = delay * Math.pow(2, retryCount);
-              console.log(`Retrying API call in ${retryDelay}ms...`);
+              safeConsole.log(`Retrying API call in ${retryDelay}ms...`);
               setTimeout(() => attempt(retryCount + 1), retryDelay);
             } else {
-              console.error(`API call failed after ${maxRetries} attempts.`);
+              safeConsole.error(`API call failed after ${maxRetries} attempts.`);
               reject(error);
             }
           });
@@ -186,14 +220,14 @@
       try {
         const currentToken = Knack.getUserToken();
         if (currentToken) {
-          console.log(`Auth token available via Knack.getUserToken()`);
+          safeConsole.log(`Auth token available via Knack.getUserToken()`);
           resolve(currentToken);
         } else {
-          console.error(`Cannot get auth token - Knack.getUserToken() returned null`);
+          safeConsole.error(`Cannot get auth token - Knack.getUserToken() returned null`);
           reject(new Error("Auth token not available"));
         }
       } catch (error) {
-        console.error(`Error getting auth token:`, error);
+        safeConsole.error(`Error getting auth token:`, error);
         reject(error);
       }
     });
@@ -201,19 +235,19 @@
 
   // Handle token refresh request from React app
   function handleTokenRefresh(iframeWindow) {
-    console.log("Handling token refresh request from React app");
+    safeConsole.log("Handling token refresh request from React app");
     try {
       const currentToken = Knack.getUserToken();
       if (!currentToken) {
-        console.error("Cannot get token from Knack");
+        safeConsole.error("Cannot get token from Knack");
         if (iframeWindow) iframeWindow.postMessage({ type: "AUTH_REFRESH_RESULT", success: false, error: "Token not available from Knack" }, "*");
         return;
       }
       // Send the current token back
       if (iframeWindow) iframeWindow.postMessage({ type: "AUTH_REFRESH_RESULT", success: true, token: currentToken }, "*");
-      console.log("Successfully sent current token for refresh");
+      safeConsole.log("Successfully sent current token for refresh");
     } catch (error) {
-      console.error("Error refreshing token:", error);
+      safeConsole.error("Error refreshing token:", error);
       if (iframeWindow) iframeWindow.postMessage({ type: "AUTH_REFRESH_RESULT", success: false, error: error.message || "Unknown error refreshing token" }, "*");
     }
   }
@@ -232,7 +266,7 @@
     addToQueue(operation) {
       return new Promise((resolve, reject) => {
         if (!operation.type || !operation.recordId) {
-          console.error("[SaveQueue] Invalid operation added:", operation);
+          safeConsole.error("[SaveQueue] Invalid operation added:", operation);
           return reject(new Error("Invalid save operation: missing type or recordId"));
         }
 
@@ -243,7 +277,7 @@
           timestamp: new Date().toISOString()
         };
         this.queue.push(queuedOperation);
-        console.log(`[SaveQueue] Added operation to queue: ${operation.type} for record ${operation.recordId}. Queue length: ${this.queue.length}`);
+        safeConsole.log(`[SaveQueue] Added operation to queue: ${operation.type} for record ${operation.recordId}. Queue length: ${this.queue.length}`);
         this.processQueue();
       });
     }
@@ -256,7 +290,7 @@
 
       this.isSaving = true;
       const operation = this.queue[0];
-      console.log(`[SaveQueue] Processing operation: ${operation.type} for record ${operation.recordId}`);
+      safeConsole.log(`[SaveQueue] Processing operation: ${operation.type} for record ${operation.recordId}`);
 
       try {
         const updateData = await this.prepareSaveData(operation);
@@ -265,7 +299,7 @@
         debugLog("[SaveQueue] API Save successful", response);
         this.handleSaveSuccess(operation);
       } catch (error) {
-        console.error(`[SaveQueue] Error during processing for ${operation.type} (record ${operation.recordId}):`, error);
+        safeConsole.error(`[SaveQueue] Error during processing for ${operation.type} (record ${operation.recordId}):`, error);
         this.handleSaveError(operation, error);
       }
     }
@@ -273,7 +307,7 @@
     // Prepares the data to save
     async prepareSaveData(operation) {
       const { type, data, recordId, preserveFields } = operation;
-      console.log(`[SaveQueue] Preparing save data for type: ${type}, record: ${recordId}, preserveFields: ${preserveFields}`);
+      safeConsole.log(`[SaveQueue] Preparing save data for type: ${type}, record: ${recordId}, preserveFields: ${preserveFields}`);
 
       // Start with the mandatory lastSaved field
       const updateData = {
@@ -284,13 +318,13 @@
         // Fetch existing data ONLY if preserving fields
         let existingData = null;
         if (preserveFields) {
-          console.log(`[SaveQueue] Preserving fields for ${type}, fetching existing data...`);
+          safeConsole.log(`[SaveQueue] Preserving fields for ${type}, fetching existing data...`);
           try {
             existingData = await this.getExistingData(recordId);
             debugLog("[SaveQueue] Fetched existing data for preservation", existingData ? `Record ${recordId} found` : `Record ${recordId} NOT found`);
           } catch (fetchError) {
-            console.error(`[SaveQueue] Failed to fetch existing data for field preservation (record ${recordId}):`, fetchError);
-            console.warn("[SaveQueue] Proceeding with save WITHOUT field preservation due to fetch error.");
+            safeConsole.error(`[SaveQueue] Failed to fetch existing data for field preservation (record ${recordId}):`, fetchError);
+            safeConsole.warn("[SaveQueue] Proceeding with save WITHOUT field preservation due to fetch error.");
             existingData = null;
           }
         }
@@ -301,32 +335,32 @@
             updateData[FIELD_MAPPING.planData] = JSON.stringify(
               this.ensureSerializable(data || {})
             );
-            console.log("[SaveQueue] Prepared studyPlan data for save.");
+            safeConsole.log("[SaveQueue] Prepared studyPlan data for save.");
             break;
           default:
-            console.error(`[SaveQueue] Unknown save operation type: ${type}`);
+            safeConsole.error(`[SaveQueue] Unknown save operation type: ${type}`);
             throw new Error(`Unknown save operation type: ${type}`);
         }
 
         // If preserving fields and we successfully fetched existing data, merge
         if (preserveFields && existingData) {
-          console.log(`[SaveQueue] Merging prepared data with existing data for record ${recordId}`);
+          safeConsole.log(`[SaveQueue] Merging prepared data with existing data for record ${recordId}`);
           this.preserveExistingFields(updateData, existingData);
           debugLog("[SaveQueue] Merged data after preservation", updateData);
         } else if (preserveFields && !existingData) {
-          console.warn(`[SaveQueue] Cannot preserve fields for record ${recordId} because existing data could not be fetched.`);
+          safeConsole.warn(`[SaveQueue] Cannot preserve fields for record ${recordId} because existing data could not be fetched.`);
         }
 
         return updateData;
       } catch (error) {
-        console.error(`[SaveQueue] Error in prepareSaveData for type ${type}:`, error);
+        safeConsole.error(`[SaveQueue] Error in prepareSaveData for type ${type}:`, error);
         throw error;
       }
     }
 
     // Fetches current record data from Knack
     async getExistingData(recordId) {
-      console.log(`[SaveQueue] Fetching existing data for record ${recordId}`);
+      safeConsole.log(`[SaveQueue] Fetching existing data for record ${recordId}`);
       const apiCall = () => {
         return new Promise((resolve, reject) => {
           $.ajax({
@@ -335,11 +369,11 @@
             headers: this.getKnackHeaders(),
             data: { format: 'raw' },
             success: function(response) {
-              console.log(`[SaveQueue] Successfully fetched existing data for record ${recordId}`);
+              safeConsole.log(`[SaveQueue] Successfully fetched existing data for record ${recordId}`);
               resolve(response);
             },
             error: function(jqXHR, textStatus, errorThrown) {
-              console.error(`[SaveQueue] Error fetching existing data for record ${recordId}: Status ${jqXHR.status} - ${errorThrown}`, jqXHR.responseText);
+              safeConsole.error(`[SaveQueue] Error fetching existing data for record ${recordId}: Status ${jqXHR.status} - ${errorThrown}`, jqXHR.responseText);
               const error = new Error(`Failed to fetch record ${recordId}: ${jqXHR.status} ${errorThrown}`);
               error.status = jqXHR.status;
               error.responseText = jqXHR.responseText;
@@ -353,7 +387,7 @@
 
     // Merges updateData with existingData, preserving specific fields
     preserveExistingFields(updateData, existingData) {
-      console.log(`[SaveQueue] Preserving fields for record. Fields in updateData: ${Object.keys(updateData).join(', ')}`);
+      safeConsole.log(`[SaveQueue] Preserving fields for record. Fields in updateData: ${Object.keys(updateData).join(', ')}`);
       // Define all fields managed by the app that could be preserved
       const allAppFieldIds = [
         FIELD_MAPPING.planData,
@@ -365,7 +399,7 @@
 
       allAppFieldIds.forEach(fieldId => {
         if (updateData[fieldId] === undefined && existingData[fieldId] !== undefined && existingData[fieldId] !== null) {
-          console.log(`[SaveQueue] Preserving existing data for field ID: ${fieldId}`);
+          safeConsole.log(`[SaveQueue] Preserving existing data for field ID: ${fieldId}`);
           updateData[fieldId] = existingData[fieldId];
         }
       });
@@ -373,12 +407,12 @@
 
     // Performs the actual Knack API PUT request
     async performSave(updateData, recordId) {
-      console.log(`[SaveQueue] Performing API save for record ${recordId}`);
+      safeConsole.log(`[SaveQueue] Performing API save for record ${recordId}`);
       if (!recordId) {
         throw new Error("Cannot perform save: recordId is missing.");
       }
       if (Object.keys(updateData).length <= 1 && updateData[FIELD_MAPPING.lastSaved]) {
-        console.warn(`[SaveQueue] Save payload for record ${recordId} only contains lastSaved timestamp. Skipping API call.`);
+        safeConsole.warn(`[SaveQueue] Save payload for record ${recordId} only contains lastSaved timestamp. Skipping API call.`);
         return { message: "Save skipped, only timestamp update." };
       }
 
@@ -390,11 +424,11 @@
             headers: this.getKnackHeaders(),
             data: JSON.stringify(updateData),
             success: function(response) {
-              console.log(`[SaveQueue] API PUT successful for record ${recordId}`);
+              safeConsole.log(`[SaveQueue] API PUT successful for record ${recordId}`);
               resolve(response);
             },
             error: function(jqXHR, textStatus, errorThrown) {
-              console.error(`[SaveQueue] API PUT failed for record ${recordId}: Status ${jqXHR.status} - ${errorThrown}`, jqXHR.responseText);
+              safeConsole.error(`[SaveQueue] API PUT failed for record ${recordId}: Status ${jqXHR.status} - ${errorThrown}`, jqXHR.responseText);
               const error = new Error(`API Save failed for record ${recordId}: ${jqXHR.status} ${errorThrown}`);
               error.status = jqXHR.status;
               error.responseText = jqXHR.responseText;
@@ -410,12 +444,12 @@
     handleSaveSuccess(operation) {
       const completedOperation = this.queue.shift();
       if (completedOperation !== operation) {
-        console.error("[SaveQueue] Mismatch between completed operation and head of queue!", operation, completedOperation);
+        safeConsole.error("[SaveQueue] Mismatch between completed operation and head of queue!", operation, completedOperation);
         const opIndex = this.queue.findIndex(op => op === operation);
         if(opIndex > -1) this.queue.splice(opIndex, 1);
       }
       this.retryAttempts.delete(operation);
-      console.log(`[SaveQueue] Operation ${operation.type} succeeded for record ${operation.recordId}. Queue length: ${this.queue.length}`);
+      safeConsole.log(`[SaveQueue] Operation ${operation.type} succeeded for record ${operation.recordId}. Queue length: ${this.queue.length}`);
       operation.resolve(true);
       this.isSaving = false;
       this.processQueue();
@@ -424,7 +458,7 @@
     // Handles save errors, implements retry logic
     handleSaveError(operation, error) {
       if (this.queue[0] !== operation) {
-        console.warn(`[SaveQueue] Stale error encountered for operation ${operation.type} (record ${operation.recordId}). Operation no longer at head of queue. Ignoring error.`);
+        safeConsole.warn(`[SaveQueue] Stale error encountered for operation ${operation.type} (record ${operation.recordId}). Operation no longer at head of queue. Ignoring error.`);
         if (!this.isSaving && this.queue.length > 0) {
           this.processQueue();
         }
@@ -433,22 +467,22 @@
 
       const attempts = (this.retryAttempts.get(operation) || 0) + 1;
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[SaveQueue] Save error for ${operation.type} (record ${operation.recordId}, Attempt ${attempts}/${this.maxRetries}):`, errorMessage, error);
+      safeConsole.error(`[SaveQueue] Save error for ${operation.type} (record ${operation.recordId}, Attempt ${attempts}/${this.maxRetries}):`, errorMessage, error);
 
       if (attempts < this.maxRetries) {
         this.retryAttempts.set(operation, attempts);
         const delay = this.retryDelay * Math.pow(2, attempts - 1);
-        console.log(`[SaveQueue] Retrying operation ${operation.type} (record ${operation.recordId}) in ${delay}ms...`);
+        safeConsole.log(`[SaveQueue] Retrying operation ${operation.type} (record ${operation.recordId}) in ${delay}ms...`);
         this.isSaving = false;
         setTimeout(() => {
-          console.log(`[SaveQueue] Attempting retry for ${operation.type} (record ${operation.recordId}) after delay.`);
+          safeConsole.log(`[SaveQueue] Attempting retry for ${operation.type} (record ${operation.recordId}) after delay.`);
           this.processQueue();
         }, delay);
       } else {
-        console.error(`[SaveQueue] Max retries reached for operation ${operation.type} (record ${operation.recordId}). Aborting.`);
+        safeConsole.error(`[SaveQueue] Max retries reached for operation ${operation.type} (record ${operation.recordId}). Aborting.`);
         const failedOperation = this.queue.shift();
         if (failedOperation !== operation) {
-          console.error("[SaveQueue] Mismatch during failure handling!", operation, failedOperation);
+          safeConsole.error("[SaveQueue] Mismatch during failure handling!", operation, failedOperation);
         }
         this.retryAttempts.delete(operation);
         operation.reject(error || new Error(`Save failed after ${this.maxRetries} retries`));
@@ -462,19 +496,19 @@
       // Now reading knackAppId and knackApiKey from STUDYPLANNER_CONFIG
       const config = window.STUDYPLANNER_CONFIG;
       if (!config || !config.knackAppId || !config.knackApiKey) {
-         console.error("[SaveQueue] Missing Knack App ID or API Key in STUDYPLANNER_CONFIG.");
+         safeConsole.error("[SaveQueue] Missing Knack App ID or API Key in STUDYPLANNER_CONFIG.");
          throw new Error("Knack configuration missing in window.STUDYPLANNER_CONFIG");
       }
       const knackAppId = config.knackAppId;
       const knackApiKey = config.knackApiKey;
 
       if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
-        console.error("[SaveQueue] Knack object or getUserToken function not available.");
+        safeConsole.error("[SaveQueue] Knack object or getUserToken function not available.");
         throw new Error("Knack authentication context not available.");
       }
       const token = Knack.getUserToken();
       if (!token) {
-        console.warn("[SaveQueue] Knack user token is null or undefined. API calls may fail.");
+        safeConsole.warn("[SaveQueue] Knack user token is null or undefined. API calls may fail.");
       }
       return {
         'X-Knack-Application-Id': knackAppId,
@@ -491,7 +525,7 @@
         JSON.stringify(data);
         return data;
       } catch (e) {
-        console.warn('[SaveQueue] Data contains circular references or non-serializable values. Stripping them.', e);
+        safeConsole.warn('[SaveQueue] Data contains circular references or non-serializable values. Stripping them.', e);
         const cache = new Set();
         try {
           return JSON.parse(JSON.stringify(data, (key, value) => {
@@ -504,7 +538,7 @@
             return value;
           }));
         } catch (parseError) {
-          console.error("[SaveQueue] Failed to serialize data even after attempting to strip circular references:", parseError);
+          safeConsole.error("[SaveQueue] Failed to serialize data even after attempting to strip circular references:", parseError);
           return data;
         }
       }
@@ -523,21 +557,21 @@
   // Main initialization function, now exposed globally.
   // This will be called by the loader script AFTER config is ready.
   window.initializeStudyPlannerApp = function() {
-    console.log("StudyPlanner: Initializing StudyPlannerApp function called...");
+    safeConsole.log("StudyPlanner: Initializing StudyPlannerApp function called...");
 
     // Get config directly from the global object set by the loader
     const config = window.STUDYPLANNER_CONFIG;
     if (!config || !config.appUrl || !config.elementSelector) {
-      console.error("StudyPlanner Error: Missing or incomplete STUDYPLANNER_CONFIG when initializeStudyPlannerApp called.", config);
+      safeConsole.error("StudyPlanner Error: Missing or incomplete STUDYPLANNER_CONFIG when initializeStudyPlannerApp called.", config);
       // Ensure config is an object to avoid errors if it was initially null/undefined
       const safeConfig = config || {};
       // Try a fallback selector if elementSelector is missing
       safeConfig.elementSelector = safeConfig.elementSelector || '.kn-rich-text';
       if (!safeConfig.appUrl) {
-          console.error("StudyPlanner Fatal Error: appUrl is missing in STUDYPLANNER_CONFIG. Cannot load app.");
+          safeConsole.error("StudyPlanner Fatal Error: appUrl is missing in STUDYPLANNER_CONFIG. Cannot load app.");
           return; // Cannot proceed without appUrl
       }
-      console.warn("StudyPlanner Warning: Proceeding with potentially incomplete config.");
+      safeConsole.warn("StudyPlanner Warning: Proceeding with potentially incomplete config.");
        // Reassign config to the potentially modified safeConfig
        window.STUDYPLANNER_CONFIG = safeConfig; // Update global if needed, or just use safeConfig locally
     }
@@ -547,20 +581,20 @@
 
     // Check if Knack context is ready (redundant if loader ensures it, but safe)
     if (typeof Knack === 'undefined' || typeof $ === 'undefined' || !Knack.getUserToken || !Knack.getUserAttributes || typeof Knack.application_id === 'undefined') {
-      console.error("StudyPlanner Error: Required Knack context or jQuery ($) not available when initializeStudyPlannerApp called.");
+      safeConsole.error("StudyPlanner Error: Required Knack context or jQuery ($) not available when initializeStudyPlannerApp called.");
       return;
     }
 
     if (Knack.getUserToken()) {
-      console.log("StudyPlanner: User is authenticated");
+      safeConsole.log("StudyPlanner: User is authenticated");
       const userToken = Knack.getUserToken();
       const appId = Knack.application_id;
       const user = Knack.getUserAttributes();
 
-      console.log("StudyPlanner: Basic user info:", user);
+      safeConsole.log("StudyPlanner: Basic user info:", user);
       // Ensure user object exists before assigning to window
       if (!user || typeof user !== 'object') {
-          console.error("StudyPlanner Error: Knack.getUserAttributes() did not return a valid user object.");
+          safeConsole.error("StudyPlanner Error: Knack.getUserAttributes() did not return a valid user object.");
           return;
       }
       window.currentKnackUser = user;
@@ -573,17 +607,17 @@
              window.currentKnackUser = Object.assign({}, window.currentKnackUser, completeUserData);
              debugLog("Enhanced global user object", window.currentKnackUser);
            } else {
-              console.warn("StudyPlanner: window.currentKnackUser lost before complete data arrived.");
+              safeConsole.warn("StudyPlanner: window.currentKnackUser lost before complete data arrived.");
               window.currentKnackUser = Object.assign({}, user, completeUserData); // Re-create if lost
            }
         } else {
-          console.warn("StudyPlanner: Could not get complete user data, continuing with basic info");
+          safeConsole.warn("StudyPlanner: Could not get complete user data, continuing with basic info");
         }
         // Pass the current config to continueInitialization
         continueInitialization(currentConfig, userToken, appId);
       });
     } else {
-      console.error("StudyPlanner: User is not authenticated (Knack.getUserToken() returned null/false).");
+      safeConsole.error("StudyPlanner: User is not authenticated (Knack.getUserToken() returned null/false).");
     }
   }
 
@@ -593,12 +627,12 @@
     const currentUser = window.currentKnackUser;
 
      if (!currentUser) {
-       console.error("StudyPlanner Error: Cannot continue initialization, currentKnackUser is not defined.");
+       safeConsole.error("StudyPlanner Error: Cannot continue initialization, currentKnackUser is not defined.");
        return;
      }
 
     // Log the full user object to help debug connection fields
-    console.log("COMPLETE USER OBJECT FOR CONNECTION DEBUGGING:", JSON.stringify(currentUser, null, 2));
+    safeConsole.log("COMPLETE USER OBJECT FOR CONNECTION DEBUGGING:", JSON.stringify(currentUser, null, 2));
     
     // Extract and store connection field IDs safely
     currentUser.emailId = extractValidRecordId(currentUser.id);
@@ -606,13 +640,13 @@
     // For VESPA Customer ID (field_122/school) - For object_2 connections
     if (currentUser.field_122_raw && Array.isArray(currentUser.field_122_raw) && currentUser.field_122_raw.length > 0) {
       currentUser.schoolId = extractValidRecordId(currentUser.field_122_raw[0].id);
-      console.log("Found VESPA Customer ID from field_122_raw:", currentUser.schoolId);
+      safeConsole.log("Found VESPA Customer ID from field_122_raw:", currentUser.schoolId);
     } else if (currentUser.school_raw && Array.isArray(currentUser.school_raw) && currentUser.school_raw.length > 0) {
       currentUser.schoolId = extractValidRecordId(currentUser.school_raw[0].id);
-      console.log("Found VESPA Customer ID from school_raw:", currentUser.schoolId);
+      safeConsole.log("Found VESPA Customer ID from school_raw:", currentUser.schoolId);
     } else {
       currentUser.schoolId = extractValidRecordId(currentUser.school || currentUser.field_122);
-      console.log("Using fallback for VESPA Customer ID:", currentUser.schoolId);
+      safeConsole.log("Using fallback for VESPA Customer ID:", currentUser.schoolId);
     }
     
     // For tutor connection(s) - object_6 connections via field_1682
@@ -625,10 +659,10 @@
         
       if (tutorIds.length === 1) {
         currentUser.teacherId = tutorIds[0];
-        console.log("Found single Tutor ID from field_1682_raw:", currentUser.teacherId);
+        safeConsole.log("Found single Tutor ID from field_1682_raw:", currentUser.teacherId);
       } else if (tutorIds.length > 1) {
         currentUser.teacherId = tutorIds; // Store as array
-        console.log(`Found ${tutorIds.length} Tutor IDs from field_1682_raw:`, tutorIds);
+        safeConsole.log(`Found ${tutorIds.length} Tutor IDs from field_1682_raw:`, tutorIds);
       }
     } else if (currentUser.tutor_raw && Array.isArray(currentUser.tutor_raw) && currentUser.tutor_raw.length > 0) {
       // Get all tutor IDs from tutor_raw
@@ -638,19 +672,19 @@
         
       if (tutorIds.length === 1) {
         currentUser.teacherId = tutorIds[0];
-        console.log("Found single Tutor ID from tutor_raw:", currentUser.teacherId);
+        safeConsole.log("Found single Tutor ID from tutor_raw:", currentUser.teacherId);
       } else if (tutorIds.length > 1) {
         currentUser.teacherId = tutorIds; // Store as array
-        console.log(`Found ${tutorIds.length} Tutor IDs from tutor_raw:`, tutorIds);
+        safeConsole.log(`Found ${tutorIds.length} Tutor IDs from tutor_raw:`, tutorIds);
       }
     } else {
       // Fallback for single tutor
       const singleTutorId = extractValidRecordId(currentUser.tutor);
       if(singleTutorId) {
            currentUser.teacherId = singleTutorId;
-           console.log("Using fallback for Tutor ID:", currentUser.teacherId);
+           safeConsole.log("Using fallback for Tutor ID:", currentUser.teacherId);
       } else {
-           console.log("No valid Tutor ID found in fallback.");
+           safeConsole.log("No valid Tutor ID found in fallback.");
       }
     }
     
@@ -666,10 +700,10 @@
         
       if (staffAdminIds.length === 1) {
         currentUser.staffAdminId = staffAdminIds[0];
-        console.log("Found single Staff Admin ID from field_190_raw:", currentUser.staffAdminId);
+        safeConsole.log("Found single Staff Admin ID from field_190_raw:", currentUser.staffAdminId);
       } else if (staffAdminIds.length > 1) {
         currentUser.staffAdminId = staffAdminIds; // Store as array
-        console.log(`Found ${staffAdminIds.length} Staff Admin IDs from field_190_raw:`, staffAdminIds);
+        safeConsole.log(`Found ${staffAdminIds.length} Staff Admin IDs from field_190_raw:`, staffAdminIds);
       }
     } else if (currentUser.staffAdmin_raw && Array.isArray(currentUser.staffAdmin_raw) && currentUser.staffAdmin_raw.length > 0) {
       // Get all staff admin IDs from staffAdmin_raw
@@ -679,17 +713,17 @@
         
       if (staffAdminIds.length === 1) {
         currentUser.staffAdminId = staffAdminIds[0];
-        console.log("Found single Staff Admin ID from staffAdmin_raw:", currentUser.staffAdminId);
+        safeConsole.log("Found single Staff Admin ID from staffAdmin_raw:", currentUser.staffAdminId);
       } else if (staffAdminIds.length > 1) {
         currentUser.staffAdminId = staffAdminIds; // Store as array
-        console.log(`Found ${staffAdminIds.length} Staff Admin IDs from staffAdmin_raw:`, staffAdminIds);
+        safeConsole.log(`Found ${staffAdminIds.length} Staff Admin IDs from staffAdmin_raw:`, staffAdminIds);
       }
     }
     
     // For object_2 - we need a valid ID for the VESPA Customer field (field_2473)
     // Use the school ID if it exists
     currentUser.vespaCustomerId = currentUser.schoolId;
-    console.log("Set VESPA Customer ID for field_2473:", currentUser.vespaCustomerId);
+    safeConsole.log("Set VESPA Customer ID for field_2473:", currentUser.vespaCustomerId);
 
     debugLog("FINAL CONNECTION FIELD IDs", {
       emailId: currentUser.emailId,
@@ -709,7 +743,7 @@
       const RETRY_DELAY_MS = 400; // Increased from 200
       let appReadyReceived = false; // Flag specific to this attempt
 
-      console.log(`StudyPlanner: Attempting DOM setup (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
+      safeConsole.log(`StudyPlanner: Attempting DOM setup (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
       
       // Check if Knack has fully rendered the correct view
       function checkForKnackStability() {
@@ -726,7 +760,7 @@
       // Only proceed if Knack appears stable
       if (!checkForKnackStability()) {
         if (retryCount < MAX_RETRIES) {
-          console.log(`StudyPlanner: Knack view not stable yet, retrying in ${RETRY_DELAY_MS}ms...`);
+          safeConsole.log(`StudyPlanner: Knack view not stable yet, retrying in ${RETRY_DELAY_MS}ms...`);
           setTimeout(() => attemptStudyPlannerDomSetup(config, userToken, appId, retryCount + 1), RETRY_DELAY_MS);
           return;
         }
@@ -741,7 +775,7 @@
       if (!container) {
         const viewElement = document.getElementById(viewId) || document.querySelector('.' + viewId);
         if (viewElement) {
-          console.log(`Creating container inside ${viewId}`);
+          safeConsole.log(`Creating container inside ${viewId}`);
           container = document.createElement('div');
           container.id = 'studyplanner-app-container-generated';
           viewElement.appendChild(container);
@@ -751,18 +785,18 @@
       if (!container) {
         const sceneElement = document.getElementById('kn-' + sceneId); // Knack scene IDs often prefixed with kn-
         if (sceneElement) {
-          console.log(`Creating container inside ${sceneId}`);
+          safeConsole.log(`Creating container inside ${sceneId}`);
           container = document.createElement('div');
           container.id = 'studyplanner-app-container-generated';
           sceneElement.appendChild(container);
         } else {
           // Container not found even with scene fallback
           if (retryCount < MAX_RETRIES) {
-              console.warn(`StudyPlanner: Container not found (selector: ${config.elementSelector}), retrying in ${RETRY_DELAY_MS}ms...`);
+              safeConsole.warn(`StudyPlanner: Container not found (selector: ${config.elementSelector}), retrying in ${RETRY_DELAY_MS}ms...`);
               setTimeout(() => attemptStudyPlannerDomSetup(config, userToken, appId, retryCount + 1), RETRY_DELAY_MS);
               return; // Stop this attempt, wait for retry
           } else {
-              console.error(`StudyPlanner: Cannot find any suitable container after ${MAX_RETRIES + 1} attempts using selector: ${config.elementSelector} or fallbacks. Aborting.`);
+              safeConsole.error(`StudyPlanner: Cannot find any suitable container after ${MAX_RETRIES + 1} attempts using selector: ${config.elementSelector} or fallbacks. Aborting.`);
               return; // Stop initialization
           }
         }
@@ -771,17 +805,17 @@
       // Final check if container was found after all fallbacks
       if (!container) {
          if (retryCount < MAX_RETRIES) {
-              console.warn(`StudyPlanner: Container not found (selector: ${config.elementSelector}), retrying in ${RETRY_DELAY_MS}ms...`);
+              safeConsole.warn(`StudyPlanner: Container not found (selector: ${config.elementSelector}), retrying in ${RETRY_DELAY_MS}ms...`);
               setTimeout(() => attemptStudyPlannerDomSetup(config, userToken, appId, retryCount + 1), RETRY_DELAY_MS);
               return; // Stop this attempt, wait for retry
           } else {
-              console.error(`StudyPlanner: Final check: Still cannot find container after ${MAX_RETRIES + 1} attempts. Aborting.`);
+              safeConsole.error(`StudyPlanner: Final check: Still cannot find container after ${MAX_RETRIES + 1} attempts. Aborting.`);
               return; // Stop initialization
           }
       }
 
       // --- Container found, proceed with iframe setup --- 
-      console.log("StudyPlanner: Container found. Proceeding with iframe setup.");
+      safeConsole.log("StudyPlanner: Container found. Proceeding with iframe setup.");
       container.innerHTML = '';
 
       // Loading indicator
@@ -814,7 +848,7 @@
          }
 
         if (!event.data || !event.data.type) {
-          console.warn("[Knack Script] Ignoring message with invalid format:", event.data);
+          safeConsole.warn("[Knack Script] Ignoring message with invalid format:", event.data);
           return;
         }
 
@@ -822,23 +856,23 @@
         const iframeWindow = iframe.contentWindow;
 
         if (type !== 'PING') { // Reduce console noise for frequent pings
-          console.log(`[Knack Script] Received message type: ${type}`);
+          safeConsole.log(`[Knack Script] Received message type: ${type}`);
         }
 
         if (type === 'APP_READY') {
           // Prevent handling duplicate APP_READY messages
           if (appReadyReceived) {
-            console.log("StudyPlanner: Ignoring duplicate APP_READY message");
+            safeConsole.log("StudyPlanner: Ignoring duplicate APP_READY message");
             return;
           }
 
           appReadyReceived = true;
-          console.log("StudyPlanner: React app reported APP_READY.");
+          safeConsole.log("StudyPlanner: React app reported APP_READY.");
 
           const userForApp = window.currentKnackUser; // Use potentially updated user object
 
           if (!userForApp || !userForApp.id) {
-            console.error("Cannot send initial info: Current Knack user data not ready or missing ID at APP_READY.");
+            safeConsole.error("Cannot send initial info: Current Knack user data not ready or missing ID at APP_READY.");
             // Optionally, tell the iframe there was an error
              if (iframeWindow) {
                  iframeWindow.postMessage({ type: 'KNACK_INIT_ERROR', error: 'Knack user data not available' }, new URL(config.appUrl).origin);
@@ -873,9 +907,9 @@
               // Show iframe after sending initial data
               loadingDiv.style.display = 'none';
               iframe.style.display = 'block';
-              console.log("StudyPlanner initialized and visible.");
+              safeConsole.log("StudyPlanner initialized and visible.");
             } else {
-              console.warn("[Knack Script] Iframe window no longer valid when sending initial data.");
+              safeConsole.warn("[Knack Script] Iframe window no longer valid when sending initial data.");
             }
           });
         } else {
@@ -885,25 +919,25 @@
       };
 
       window.addEventListener('message', messageHandler);
-      console.log("StudyPlanner initialization sequence complete. Waiting for APP_READY from iframe.");
+      safeConsole.log("StudyPlanner initialization sequence complete. Waiting for APP_READY from iframe.");
   }
 
   // Central Message Router - Added origin parameter
   function handleMessageRouter(type, data, iframeWindow, origin) {
     if (!type) {
-      console.warn("[Knack Script] Received message without type.");
+      safeConsole.warn("[Knack Script] Received message without type.");
       return;
     }
      if (!iframeWindow) {
-         console.error("[Knack Script] iframeWindow is missing in handleMessageRouter. Cannot send response.");
+         safeConsole.error("[Knack Script] iframeWindow is missing in handleMessageRouter. Cannot send response.");
          return;
      }
      if (!origin) {
-         console.error("[Knack Script] Origin is missing in handleMessageRouter. Cannot send response securely.");
+         safeConsole.error("[Knack Script] Origin is missing in handleMessageRouter. Cannot send response securely.");
          return;
      }
 
-    console.log(`[Knack Script] Routing message type: ${type}`);
+    safeConsole.log(`[Knack Script] Routing message type: ${type}`);
 
     switch (type) {
       case 'SAVE_DATA':
@@ -926,7 +960,7 @@
         handleLookupConnectionFields(data, iframeWindow, origin);
         break;
       case 'AUTH_CONFIRMED':
-        console.log("[Knack Script] React App confirmed auth.");
+        safeConsole.log("[Knack Script] React App confirmed auth.");
         const loadingIndicator = document.getElementById('studyplanner-loading-indicator');
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         const appIframe = document.getElementById('studyplanner-app-iframe');
@@ -937,15 +971,15 @@
       //  console.log("[Knack Script] Received PONG from iframe.");
       //  break;
       default:
-        console.warn(`[Knack Script] Unhandled message type: ${type}`);
+        safeConsole.warn(`[Knack Script] Unhandled message type: ${type}`);
     }
   }
 
   // Handle 'SAVE_DATA' request from React app - Added origin
   async function handleSaveDataRequest(data, iframeWindow, origin) {
-    console.log("[Knack Script] Handling SAVE_DATA request");
+    safeConsole.log("[Knack Script] Handling SAVE_DATA request");
     if (!data || !data.recordId) {
-      console.error("[Knack Script] SAVE_DATA request missing recordId.");
+      safeConsole.error("[Knack Script] SAVE_DATA request missing recordId.");
       if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: false, error: "Missing recordId" }, origin);
       return;
     }
@@ -954,10 +988,10 @@
     try {
       // Check if this is a session synchronization
       if (data.session) {
-        console.log("[Knack Script] Detected session data in SAVE_DATA request", data.session);
+        safeConsole.log("[Knack Script] Detected session data in SAVE_DATA request", data.session);
         
         // We'll still save the entire studyPlan, but we can log that we detected a session
-        console.log("[Knack Script] Processing session synchronization for session:", data.session.id);
+        safeConsole.log("[Knack Script] Processing session synchronization for session:", data.session.id);
       }
       
       await saveQueue.addToQueue({
@@ -967,7 +1001,7 @@
         preserveFields: data.preserveFields || false // Default to false if not provided
       });
 
-      console.log(`[Knack Script] SAVE_DATA for record ${data.recordId} added to queue.`);
+      safeConsole.log(`[Knack Script] SAVE_DATA for record ${data.recordId} added to queue.`);
       // Post success message optimistically after queuing
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'SAVE_RESULT', 
@@ -979,14 +1013,14 @@
       }, origin);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[Knack Script] SAVE_DATA failed for record ${data.recordId} during queueing:`, errorMessage);
+      safeConsole.error(`[Knack Script] SAVE_DATA failed for record ${data.recordId} during queueing:`, errorMessage);
       if (iframeWindow) iframeWindow.postMessage({ type: 'SAVE_RESULT', success: false, error: errorMessage || 'Unknown save error' }, origin);
     }
   }
 
   // Handle request for updated data from React app - Added origin
   async function handleDataUpdateRequest(messageData, iframeWindow, origin) {
-    console.log("[Knack Script] Handling REQUEST_UPDATED_DATA request", messageData);
+    safeConsole.log("[Knack Script] Handling REQUEST_UPDATED_DATA request", messageData);
     const userId = window.currentKnackUser?.id;
 
     // Extract recordId - Improved logic
@@ -994,10 +1028,10 @@
     if (typeof messageData === 'object' && messageData !== null) {
       recordId = messageData.recordId || messageData.data?.recordId;
     }
-    console.log("[Knack Script] Extracted recordId for data update request:", recordId);
+    safeConsole.log("[Knack Script] Extracted recordId for data update request:", recordId);
 
     if (!userId) {
-      console.error("[Knack Script] Cannot refresh data - user ID not found.");
+      safeConsole.error("[Knack Script] Cannot refresh data - user ID not found.");
       if (iframeWindow) iframeWindow.postMessage({ type: 'DATA_REFRESH_ERROR', error: 'User ID not found' }, origin);
       return;
     }
@@ -1007,10 +1041,10 @@
       if (userData && iframeWindow) {
         // If a specific recordId was requested, log a warning if it doesn't match
         if (recordId && userData.recordId !== recordId) {
-           console.warn(`[Knack Script] Loaded data record ID (${userData.recordId}) does not match requested record ID (${recordId}). Sending loaded data anyway as it's the user's current record.`);
+           safeConsole.warn(`[Knack Script] Loaded data record ID (${userData.recordId}) does not match requested record ID (${recordId}). Sending loaded data anyway as it's the user's current record.`);
         }
 
-        console.log("[Knack Script] Sending refreshed data to React app (on request)");
+        safeConsole.log("[Knack Script] Sending refreshed data to React app (on request)");
         iframeWindow.postMessage({
           type: 'KNACK_DATA', // Consistent type
           studyPlan: userData.studyPlan || {},
@@ -1020,7 +1054,7 @@
         }, origin);
 
       } else if (iframeWindow) {
-        console.error("[Knack Script] Error loading updated data (on request) or iframe invalid.");
+        safeConsole.error("[Knack Script] Error loading updated data (on request) or iframe invalid.");
         iframeWindow.postMessage({ type: 'DATA_REFRESH_ERROR', error: 'Failed to load data' }, origin);
       }
     });
@@ -1028,10 +1062,10 @@
 
   // Handle record ID request - Added origin
   async function handleRecordIdRequest(data, iframeWindow, origin) {
-    console.log("[Knack Script] Handling REQUEST_RECORD_ID request");
+    safeConsole.log("[Knack Script] Handling REQUEST_RECORD_ID request");
     const userId = window.currentKnackUser?.id;
     if (!userId) {
-      console.error("[Knack Script] Cannot get record ID - user ID not found.");
+      safeConsole.error("[Knack Script] Cannot get record ID - user ID not found.");
       if (iframeWindow) iframeWindow.postMessage({ type: 'RECORD_ID_ERROR', error: 'User ID not found' }, origin);
       return;
     }
@@ -1039,14 +1073,14 @@
     // Use the existing load function which finds or creates the record
     loadStudyPlannerUserData(userId, function(userData) {
       if (userData && userData.recordId && iframeWindow) {
-        console.log(`[Knack Script] Responding with record ID: ${userData.recordId}`);
+        safeConsole.log(`[Knack Script] Responding with record ID: ${userData.recordId}`);
         iframeWindow.postMessage({
           type: 'RECORD_ID_RESPONSE',
           recordId: userData.recordId,
           timestamp: new Date().toISOString()
         }, origin);
       } else if (iframeWindow) {
-        console.error(`[Knack Script] Could not find or create record ID for user ${userId}`);
+        safeConsole.error(`[Knack Script] Could not find or create record ID for user ${userId}`);
         iframeWindow.postMessage({
           type: 'RECORD_ID_ERROR',
           error: 'Record ID not found or could not be created',
@@ -1058,7 +1092,7 @@
 
   // Handle tutor sharing request from React app
   async function handleTutorShareRequest(data, iframeWindow, origin) {
-    console.log("[Knack Script] Handling TUTOR_SHARE_SESSIONS request");
+    safeConsole.log("[Knack Script] Handling TUTOR_SHARE_SESSIONS request");
     debugLog("[Knack Script] Tutor share request data:", data);
     
     // Handle both possible data structures to be more robust
@@ -1069,10 +1103,10 @@
     
     // Extract the student name from the message data - this will be used when creating sessions
     const studentName = messageData.studentName || "";
-    console.log(`[Knack Script] Extracted student name from message data: ${studentName}`);
+    safeConsole.log(`[Knack Script] Extracted student name from message data: ${studentName}`);
     
     if (!recordId) {
-      console.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing recordId.");
+      safeConsole.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing recordId.");
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'TUTOR_SHARE_RESULT', 
         success: false, 
@@ -1082,7 +1116,7 @@
     }
     
     if (!sessions || !Array.isArray(sessions) || sessions.length === 0) {
-      console.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing sessions data.");
+      safeConsole.error("[Knack Script] TUTOR_SHARE_SESSIONS request missing sessions data.");
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'TUTOR_SHARE_RESULT', 
         success: false, 
@@ -1093,7 +1127,7 @@
     
     const user = window.currentKnackUser;
     if (!user || !user.id) {
-      console.error("[Knack Script] Cannot share sessions: Current user data not available.");
+      safeConsole.error("[Knack Script] Cannot share sessions: Current user data not available.");
       if (iframeWindow) iframeWindow.postMessage({ 
         type: 'TUTOR_SHARE_RESULT', 
         success: false, 
@@ -1119,7 +1153,7 @@
         const existingRecord = await findTutorSharedSession(session.sessionId);
         
         if (existingRecord.success && existingRecord.record) {
-          console.log(`[Knack Script] Session ${session.sessionId} already shared, skipping`);
+          safeConsole.log(`[Knack Script] Session ${session.sessionId} already shared, skipping`);
           results.skipped++;
           continue;
         }
@@ -1128,15 +1162,15 @@
         const shareResult = await createTutorSharedSession(session, user);
         
         if (shareResult.success) {
-          console.log(`[Knack Script] Successfully shared session ${session.sessionId} with tutor`);
+          safeConsole.log(`[Knack Script] Successfully shared session ${session.sessionId} with tutor`);
           results.shared++;
         } else {
-          console.error(`[Knack Script] Failed to share session ${session.sessionId}:`, shareResult.error);
+          safeConsole.error(`[Knack Script] Failed to share session ${session.sessionId}:`, shareResult.error);
           results.failed++;
           results.errors.push(`Failed to share session ${session.sessionId}: ${shareResult.error}`);
         }
       } catch (error) {
-        console.error(`[Knack Script] Error processing session ${session.sessionId}:`, error);
+        safeConsole.error(`[Knack Script] Error processing session ${session.sessionId}:`, error);
         results.failed++;
         results.errors.push(`Error processing session ${session.sessionId}: ${error.message || 'Unknown error'}`);
       }
@@ -1144,7 +1178,7 @@
     
     // Format final result message
     results.message = `Shared ${results.shared} sessions, skipped ${results.skipped} already shared sessions, failed on ${results.failed} sessions.`;
-    console.log(`[Knack Script] Tutor sharing result: ${results.message}`);
+    safeConsole.log(`[Knack Script] Tutor sharing result: ${results.message}`);
     
     // Send result back to React app
     if (iframeWindow) {
@@ -1162,7 +1196,7 @@
       return { success: false, error: 'Session ID is required' };
     }
     
-    console.log(`[Knack Script] Checking if session ${sessionId} is already shared with tutor`);
+    safeConsole.log(`[Knack Script] Checking if session ${sessionId} is already shared with tutor`);
     
     // Create filter to find by session ID (field_3057)
     const filters = encodeURIComponent(JSON.stringify({
@@ -1208,7 +1242,7 @@
         };
       }
     } catch (error) {
-      console.error(`[Knack Script] Error checking for existing shared session ${sessionId}:`, error);
+      safeConsole.error(`[Knack Script] Error checking for existing shared session ${sessionId}:`, error);
       return {
         success: false,
         error: error.message || 'Unknown error checking for existing record'
@@ -1229,7 +1263,7 @@
     if (strValue.includes('href="mailto:')) {
       const emailMatch = strValue.match(/mailto:([^"]+)/i);
       if (emailMatch && emailMatch[1]) {
-        console.log(`[Knack Script] Extracted email from mailto link: ${emailMatch[1]}`);
+        safeConsole.log(`[Knack Script] Extracted email from mailto link: ${emailMatch[1]}`);
         return emailMatch[1];
       }
     }
@@ -1238,16 +1272,16 @@
     if (strValue.includes('<a href="') && strValue.includes('@')) {
       const emailMatch = strValue.match(/<a href="([^"]+@[^"]+)"/i);
       if (emailMatch && emailMatch[1]) {
-        console.log(`[Knack Script] Extracted email from direct href link: ${emailMatch[1]}`);
+        safeConsole.log(`[Knack Script] Extracted email from direct href link: ${emailMatch[1]}`);
         return emailMatch[1];
       }
     }
     
     // Email in display text pattern: >email@domain.com<
     if (strValue.includes('>') && strValue.includes('@') && strValue.includes('<')) {
-      const emailMatch = strValue.match(/>([^<>]+@[^<>]+)</i);
+      const emailMatch = strValue.match(/>([^<>]+@[^<>]+)\</i);
       if (emailMatch && emailMatch[1]) {
-        console.log(`[Knack Script] Extracted email from display text: ${emailMatch[1]}`);
+        safeConsole.log(`[Knack Script] Extracted email from display text: ${emailMatch[1]}`);
         return emailMatch[1];
       }
     }
@@ -1256,7 +1290,7 @@
     if (strValue.includes('@')) {
       const emailMatch = strValue.match(/\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/);
       if (emailMatch && emailMatch[1]) {
-        console.log(`[Knack Script] Extracted plain email: ${emailMatch[1]}`);
+        safeConsole.log(`[Knack Script] Extracted plain email: ${emailMatch[1]}`);
         return emailMatch[1];
       }
     }
@@ -1277,12 +1311,12 @@
   // Create a new record in object_90 for a shared session
   async function createTutorSharedSession(session, user) {
     try {
-      console.log(`[Knack Script] Creating tutor shared session record for: ${session.sessionId}`);
+      safeConsole.log(`[Knack Script] Creating tutor shared session record for: ${session.sessionId}`);
       
       // IMPORTANT: First fetch the user's StudyPlan record to get exact connection fields
       // This provides the connection field IDs that are already working in object_110
       const studyPlanRecord = await getUserStudyPlanRecord(user.id);
-      console.log(`[Knack Script] Retrieved user's StudyPlan record for connection fields: ${studyPlanRecord ? "Success" : "Failed"}`);
+      safeConsole.log(`[Knack Script] Retrieved user's StudyPlan record for connection fields: ${studyPlanRecord ? "Success" : "Failed"}`);
       // *** ADDED LOGGING HERE ***
       debugLog('[Knack Script] StudyPlanRecord as received in createTutorSharedSession', studyPlanRecord);
       // *** END ADDED LOGGING ***
@@ -1345,7 +1379,7 @@
         startDate = `${formattedDate} ${formattedTime}`;
         endDate = `${formattedDate} ${formattedEndTime}`;
       } catch (dateError) {
-        console.error(`[Knack Script] Error parsing session date/time:`, dateError);
+        safeConsole.error(`[Knack Script] Error parsing session date/time:`, dateError);
         startDate = new Date().toLocaleDateString('en-GB'); // fallback to current date
         startTime = '09:00'; // fallback to default time
       }
@@ -1365,37 +1399,37 @@
       
       // Extract field values from StudyPlan record if available
       if (studyPlanRecord) {
-        console.log("[Knack Script] Extracting connection fields from StudyPlan record");
+        safeConsole.log("[Knack Script] Extracting connection fields from StudyPlan record");
 
         // *** REMOVED DEBUG LOGS as they are no longer the focus ***
 
         // Extract VESPA Customer ID (field_3043 -> field_2473)
         if (studyPlanRecord.field_3043_raw && Array.isArray(studyPlanRecord.field_3043_raw) && studyPlanRecord.field_3043_raw.length > 0) {
           vespaCustomerId = extractValidRecordId(studyPlanRecord.field_3043_raw[0]);
-          console.log(`[Knack Script] Found VESPA Customer ID in StudyPlan record (_raw): ${vespaCustomerId}`);
+          safeConsole.log(`[Knack Script] Found VESPA Customer ID in StudyPlan record (_raw): ${vespaCustomerId}`);
         }
         // *** ADDED FALLBACK for VESPA Customer non-raw field just in case ***
         else if (studyPlanRecord.field_3043 && Array.isArray(studyPlanRecord.field_3043) && studyPlanRecord.field_3043.length > 0) {
            vespaCustomerId = extractValidRecordId(studyPlanRecord.field_3043[0]); // Knack API often returns array of IDs here
-           console.log(`[Knack Script] Found VESPA Customer ID in StudyPlan record (non-raw): ${vespaCustomerId}`);
+           safeConsole.log(`[Knack Script] Found VESPA Customer ID in StudyPlan record (non-raw): ${vespaCustomerId}`);
         }
 
 
         // Extract Staff Admin ID(s) (field_3059 -> field_2474) - Handles multiple
         // *** MODIFIED: Directly use field_3059 ***
         if (studyPlanRecord.field_3059 && Array.isArray(studyPlanRecord.field_3059) && studyPlanRecord.field_3059.length > 0) {
-          console.log(`[Knack Script Debug] Processing field_3059 content:`, JSON.stringify(studyPlanRecord.field_3059));
+          safeConsole.log(`[Knack Script Debug] Processing field_3059 content:`, JSON.stringify(studyPlanRecord.field_3059));
           const staffAdminIds = studyPlanRecord.field_3059
             .map(item => extractValidRecordId(item)) // The API should return IDs here
             .filter(id => id); // Remove null/undefined values
           if (staffAdminIds.length > 0) {
             staffAdminId = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
-            console.log(`[Knack Script] Found Staff Admin ID(s) in StudyPlan record (field_3059): ${JSON.stringify(staffAdminId)}`);
+            safeConsole.log(`[Knack Script] Found Staff Admin ID(s) in StudyPlan record (field_3059): ${JSON.stringify(staffAdminId)}`);
           } else {
-             console.log(`[Knack Script] field_3059 exists but no valid IDs extracted.`);
+             safeConsole.log(`[Knack Script] field_3059 exists but no valid IDs extracted.`);
           }
         } else {
-           console.log(`[Knack Script] field_3059 not found or not a non-empty array in StudyPlan record.`);
+           safeConsole.log(`[Knack Script] field_3059 not found or not a non-empty array in StudyPlan record.`);
         }
 
 
