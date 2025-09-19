@@ -29,18 +29,11 @@
       if (DEBUG_MODE) console.warn(...args);
     },
     error: function(...args) {
-      // Always log errors but with less detail in production
+      // Only log errors when in debug mode
       if (DEBUG_MODE) {
         console.error(...args);
-      } else {
-        // In production, only log error messages without sensitive data
-        const errorMsg = args[0];
-        if (typeof errorMsg === 'string') {
-          console.error('StudyPlanner Error:', errorMsg.split(':')[0]);
-        } else {
-          console.error('StudyPlanner Error: An error occurred');
-        }
       }
+      // In production mode, errors are completely silent
     },
     info: function(...args) {
       if (DEBUG_MODE) console.info(...args);
@@ -843,7 +836,7 @@
       const messageHandler = function(event) {
         // Basic security check: Ensure the message is from the expected iframe source
          if (event.source !== iframe.contentWindow || event.origin !== new URL(config.appUrl).origin) {
-           // console.warn("[Knack Script] Ignoring message from unexpected source or origin:", event.origin);
+           // safeConsole.warn("[Knack Script] Ignoring message from unexpected source or origin:", event.origin);
            return;
          }
 
@@ -968,7 +961,7 @@
         break;
       // Add PONG handler if needed for heartbeat checks
       // case 'PONG':
-      //  console.log("[Knack Script] Received PONG from iframe.");
+      //  safeConsole.log("[Knack Script] Received PONG from iframe.");
       //  break;
       default:
         safeConsole.warn(`[Knack Script] Unhandled message type: ${type}`);
@@ -1436,25 +1429,25 @@
         // Extract Tutor ID(s) (field_3058 -> field_2476) - Handles multiple
          // *** MODIFIED: Directly use field_3058 ***
         if (studyPlanRecord.field_3058 && Array.isArray(studyPlanRecord.field_3058) && studyPlanRecord.field_3058.length > 0) {
-           console.log(`[Knack Script Debug] Processing field_3058 content:`, JSON.stringify(studyPlanRecord.field_3058));
+           safeConsole.log(`[Knack Script Debug] Processing field_3058 content:`, JSON.stringify(studyPlanRecord.field_3058));
           const tutorIds = studyPlanRecord.field_3058
              .map(item => {
                   // *** ADDED DETAILED LOGGING ***
-                  console.log('[Knack Script] Mapping Tutor item from field_3058:', JSON.stringify(item));
+                  safeConsole.log('[Knack Script] Mapping Tutor item from field_3058:', JSON.stringify(item));
                   const extractedId = extractValidRecordId(item); // API should return IDs
-                  console.log(`[Knack Script] Extracted ID for item: ${extractedId}`);
+                  safeConsole.log(`[Knack Script] Extracted ID for item: ${extractedId}`);
                   return extractedId;
                   // *** END ADDED LOGGING ***
                })
             .filter(id => id); // Remove null/undefined values
           if (tutorIds.length > 0) {
             tutorId = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
-            console.log(`[Knack Script] Found Tutor ID(s) in StudyPlan record (field_3058): ${JSON.stringify(tutorId)}`);
+            safeConsole.log(`[Knack Script] Found Tutor ID(s) in StudyPlan record (field_3058): ${JSON.stringify(tutorId)}`);
           } else {
-            console.log(`[Knack Script] field_3058 exists but no valid IDs extracted.`);
+            safeConsole.log(`[Knack Script] field_3058 exists but no valid IDs extracted.`);
           }
         } else {
-           console.log(`[Knack Script] field_3058 not found or not a non-empty array in StudyPlan record.`);
+           safeConsole.log(`[Knack Script] field_3058 not found or not a non-empty array in StudyPlan record.`);
         }
 
 
@@ -1462,10 +1455,10 @@
         // *** Keep original logic - seems less problematic ***
         if (studyPlanRecord.field_3044_raw) {
           if (Array.isArray(studyPlanRecord.field_3044_raw) && studyPlanRecord.field_3044_raw.length > 0) {
-            console.log("[Knack Script] Found User Connection in StudyPlan record (_raw)");
+            safeConsole.log("[Knack Script] Found User Connection in StudyPlan record (_raw)");
           }
         } else if (studyPlanRecord.field_3044 && Array.isArray(studyPlanRecord.field_3044) && studyPlanRecord.field_3044.length > 0){
-            console.log("[Knack Script] Found User Connection in StudyPlan record (non-raw)");
+            safeConsole.log("[Knack Script] Found User Connection in StudyPlan record (non-raw)");
         }
       }
       
@@ -1473,17 +1466,17 @@
       // *** REMOVE Fallbacks for Tutor/Staff Admin as we should rely on the StudyPlan record ***
       if (!vespaCustomerId && user.vespaCustomerId) {
         vespaCustomerId = user.vespaCustomerId;
-        console.log(`[Knack Script] Using VESPA Customer ID from user object: ${vespaCustomerId}`);
+        safeConsole.log(`[Knack Script] Using VESPA Customer ID from user object: ${vespaCustomerId}`);
       } else if (!vespaCustomerId && user.schoolId) {
         vespaCustomerId = user.schoolId;
-        console.log(`[Knack Script] Using school ID from user object: ${vespaCustomerId}`);
+        safeConsole.log(`[Knack Script] Using school ID from user object: ${vespaCustomerId}`);
       }
 
       // Fallback for staff admin if not found in studyPlanRecord
       /* // REMOVED - Rely on studyPlanRecord
       if (!staffAdminId && user.staffAdminId) {
          staffAdminId = user.staffAdminId; // user.staffAdminId might be single or array
-         console.log(`[Knack Script] Using staff admin ID(s) from user object: ${JSON.stringify(staffAdminId)}`);
+         safeConsole.log(`[Knack Script] Using staff admin ID(s) from user object: ${JSON.stringify(staffAdminId)}`);
       }
       */
 
@@ -1491,7 +1484,7 @@
       /* // REMOVED - Rely on studyPlanRecord
       if (!tutorId && user.teacherId) {
          tutorId = user.teacherId; // user.teacherId might be single or array
-         console.log(`[Knack Script] Using tutor ID(s) from user object: ${JSON.stringify(tutorId)}`);
+         safeConsole.log(`[Knack Script] Using tutor ID(s) from user object: ${JSON.stringify(tutorId)}`);
       }
       */
 
@@ -1501,23 +1494,23 @@
         // Check cache first
         if (user === window.currentKnackUser && window.currentKnackUser.studentRecordId) {
             studentId = window.currentKnackUser.studentRecordId;
-            console.log("[Knack Script] Using cached studentRecordId:", studentId);
+            safeConsole.log("[Knack Script] Using cached studentRecordId:", studentId);
         } else {
-            console.log("[Knack Script] Looking up student record for user's email:", user.email);
+            safeConsole.log("[Knack Script] Looking up student record for user's email:", user.email);
             try {
               const studentRecord = await lookupRecordByEmail('object_6', 'field_91', user.email);
               if (studentRecord.success && studentRecord.record) {
                 studentId = studentRecord.record.id;
-                console.log(`[Knack Script] Found student record ID by email lookup: ${studentId}`);
+                safeConsole.log(`[Knack Script] Found student record ID by email lookup: ${studentId}`);
                 
                 // Store this for future reference if we're in the main user record context
                 if (user === window.currentKnackUser) {
                   window.currentKnackUser.studentRecordId = studentId;
-                  console.log("[Knack Script] Caching studentRecordId in currentKnackUser for future use");
+                  safeConsole.log("[Knack Script] Caching studentRecordId in currentKnackUser for future use");
                 }
               }
             } catch (err) {
-              console.error("[Knack Script] Error looking up student record:", err);
+              safeConsole.error("[Knack Script] Error looking up student record:", err);
             }
         }
       }
@@ -1537,45 +1530,45 @@
       // Make sure we use the user.name directly for the studentName field if available
       if (user.name) {
         data[TUTOR_SHARING_FIELDS.studentName] = sanitizeField(user.name);
-        console.log(`[Knack Script] Setting Student Name field (${TUTOR_SHARING_FIELDS.studentName}) to: "${user.name}"`);
+        safeConsole.log(`[Knack Script] Setting Student Name field (${TUTOR_SHARING_FIELDS.studentName}) to: "${user.name}"`);
       }
       
       // Add connection fields - use the IDs we carefully extracted
       if (vespaCustomerId) {
         data[TUTOR_SHARING_FIELDS.vespaCustomer] = vespaCustomerId;
-        console.log(`[Knack Script] Setting VESPA Customer (field_2473) to: ${vespaCustomerId}`);
+        safeConsole.log(`[Knack Script] Setting VESPA Customer (field_2473) to: ${vespaCustomerId}`);
       }
       
       if (staffAdminId) {
         data[TUTOR_SHARING_FIELDS.staffAdmin] = staffAdminId; // Can be single ID or array
         const logValue = Array.isArray(staffAdminId) ? JSON.stringify(staffAdminId) : staffAdminId;
-        console.log(`[Knack Script] Setting Staff Admin (field_2474) to: ${logValue}`);
+        safeConsole.log(`[Knack Script] Setting Staff Admin (field_2474) to: ${logValue}`);
       }
       
       if (tutorId) {
         data[TUTOR_SHARING_FIELDS.tutor] = tutorId; // Can be single ID or array
         const logValue = Array.isArray(tutorId) ? JSON.stringify(tutorId) : tutorId;
-        console.log(`[Knack Script] Setting Tutor (field_2476) to: ${logValue}`);
+        safeConsole.log(`[Knack Script] Setting Tutor (field_2476) to: ${logValue}`);
       }
       
       if (studentId) {
         data[TUTOR_SHARING_FIELDS.userConnection] = studentId;
-        console.log(`[Knack Script] Setting User Connection (field_2475) to: ${studentId}`);
+        safeConsole.log(`[Knack Script] Setting User Connection (field_2475) to: ${studentId}`);
       } else {
-        console.warn("[Knack Script] No student record ID found for User Connection field");
+        safeConsole.warn("[Knack Script] No student record ID found for User Connection field");
       }
       
       // Enhanced debugging for connection fields
-      console.log("[Knack Script] Connection fields for Knack integration:");
-      console.log(`- field_2473 (VESPA Customer): "${vespaCustomerId || 'Not set'}"`);
-      console.log(`- field_2474 (Staff Admin): "${staffAdminId ? JSON.stringify(staffAdminId) : 'Not set'}"`); // Log stringified value
-      console.log(`- field_2475 (User Connection): "${studentId || 'Not set'}"`);
-      console.log(`- field_2476 (Tutor): "${tutorId ? JSON.stringify(tutorId) : 'Not set'}"`); // Log stringified value
+      safeConsole.log("[Knack Script] Connection fields for Knack integration:");
+      safeConsole.log(`- field_2473 (VESPA Customer): "${vespaCustomerId || 'Not set'}"`);
+      safeConsole.log(`- field_2474 (Staff Admin): "${staffAdminId ? JSON.stringify(staffAdminId) : 'Not set'}"`); // Log stringified value
+      safeConsole.log(`- field_2475 (User Connection): "${studentId || 'Not set'}"`);
+      safeConsole.log(`- field_2476 (Tutor): "${tutorId ? JSON.stringify(tutorId) : 'Not set'}"`); // Log stringified value
       
       debugLog("[Knack Script] Complete record data", data);
       
       // Create the record in Knack with proper connection formats
-      console.log(`[Knack Script] Submitting session record to object_90`);
+      safeConsole.log(`[Knack Script] Submitting session record to object_90`);
       
       const apiCall = () => new Promise((resolve, reject) => {
         $.ajax({
@@ -1621,7 +1614,7 @@
         };
       }
     } catch (error) {
-      console.error(`[Knack Script] Error creating tutor shared session record:`, error);
+      safeConsole.error(`[Knack Script] Error creating tutor shared session record:`, error);
       return {
         success: false,
         error: error.message || 'Unknown error creating record'
@@ -1632,11 +1625,11 @@
   // Get complete user data from Knack
   function getCompleteUserData(userId, callback) {
     if (!userId) {
-      console.error("[Knack Script] Cannot get complete user data: userId is missing.");
+      safeConsole.error("[Knack Script] Cannot get complete user data: userId is missing.");
       callback(null);
       return;
     }
-    console.log("[Knack Script] Getting complete user data for:", userId);
+    safeConsole.log("[Knack Script] Getting complete user data for:", userId);
     const apiCall = () => new Promise((resolve, reject) => {
       $.ajax({
         url: `${KNACK_API_URL}/objects/object_3/records/${userId}`, // Assuming object_3 is User object
@@ -1655,12 +1648,12 @@
 
     retryApiCall(apiCall, 2, 500) // Fewer retries for user data fetch
       .then(response => {
-        console.log("[Knack Script] Complete user data received.");
+        safeConsole.log("[Knack Script] Complete user data received.");
         debugLog("[Knack Script] Raw Complete User Data:", response);
         callback(response);
       })
       .catch(error => {
-        console.error("[Knack Script] Error retrieving complete user data after retries:", error.status, error.responseText || error.message);
+        safeConsole.error("[Knack Script] Error retrieving complete user data after retries:", error.status, error.responseText || error.message);
         callback(null);
       });
   }
@@ -1668,11 +1661,11 @@
   // Load user's study planner data (find or create)
   function loadStudyPlannerUserData(userId, callback) {
     if (!userId) {
-      console.error("[Knack Script] Cannot load study planner data: userId is missing.");
+      safeConsole.error("[Knack Script] Cannot load study planner data: userId is missing.");
       callback(null);
       return;
     }
-    console.log(`[Knack Script] Loading study planner data for user ID: ${userId}`);
+    safeConsole.log(`[Knack Script] Loading study planner data for user ID: ${userId}`);
     const findRecordApiCall = () => new Promise((resolve, reject) => {
       $.ajax({
         url: `${KNACK_API_URL}/objects/${STUDYPLANNER_OBJECT}/records`,
@@ -1701,7 +1694,7 @@
         debugLog("[Knack Script] Study Planner data search response:", response);
         if (response && response.records && response.records.length > 0) {
           const record = response.records[0];
-          console.log(`[Knack Script] Found existing study planner record: ${record.id}`);
+          safeConsole.log(`[Knack Script] Found existing study planner record: ${record.id}`);
 
           // Assemble userData from record fields safely
           let userData = { recordId: record.id };
@@ -1729,16 +1722,16 @@
             debugLog("[Knack Script] ASSEMBLED USER DATA from loaded record", userData);
             callback(userData);
           } catch (e) {
-            console.error("[Knack Script] Error parsing loaded user data fields:", e);
+            safeConsole.error("[Knack Script] Error parsing loaded user data fields:", e);
             // Return partially assembled data even if parsing fails for one field
             callback(userData);
           }
         } else {
           // No existing data, create a new record
-          console.log(`[Knack Script] No existing study planner record found for user ${userId}, creating new one...`);
+          safeConsole.log(`[Knack Script] No existing study planner record found for user ${userId}, creating new one...`);
           createStudyPlannerUserRecord(userId, function(success, newRecordId) {
             if (success && newRecordId) {
-              console.log(`[Knack Script] New record created with ID: ${newRecordId}`);
+              safeConsole.log(`[Knack Script] New record created with ID: ${newRecordId}`);
               // Return the minimal data for a new record
               callback({
                 recordId: newRecordId,
@@ -1746,46 +1739,46 @@
                 lastSaved: null // No save yet
               });
             } else {
-              console.error(`[Knack Script] Failed to create new study planner record for user ${userId}.`);
+              safeConsole.error(`[Knack Script] Failed to create new study planner record for user ${userId}.`);
               callback(null);
             }
           });
         }
       })
       .catch((error) => {
-        console.error("[Knack Script] Error loading study planner user data after retries:", error.status, error.responseText || error.message);
+        safeConsole.error("[Knack Script] Error loading study planner user data after retries:", error.status, error.responseText || error.message);
         callback(null);
       });
   }
 
   // Create a new study planner user record
   async function createStudyPlannerUserRecord(userId, callback) {
-    console.log("[Knack Script] Creating new study planner user record for:", userId);
+    safeConsole.log("[Knack Script] Creating new study planner user record for:", userId);
     const user = window.currentKnackUser; // Use the potentially enhanced user object
 
     if (!user || !user.email) { // Check for essential fields like email
-      console.error("[Knack Script] Cannot create record: window.currentKnackUser is missing or lacks email.");
+      safeConsole.error("[Knack Script] Cannot create record: window.currentKnackUser is missing or lacks email.");
       callback(false, null);
       return;
     }
 
     try {
-      console.log("[Knack Script] Looking up Student role data directly from user's profile");
+      safeConsole.log("[Knack Script] Looking up Student role data directly from user's profile");
       
       // Get the user's profile data directly from their roles/profile info
       let studentRole = null;
       
       // Try to get a direct student role record from object_6
       // This is tricky as we need to make sure we get the correct student role for this user
-      console.log(`[Knack Script] Fetching student role data for user ID: ${userId} with email: ${user.email}`);
+      safeConsole.log(`[Knack Script] Fetching student role data for user ID: ${userId} with email: ${user.email}`);
       
       // Get profile keys (roles) from the user
       const userProfileKeys = user.profile_keys || user.field_73 || [];
-      console.log(`[Knack Script] User profile keys:`, userProfileKeys);
+      safeConsole.log(`[Knack Script] User profile keys:`, userProfileKeys);
       
   // Try to identify the student role ID directly from the user's account
   const studentRoleId = Array.isArray(user.roles) && user.roles.find(role => role === 'object_6');
-  console.log(`[Knack Script] Student role ID from roles:`, studentRoleId);
+  safeConsole.log(`[Knack Script] Student role ID from roles:`, studentRoleId);
   
   // Create a more specific filter to find student roles by email using multiple possible fields
   // The issue is that the email might be in different fields depending on how the system is set up
@@ -1814,7 +1807,7 @@
   };
       
       const studentRoleFilters = encodeURIComponent(JSON.stringify(searchFilters));
-      console.log(`[Knack Script] Using student role filter:`, JSON.stringify(searchFilters, null, 2));
+      safeConsole.log(`[Knack Script] Using student role filter:`, JSON.stringify(searchFilters, null, 2));
       
       try {
         const response = await retryApiCall(() => new Promise((resolve, reject) => {
@@ -1834,7 +1827,7 @@
         }));
         
         if (response && response.records && response.records.length > 0) {
-          console.log(`[Knack Script] Found ${response.records.length} student role records`);
+          safeConsole.log(`[Knack Script] Found ${response.records.length} student role records`);
           
           // Check each record to find which one matches our user's email
           let bestMatch = null;
@@ -1845,11 +1838,11 @@
             const recordEmailRaw = recordFields.email || record.field_91_raw?.email || '';
             const recordEmail = sanitizeField(recordEmailRaw);
             
-            console.log(`[Knack Script] Checking record email: "${recordEmail}" against user email: "${user.email}"`);
+            safeConsole.log(`[Knack Script] Checking record email: "${recordEmail}" against user email: "${user.email}"`);
             
             // If record matches current user's email, use it
             if (recordEmail && recordEmail.toLowerCase() === user.email.toLowerCase()) {
-              console.log(`[Knack Script] Found exact match for user email: ${recordEmail}`);
+              safeConsole.log(`[Knack Script] Found exact match for user email: ${recordEmail}`);
               bestMatch = record;
               break;
             }
@@ -1858,18 +1851,18 @@
           // Use the best match if found, otherwise use the first record
           if (bestMatch) {
             studentRole = bestMatch;
-            console.log("[Knack Script] Using exact matching student role record");
+            safeConsole.log("[Knack Script] Using exact matching student role record");
           } else {
             studentRole = response.records[0];
-            console.warn("[Knack Script] No exact match found. Using first record but connection fields may be incorrect");
+            safeConsole.warn("[Knack Script] No exact match found. Using first record but connection fields may be incorrect");
           }
           
           debugLog("[Knack Script] Student role data that will be used", studentRole);
         } else {
-          console.log("[Knack Script] No student role record found for email:", user.email);
+          safeConsole.log("[Knack Script] No student role record found for email:", user.email);
         }
       } catch (error) {
-        console.error("[Knack Script] Error looking up student role:", error);
+        safeConsole.error("[Knack Script] Error looking up student role:", error);
       }
       
       // Basic data structure for a new record
@@ -1884,57 +1877,57 @@
       // Add User Account connection (field_3044) - use the actual user Account ID
       // Format correctly for Knack connected field - must use the ID
       data[FIELD_MAPPING.teacherConnection] = userId; // Direct account ID, not email
-      console.log(`[Knack Script] Setting User Account connection (field_3044) to Account ID: "${userId}"`);
+      safeConsole.log(`[Knack Script] Setting User Account connection (field_3044) to Account ID: "${userId}"`);
       
       // Add VESPA Customer connection (field_3043) from user account
       // Use actual ID for connected field - all connected fields need record IDs
       if (user.schoolId) {
         data[FIELD_MAPPING.vespaCustomer] = user.schoolId;
-        console.log(`[Knack Script] Setting VESPA Customer (${FIELD_MAPPING.vespaCustomer}) to ID: "${user.schoolId}"`);
+        safeConsole.log(`[Knack Script] Setting VESPA Customer (${FIELD_MAPPING.vespaCustomer}) to ID: "${user.schoolId}"`);
       } else if (studentRole && studentRole.field_122_raw) {
         // Try to get school ID from student role if available
         const schoolId = extractValidRecordId(studentRole.field_122_raw);
         if (schoolId) {
           data[FIELD_MAPPING.vespaCustomer] = schoolId;
-          console.log(`[Knack Script] Setting VESPA Customer from student role to ID: "${schoolId}"`);
+          safeConsole.log(`[Knack Script] Setting VESPA Customer from student role to ID: "${schoolId}"`);
         }
       }
       
       // Enhanced debugging for student role field extraction
       if (studentRole) {
-        console.log("[Knack Script] Analyzing student role data fields:");
-        console.log(`- field_1682 (Tutor) exists: ${studentRole.hasOwnProperty('field_1682')}`);
-        console.log(`- field_1682_raw exists: ${studentRole.hasOwnProperty('field_1682_raw')}`);
-        console.log(`- field_190 (Staff Admin) exists: ${studentRole.hasOwnProperty('field_190')}`);
-        console.log(`- field_190_raw exists: ${studentRole.hasOwnProperty('field_190_raw')}`);
+        safeConsole.log("[Knack Script] Analyzing student role data fields:");
+        safeConsole.log(`- field_1682 (Tutor) exists: ${studentRole.hasOwnProperty('field_1682')}`);
+        safeConsole.log(`- field_1682_raw exists: ${studentRole.hasOwnProperty('field_1682_raw')}`);
+        safeConsole.log(`- field_190 (Staff Admin) exists: ${studentRole.hasOwnProperty('field_190')}`);
+        safeConsole.log(`- field_190_raw exists: ${studentRole.hasOwnProperty('field_190_raw')}`);
 
         // Dump raw connection field values to help debug
-        if (studentRole.field_1682) console.log("Raw tutor field value:", JSON.stringify(studentRole.field_1682));
-        if (studentRole.field_1682_raw) console.log("Raw tutor_raw field value:", JSON.stringify(studentRole.field_1682_raw));
-        if (studentRole.field_190) console.log("Raw staff admin field value:", JSON.stringify(studentRole.field_190));
-        if (studentRole.field_190_raw) console.log("Raw staff admin_raw field value:", JSON.stringify(studentRole.field_190_raw));
+        if (studentRole.field_1682) safeConsole.log("Raw tutor field value:", JSON.stringify(studentRole.field_1682));
+        if (studentRole.field_1682_raw) safeConsole.log("Raw tutor_raw field value:", JSON.stringify(studentRole.field_1682_raw));
+        if (studentRole.field_190) safeConsole.log("Raw staff admin field value:", JSON.stringify(studentRole.field_190));
+        if (studentRole.field_190_raw) safeConsole.log("Raw staff admin_raw field value:", JSON.stringify(studentRole.field_190_raw));
         
          // Extract tutor record ID(s) (not email) - Handles multiple
         let tutorId = null; // Can be single ID or array
         if (studentRole.field_1682_raw && Array.isArray(studentRole.field_1682_raw) && studentRole.field_1682_raw.length > 0) {
-           console.log("[Knack Script] Extracting tutor IDs from field_1682_raw...");
+           safeConsole.log("[Knack Script] Extracting tutor IDs from field_1682_raw...");
            const tutorIds = studentRole.field_1682_raw
              .map(item => extractValidRecordId(item))
              .filter(id => id);
            if (tutorIds.length > 0) {
              tutorId = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
-             console.log(`[Knack Script] Extracted ${tutorIds.length} tutor ID(s) from _raw: ${JSON.stringify(tutorIds)}`);
+             safeConsole.log(`[Knack Script] Extracted ${tutorIds.length} tutor ID(s) from _raw: ${JSON.stringify(tutorIds)}`);
            }
         }
         // *** RESTORED LOGIC FOR NON-RAW FIELD, BUT WITH CORRECT MAPPING ***
         else if (studentRole.field_1682 && Array.isArray(studentRole.field_1682)) {
-          console.log("[Knack Script] field_1682_raw not found, extracting tutor IDs from field_1682...");
+          safeConsole.log("[Knack Script] field_1682_raw not found, extracting tutor IDs from field_1682...");
           const tutorIds = studentRole.field_1682
               .map(item => extractValidRecordId(item)) // Map ALL items
               .filter(id => id); // Filter out nulls
           if (tutorIds.length > 0) {
                tutorId = tutorIds.length === 1 ? tutorIds[0] : tutorIds;
-               console.log(`[Knack Script] Extracted ${tutorIds.length} tutor ID(s) from field_1682: ${JSON.stringify(tutorIds)}`);
+               safeConsole.log(`[Knack Script] Extracted ${tutorIds.length} tutor ID(s) from field_1682: ${JSON.stringify(tutorIds)}`);
           }
         }
         // *** END RESTORED LOGIC ***
@@ -1942,32 +1935,32 @@
         if (tutorId) {
           data[FIELD_MAPPING.tutorConnection] = tutorId;
           const logValue = Array.isArray(tutorId) ? JSON.stringify(tutorId) : tutorId;
-          console.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to ID(s): "${logValue}"`);
+          safeConsole.log(`[Knack Script] Setting Tutor connection (${FIELD_MAPPING.tutorConnection}) to ID(s): "${logValue}"`);
         } else {
-          console.log("[Knack Script] Could not extract valid tutor ID(s) from student role");
+          safeConsole.log("[Knack Script] Could not extract valid tutor ID(s) from student role");
         }
         
         // Extract staff admin record ID(s) (not email) - Handles multiple
         let staffAdminId = null; // Can be single ID or array
         if (studentRole.field_190_raw && Array.isArray(studentRole.field_190_raw) && studentRole.field_190_raw.length > 0) {
-          console.log("[Knack Script] Extracting staff admin IDs from field_190_raw...");
+          safeConsole.log("[Knack Script] Extracting staff admin IDs from field_190_raw...");
            const staffAdminIds = studentRole.field_190_raw
              .map(item => extractValidRecordId(item))
              .filter(id => id);
            if (staffAdminIds.length > 0) {
              staffAdminId = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
-             console.log(`[Knack Script] Extracted ${staffAdminIds.length} staff admin ID(s) from _raw: ${JSON.stringify(staffAdminIds)}`);
+             safeConsole.log(`[Knack Script] Extracted ${staffAdminIds.length} staff admin ID(s) from _raw: ${JSON.stringify(staffAdminIds)}`);
            }
         }
         // *** RESTORED LOGIC FOR NON-RAW FIELD, BUT WITH CORRECT MAPPING ***
         else if (studentRole.field_190 && Array.isArray(studentRole.field_190)) {
-           console.log("[Knack Script] field_190_raw not found, extracting staff admin IDs from field_190...");
+           safeConsole.log("[Knack Script] field_190_raw not found, extracting staff admin IDs from field_190...");
            const staffAdminIds = studentRole.field_190
               .map(item => extractValidRecordId(item)) // Map ALL items
               .filter(id => id); // Filter out nulls
            if (staffAdminIds.length > 0) {
                staffAdminId = staffAdminIds.length === 1 ? staffAdminIds[0] : staffAdminIds;
-               console.log(`[Knack Script] Extracted ${staffAdminIds.length} staff admin ID(s) from field_190: ${JSON.stringify(staffAdminIds)}`);
+               safeConsole.log(`[Knack Script] Extracted ${staffAdminIds.length} staff admin ID(s) from field_190: ${JSON.stringify(staffAdminIds)}`);
            }
         }
       
@@ -1976,17 +1969,17 @@
         if (staffAdminId) {
           data[FIELD_MAPPING.staffAdminConnection] = staffAdminId;
           const logValue = Array.isArray(staffAdminId) ? JSON.stringify(staffAdminId) : staffAdminId;
-          console.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to ID(s): "${logValue}"`);
+          safeConsole.log(`[Knack Script] Setting Staff Admin connection (${FIELD_MAPPING.staffAdminConnection}) to ID(s): "${logValue}"`);
         } else {
-          console.log("[Knack Script] Could not extract valid staff admin ID(s) from student role");
+          safeConsole.log("[Knack Script] Could not extract valid staff admin ID(s) from student role");
         }
       }
       // Enhanced debugging for connection fields
-      console.log("[Knack Script] Connection fields for new StudyPlanner record:");
-      console.log(`- ${FIELD_MAPPING.teacherConnection} (User Account): "${data[FIELD_MAPPING.teacherConnection] || "Not set"}"`);
-      console.log(`- ${FIELD_MAPPING.vespaCustomer} (VESPA Customer): "${data[FIELD_MAPPING.vespaCustomer] || "Not set"}"`);
-      console.log(`- ${FIELD_MAPPING.tutorConnection} (Tutor): "${data[FIELD_MAPPING.tutorConnection] ? JSON.stringify(data[FIELD_MAPPING.tutorConnection]) : "Not set"}"`);
-      console.log(`- ${FIELD_MAPPING.staffAdminConnection} (Staff Admin): "${data[FIELD_MAPPING.staffAdminConnection] ? JSON.stringify(data[FIELD_MAPPING.staffAdminConnection]) : "Not set"}"`);
+      safeConsole.log("[Knack Script] Connection fields for new StudyPlanner record:");
+      safeConsole.log(`- ${FIELD_MAPPING.teacherConnection} (User Account): "${data[FIELD_MAPPING.teacherConnection] || "Not set"}"`);
+      safeConsole.log(`- ${FIELD_MAPPING.vespaCustomer} (VESPA Customer): "${data[FIELD_MAPPING.vespaCustomer] || "Not set"}"`);
+      safeConsole.log(`- ${FIELD_MAPPING.tutorConnection} (Tutor): "${data[FIELD_MAPPING.tutorConnection] ? JSON.stringify(data[FIELD_MAPPING.tutorConnection]) : "Not set"}"`);
+      safeConsole.log(`- ${FIELD_MAPPING.staffAdminConnection} (Staff Admin): "${data[FIELD_MAPPING.staffAdminConnection] ? JSON.stringify(data[FIELD_MAPPING.staffAdminConnection]) : "Not set"}"`);
       
       debugLog("[Knack Script] COMPLETE NEW RECORD PAYLOAD", data);
       
@@ -2008,28 +2001,28 @@
       });
 
       const response = await retryApiCall(apiCall);
-      console.log("[Knack Script] Successfully created user record:", response);
+      safeConsole.log("[Knack Script] Successfully created user record:", response);
       
       // Ensure response has an ID before calling back
       if (response && response.id) {
           callback(true, response.id);
       } else {
-          console.error("[Knack Script] Record creation API call succeeded but response missing ID.", response);
+          safeConsole.error("[Knack Script] Record creation API call succeeded but response missing ID.", response);
           callback(false, null);
       }
     } catch (error) {
-      console.error("[Knack Script] Error creating user record:", error.status, error.responseText || error.message);
+      safeConsole.error("[Knack Script] Error creating user record:", error.status, error.responseText || error.message);
       callback(false, null);
     }
   }
 
   // Handle lookup connection fields request from React app
   async function handleLookupConnectionFields(data, iframeWindow, origin) {
-    console.log("[Knack Script] Handling LOOKUP_CONNECTION_FIELDS request");
+    safeConsole.log("[Knack Script] Handling LOOKUP_CONNECTION_FIELDS request");
     debugLog("[Knack Script] Connection fields lookup request data:", data);
     
     if (!data || !data.userEmail) {
-      console.error("[Knack Script] LOOKUP_CONNECTION_FIELDS request missing userEmail.");
+      safeConsole.error("[Knack Script] LOOKUP_CONNECTION_FIELDS request missing userEmail.");
       if (iframeWindow) {
         iframeWindow.postMessage({
           type: 'CONNECTION_FIELDS_RESULT',
@@ -2068,17 +2061,17 @@
             // Add text value
             if (vespaCustomerValue) {
               results[vespaCustomerLookup.targetField] = vespaCustomerValue;
-              console.log(`[Knack Script] Found VESPA Customer: ${vespaCustomerValue}`);
+              safeConsole.log(`[Knack Script] Found VESPA Customer: ${vespaCustomerValue}`);
             }
             
             // Add ID - important for Knack connection fields
             if (vespaCustomerId) {
               results[vespaCustomerLookup.targetField + "_id"] = vespaCustomerId;
-              console.log(`[Knack Script] Found VESPA Customer ID: ${vespaCustomerId}`);
+              safeConsole.log(`[Knack Script] Found VESPA Customer ID: ${vespaCustomerId}`);
             }
           }
         } catch (error) {
-          console.error('[Knack Script] Error looking up VESPA Customer:', error);
+          safeConsole.error('[Knack Script] Error looking up VESPA Customer:', error);
         }
       }
       
@@ -2094,7 +2087,7 @@
                                `${studentResult.record.field_69.first || ''} ${studentResult.record.field_69.last || ''}`.trim();
               if (studentName) {
                 results["studentName"] = sanitizeField(studentName);
-                console.log(`[Knack Script] Found Student Name: ${studentName}`);
+                safeConsole.log(`[Knack Script] Found Student Name: ${studentName}`);
               }
             }
             
@@ -2114,34 +2107,34 @@
                   .filter(id => id); // Filter out null/undefined values
                 
                 if (tutorIds.length > 0) {
-                  console.log(`[Knack Script] Found ${tutorIds.length} Tutor IDs: ${tutorIds.join(', ')}`);
+                  safeConsole.log(`[Knack Script] Found ${tutorIds.length} Tutor IDs: ${tutorIds.join(', ')}`);
                 }
               }
               
               // If we don't have valid IDs yet but have an email, look up the tutor record by email
               if (tutorIds.length === 0 && tutorValue && tutorValue.includes('@')) {
                 try {
-                  console.log(`[Knack Script] Looking up tutor record for email: ${tutorValue}`);
+                  safeConsole.log(`[Knack Script] Looking up tutor record for email: ${tutorValue}`);
                   const tutorRecord = await lookupRecordByEmail('object_6', 'field_91', tutorValue);
                   if (tutorRecord.success && tutorRecord.record && tutorRecord.record.id) {
                     tutorIds = [tutorRecord.record.id];
-                    console.log(`[Knack Script] Found tutor record ID from email lookup: ${tutorRecord.record.id}`);
+                    safeConsole.log(`[Knack Script] Found tutor record ID from email lookup: ${tutorRecord.record.id}`);
                   }
                 } catch (err) {
-                  console.error(`[Knack Script] Error looking up tutor record by email:`, err);
+                  safeConsole.error(`[Knack Script] Error looking up tutor record by email:`, err);
                 }
               }
               
               // Add text value
               if (tutorValue) {
                 results[tutorLookup.targetField] = tutorValue;
-                console.log(`[Knack Script] Found Tutor: ${tutorValue}`);
+                safeConsole.log(`[Knack Script] Found Tutor: ${tutorValue}`);
               }
               
               // Add ID array - important for Knack connection fields
               if (tutorIds.length > 0) {
                 results[tutorLookup.targetField + "_id"] = tutorIds;
-                console.log(`[Knack Script] Found Tutor IDs: ${JSON.stringify(tutorIds)}`);
+                safeConsole.log(`[Knack Script] Found Tutor IDs: ${JSON.stringify(tutorIds)}`);
               }
             }
             
@@ -2161,34 +2154,34 @@
                   .filter(id => id); // Filter out null/undefined values
                   
                 if (staffAdminIds.length > 0) {
-                  console.log(`[Knack Script] Found ${staffAdminIds.length} Staff Admin IDs: ${staffAdminIds.join(', ')}`);
+                  safeConsole.log(`[Knack Script] Found ${staffAdminIds.length} Staff Admin IDs: ${staffAdminIds.join(', ')}`);
                 }
               }
               
               // If we don't have valid IDs yet but have an email, look up the staff admin record by email
               if (staffAdminIds.length === 0 && staffAdminValue && staffAdminValue.includes('@')) {
                 try {
-                  console.log(`[Knack Script] Looking up staff admin record for email: ${staffAdminValue}`);
+                  safeConsole.log(`[Knack Script] Looking up staff admin record for email: ${staffAdminValue}`);
                   const staffAdminRecord = await lookupRecordByEmail('object_6', 'field_91', staffAdminValue);
                   if (staffAdminRecord.success && staffAdminRecord.record && staffAdminRecord.record.id) {
                     staffAdminIds = [staffAdminRecord.record.id];
-                    console.log(`[Knack Script] Found staff admin record ID from email lookup: ${staffAdminRecord.record.id}`);
+                    safeConsole.log(`[Knack Script] Found staff admin record ID from email lookup: ${staffAdminRecord.record.id}`);
                   }
                 } catch (err) {
-                  console.error(`[Knack Script] Error looking up staff admin record by email:`, err);
+                  safeConsole.error(`[Knack Script] Error looking up staff admin record by email:`, err);
                 }
               }
               
               // Add text value
               if (staffAdminValue) {
                 results[staffAdminLookup.targetField] = staffAdminValue;
-                console.log(`[Knack Script] Found Staff Admin: ${staffAdminValue}`);
+                safeConsole.log(`[Knack Script] Found Staff Admin: ${staffAdminValue}`);
               }
               
               // Add ID array - important for Knack connection fields
               if (staffAdminIds.length > 0) {
                 results[staffAdminLookup.targetField + "_id"] = staffAdminIds;
-                console.log(`[Knack Script] Found Staff Admin IDs: ${JSON.stringify(staffAdminIds)}`);
+                safeConsole.log(`[Knack Script] Found Staff Admin IDs: ${JSON.stringify(staffAdminIds)}`);
               }
             }
             
@@ -2196,18 +2189,18 @@
             if (studentResult.record.id) {
               // Use the student record ID directly
               results["user_account_id"] = studentResult.record.id;
-              console.log(`[Knack Script] Found Student Record ID (for User Connection): ${studentResult.record.id}`);
+              safeConsole.log(`[Knack Script] Found Student Record ID (for User Connection): ${studentResult.record.id}`);
             }
           }
         } catch (error) {
-          console.error('[Knack Script] Error looking up Student record:', error);
+          safeConsole.error('[Knack Script] Error looking up Student record:', error);
         }
       }
       
       // Log all the results for debugging
-      console.log("[Knack Script] Complete connection fields lookup results:");
+      safeConsole.log("[Knack Script] Complete connection fields lookup results:");
       for (const [key, value] of Object.entries(results)) {
-        console.log(`- ${key}: ${value}`);
+        safeConsole.log(`- ${key}: ${value}`);
       }
       
       // Send the results back to the React app
@@ -2220,7 +2213,7 @@
         }, origin);
       }
     } catch (error) {
-      console.error('[Knack Script] Error processing connection fields lookup:', error);
+      safeConsole.error('[Knack Script] Error processing connection fields lookup:', error);
       if (iframeWindow) {
         iframeWindow.postMessage({
           type: 'CONNECTION_FIELDS_RESULT',
@@ -2235,7 +2228,7 @@
   
   // Get the user's StudyPlan record to use for connection fields
   async function getUserStudyPlanRecord(userId) {
-    console.log(`[Knack Script] Fetching StudyPlan record for user ${userId}`);
+    safeConsole.log(`[Knack Script] Fetching StudyPlan record for user ${userId}`);
     
     // Look up the user's record in STUDYPLANNER_OBJECT (object_110) by userId field
     const filters = encodeURIComponent(JSON.stringify({
@@ -2268,7 +2261,7 @@
     try {
       return await retryApiCall(apiCall);
     } catch (error) {
-      console.error(`[Knack Script] Error fetching StudyPlan record:`, error);
+      safeConsole.error(`[Knack Script] Error fetching StudyPlan record:`, error);
       return null;
     }
   }
@@ -2279,7 +2272,7 @@
       return { success: false, error: 'Email is required' };
     }
     
-    console.log(`[Knack Script] Looking up ${objectKey} record by email: ${email}`);
+    safeConsole.log(`[Knack Script] Looking up ${objectKey} record by email: ${email}`);
     
     // Create filter to find by email - use both exact match and contains for better results
     const filters = encodeURIComponent(JSON.stringify({
@@ -2341,7 +2334,7 @@
         };
       }
     } catch (error) {
-      console.error(`[Knack Script] Error looking up record by email ${email}:`, error);
+      safeConsole.error(`[Knack Script] Error looking up record by email ${email}:`, error);
       return {
         success: false,
         error: error.message || 'Unknown error looking up record'
@@ -2354,14 +2347,14 @@
     if (!record || !fieldKey) return null;
     
     // Log what we're extracting for debugging
-    console.log(`[Knack Script] Extracting value for field: ${fieldKey}`);
+    safeConsole.log(`[Knack Script] Extracting value for field: ${fieldKey}`);
     
     // Get the raw field value
     const rawValue = record[fieldKey];
     if (rawValue === undefined || rawValue === null || rawValue === '') return null;
     
     // Log the raw value type for debugging
-    console.log(`[Knack Script] Raw value for field ${fieldKey}:`, 
+    safeConsole.log(`[Knack Script] Raw value for field ${fieldKey}:`, 
                 typeof rawValue, 
                 Array.isArray(rawValue) ? 'array' : '', 
                 rawValue && typeof rawValue === 'object' ? 'keys: ' + Object.keys(rawValue).join(',') : '');
@@ -2369,31 +2362,31 @@
     // Try to get HTML content that might contain email addresses
     const htmlContent = typeof rawValue === 'string' && rawValue.includes('<a href="mailto:');
     if (htmlContent) {
-      console.log(`[Knack Script] Field ${fieldKey} contains HTML with email links`);
+      safeConsole.log(`[Knack Script] Field ${fieldKey} contains HTML with email links`);
       return sanitizeField(rawValue); // Our updated sanitizeField will extract emails from HTML
     }
     
     // Check if this is a connection field (which typically has _raw suffix with more data)
     const rawFieldKey = `${fieldKey}_raw`;
     if (record[rawFieldKey]) {
-      console.log(`[Knack Script] Found ${rawFieldKey} field, checking it first`);
+      safeConsole.log(`[Knack Script] Found ${rawFieldKey} field, checking it first`);
       
       // Handle array of connections
       if (Array.isArray(record[rawFieldKey]) && record[rawFieldKey].length > 0) {
-        console.log(`[Knack Script] ${rawFieldKey} is an array with ${record[rawFieldKey].length} items`);
+        safeConsole.log(`[Knack Script] ${rawFieldKey} is an array with ${record[rawFieldKey].length} items`);
         
         // Extract email identifiers from connections - prioritize email properties
         for (const item of record[rawFieldKey]) {
           // Look for email format properties first
           if (item.email) {
             const email = sanitizeField(item.email);
-            console.log(`[Knack Script] Found email in raw field array: ${email}`);
+            safeConsole.log(`[Knack Script] Found email in raw field array: ${email}`);
             return email;
           }
           
           if (item.identifier && typeof item.identifier === 'string' && item.identifier.includes('@')) {
             const email = sanitizeField(item.identifier);
-            console.log(`[Knack Script] Found email-like identifier in raw field array: ${email}`);
+            safeConsole.log(`[Knack Script] Found email-like identifier in raw field array: ${email}`);
             return email;
           }
         }
@@ -2401,24 +2394,24 @@
         // If no emails found, fall back to first identifier
         if (record[rawFieldKey][0].identifier) {
           const identifier = sanitizeField(record[rawFieldKey][0].identifier);
-          console.log(`[Knack Script] No email found, using identifier from raw field array: ${identifier}`);
+          safeConsole.log(`[Knack Script] No email found, using identifier from raw field array: ${identifier}`);
           return identifier;
         }
       }
       // Single connection object
       else if (typeof record[rawFieldKey] === 'object' && record[rawFieldKey] !== null) {
-        console.log(`[Knack Script] ${rawFieldKey} is a single object`);
+        safeConsole.log(`[Knack Script] ${rawFieldKey} is a single object`);
         
         // Prioritize email properties
         if (record[rawFieldKey].email) {
           const email = sanitizeField(record[rawFieldKey].email);
-          console.log(`[Knack Script] Found email in raw field object: ${email}`);
+          safeConsole.log(`[Knack Script] Found email in raw field object: ${email}`);
           return email;
         }
         
         if (record[rawFieldKey].identifier) {
           const identifier = sanitizeField(record[rawFieldKey].identifier);
-          console.log(`[Knack Script] Found identifier in raw field object: ${identifier}`);
+          safeConsole.log(`[Knack Script] Found identifier in raw field object: ${identifier}`);
           return identifier;
         }
       }
@@ -2427,31 +2420,31 @@
     // Try direct value if raw field didn't provide a value
     if (typeof rawValue === 'string') {
       const value = sanitizeField(rawValue);
-      console.log(`[Knack Script] Field is a direct string: ${value}`);
+      safeConsole.log(`[Knack Script] Field is a direct string: ${value}`);
       return value;
     } 
     // Handle arrays
     else if (Array.isArray(rawValue)) {
-      console.log(`[Knack Script] Field is an array with ${rawValue.length} items`);
+      safeConsole.log(`[Knack Script] Field is an array with ${rawValue.length} items`);
       if (rawValue.length === 0) return null;
       
       // Check for email-like values first
       for (const item of rawValue) {
         if (typeof item === 'string' && item.includes('@')) {
           const email = sanitizeField(item);
-          console.log(`[Knack Script] Found email-like string in array: ${email}`);
+          safeConsole.log(`[Knack Script] Found email-like string in array: ${email}`);
           return email;
         }
         
         if (typeof item === 'object' && item !== null) {
           if (item.email) {
             const email = sanitizeField(item.email);
-            console.log(`[Knack Script] Found email in array object: ${email}`);
+            safeConsole.log(`[Knack Script] Found email in array object: ${email}`);
             return email;
           }
           if (item.identifier && typeof item.identifier === 'string' && item.identifier.includes('@')) {
             const email = sanitizeField(item.identifier);
-            console.log(`[Knack Script] Found email-like identifier in array object: ${email}`);
+            safeConsole.log(`[Knack Script] Found email-like identifier in array object: ${email}`);
             return email;
           }
         }
@@ -2460,39 +2453,40 @@
       // If no emails found, fall back to first item
       if (typeof rawValue[0] === 'string') {
         const value = sanitizeField(rawValue[0]);
-        console.log(`[Knack Script] Using first string from array: ${value}`);
+        safeConsole.log(`[Knack Script] Using first string from array: ${value}`);
         return value;
       } else if (typeof rawValue[0] === 'object' && rawValue[0] !== null) {
         if (rawValue[0].identifier) {
           const identifier = sanitizeField(rawValue[0].identifier);
-          console.log(`[Knack Script] Using identifier from first array object: ${identifier}`);
+          safeConsole.log(`[Knack Script] Using identifier from first array object: ${identifier}`);
           return identifier;
         }
       }
     } 
     // Handle direct object
     else if (typeof rawValue === 'object' && rawValue !== null) {
-      console.log(`[Knack Script] Field is a direct object`);
+      safeConsole.log(`[Knack Script] Field is a direct object`);
       
       // Check for object with email property
       if (rawValue.email) {
         const email = sanitizeField(rawValue.email);
-        console.log(`[Knack Script] Found email property in object: ${email}`);
+        safeConsole.log(`[Knack Script] Found email property in object: ${email}`);
         return email;
       }
       
       // Fall back to identifier
       if (rawValue.identifier) {
         const identifier = sanitizeField(rawValue.identifier);
-        console.log(`[Knack Script] Found identifier property in object: ${identifier}`);
+        safeConsole.log(`[Knack Script] Found identifier property in object: ${identifier}`);
         return identifier;
       }
     }
     
-    console.log(`[Knack Script] No suitable value found for field: ${fieldKey}`);
+    safeConsole.log(`[Knack Script] No suitable value found for field: ${fieldKey}`);
     return null;
   }
 
 })(); // End of IIFE
+
 
 
