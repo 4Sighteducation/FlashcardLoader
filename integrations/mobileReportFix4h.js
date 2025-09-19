@@ -8,7 +8,19 @@
 (function() {
     'use strict';
     
-    console.log('[Student Report Enhancement v5.1] Script loaded at', new Date().toISOString());
+    // ====== DEBUG MODE CONTROL ======
+    // Set to true to enable console logging for debugging
+    // Set to false to disable all console logs in production
+    const DEBUG_MODE = false;  // PRODUCTION: false | DEBUGGING: true
+    
+    // Debug logging function - only logs when DEBUG_MODE is true
+    const debugLog = function(...args) {
+        if (DEBUG_MODE) {
+            console.log(...args);
+        }
+    };
+    
+    debugLog('[Student Report Enhancement v5.1] Script loaded at', new Date().toISOString());
     
     let stylesApplied = false;
     let popupsInitialized = false;
@@ -25,7 +37,7 @@
         // Consider it mobile if it has touch AND (small width OR mobile user agent)
         const isMobile = hasTouch && (smallWidth || mobileUserAgent);
         
-        console.log('[Student Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'Touch:', hasTouch, 'UA Mobile:', mobileUserAgent);
+        debugLog('[Student Report Enhancement] Mobile detection:', isMobile, 'Width:', window.innerWidth, 'Touch:', hasTouch, 'UA Mobile:', mobileUserAgent);
         return isMobile;
     }
     
@@ -36,7 +48,7 @@
             function checkElement() {
                 const element = document.querySelector(selector);
                 if (element) {
-                    console.log(`[Student Report Enhancement] Found element: ${selector}`);
+                    debugLog(`[Student Report Enhancement] Found element: ${selector}`);
                     resolve(element);
                 } else if (Date.now() - startTime > timeout) {
                     console.warn(`[Student Report Enhancement] Timeout waiting for element: ${selector}`);
@@ -54,7 +66,7 @@
         // Check if we're on the student report page
         const currentScene = window.location.hash;
         if (!currentScene.includes('scene_43') && !currentScene.includes('my-report') && !currentScene.includes('vespa-results')) {
-            console.log('[Student Report Enhancement] Not on student report page, skipping');
+            debugLog('[Student Report Enhancement] Not on student report page, skipping');
             return false;
         }
         
@@ -64,7 +76,7 @@
             const hasStaffRole = user.roles.includes('object_7');
             const hasStudentRole = user.roles.includes('object_6');
             if (hasStaffRole && hasStudentRole) {
-                console.log('[Student Report Enhancement] Emulated student detected - skipping mobile fixes to prevent score display issues');
+                debugLog('[Student Report Enhancement] Emulated student detected - skipping mobile fixes to prevent score display issues');
                 return false;
             }
         }
@@ -73,7 +85,7 @@
             // Wait for the report container with timeout
             const reportContainer = await waitForElement('#view_3041 #report-container', 5000);
             
-            console.log('[Student Report Enhancement] Report container found! Applying enhancements');
+            debugLog('[Student Report Enhancement] Report container found! Applying enhancements');
             
             // Apply CSS fixes (only once)
             if (!stylesApplied) {
@@ -86,7 +98,7 @@
             
             // FAILSAFE: Force hide mobile elements on desktop
             if (!isMobileDevice()) {
-                console.log('[Student Report Enhancement] Desktop detected - force hiding mobile elements');
+                debugLog('[Student Report Enhancement] Desktop detected - force hiding mobile elements');
                 const mobileElements = document.querySelectorAll('.mobile-section-heading, .mobile-section-heading-comments, .mobile-section-heading-coaching, .mobile-theme-heading, .mobile-score-display');
                 mobileElements.forEach(el => {
                     el.style.cssText = 'display: none !important; visibility: hidden !important; position: absolute !important; left: -9999px !important;';
@@ -151,17 +163,17 @@
     }
     
     function fixViewAnswersButton() {
-        console.log('[Student Report Enhancement] Fixing VIEW ANSWERS button');
+        debugLog('[Student Report Enhancement] Fixing VIEW ANSWERS button');
         
         // Debug: Log all buttons found
         const allButtons = document.querySelectorAll('button.p-button');
-        console.log(`[Student Report Enhancement] Found ${allButtons.length} p-button elements`);
+        debugLog(`[Student Report Enhancement] Found ${allButtons.length} p-button elements`);
         
         // Find the VIEW ANSWERS button - it incorrectly has p-button-rounded class
         const viewBtn = Array.from(allButtons).find(b => {
             const hasViewAnswers = b.textContent.includes('VIEW ANSWERS');
             if (hasViewAnswers) {
-                console.log('[Student Report Enhancement] Found VIEW ANSWERS button with classes:', b.className);
+                debugLog('[Student Report Enhancement] Found VIEW ANSWERS button with classes:', b.className);
             }
             return hasViewAnswers;
         });
@@ -200,7 +212,7 @@
                 buttonLabel.style.visibility = 'visible';
             }
             
-            console.log('[Student Report Enhancement] VIEW ANSWERS button fixed with enhanced styles');
+            debugLog('[Student Report Enhancement] VIEW ANSWERS button fixed with enhanced styles');
         }
         
         // View Answers enhancement is now initialized earlier for all devices
@@ -213,7 +225,7 @@
             topHeader.style.padding = '10px';
             topHeader.style.justifyContent = 'center';
             topHeader.style.alignItems = 'center';
-            console.log('[Student Report Enhancement] Header wrapping fixed');
+            debugLog('[Student Report Enhancement] Header wrapping fixed');
         }
         
         // Fix fixed-width containers
@@ -247,12 +259,12 @@
         const viewport = document.querySelector('meta[name="viewport"]');
         if (viewport) {
             viewport.content = 'width=device-width, initial-scale=1.0';
-            console.log('[Student Report Enhancement] Zoom enabled');
+            debugLog('[Student Report Enhancement] Zoom enabled');
         }
     }
     
     function fixEffortSection() {
-        console.log('[Student Report Enhancement] Fixing EFFORT section width issues');
+        debugLog('[Student Report Enhancement] Fixing EFFORT section width issues');
         
         // Find the EFFORT section by its blue color
         const effortSection = document.querySelector('#view_3041 .vespa-report-score[style*="background-color: rgb(134, 180, 240)"]');
@@ -262,10 +274,10 @@
             const vespaReport = effortSection.closest('.vespa-report');
             
             if (vespaReport) {
-                console.log('[Student Report Enhancement] Found EFFORT section, applying fixes');
+                debugLog('[Student Report Enhancement] Found EFFORT section, applying fixes');
                 
                 // Debug: Log current styles
-                console.log('[DEBUG] EFFORT section computed styles:', {
+                debugLog('[DEBUG] EFFORT section computed styles:', {
                     width: window.getComputedStyle(vespaReport).width,
                     maxWidth: window.getComputedStyle(vespaReport).maxWidth,
                     display: window.getComputedStyle(vespaReport).display,
@@ -325,10 +337,10 @@
                 
                 // Add section headings ONLY on mobile
                 if (isMobileDevice()) {
-                    console.log('[Student Report Enhancement] Adding section headings from fixEffortSection');
+                    debugLog('[Student Report Enhancement] Adding section headings from fixEffortSection');
                     addSectionHeadings();
                 } else {
-                    console.log('[Student Report Enhancement] Desktop detected in fixEffortSection - skipping headings');
+                    debugLog('[Student Report Enhancement] Desktop detected in fixEffortSection - skipping headings');
                 }
                 
                 // Compare with other VESPA sections for consistency
@@ -343,7 +355,7 @@
                         // Copy display type from reference section
                         const refDisplay = window.getComputedStyle(referenceSection).display;
                         const refFlexDirection = window.getComputedStyle(referenceSection).flexDirection;
-                        console.log('[DEBUG] Reference section display:', refDisplay, 'flex-direction:', refFlexDirection);
+                        debugLog('[DEBUG] Reference section display:', refDisplay, 'flex-direction:', refFlexDirection);
                         
                         // Apply same display properties
                         if (refDisplay) {
@@ -355,7 +367,7 @@
                     }
                 }
                 
-                console.log('[Student Report Enhancement] EFFORT section width fixed with preserved layout');
+                debugLog('[Student Report Enhancement] EFFORT section width fixed with preserved layout');
             }
         }
         
@@ -366,18 +378,18 @@
     function addSectionHeadings() {
         // Only add headings on mobile
         if (!isMobileDevice()) {
-            console.log('[Student Report Enhancement] Skipping section headings on desktop (width: ' + window.innerWidth + ')');
+            debugLog('[Student Report Enhancement] Skipping section headings on desktop (width: ' + window.innerWidth + ')');
             
             // Extra safety: remove any mobile headings that might exist
             const mobileHeadings = document.querySelectorAll('.mobile-theme-heading, .mobile-score-display, .mobile-section-heading, .mobile-section-heading-comments, .mobile-section-heading-coaching');
             if (mobileHeadings.length > 0) {
-                console.log('[Student Report Enhancement] Found ' + mobileHeadings.length + ' mobile headings on desktop - removing them');
+                debugLog('[Student Report Enhancement] Found ' + mobileHeadings.length + ' mobile headings on desktop - removing them');
                 mobileHeadings.forEach(heading => heading.remove());
             }
             return;
         }
         
-        console.log('[Student Report Enhancement] Adding section headings for mobile');
+        debugLog('[Student Report Enhancement] Adding section headings for mobile');
         
         // Add headings to all VESPA sections on mobile
         const allVespaReports = document.querySelectorAll('#view_3041 .vespa-report');
@@ -429,7 +441,7 @@
                         scoreSection.appendChild(scoreDisplay);
                     } else {
                         // If we can't find a score, don't add the mobile display
-                        console.log('[Student Report Enhancement] Could not parse score for', themeName);
+                        debugLog('[Student Report Enhancement] Could not parse score for', themeName);
                     }
                 }
             }
@@ -451,7 +463,7 @@
             }
         });
         
-        console.log('[Student Report Enhancement] Added section headings for mobile view');
+        debugLog('[Student Report Enhancement] Added section headings for mobile view');
     }
     
     function setupEffortSectionObserver() {
@@ -460,7 +472,7 @@
             return;
         }
         
-        console.log('[Student Report Enhancement] Setting up EFFORT section observer');
+        debugLog('[Student Report Enhancement] Setting up EFFORT section observer');
         
         const observer = new MutationObserver((mutations) => {
             let shouldFix = false;
@@ -478,7 +490,7 @@
             });
             
             if (shouldFix) {
-                console.log('[Student Report Enhancement] EFFORT section modified, reapplying fixes');
+                debugLog('[Student Report Enhancement] EFFORT section modified, reapplying fixes');
                 // Use a small delay to ensure all changes are complete
                 setTimeout(() => {
                     fixEffortSection();
@@ -501,7 +513,7 @@
     }
     
     function initializeHelpButtons() {
-        console.log('[Student Report Enhancement] Initializing help buttons');
+        debugLog('[Student Report Enhancement] Initializing help buttons');
         
         // Create response guide modal if it doesn't exist
         if (!document.getElementById('response-guide-modal')) {
@@ -612,16 +624,16 @@
         // Use setTimeout to ensure DOM is ready
         setTimeout(() => {
             // Debug: First check what we have on the page
-            console.log('[Student Report Enhancement] Checking for comment sections...');
+            debugLog('[Student Report Enhancement] Checking for comment sections...');
             const textareas = document.querySelectorAll('textarea, .ql-editor, [contenteditable="true"]');
-            console.log(`[Student Report Enhancement] Found ${textareas.length} textareas/editors on page`);
+            debugLog(`[Student Report Enhancement] Found ${textareas.length} textareas/editors on page`);
             
             // Find all comment sections - try multiple selectors
             let commentSections = document.querySelectorAll('#view_3041 .comment-section');
             
             // If no .comment-section found, look for textareas and their containers
             if (commentSections.length === 0) {
-                console.log('[Student Report Enhancement] No .comment-section found, looking for textarea containers...');
+                debugLog('[Student Report Enhancement] No .comment-section found, looking for textarea containers...');
                 const containers = [];
                 textareas.forEach(textarea => {
                     const container = textarea.closest('.kn-input') || textarea.closest('.field') || textarea.parentElement;
@@ -745,7 +757,7 @@
                         // Show modal
                         modal.classList.add('active');
                         
-                        console.log('[Student Report Enhancement] Opened enhanced response guide modal');
+                        debugLog('[Student Report Enhancement] Opened enhanced response guide modal');
                     });
                 } else if (isGoalsSection) {
                     // Goals section - goal-setting help
@@ -766,22 +778,22 @@
                         e.stopPropagation();
                         const modal = document.getElementById('goal-setting-modal');
                         modal.classList.add('active');
-                        console.log('[Student Report Enhancement] Opened goal-setting modal');
+                        debugLog('[Student Report Enhancement] Opened goal-setting modal');
                     });
                 }
             });
             
-            console.log(`[Student Report Enhancement] Added help buttons to comment sections`);
+            debugLog(`[Student Report Enhancement] Added help buttons to comment sections`);
         }, 500);
     }
     
     // New function to intercept and style activity links
     function initializeViewAnswersEnhancement() {
-        console.log('[Student Report Enhancement] Initializing View Answers enhancement for ALL devices...');
+        debugLog('[Student Report Enhancement] Initializing View Answers enhancement for ALL devices...');
         
         // Check if already initialized to prevent duplicates
         if (window._studentViewAnswersEnhancementInitialized) {
-            console.log('[Student Report Enhancement] View Answers enhancement already initialized, skipping...');
+            debugLog('[Student Report Enhancement] View Answers enhancement already initialized, skipping...');
             return;
         }
         window._studentViewAnswersEnhancementInitialized = true;
@@ -793,7 +805,7 @@
         
         // ========== SIMPLER DATA EXTRACTION FROM PAGE ==========
         function fetchCycleDataFromAPI() {
-            console.log('[Student Report Enhancement] Extracting cycle data from page...');
+            debugLog('[Student Report Enhancement] Extracting cycle data from page...');
             
             try {
                 // Try to extract from the hidden table (view_69 for students)
@@ -801,7 +813,7 @@
                 const table = document.querySelector('#view_69');
                 
                 if (table) {
-                    console.log('[Student Report Enhancement] Found hidden table view_69');
+                    debugLog('[Student Report Enhancement] Found hidden table view_69');
                     
                     // Get all table cells
                     const cells = table.querySelectorAll('tbody tr td');
@@ -816,14 +828,14 @@
                         }
                     });
                     
-                    console.log(`[Student Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
+                    debugLog(`[Student Report Enhancement] Extracted ${Object.keys(data).length} fields from table`);
                     
                     if (Object.keys(data).length > 0) {
                         window.studentCycleDataFromAPI = data;
                         return data;
                     }
                 } else {
-                    console.log('[Student Report Enhancement] Hidden table not found');
+                    debugLog('[Student Report Enhancement] Hidden table not found');
                 }
                 
                 // Return empty object if no data found
@@ -1020,7 +1032,7 @@
                         e.preventDefault();
                         e.stopPropagation();
                         
-                        console.log('[Student Report Enhancement] View Answers clicked - showing custom modal');
+                        debugLog('[Student Report Enhancement] View Answers clicked - showing custom modal');
                         
                         // Update current cycle from page buttons
                         const cycleButtons = Array.from(document.querySelectorAll('button')).filter(btn => {
@@ -1045,7 +1057,7 @@
                         }, 100);
                     });
                     
-                    console.log('[Student Report Enhancement] View Answers button overridden with custom modal');
+                    debugLog('[Student Report Enhancement] View Answers button overridden with custom modal');
                 }
             };
             
@@ -1144,18 +1156,18 @@
                 
                 if (value !== undefined && value !== '') {
                     cycleData[mapping.currentCycleFieldId] = value;
-                    console.log(`[Student Report Enhancement] ${mapping.questionId}: ${value} (Cycle ${cycle})`);
+                    debugLog(`[Student Report Enhancement] ${mapping.questionId}: ${value} (Cycle ${cycle})`);
                 }
             });
             
             window.studentCycleData = cycleData;
-            console.log(`[Student Report Enhancement] Loaded ${Object.keys(cycleData).length} values for Cycle ${cycle}`);
+            debugLog(`[Student Report Enhancement] Loaded ${Object.keys(cycleData).length} values for Cycle ${cycle}`);
             return cycleData;
         }
         
         // INTERCEPT API CALLS TO REPLACE WITH CYCLE DATA
         function interceptQuestionnaireData() {
-            console.log('[Student Report Enhancement] Installing questionnaire data interceptor...');
+            debugLog('[Student Report Enhancement] Installing questionnaire data interceptor...');
             
             // Create field mapping lookup
             const fieldMap = {};
@@ -1190,7 +1202,7 @@
                         xhr.onload = function() {
                             try {
                                 const response = JSON.parse(xhr.responseText);
-                                console.log('[Student Report Enhancement] Intercepted questionnaire response');
+                                debugLog('[Student Report Enhancement] Intercepted questionnaire response');
                                 
                                 // Get all available cycle data
                                 const allData = extractCycleData();
@@ -1207,7 +1219,7 @@
                                                 const cycleValue = allData[cycleField];
                                                 
                                                 if (cycleValue !== undefined && cycleValue !== null) {
-                                                    console.log(`[Student Report Enhancement] Replacing ${currentField}: ${record[currentField]} → ${cycleValue} (Cycle ${currentCycle})`);
+                                                    debugLog(`[Student Report Enhancement] Replacing ${currentField}: ${record[currentField]} → ${cycleValue} (Cycle ${currentCycle})`);
                                                     record[currentField] = cycleValue;
                                                     record[currentField + '_raw'] = cycleValue;
                                                 }
@@ -1221,7 +1233,7 @@
                                         value: JSON.stringify(response)
                                     });
                                     
-                                    console.log(`[Student Report Enhancement] Modified response for Cycle ${currentCycle}`);
+                                    debugLog(`[Student Report Enhancement] Modified response for Cycle ${currentCycle}`);
                                 }
                             } catch (error) {
                                 console.error('[Student Report Enhancement] Error intercepting response:', error);
@@ -1236,12 +1248,12 @@
                     return originalSend.apply(this, arguments);
                 };
                 
-                console.log('[Student Report Enhancement] XMLHttpRequest interceptor installed');
+                debugLog('[Student Report Enhancement] XMLHttpRequest interceptor installed');
             }
         }
         
         // Debug: Check if we're on the right page
-        console.log('[Student Report Enhancement] Current URL hash:', window.location.hash);
+        debugLog('[Student Report Enhancement] Current URL hash:', window.location.hash);
         
         // Track cycle button clicks
         function initializeCycleTracking() {
@@ -1251,7 +1263,7 @@
                        text.includes('Cycle 1') || text.includes('Cycle 2') || text.includes('Cycle 3');
             });
             
-            console.log(`[Student Report Enhancement] Found ${cycleButtons.length} cycle buttons`);
+            debugLog(`[Student Report Enhancement] Found ${cycleButtons.length} cycle buttons`);
             
             cycleButtons.forEach((btn, index) => {
                 // Check if already has listener to prevent duplicates
@@ -1264,7 +1276,7 @@
                     else if (btnText === '2' || btnText.includes('Cycle 2')) currentCycle = 2;
                     else if (btnText === '3' || btnText.includes('Cycle 3')) currentCycle = 3;
                     
-                    console.log(`[Student Report Enhancement] Cycle ${currentCycle} selected`);
+                    debugLog(`[Student Report Enhancement] Cycle ${currentCycle} selected`);
                     
                     // Update button styles to show selection
                     cycleButtons.forEach(b => b.style.opacity = '0.6');
@@ -1277,7 +1289,7 @@
         // DISABLED: This function was causing the modal to crash
         // The Vue app needs to render without interference
         function enhanceViewAnswersModal(modal) {
-            console.log('[Student Report Enhancement] Modal enhancement DISABLED to prevent crashes');
+            debugLog('[Student Report Enhancement] Modal enhancement DISABLED to prevent crashes');
             // DO NOT modify the modal DOM while Vue is rendering
             // This was causing infinite loading spinner
             return;
@@ -1296,11 +1308,11 @@
             btn.getAttribute('aria-label')?.includes('VIEW ANSWERS')
         );
         
-        console.log('[Student Report Enhancement] View Answers button search result:', viewAnswersBtn ? 'FOUND' : 'NOT FOUND');
+        debugLog('[Student Report Enhancement] View Answers button search result:', viewAnswersBtn ? 'FOUND' : 'NOT FOUND');
         
         if (viewAnswersBtn && !viewAnswersBtn.dataset.studentEnhancementListenerAdded) {
             viewAnswersBtn.dataset.studentEnhancementListenerAdded = 'true';
-            console.log('[Student Report Enhancement] View Answers button details:', {
+            debugLog('[Student Report Enhancement] View Answers button details:', {
                 text: viewAnswersBtn.textContent,
                 classes: viewAnswersBtn.className,
                 ariaLabel: viewAnswersBtn.getAttribute('aria-label')
@@ -1308,15 +1320,15 @@
             
             // Add a safe click handler that loads cycle data
             viewAnswersBtn.addEventListener('click', function(e) {
-                console.log('[Student Report Enhancement] View Answers clicked - Cycle', currentCycle);
+                debugLog('[Student Report Enhancement] View Answers clicked - Cycle', currentCycle);
                 
                 // Load cycle-specific data when button is clicked
                 const cycleData = getCycleSpecificData(currentCycle);
-                console.log('[Student Report Enhancement] Cycle data loaded:', Object.keys(cycleData).length, 'fields');
+                debugLog('[Student Report Enhancement] Cycle data loaded:', Object.keys(cycleData).length, 'fields');
                 
                 // Store globally for debugging
                 window.studentCycleData = cycleData;
-                console.log('[Student Report Enhancement] Cycle data available at window.studentCycleData');
+                debugLog('[Student Report Enhancement] Cycle data available at window.studentCycleData');
             });
         }
         
@@ -1347,7 +1359,7 @@
                 
                 // Do not enhance modals - this was causing crashes
                 if (modalsToEnhance.length > 0) {
-                    console.log('[Student Report Enhancement] Modal detected but enhancement disabled to prevent crashes');
+                    debugLog('[Student Report Enhancement] Modal detected but enhancement disabled to prevent crashes');
                 }
             });
             
@@ -1369,7 +1381,7 @@
             }
         }
         
-        console.log('[Student Report Enhancement] View Answers enhancement initialized');
+        debugLog('[Student Report Enhancement] View Answers enhancement initialized');
         
         // Initialize the interceptor after all functions are defined
         interceptQuestionnaireData();
@@ -1377,7 +1389,7 @@
     }
     
     function interceptActivityLinks() {
-        console.log('[Student Report Enhancement] Intercepting activity links...');
+        debugLog('[Student Report Enhancement] Intercepting activity links...');
         
         // Convert old URL format to new format
         function convertActivityUrl(oldUrl) {
@@ -1496,14 +1508,14 @@
                 // Mark as processed
                 link.setAttribute('data-activity-processed', 'true');
                 
-                console.log(`[Student Report Enhancement] Updated activity link: ${newUrl}`);
+                debugLog(`[Student Report Enhancement] Updated activity link: ${newUrl}`);
             });
         });
     }
     
     function initializeVespaPopups() {
         // Initialize for ALL devices
-        console.log('[Student Report Enhancement] Initializing VESPA popups (tap to expand) for ALL devices');
+        debugLog('[Student Report Enhancement] Initializing VESPA popups (tap to expand) for ALL devices');
         
         // Add section headings to all VESPA sections (only on mobile)
         if (isMobileDevice()) {
@@ -1548,7 +1560,7 @@
             closeBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[Student Report Enhancement] Close button clicked');
+                debugLog('[Student Report Enhancement] Close button clicked');
                 modal.classList.remove('active');
                 modal.style.display = 'none';
                 // Also try to reset body scroll
@@ -1558,7 +1570,7 @@
             // Backdrop click handler
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    console.log('[Student Report Enhancement] Backdrop clicked');
+                    debugLog('[Student Report Enhancement] Backdrop clicked');
                     modal.classList.remove('active');
                     modal.style.display = 'none';
                     document.body.style.overflow = '';
@@ -1569,7 +1581,7 @@
             closeBtn.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[Student Report Enhancement] Close button touched');
+                debugLog('[Student Report Enhancement] Close button touched');
                 modal.classList.remove('active');
                 modal.style.display = 'none';
                 document.body.style.overflow = '';
@@ -1578,7 +1590,7 @@
             // Add escape key handler
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && modal.classList.contains('active')) {
-                    console.log('[Student Report Enhancement] Escape key pressed');
+                    debugLog('[Student Report Enhancement] Escape key pressed');
                     modal.classList.remove('active');
                     modal.style.display = 'none';
                     document.body.style.overflow = '';
@@ -1689,11 +1701,11 @@
                         interceptActivityLinks();
                     }, 100);
                     
-                    console.log(`[Student Report Enhancement] Opened popup for ${sectionName}`);
+                    debugLog(`[Student Report Enhancement] Opened popup for ${sectionName}`);
                 });
             });
             
-            console.log(`[Student Report Enhancement] Initialized ${vespaReports.length} VESPA popups`);
+            debugLog(`[Student Report Enhancement] Initialized ${vespaReports.length} VESPA popups`);
         }, 500);
     }
     
@@ -1701,11 +1713,11 @@
     function initializeTextAreaFocus() {
         // Only enhance on mobile
         if (!isMobileDevice()) {
-            console.log('[Student Report Enhancement] Skipping text area enhancements on desktop');
+            debugLog('[Student Report Enhancement] Skipping text area enhancements on desktop');
             return;
         }
         
-        console.log('[Student Report Enhancement] Initializing text area focus enhancements for mobile');
+        debugLog('[Student Report Enhancement] Initializing text area focus enhancements for mobile');
         
         // Set up a mutation observer to catch dynamically added text areas
         const observer = new MutationObserver(function(mutations) {
@@ -1741,7 +1753,7 @@
                 
                 // On focus, expand and center on screen
                 textArea.addEventListener('focus', function(e) {
-                    console.log('[Student Report Enhancement] Text area focused');
+                    debugLog('[Student Report Enhancement] Text area focused');
                     
                     // Create backdrop if it doesn't exist
                     if (!backdrop) {
@@ -1790,7 +1802,7 @@
                 
                 // On blur, return to normal
                 textArea.addEventListener('blur', function(e) {
-                    console.log('[Student Report Enhancement] Text area blurred');
+                    debugLog('[Student Report Enhancement] Text area blurred');
                     
                     // Hide backdrop
                     if (backdrop) {
@@ -1824,13 +1836,13 @@
                 
                 // Ensure touch events work properly
                 textArea.addEventListener('touchstart', function(e) {
-                    console.log('[Student Report Enhancement] Touch start on text area');
+                    debugLog('[Student Report Enhancement] Touch start on text area');
                     // Don't prevent default - let the touch event through
                 }, { passive: true });
             });
             
             if (textAreas.length > 0) {
-                console.log(`[Student Report Enhancement] Enhanced ${textAreas.length} text areas`);
+                debugLog(`[Student Report Enhancement] Enhanced ${textAreas.length} text areas`);
             }
         }
     }
@@ -3257,7 +3269,7 @@
         document.head.appendChild(style);
         stylesApplied = true;
         
-        console.log('[Student Report Enhancement] Styles applied successfully!');
+        debugLog('[Student Report Enhancement] Styles applied successfully!');
     }
     
     // Include ALL remaining helper functions from happyreport1.js
@@ -3283,17 +3295,17 @@
     
     // Multiple initialization attempts with increasing delays
     async function attemptInitialization() {
-        console.log(`[Student Report Enhancement] Initialization attempt ${initAttempts + 1}/${MAX_INIT_ATTEMPTS}`);
+        debugLog(`[Student Report Enhancement] Initialization attempt ${initAttempts + 1}/${MAX_INIT_ATTEMPTS}`);
         
         const success = await fixStudentReport();
         
         if (!success && initAttempts < MAX_INIT_ATTEMPTS) {
             initAttempts++;
             const delay = Math.min(500 * initAttempts, 2000); // Exponential backoff up to 2 seconds
-            console.log(`[Student Report Enhancement] Retrying in ${delay}ms...`);
+            debugLog(`[Student Report Enhancement] Retrying in ${delay}ms...`);
             setTimeout(attemptInitialization, delay);
         } else if (success) {
-            console.log('[Student Report Enhancement] Successfully initialized!');
+            debugLog('[Student Report Enhancement] Successfully initialized!');
         } else {
             console.warn('[Student Report Enhancement] Failed to initialize after maximum attempts');
         }
@@ -3301,20 +3313,20 @@
     
     // Initialize immediately on mobile (don't wait for jQuery)
     if (isMobileDevice()) {
-        console.log('[Student Report Enhancement] Mobile device detected, initializing immediately');
+        debugLog('[Student Report Enhancement] Mobile device detected, initializing immediately');
         attemptInitialization();
     }
     
     // Also initialize with jQuery when ready
     if (typeof $ !== 'undefined') {
         $(function() {
-            console.log('[Student Report Enhancement] jQuery ready, attempting initialization');
+            debugLog('[Student Report Enhancement] jQuery ready, attempting initialization');
             attemptInitialization();
         });
     } else {
         // Fallback if jQuery isn't available yet
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('[Student Report Enhancement] DOM ready, attempting initialization');
+            debugLog('[Student Report Enhancement] DOM ready, attempting initialization');
             attemptInitialization();
         });
     }
@@ -3322,7 +3334,7 @@
     // Re-apply on scene render
     if (typeof $ !== 'undefined') {
         $(document).on('knack-scene-render.scene_43', function() {
-            console.log('[Student Report Enhancement] Scene 43 rendered');
+            debugLog('[Student Report Enhancement] Scene 43 rendered');
             popupsInitialized = false; // Reset to reinitialize popups
             initAttempts = 0; // Reset attempts
             attemptInitialization();
@@ -3330,7 +3342,7 @@
         
         // Re-apply on view render
         $(document).on('knack-view-render.view_3041', function() {
-            console.log('[Student Report Enhancement] View 3041 rendered');
+            debugLog('[Student Report Enhancement] View 3041 rendered');
             popupsInitialized = false; // Reset to reinitialize popups
             initAttempts = 0; // Reset attempts
             attemptInitialization();
@@ -3339,7 +3351,7 @@
         // Also watch for any view render in scene_43 or vespa-results
         $(document).on('knack-view-render.any', function(event, view) {
             if (window.location.hash.includes('scene_43') || window.location.hash.includes('my-report') || window.location.hash.includes('vespa-results')) {
-                console.log(`[Student Report Enhancement] View ${view.key} rendered on report page`);
+                debugLog(`[Student Report Enhancement] View ${view.key} rendered on report page`);
                 setTimeout(() => {
                     attemptInitialization();
                 }, 300);
@@ -3349,7 +3361,7 @@
     
     // Check on hash change
     window.addEventListener('hashchange', function() {
-        console.log('[Student Report Enhancement] Hash changed, checking...');
+        debugLog('[Student Report Enhancement] Hash changed, checking...');
         initAttempts = 0; // Reset attempts
         attemptInitialization();
     });
@@ -3357,10 +3369,10 @@
     // Also check on visibility change (for when switching tabs)
     document.addEventListener('visibilitychange', function() {
         if (!document.hidden && (window.location.hash.includes('scene_43') || window.location.hash.includes('my-report'))) {
-            console.log('[Student Report Enhancement] Page became visible, rechecking...');
+            debugLog('[Student Report Enhancement] Page became visible, rechecking...');
             attemptInitialization();
         }
     });
     
-    console.log('[Student Report Enhancement v5.1] Initialization complete');
+    debugLog('[Student Report Enhancement v5.1] Initialization complete');
 })();
