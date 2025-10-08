@@ -5724,12 +5724,12 @@ try {
   }
   
   // Initialize student emulation setup if module is loaded
-  // BUT SKIP FOR STAFF ADMIN USERS to avoid potential conflicts
-  const skipEmulation = isStaffAdmin(profileData.roles);
-  console.log('[Staff Homepage - DEBUG] Skip student emulation for Staff Admin?', skipEmulation);
+  // NOW WORKS FOR ALL STAFF INCLUDING STAFF ADMINS!
+  const skipEmulation = false;  // FIXED: Never skip - works for all staff roles now
+  console.log('[Staff Homepage - DEBUG] Skip student emulation for Staff Admin?', skipEmulation, '(Always false - emulation works for all roles)');
   
   if (window.StaffStudentEmulationSetup && profileData.email && !skipEmulation) {
-    console.log('[Staff Homepage] Initializing student emulation setup (non-admin user)...');
+    console.log('[Staff Homepage] Initializing student emulation setup for all staff users (including admins)...');
     
     try {
       const emulationResult = await window.StaffStudentEmulationSetup.setup(
@@ -5756,8 +5756,6 @@ try {
       console.error('[Staff Homepage] Error during student emulation setup:', setupError);
       // Continue with homepage rendering even if setup fails
     }
-  } else if (skipEmulation) {
-    console.log('[Staff Homepage - DEBUG] Student emulation skipped for Staff Admin user');
   }
   
   // Check if user is a staff admin
@@ -7374,25 +7372,31 @@ if (feedbackRequest.screenshot) {
     OBJECT_3: {
       EMAIL: 'field_70',
       USER_ROLES: 'field_73',
-      SCHOOL_CONNECTION: 'field_122'  // Staff's school/establishment connection
+      SCHOOL_CONNECTION: 'field_122'  // Staff's school/establishment connection (Connected VESPA Customer)
     },
     OBJECT_6: {
       EMAIL: 'field_20',
       ACCOUNT_STATUS: 'field_18',
       USER_ROLE: 'field_46',
       GROUP: 'field_565',
-      OBJECT_10_CONNECTION: 'field_182'
+      OBJECT_10_CONNECTION: 'field_182',
+      CONNECTED_CUSTOMER: 'field_179',  // Connected VESPA Customer in Object_6
+      STAFF_ADMINS: 'field_190'         // Staff Admin connection
     },
     OBJECT_10: {
       EMAIL: 'field_197',
       GROUP: 'field_223',
-      CONNECTED_CUSTOMER: 'field_133',  // Student's connected customer
-      CYCLE_UNLOCKED: 'field_1679'       // Override field for questionnaire access
+      CONNECTED_CUSTOMER: 'field_133',  // Connected VESPA Customer in Object_10
+      YEAR_GROUP: 'field_144',          // Year Group
+      STAFF_ADMINS: 'field_439',        // Staff Admin connection in Object_10
+      CYCLE_UNLOCKED: 'field_1679'      // Override field for questionnaire access
     },
     OBJECT_29: {
       EMAIL: 'field_2732',
       GROUP: 'field_1824',
-      OBJECT_10_CONNECTION: 'field_792'
+      OBJECT_10_CONNECTION: 'field_792',
+      YEAR_GROUP: 'field_1829',         // Year Group in Object_29
+      STAFF_ADMINS: 'field_2069'        // Staff Admin connection in Object_29
     }
   };
 
@@ -7697,6 +7701,8 @@ if (feedbackRequest.screenshot) {
       // Update existing record with all required fields
       const recordId = existingResponse.records[0].id;
       const updateData = {
+        [EMULATION_FIELDS.OBJECT_10.GROUP]: 'EMULATED',  // Ensure group is EMULATED
+        [EMULATION_FIELDS.OBJECT_10.YEAR_GROUP]: '12',  // Year Group = 12
         [EMULATION_FIELDS.OBJECT_10.CYCLE_UNLOCKED]: 'Yes',  // Unlock questionnaire for staff
         field_568: 'Level 3',  // Default to Level 3 (A-Level) for report text matching - field_568 is the Level field
         field_187: {
@@ -7713,7 +7719,7 @@ if (feedbackRequest.screenshot) {
       
       // Add staff admin connections if available (field_439) - many-to-many
       if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
-        updateData.field_439 = staffData.staffAdminIds;
+        updateData[EMULATION_FIELDS.OBJECT_10.STAFF_ADMINS] = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
@@ -7729,6 +7735,7 @@ if (feedbackRequest.screenshot) {
     const recordData = {
       [EMULATION_FIELDS.OBJECT_10.EMAIL]: userEmail,
       [EMULATION_FIELDS.OBJECT_10.GROUP]: 'EMULATED',  // Changed from 'STAFF' to avoid filtering
+      [EMULATION_FIELDS.OBJECT_10.YEAR_GROUP]: '12',  // Year Group = 12
       [EMULATION_FIELDS.OBJECT_10.CYCLE_UNLOCKED]: 'Yes',  // Unlock questionnaire for staff
       field_568: 'Level 3',  // Default to Level 3 (A-Level) for report text matching - field_568 is the Level field
       field_187: {  // Name field
@@ -7743,10 +7750,10 @@ if (feedbackRequest.screenshot) {
       recordData[EMULATION_FIELDS.OBJECT_10.CONNECTED_CUSTOMER] = [staffData.establishmentId];
     }
     
-          // Add staff admin connections if available (field_439) - many-to-many
-      if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
-        recordData.field_439 = staffData.staffAdminIds;
-      }
+    // Add staff admin connections if available (field_439) - many-to-many
+    if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
+      recordData[EMULATION_FIELDS.OBJECT_10.STAFF_ADMINS] = staffData.staffAdminIds;
+    }
 
     const response = await emulationApiCall({
       url: `${EMULATION_CONFIG.KNACK_API_URL}/objects/object_10/records`,
@@ -7778,6 +7785,8 @@ if (feedbackRequest.screenshot) {
       // Update existing record with additional fields
       const recordId = existingResponse.records[0].id;
       const updateData = {
+        [EMULATION_FIELDS.OBJECT_29.GROUP]: 'EMULATED',  // Ensure group is EMULATED
+        [EMULATION_FIELDS.OBJECT_29.YEAR_GROUP]: '12',  // Year Group = 12
         [EMULATION_FIELDS.OBJECT_29.OBJECT_10_CONNECTION]: [object10Id],  // Ensure Object_10 connection (field_792)
         field_1823: {  // Name field
           prefix: staffData.name.prefix,
@@ -7793,7 +7802,7 @@ if (feedbackRequest.screenshot) {
       
       // Add staff admin connections if available (field_2069) - many-to-many
       if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
-        updateData.field_2069 = staffData.staffAdminIds;
+        updateData[EMULATION_FIELDS.OBJECT_29.STAFF_ADMINS] = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
@@ -7809,6 +7818,7 @@ if (feedbackRequest.screenshot) {
     const recordData = {
       [EMULATION_FIELDS.OBJECT_29.EMAIL]: userEmail,
       [EMULATION_FIELDS.OBJECT_29.GROUP]: 'EMULATED',  // Changed from 'STAFF' to avoid filtering
+      [EMULATION_FIELDS.OBJECT_29.YEAR_GROUP]: '12',  // Year Group = 12
       [EMULATION_FIELDS.OBJECT_29.OBJECT_10_CONNECTION]: [object10Id],  // field_792
       field_1823: {  // Name field
         prefix: staffData.name.prefix,
@@ -7824,7 +7834,7 @@ if (feedbackRequest.screenshot) {
     
     // Add staff admin connections if available (field_2069) - many-to-many
     if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
-      recordData.field_2069 = staffData.staffAdminIds;
+      recordData[EMULATION_FIELDS.OBJECT_29.STAFF_ADMINS] = staffData.staffAdminIds;
     }
 
     const response = await emulationApiCall({
@@ -7862,12 +7872,12 @@ if (feedbackRequest.screenshot) {
       
       // Add connected establishment if available (field_179)
       if (staffData.establishmentId) {
-        updateData.field_179 = [staffData.establishmentId];
+        updateData[EMULATION_FIELDS.OBJECT_6.CONNECTED_CUSTOMER] = [staffData.establishmentId];
       }
       
       // Add connected staff admin if available (field_190) - many-to-many
       if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
-        updateData.field_190 = staffData.staffAdminIds;
+        updateData[EMULATION_FIELDS.OBJECT_6.STAFF_ADMINS] = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
@@ -7888,12 +7898,12 @@ if (feedbackRequest.screenshot) {
       
       // Add connected establishment if available (field_179)
       if (staffData.establishmentId) {
-        createData.field_179 = [staffData.establishmentId];
+        createData[EMULATION_FIELDS.OBJECT_6.CONNECTED_CUSTOMER] = [staffData.establishmentId];
       }
       
       // Add connected staff admin if available (field_190) - many-to-many
       if (staffData.staffAdminIds && staffData.staffAdminIds.length > 0) {
-        createData.field_190 = staffData.staffAdminIds;
+        createData[EMULATION_FIELDS.OBJECT_6.STAFF_ADMINS] = staffData.staffAdminIds;
       }
       
       await emulationApiCall({
