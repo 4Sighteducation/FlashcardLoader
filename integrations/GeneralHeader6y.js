@@ -909,6 +909,10 @@
                 `;
             }).join('');
             
+            // Add Welsh/English toggle button (for breadcrumb row)
+            const savedLang = localStorage.getItem('vespaPreferredLanguage');
+            const isWelsh = savedLang === 'cy';
+            
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header-enhanced ${userType}">
                     <div class="header-content">
@@ -937,6 +941,15 @@
                             <i class="fa fa-arrow-left"></i>
                             Back to Home
                         </a>
+                        <div class="breadcrumb-actions">
+                            <div id="google_translate_element" style="display: none;"></div>
+                            <button class="breadcrumb-language-toggle" 
+                                    id="languageToggleBtn"
+                                    title="${isWelsh ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)'}">
+                                <i class="fa fa-language"></i>
+                                <span class="language-label">${isWelsh ? 'English' : 'Cymraeg'}</span>
+                            </button>
+                        </div>
                     </div>
                     ` : ''}
                 </div>
@@ -1314,8 +1327,12 @@
                     /* Enhanced Breadcrumb Styles */
                     .header-breadcrumb {
                         background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 100%);
-                        padding: 10px 0;
+                        padding: 10px 24px;
                         border-bottom: 1px solid rgba(255,255,255,0.08);
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 20px;
                     }
                     
                     .breadcrumb-back {
@@ -1326,11 +1343,15 @@
                         text-decoration: none;
                         font-size: 13px;
                         font-weight: 600;
-                        padding: 6px 24px;
-                        max-width: 1920px;
-                        margin: 0 auto;
+                        padding: 6px 0;
                         transition: all 0.3s ease;
                         position: relative;
+                    }
+                    
+                    .breadcrumb-actions {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
                     }
                     
                     .breadcrumb-back::before {
@@ -1362,6 +1383,40 @@
                     
                     .breadcrumb-back:hover i {
                         transform: translateX(-2px);
+                    }
+                    
+                    /* Breadcrumb Language Toggle Styling */
+                    .breadcrumb-language-toggle {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 8px 16px;
+                        background: linear-gradient(135deg, rgba(123,216,208,0.35) 0%, rgba(7,155,170,0.25) 100%);
+                        border: 2px solid rgba(123,216,208,0.35);
+                        border-radius: 8px;
+                        color: white;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 2px 8px rgba(123,216,208,0.25);
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                        letter-spacing: 0.3px;
+                    }
+                    
+                    .breadcrumb-language-toggle:hover {
+                        background: linear-gradient(135deg, rgba(123,216,208,0.45) 0%, rgba(7,155,170,0.35) 100%);
+                        border-color: rgba(123,216,208,0.45);
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 12px rgba(123,216,208,0.35);
+                    }
+                    
+                    .breadcrumb-language-toggle i {
+                        font-size: 16px;
+                    }
+                    
+                    .breadcrumb-language-toggle .language-label {
+                        font-size: 13px;
                     }
                     
                     /* Adjust body for enhanced header with dynamic height */
@@ -1628,6 +1683,17 @@
                             border-color: rgba(220,53,69,0.4);
                         }
                         
+                        .mobile-language-toggle {
+                            background: rgba(123,216,208,0.2) !important;
+                            border-color: rgba(123,216,208,0.3) !important;
+                            cursor: pointer;
+                        }
+                        
+                        .mobile-language-toggle:hover {
+                            background: rgba(123,216,208,0.3) !important;
+                            border-color: rgba(123,216,208,0.4) !important;
+                        }
+                        
                         .mobile-menu-toggle {
                             display: block;
                         }
@@ -1665,12 +1731,27 @@
                         }
                         
                         .header-breadcrumb {
-                            padding: 8px 0;
+                            padding: 8px 16px;
+                            flex-wrap: wrap;
+                            gap: 12px;
                         }
                         
                         .breadcrumb-back {
                             font-size: 12px;
-                            padding: 6px 16px;
+                            padding: 6px 0;
+                        }
+                        
+                        .breadcrumb-language-toggle {
+                            padding: 6px 12px;
+                            font-size: 12px;
+                        }
+                        
+                        .breadcrumb-language-toggle i {
+                            font-size: 14px;
+                        }
+                        
+                        .breadcrumb-language-toggle .language-label {
+                            font-size: 12px;
                         }
                     }
                     
@@ -1897,6 +1978,9 @@
             const navConfig = navigationConfig[getUserType()];
             const visibilityPrefs = getVisibilityPreferences();
             
+            // Get saved language for toggle button
+            const savedLang = localStorage.getItem('vespaPreferredLanguage');
+            
             // Add productivity buttons for students if enabled
             let secondaryItems = navConfig.secondaryRow || [];
             if (getUserType() === 'student') {
@@ -1939,6 +2023,11 @@
                             ` : ''}
                             <div class="mobile-menu-section mobile-menu-utilities">
                                 <h3>Account</h3>
+                                <!-- Language Toggle in Mobile Menu -->
+                                <button class="mobile-menu-item mobile-language-toggle" id="mobileLanguageToggle">
+                                    <i class="fa fa-language"></i>
+                                    <span>${savedLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg'}</span>
+                                </button>
                                 ${navConfig.utilityButtons.map(item => {
                                     // Skip logout button in emulator mode
                                     if (item.isLogout && window._isStudentEmulatorMode) {
@@ -1984,7 +2073,7 @@
             }
             
             // Setup navigation for menu items
-            const menuItems = mobileMenu.querySelectorAll('.mobile-menu-item');
+            const menuItems = mobileMenu.querySelectorAll('.mobile-menu-item:not(.mobile-language-toggle)');
             menuItems.forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -2002,11 +2091,95 @@
                 });
             });
             
+            // Setup mobile language toggle
+            const mobileLanguageToggle = mobileMenu.querySelector('#mobileLanguageToggle');
+            if (mobileLanguageToggle) {
+                mobileLanguageToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const selector = document.querySelector('.goog-te-combo');
+                    if (!selector) return;
+                    
+                    const currentLang = selector.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
+                    const newLang = currentLang === 'cy' ? 'en' : 'cy';
+                    
+                    // Update localStorage
+                    if (newLang === 'en') {
+                        localStorage.removeItem('vespaPreferredLanguage');
+                        sessionStorage.setItem('vespaTranslationDisabled', 'true');
+                    } else {
+                        localStorage.setItem('vespaPreferredLanguage', newLang);
+                        sessionStorage.removeItem('vespaTranslationDisabled');
+                    }
+                    
+                    // Change the language
+                    selector.value = newLang;
+                    selector.dispatchEvent(new Event('change'));
+                    
+                    // Update button label
+                    const span = mobileLanguageToggle.querySelector('span');
+                    if (span) {
+                        span.textContent = newLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg';
+                    }
+                    
+                    // Also update desktop button
+                    const desktopBtn = document.getElementById('languageToggleBtn');
+                    if (desktopBtn) {
+                        const label = desktopBtn.querySelector('.language-label');
+                        if (label) label.textContent = newLang === 'cy' ? 'English' : 'Cymraeg';
+                        desktopBtn.title = newLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
+                    }
+                });
+            }
+            
             return mobileMenu;
         }
         
         // Setup event listeners
         function setupEventListeners() {
+            // Language toggle handler
+            const languageToggleBtn = document.getElementById('languageToggleBtn');
+            if (languageToggleBtn) {
+                languageToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const selector = document.querySelector('.goog-te-combo');
+                    if (!selector) {
+                        log('Google Translate not loaded yet, please wait...');
+                        return;
+                    }
+                    
+                    const currentLang = selector.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
+                    const newLang = currentLang === 'cy' ? 'en' : 'cy';
+                    
+                    log(`Switching language from ${currentLang} to ${newLang}`);
+                    
+                    // Update localStorage
+                    if (newLang === 'en') {
+                        localStorage.removeItem('vespaPreferredLanguage');
+                        sessionStorage.setItem('vespaTranslationDisabled', 'true');
+                    } else {
+                        localStorage.setItem('vespaPreferredLanguage', newLang);
+                        sessionStorage.removeItem('vespaTranslationDisabled');
+                    }
+                    
+                    // Change the language
+                    selector.value = newLang;
+                    selector.dispatchEvent(new Event('change'));
+                    
+                    // Update button label and title
+                    const isWelsh = newLang === 'cy';
+                    const label = languageToggleBtn.querySelector('.language-label');
+                    if (label) {
+                        label.textContent = isWelsh ? 'English' : 'Cymraeg';
+                    }
+                    languageToggleBtn.title = isWelsh ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
+                    
+                    log(`Language switched to ${newLang}`);
+                });
+            }
+            
             // Mobile menu toggle - FIXED to create proper mobile menu
             const mobileToggle = document.querySelector('.mobile-menu-toggle');
             const overlay = document.querySelector('.mobile-nav-overlay');
@@ -3225,11 +3398,10 @@
                 window._generalHeaderLoaded = false;
                 // Clear session storage flag
                 sessionStorage.removeItem('_generalHeaderLoadedSession');
-                // Clear ALL translation preferences on logout
+                // Clear translation preferences on logout
                 localStorage.removeItem('vespaPreferredLanguage');
-                sessionStorage.removeItem('vespaTranslationActive');
                 sessionStorage.removeItem('vespaTranslationDisabled');
-                log('Cleared all translation preferences on logout');
+                log('Cleared translation preferences on logout');
                 
                 // Since we navigate BEFORE logout, user should already be on home page
                 log('Logout complete - user should already be on home page');
@@ -3252,28 +3424,29 @@
         
         // Global function to clear translation preferences (useful for debugging)
         window.clearTranslationPreferences = function() {
+            console.log('[General Header] Clearing translation preferences...');
+            
             // Clear all storage
             localStorage.removeItem('vespaPreferredLanguage');
-            sessionStorage.removeItem('vespaTranslationActive');
-            sessionStorage.removeItem('vespaTranslationDisabled');
+            sessionStorage.setItem('vespaTranslationDisabled', 'true');
             
             // Switch back to English if currently translated
             const selector = document.querySelector('.goog-te-combo');
             if (selector && selector.value !== 'en') {
                 selector.value = 'en';
-                const evt = document.createEvent('HTMLEvents');
-                evt.initEvent('change', false, true);
-                selector.dispatchEvent(evt);
+                selector.dispatchEvent(new Event('change'));
             }
             
-            // Hide clear button if it exists
-            const clearButton = document.querySelector('.translation-clear-button');
-            if (clearButton) {
-                clearButton.style.display = 'none';
+            // Update toggle button if it exists
+            const toggleBtn = document.getElementById('languageToggleBtn');
+            if (toggleBtn) {
+                const label = toggleBtn.querySelector('.language-label');
+                if (label) label.textContent = 'Cymraeg';
+                toggleBtn.title = 'Newid i Gymraeg (Switch to Welsh)';
             }
             
-            console.log('[General Header] Translation preferences cleared. Page will load in English on next visit.');
-            return 'Translation preferences cleared';
+            console.log('[General Header] Translation preferences cleared. Reload page to apply.');
+            return 'Translation preferences cleared - reload page to apply';
         };
         
         // Start initialization
