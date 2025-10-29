@@ -21,7 +21,7 @@
         }
         
         // Configuration
-        const DEBUG = config.debugMode || false; // Use config debug mode
+        const DEBUG = true; // TEMPORARILY ENABLED for translation debugging
         const currentScene = config.sceneKey;
         const currentView = config.viewKey;
         const userRoles = config.userRoles || [];
@@ -2137,16 +2137,49 @@
         
         // Setup event listeners
         function setupEventListeners() {
-            // Language toggle handler
+            // Language toggle handler with loading check
             const languageToggleBtn = document.getElementById('languageToggleBtn');
+            log('Looking for language toggle button...', languageToggleBtn ? 'FOUND' : 'NOT FOUND');
             if (languageToggleBtn) {
+                log('Attaching click event to language toggle button');
                 languageToggleBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     
+                    log('Language toggle clicked');
+                    
                     const selector = document.querySelector('.goog-te-combo');
                     if (!selector) {
-                        log('Google Translate not loaded yet, please wait...');
+                        console.warn('[General Header] Google Translate not loaded yet, waiting...');
+                        
+                        // Show loading feedback
+                        const label = languageToggleBtn.querySelector('.language-label');
+                        const originalText = label ? label.textContent : '';
+                        if (label) label.textContent = 'Loading...';
+                        
+                        // Wait for Google Translate to load (max 10 seconds)
+                        let attempts = 0;
+                        const maxAttempts = 40; // 10 seconds (250ms * 40)
+                        const checkInterval = setInterval(() => {
+                            attempts++;
+                            const selectorNow = document.querySelector('.goog-te-combo');
+                            
+                            if (selectorNow) {
+                                clearInterval(checkInterval);
+                                log('Google Translate loaded, triggering toggle');
+                                // Reset label and trigger click again
+                                if (label) label.textContent = originalText;
+                                languageToggleBtn.click();
+                            } else if (attempts >= maxAttempts) {
+                                clearInterval(checkInterval);
+                                console.error('[General Header] Google Translate failed to load');
+                                if (label) label.textContent = 'Error';
+                                setTimeout(() => {
+                                    if (label) label.textContent = originalText;
+                                }, 2000);
+                            }
+                        }, 250);
+                        
                         return;
                     }
                     
@@ -3422,6 +3455,20 @@
             window._roleModalShowing = false;
         };
         
+        // Global diagnostic function for translation debugging
+        window.checkTranslationStatus = function() {
+            console.log('=== Translation Status ===');
+            console.log('Language toggle button:', document.getElementById('languageToggleBtn') ? 'EXISTS' : 'NOT FOUND');
+            console.log('Google Translate container:', document.getElementById('google_translate_element') ? 'EXISTS' : 'NOT FOUND');
+            console.log('Google Translate selector:', document.querySelector('.goog-te-combo') ? 'EXISTS' : 'NOT FOUND');
+            console.log('Current language:', document.querySelector('.goog-te-combo')?.value || 'N/A');
+            console.log('Saved preference:', localStorage.getItem('vespaPreferredLanguage') || 'None');
+            console.log('Session disabled:', sessionStorage.getItem('vespaTranslationDisabled') || 'No');
+            console.log('Google Translate loaded:', window.google?.translate ? 'YES' : 'NO');
+            console.log('======================');
+            return 'Status logged above';
+        };
+        
         // Global function to clear translation preferences (useful for debugging)
         window.clearTranslationPreferences = function() {
             console.log('[General Header] Clearing translation preferences...');
@@ -3479,4 +3526,5 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
+
 
