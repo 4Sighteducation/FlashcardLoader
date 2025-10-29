@@ -2265,13 +2265,11 @@
                                 const currentLang = selectorNow.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
                                 const newLang = currentLang === 'cy' ? 'en' : 'cy';
                                 
-                                // Update storage
+                                // Update storage (don't block loading, just set preference)
                                 if (newLang === 'en') {
                                     localStorage.removeItem('vespaPreferredLanguage');
-                                    sessionStorage.setItem('vespaTranslationDisabled', 'true');
                                 } else {
                                     localStorage.setItem('vespaPreferredLanguage', newLang);
-                                    sessionStorage.removeItem('vespaTranslationDisabled');
                                 }
                                 
                                 // Change language
@@ -2989,19 +2987,7 @@
             }
         }
         
-        // Add function to explicitly disable translation for session
-        function disableTranslationForSession() {
-            sessionStorage.setItem('vespaTranslationDisabled', 'true');
-            // Switch back to English
-            const selector = document.querySelector('.goog-te-combo');
-            if (selector && selector.value !== 'en') {
-                selector.value = 'en';
-                const evt = document.createEvent('HTMLEvents');
-                evt.initEvent('change', false, true);
-                selector.dispatchEvent(evt);
-            }
-            log('Translation disabled for this session');
-        }
+        // Function removed - translation is always available now
         
         function observeLanguageChanges() {
             const selector = document.querySelector('.goog-te-combo');
