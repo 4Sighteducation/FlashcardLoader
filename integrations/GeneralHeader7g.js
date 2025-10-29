@@ -2149,11 +2149,41 @@
             // Setup mobile language toggle
             const mobileLanguageToggle = mobileMenu.querySelector('#mobileLanguageToggle');
             if (mobileLanguageToggle) {
-                mobileLanguageToggle.addEventListener('click', function(e) {
+                mobileLanguageToggle.addEventListener('click', async function(e) {
                     e.preventDefault();
                     
                     const selector = document.querySelector('.goog-te-combo');
-                    if (!selector) return;
+                    if (!selector) {
+                        // Lazy load Google Translate
+                        if (typeof window.initializeGoogleTranslate === 'function') {
+                            const span = mobileLanguageToggle.querySelector('span');
+                            if (span) span.textContent = 'Loading...';
+                            
+                            const success = await window.initializeGoogleTranslate();
+                            
+                            if (success) {
+                                const selectorNow = document.querySelector('.goog-te-combo');
+                                if (selectorNow) {
+                                    localStorage.setItem('vespaPreferredLanguage', 'cy');
+                                    selectorNow.value = 'cy';
+                                    const evt = document.createEvent('HTMLEvents');
+                                    evt.initEvent('change', false, true);
+                                    selectorNow.dispatchEvent(evt);
+                                    
+                                    if (span) span.textContent = 'Switch to English';
+                                    
+                                    // Update desktop button too
+                                    const desktopBtn = document.getElementById('languageToggleBtn');
+                                    if (desktopBtn) {
+                                        const label = desktopBtn.querySelector('.language-label');
+                                        if (label) label.textContent = 'English';
+                                        desktopBtn.title = 'Switch to English';
+                                    }
+                                }
+                            }
+                        }
+                        return;
+                    }
                     
                     const currentLang = selector.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
                     const newLang = currentLang === 'cy' ? 'en' : 'cy';
@@ -2228,7 +2258,7 @@
                 // Prevent multiple simultaneous loading attempts
                 let isCheckingForTranslate = false;
                 
-                languageToggleBtn.addEventListener('click', function(e) {
+                languageToggleBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     
@@ -2242,7 +2272,7 @@
                     
                     const selector = document.querySelector('.goog-te-combo');
                     if (!selector) {
-                        console.warn('[General Header] Google Translate not loaded yet, waiting...');
+                        console.log('[General Header] Google Translate not loaded yet, initializing on demand...');
                         
                         isCheckingForTranslate = true;
                         
@@ -2251,82 +2281,53 @@
                         const originalText = label ? label.textContent : '';
                         if (label) label.textContent = 'Loading...';
                         
-                        // Wait for Google Translate to load (max 10 seconds)
-                        let attempts = 0;
-                        const maxAttempts = 40; // 10 seconds (250ms * 40)
-                        const checkInterval = setInterval(() => {
-                            attempts++;
-                            const selectorNow = document.querySelector('.goog-te-combo');
+                        // Lazy load Google Translate
+                        if (typeof window.initializeGoogleTranslate === 'function') {
+                            const success = await window.initializeGoogleTranslate();
+                            isCheckingForTranslate = false;
                             
-                            if (selectorNow) {
-                                clearInterval(checkInterval);
-                                isCheckingForTranslate = false;
-                                log('Google Translate loaded, now toggling language');
+                            if (success) {
+                                console.log('[General Header] Google Translate loaded, toggling to Welsh');
                                 
-                                // FIXED: Don't re-click, just toggle directly
-                                const currentLang = selectorNow.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
-                                const newLang = currentLang === 'cy' ? 'en' : 'cy';
-                                
-                                // Update storage (don't block loading, just set preference)
-                                if (newLang === 'en') {
-                                    localStorage.removeItem('vespaPreferredLanguage');
-                                } else {
-                                    localStorage.setItem('vespaPreferredLanguage', newLang);
-                                }
-                                
-                                // Change language (use old-style event that Google expects)
-                                selectorNow.value = newLang;
-                                const evt = document.createEvent('HTMLEvents');
-                                evt.initEvent('change', false, true);
-                                selectorNow.dispatchEvent(evt);
-                                
-                                // IMMEDIATELY hide any banner that appears
-                                setTimeout(() => {
-                                    const banner = document.querySelector('.goog-te-banner-frame');
-                                    if (banner) {
-                                        banner.style.display = 'none';
-                                        banner.remove();
-                                    }
-                                    document.body.style.top = '0px';
-                                    document.body.style.position = 'relative';
-                                }, 50);
-                                
-                                // Keep checking for banner for 3 seconds
-                                let bannerCheckCount = 0;
-                                const bannerCheckInterval = setInterval(() => {
-                                    const banner = document.querySelector('.goog-te-banner-frame');
-                                    if (banner) {
-                                        banner.style.display = 'none';
-                                        banner.remove();
-                                    }
-                                    document.body.style.top = '0px';
+                                // Automatically toggle to Welsh (since they clicked the button)
+                                const selectorNow = document.querySelector('.goog-te-combo');
+                                if (selectorNow) {
+                                    localStorage.setItem('vespaPreferredLanguage', 'cy');
+                                    selectorNow.value = 'cy';
+                                    const evt = document.createEvent('HTMLEvents');
+                                    evt.initEvent('change', false, true);
+                                    selectorNow.dispatchEvent(evt);
                                     
-                                    bannerCheckCount++;
-                                    if (bannerCheckCount > 12) {
-                                        clearInterval(bannerCheckInterval);
-                                    }
-                                }, 250);
-                                
-                                // Update button
-                                if (label) label.textContent = newLang === 'cy' ? 'English' : 'Cymraeg';
-                                languageToggleBtn.title = newLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
-                                
-                                log(`Language switched to ${newLang} after waiting`);
-                            } else if (attempts >= maxAttempts) {
-                                clearInterval(checkInterval);
-                                isCheckingForTranslate = false; // Reset flag
-                                console.error('[General Header] Google Translate failed to load after 10 seconds');
-                                console.error('[General Header] Check if script is blocked or failed to load');
+                                    if (label) label.textContent = 'English';
+                                    languageToggleBtn.title = 'Switch to English';
+                                    
+                                    // Hide banner
+                                    setTimeout(() => {
+                                        const banner = document.querySelector('.goog-te-banner-frame');
+                                        if (banner) banner.remove();
+                                        document.body.style.top = '0px';
+                                    }, 100);
+                                }
+                            } else {
+                                console.error('[General Header] Google Translate failed to initialize');
                                 if (label) label.textContent = 'Error';
                                 setTimeout(() => {
                                     if (label) label.textContent = originalText;
                                 }, 2000);
                             }
-                        }, 250);
+                        } else {
+                            console.error('[General Header] initializeGoogleTranslate function not found!');
+                            isCheckingForTranslate = false;
+                            if (label) label.textContent = 'Error';
+                            setTimeout(() => {
+                                if (label) label.textContent = originalText;
+                            }, 2000);
+                        }
                         
                         return;
                     }
                     
+                    // If we get here, selector exists and we can toggle immediately
                     const currentLang = selector.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
                     const newLang = currentLang === 'cy' ? 'en' : 'cy';
                     
@@ -3686,4 +3687,3 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
-
