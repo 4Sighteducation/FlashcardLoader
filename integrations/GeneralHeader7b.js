@@ -915,6 +915,9 @@
             
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header-enhanced ${userType}">
+                    <!-- Google Translate container - hidden visually but present in DOM -->
+                    <div id="google_translate_element"></div>
+                    
                     <div class="header-content">
                         <div class="header-primary-row">
                             <div class="header-brand">
@@ -942,7 +945,6 @@
                             Back to Home
                         </a>
                         <div class="breadcrumb-actions">
-                            <div id="google_translate_element" style="display: none;"></div>
                             <button class="breadcrumb-language-toggle" 
                                     id="languageToggleBtn"
                                     title="${isWelsh ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)'}">
@@ -955,6 +957,19 @@
                 </div>
                 <div class="mobile-nav-overlay"></div>
                 <style>
+                    /* Hide Google Translate container visually but keep in DOM */
+                    #google_translate_element {
+                        position: absolute !important;
+                        left: -9999px !important;
+                        top: -9999px !important;
+                        width: 1px !important;
+                        height: 1px !important;
+                        overflow: hidden !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                        z-index: -1 !important;
+                    }
+                    
                     /* Hide entire Knack header */
                     .knHeader {
                         display: none !important;
@@ -3547,3 +3562,4 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
+
