@@ -2166,13 +2166,34 @@
                             
                             if (selectorNow) {
                                 clearInterval(checkInterval);
-                                log('Google Translate loaded, triggering toggle');
-                                // Reset label and trigger click again
-                                if (label) label.textContent = originalText;
-                                languageToggleBtn.click();
+                                log('Google Translate loaded, now toggling language');
+                                
+                                // FIXED: Don't re-click, just toggle directly
+                                const currentLang = selectorNow.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
+                                const newLang = currentLang === 'cy' ? 'en' : 'cy';
+                                
+                                // Update storage
+                                if (newLang === 'en') {
+                                    localStorage.removeItem('vespaPreferredLanguage');
+                                    sessionStorage.setItem('vespaTranslationDisabled', 'true');
+                                } else {
+                                    localStorage.setItem('vespaPreferredLanguage', newLang);
+                                    sessionStorage.removeItem('vespaTranslationDisabled');
+                                }
+                                
+                                // Change language
+                                selectorNow.value = newLang;
+                                selectorNow.dispatchEvent(new Event('change'));
+                                
+                                // Update button
+                                if (label) label.textContent = newLang === 'cy' ? 'English' : 'Cymraeg';
+                                languageToggleBtn.title = newLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
+                                
+                                log(`Language switched to ${newLang} after waiting`);
                             } else if (attempts >= maxAttempts) {
                                 clearInterval(checkInterval);
-                                console.error('[General Header] Google Translate failed to load');
+                                console.error('[General Header] Google Translate failed to load after 10 seconds');
+                                console.error('[General Header] Check if script is blocked or failed to load');
                                 if (label) label.textContent = 'Error';
                                 setTimeout(() => {
                                     if (label) label.textContent = originalText;
@@ -3526,5 +3547,3 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
-
-
