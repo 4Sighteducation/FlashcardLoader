@@ -21,7 +21,7 @@
         }
         
         // Configuration
-        const DEBUG = true; // TEMPORARILY ENABLED for translation debugging
+        const DEBUG = config.debugMode || false; // Use config debug mode
         const currentScene = config.sceneKey;
         const currentView = config.viewKey;
         const userRoles = config.userRoles || [];
@@ -2167,7 +2167,9 @@
                     
                     // Change the language
                     selector.value = newLang;
-                    selector.dispatchEvent(new Event('change'));
+                    const evt = document.createEvent('HTMLEvents');
+                    evt.initEvent('change', false, true);
+                    selector.dispatchEvent(evt);
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -2272,9 +2274,11 @@
                                     localStorage.setItem('vespaPreferredLanguage', newLang);
                                 }
                                 
-                                // Change language
+                                // Change language (use old-style event that Google expects)
                                 selectorNow.value = newLang;
-                                selectorNow.dispatchEvent(new Event('change'));
+                                const evt = document.createEvent('HTMLEvents');
+                                evt.initEvent('change', false, true);
+                                selectorNow.dispatchEvent(evt);
                                 
                                 // IMMEDIATELY hide any banner that appears
                                 setTimeout(() => {
@@ -2337,7 +2341,9 @@
                     
                     // Change the language
                     selector.value = newLang;
-                    selector.dispatchEvent(new Event('change'));
+                    const evt = document.createEvent('HTMLEvents');
+                    evt.initEvent('change', false, true);
+                    selector.dispatchEvent(evt);
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -3633,7 +3639,9 @@
             const selector = document.querySelector('.goog-te-combo');
             if (selector && selector.value !== 'en') {
                 selector.value = 'en';
-                selector.dispatchEvent(new Event('change'));
+                const evt = document.createEvent('HTMLEvents');
+                evt.initEvent('change', false, true);
+                selector.dispatchEvent(evt);
             }
             
             // Update toggle button if it exists
