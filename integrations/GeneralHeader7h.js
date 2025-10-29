@@ -2170,14 +2170,9 @@
                                     evt.initEvent('change', false, true);
                                     selectorNow.dispatchEvent(evt);
                                     
-                                    if (span) span.textContent = 'Switch to English';
-                                    
-                                    // Update desktop button too
-                                    const desktopBtn = document.getElementById('languageToggleBtn');
-                                    if (desktopBtn) {
-                                        const label = desktopBtn.querySelector('.language-label');
-                                        if (label) label.textContent = 'English';
-                                        desktopBtn.title = 'Switch to English';
+                                    // Update both buttons using central function
+                                    if (window.updateLanguageButton) {
+                                        window.updateLanguageButton('cy');
                                     }
                                 }
                             }
@@ -2228,18 +2223,9 @@
                         }
                     }, 250);
                     
-                    // Update button label
-                    const span = mobileLanguageToggle.querySelector('span');
-                    if (span) {
-                        span.textContent = newLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg';
-                    }
-                    
-                    // Also update desktop button
-                    const desktopBtn = document.getElementById('languageToggleBtn');
-                    if (desktopBtn) {
-                        const label = desktopBtn.querySelector('.language-label');
-                        if (label) label.textContent = newLang === 'cy' ? 'English' : 'Cymraeg';
-                        desktopBtn.title = newLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
+                    // Update both buttons using central function
+                    if (window.updateLanguageButton) {
+                        window.updateLanguageButton(newLang);
                     }
                 });
             }
@@ -2249,6 +2235,23 @@
         
         // Setup event listeners
         function setupEventListeners() {
+            // Sync button with actual Google Translate state periodically
+            function syncButtonWithGoogleState() {
+                const selector = document.querySelector('.goog-te-combo');
+                if (selector && window.updateLanguageButton) {
+                    const currentLang = selector.value || 'en';
+                    window.updateLanguageButton(currentLang);
+                }
+            }
+            
+            // Sync every 2 seconds to catch auto-translate changes
+            setInterval(syncButtonWithGoogleState, 2000);
+            
+            // Also sync immediately after scene renders
+            $(document).on('knack-scene-render.any', function() {
+                setTimeout(syncButtonWithGoogleState, 500);
+            });
+            
             // Language toggle handler with loading check
             const languageToggleBtn = document.getElementById('languageToggleBtn');
             log('Looking for language toggle button...', languageToggleBtn ? 'FOUND' : 'NOT FOUND');
@@ -2298,8 +2301,10 @@
                                     evt.initEvent('change', false, true);
                                     selectorNow.dispatchEvent(evt);
                                     
-                                    if (label) label.textContent = 'English';
-                                    languageToggleBtn.title = 'Switch to English';
+                                    // Update button using central function
+                                    if (window.updateLanguageButton) {
+                                        window.updateLanguageButton('cy');
+                                    }
                                     
                                     // Hide banner
                                     setTimeout(() => {
@@ -2374,13 +2379,10 @@
                         }
                     }, 250);
                     
-                    // Update button label and title
-                    const isWelsh = newLang === 'cy';
-                    const label = languageToggleBtn.querySelector('.language-label');
-                    if (label) {
-                        label.textContent = isWelsh ? 'English' : 'Cymraeg';
+                    // Update button using central function
+                    if (window.updateLanguageButton) {
+                        window.updateLanguageButton(newLang);
                     }
-                    languageToggleBtn.title = isWelsh ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
                     
                     log(`Language switched to ${newLang}`);
                 });
@@ -3238,30 +3240,12 @@
         // This is exposed globally so any app can call window.refreshTranslations()
         // Used by: knackAppLoader (auto), manual refresh button, and can be called by any app
         window.refreshTranslations = function() {
-            // Trigger Google Translate to re-scan the page
-            const evt = document.createEvent('HTMLEvents');
-            evt.initEvent('change', false, true);
+            // DISABLED - This was causing the page to flip back and forth
+            // Google Translate auto-translates new content, we don't need to force it
             const selector = document.querySelector('.goog-te-combo');
             if (selector) {
                 const currentLang = selector.value;
-                if (currentLang && currentLang !== 'en' && currentLang !== '') {
-                    log(`Refreshing translations for language: ${currentLang}`);
-                    // Briefly switch to English and back to refresh
-                    selector.value = 'en';
-                    selector.dispatchEvent(evt);
-                    setTimeout(() => {
-                        selector.value = currentLang;
-                        selector.dispatchEvent(evt);
-                        // Also try to translate embedded content
-                        translateEmbeddedContent(currentLang);
-                        // Always remove banner after refresh
-                        removeGoogleBanner();
-                        // Trigger event for apps that need to know
-                        $(document).trigger('vespa-translation-refreshed', { language: currentLang });
-                    }, 100);
-                } else {
-                    log('No active translation to refresh (currently in English)');
-                }
+                log(`Current language is ${currentLang || 'en'}, no refresh needed`);
             }
         };
         
