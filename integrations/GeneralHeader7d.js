@@ -2158,13 +2158,11 @@
                     const currentLang = selector.value || localStorage.getItem('vespaPreferredLanguage') || 'en';
                     const newLang = currentLang === 'cy' ? 'en' : 'cy';
                     
-                    // Update localStorage
+                    // Update localStorage (don't block loading, just set preference)
                     if (newLang === 'en') {
                         localStorage.removeItem('vespaPreferredLanguage');
-                        sessionStorage.setItem('vespaTranslationDisabled', 'true');
                     } else {
                         localStorage.setItem('vespaPreferredLanguage', newLang);
-                        sessionStorage.removeItem('vespaTranslationDisabled');
                     }
                     
                     // Change the language
@@ -2332,13 +2330,11 @@
                     
                     log(`Switching language from ${currentLang} to ${newLang}`);
                     
-                    // Update localStorage
+                    // Update localStorage (don't block loading, just set preference)
                     if (newLang === 'en') {
                         localStorage.removeItem('vespaPreferredLanguage');
-                        sessionStorage.setItem('vespaTranslationDisabled', 'true');
                     } else {
                         localStorage.setItem('vespaPreferredLanguage', newLang);
-                        sessionStorage.removeItem('vespaTranslationDisabled');
                     }
                     
                     // Change the language
@@ -3605,7 +3601,6 @@
                 sessionStorage.removeItem('_generalHeaderLoadedSession');
                 // Clear translation preferences on logout
                 localStorage.removeItem('vespaPreferredLanguage');
-                sessionStorage.removeItem('vespaTranslationDisabled');
                 log('Cleared translation preferences on logout');
                 
                 // Since we navigate BEFORE logout, user should already be on home page
@@ -3645,9 +3640,8 @@
         window.clearTranslationPreferences = function() {
             console.log('[General Header] Clearing translation preferences...');
             
-            // Clear all storage
+            // Clear all storage (don't block loading, just clear preference)
             localStorage.removeItem('vespaPreferredLanguage');
-            sessionStorage.setItem('vespaTranslationDisabled', 'true');
             
             // Switch back to English if currently translated
             const selector = document.querySelector('.goog-te-combo');
