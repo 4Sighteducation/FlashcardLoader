@@ -915,9 +915,6 @@
             
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header-enhanced ${userType}">
-                    <!-- Google Translate container - hidden visually but present in DOM -->
-                    <div id="google_translate_element"></div>
-                    
                     <div class="header-content">
                         <div class="header-primary-row">
                             <div class="header-brand">
@@ -968,6 +965,41 @@
                         opacity: 0 !important;
                         pointer-events: none !important;
                         z-index: -1 !important;
+                    }
+                    
+                    /* AGGRESSIVE: Force hide Google Translate banner */
+                    .goog-te-banner-frame,
+                    .goog-te-banner-frame.skiptranslate,
+                    body > .skiptranslate:first-child,
+                    iframe.goog-te-banner-frame {
+                        display: none !important;
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        width: 0 !important;
+                        position: absolute !important;
+                        top: -9999px !important;
+                        left: -9999px !important;
+                    }
+                    
+                    /* Fix body positioning that Google adds */
+                    body,
+                    body.translated-ltr,
+                    body.translated-rtl {
+                        top: 0 !important;
+                        position: relative !important;
+                        margin-top: 0 !important;
+                    }
+                    
+                    html {
+                        top: 0 !important;
+                        position: relative !important;
+                    }
+                    
+                    /* Hide Google tooltips */
+                    #goog-gt-tt,
+                    .goog-tooltip,
+                    .goog-te-balloon-frame {
+                        display: none !important;
                     }
                     
                     /* Hide entire Knack header */
@@ -1924,6 +1956,14 @@
         
         // Function to inject the header
         function injectHeader() {
+            // FIRST: Ensure Google Translate container exists (persistent, outside header)
+            if (!document.getElementById('google_translate_element')) {
+                log('Creating persistent Google Translate container');
+                const translateContainer = document.createElement('div');
+                translateContainer.id = 'google_translate_element';
+                document.body.insertBefore(translateContainer, document.body.firstChild);
+            }
+            
             // Check if header already exists
             if (document.getElementById('vespaGeneralHeader')) {
                 log('Header already exists, checking if it should be removed');
@@ -2131,6 +2171,33 @@
                     selector.value = newLang;
                     selector.dispatchEvent(new Event('change'));
                     
+                    // IMMEDIATELY hide any banner that appears
+                    setTimeout(() => {
+                        const banner = document.querySelector('.goog-te-banner-frame');
+                        if (banner) {
+                            banner.style.display = 'none';
+                            banner.remove();
+                        }
+                        document.body.style.top = '0px';
+                        document.body.style.position = 'relative';
+                    }, 50);
+                    
+                    // Keep checking for banner
+                    let bannerCheckCount = 0;
+                    const bannerCheckInterval = setInterval(() => {
+                        const banner = document.querySelector('.goog-te-banner-frame');
+                        if (banner) {
+                            banner.style.display = 'none';
+                            banner.remove();
+                        }
+                        document.body.style.top = '0px';
+                        
+                        bannerCheckCount++;
+                        if (bannerCheckCount > 12) {
+                            clearInterval(bannerCheckInterval);
+                        }
+                    }, 250);
+                    
                     // Update button label
                     const span = mobileLanguageToggle.querySelector('span');
                     if (span) {
@@ -2157,15 +2224,27 @@
             log('Looking for language toggle button...', languageToggleBtn ? 'FOUND' : 'NOT FOUND');
             if (languageToggleBtn) {
                 log('Attaching click event to language toggle button');
+                
+                // Prevent multiple simultaneous loading attempts
+                let isCheckingForTranslate = false;
+                
                 languageToggleBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     
                     log('Language toggle clicked');
                     
+                    // Prevent multiple clicks while loading
+                    if (isCheckingForTranslate) {
+                        log('Already checking for Google Translate, ignoring click');
+                        return;
+                    }
+                    
                     const selector = document.querySelector('.goog-te-combo');
                     if (!selector) {
                         console.warn('[General Header] Google Translate not loaded yet, waiting...');
+                        
+                        isCheckingForTranslate = true;
                         
                         // Show loading feedback
                         const label = languageToggleBtn.querySelector('.language-label');
@@ -2181,6 +2260,7 @@
                             
                             if (selectorNow) {
                                 clearInterval(checkInterval);
+                                isCheckingForTranslate = false;
                                 log('Google Translate loaded, now toggling language');
                                 
                                 // FIXED: Don't re-click, just toggle directly
@@ -2200,6 +2280,33 @@
                                 selectorNow.value = newLang;
                                 selectorNow.dispatchEvent(new Event('change'));
                                 
+                                // IMMEDIATELY hide any banner that appears
+                                setTimeout(() => {
+                                    const banner = document.querySelector('.goog-te-banner-frame');
+                                    if (banner) {
+                                        banner.style.display = 'none';
+                                        banner.remove();
+                                    }
+                                    document.body.style.top = '0px';
+                                    document.body.style.position = 'relative';
+                                }, 50);
+                                
+                                // Keep checking for banner for 3 seconds
+                                let bannerCheckCount = 0;
+                                const bannerCheckInterval = setInterval(() => {
+                                    const banner = document.querySelector('.goog-te-banner-frame');
+                                    if (banner) {
+                                        banner.style.display = 'none';
+                                        banner.remove();
+                                    }
+                                    document.body.style.top = '0px';
+                                    
+                                    bannerCheckCount++;
+                                    if (bannerCheckCount > 12) {
+                                        clearInterval(bannerCheckInterval);
+                                    }
+                                }, 250);
+                                
                                 // Update button
                                 if (label) label.textContent = newLang === 'cy' ? 'English' : 'Cymraeg';
                                 languageToggleBtn.title = newLang === 'cy' ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
@@ -2207,6 +2314,7 @@
                                 log(`Language switched to ${newLang} after waiting`);
                             } else if (attempts >= maxAttempts) {
                                 clearInterval(checkInterval);
+                                isCheckingForTranslate = false; // Reset flag
                                 console.error('[General Header] Google Translate failed to load after 10 seconds');
                                 console.error('[General Header] Check if script is blocked or failed to load');
                                 if (label) label.textContent = 'Error';
@@ -2236,6 +2344,34 @@
                     // Change the language
                     selector.value = newLang;
                     selector.dispatchEvent(new Event('change'));
+                    
+                    // IMMEDIATELY hide any banner that appears
+                    setTimeout(() => {
+                        const banner = document.querySelector('.goog-te-banner-frame');
+                        if (banner) {
+                            banner.style.display = 'none';
+                            banner.remove();
+                        }
+                        document.body.style.top = '0px';
+                        document.body.style.position = 'relative';
+                    }, 50);
+                    
+                    // Keep checking for banner for 3 seconds after language change
+                    let bannerCheckCount = 0;
+                    const bannerCheckInterval = setInterval(() => {
+                        const banner = document.querySelector('.goog-te-banner-frame');
+                        if (banner) {
+                            banner.style.display = 'none';
+                            banner.remove();
+                        }
+                        document.body.style.top = '0px';
+                        document.body.style.position = 'relative';
+                        
+                        bannerCheckCount++;
+                        if (bannerCheckCount > 12) { // 3 seconds (250ms * 12)
+                            clearInterval(bannerCheckInterval);
+                        }
+                    }, 250);
                     
                     // Update button label and title
                     const isWelsh = newLang === 'cy';
