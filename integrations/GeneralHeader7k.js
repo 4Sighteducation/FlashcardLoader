@@ -2190,21 +2190,36 @@
                         localStorage.setItem('vespaPreferredLanguage', newLang);
                     }
                     
-                    // Change the language - trigger multiple ways for reliability
-                    console.log('[General Header] Mobile - Changing language to:', newLang);
-                    selector.value = newLang;
+                    // CRITICAL FIX: Reset to opposite first to force value change
+                    const resetLang = newLang === 'cy' ? 'en' : 'cy';
+                    console.log('[General Header] Mobile - Resetting to', resetLang, 'first...');
+                    selector.value = resetLang;
                     
-                    const evt = document.createEvent('HTMLEvents');
-                    evt.initEvent('change', false, true);
-                    selector.dispatchEvent(evt);
+                    const resetEvt = document.createEvent('HTMLEvents');
+                    resetEvt.initEvent('change', false, true);
+                    selector.dispatchEvent(resetEvt);
                     
-                    // Also try modern event and jQuery
-                    selector.dispatchEvent(new Event('change', { bubbles: true }));
-                    if (typeof $ !== 'undefined') {
-                        $(selector).trigger('change');
-                    }
-                    
-                    console.log('[General Header] Mobile - Translation triggered');
+                    // Now change to target language after brief delay
+                    setTimeout(() => {
+                        console.log('[General Header] Mobile - Now changing to:', newLang);
+                        selector.value = newLang;
+                        
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', false, true);
+                        selector.dispatchEvent(evt);
+                        
+                        selector.dispatchEvent(new Event('change', { bubbles: true }));
+                        if (typeof $ !== 'undefined') {
+                            $(selector).trigger('change');
+                        }
+                        
+                        console.log('[General Header] Mobile - Translation triggered to:', newLang);
+                        
+                        // Update both buttons using central function
+                        if (window.updateLanguageButton) {
+                            window.updateLanguageButton(newLang);
+                        }
+                    }, 200);
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -2232,11 +2247,6 @@
                             clearInterval(bannerCheckInterval);
                         }
                     }, 250);
-                    
-                    // Update both buttons using central function
-                    if (window.updateLanguageButton) {
-                        window.updateLanguageButton(newLang);
-                    }
                 });
             }
             
@@ -2309,31 +2319,44 @@
                                 setTimeout(() => {
                                     const selectorNow = document.querySelector('.goog-te-combo');
                                     if (selectorNow) {
-                                        console.log('[General Header] Selector ready! Changing from', selectorNow.value, 'to cy');
+                                        console.log('[General Header] Selector ready! Current value:', selectorNow.value);
                                         
                                         localStorage.setItem('vespaPreferredLanguage', 'cy');
-                                        selectorNow.value = 'cy';
                                         
-                                        // Trigger change event multiple ways to ensure Google picks it up
-                                        const evt = document.createEvent('HTMLEvents');
-                                        evt.initEvent('change', false, true);
-                                        selectorNow.dispatchEvent(evt);
+                                        // CRITICAL FIX: Always reset to English first, then change to Welsh
+                                        // This ensures the value actually CHANGES, triggering Google's event listeners
+                                        console.log('[General Header] Resetting to English first...');
+                                        selectorNow.value = 'en';
+                                        const resetEvt = document.createEvent('HTMLEvents');
+                                        resetEvt.initEvent('change', false, true);
+                                        selectorNow.dispatchEvent(resetEvt);
                                         
-                                        // Also try modern event
-                                        selectorNow.dispatchEvent(new Event('change', { bubbles: true }));
-                                        
-                                        // And trigger via jQuery if available
-                                        if (typeof $ !== 'undefined') {
-                                            $(selectorNow).trigger('change');
-                                        }
-                                        
-                                        console.log('[General Header] Selector value after change:', selectorNow.value);
-                                        console.log('[General Header] Translation should be starting...');
-                                        
-                                        // Update button using central function
-                                        if (window.updateLanguageButton) {
-                                            window.updateLanguageButton('cy');
-                                        }
+                                        // Wait a moment, then change to Welsh
+                                        setTimeout(() => {
+                                            console.log('[General Header] Now changing to Welsh...');
+                                            selectorNow.value = 'cy';
+                                            
+                                            // Trigger change event multiple ways to ensure Google picks it up
+                                            const evt = document.createEvent('HTMLEvents');
+                                            evt.initEvent('change', false, true);
+                                            selectorNow.dispatchEvent(evt);
+                                            
+                                            // Also try modern event
+                                            selectorNow.dispatchEvent(new Event('change', { bubbles: true }));
+                                            
+                                            // And trigger via jQuery if available
+                                            if (typeof $ !== 'undefined') {
+                                                $(selectorNow).trigger('change');
+                                            }
+                                            
+                                            console.log('[General Header] Selector value after change:', selectorNow.value);
+                                            console.log('[General Header] Translation should be starting...');
+                                            
+                                            // Update button using central function
+                                            if (window.updateLanguageButton) {
+                                                window.updateLanguageButton('cy');
+                                            }
+                                        }, 300); // Small delay between resets
                                         
                                         // Hide banner aggressively
                                         setTimeout(() => {
@@ -2394,24 +2417,38 @@
                         localStorage.setItem('vespaPreferredLanguage', newLang);
                     }
                     
-                    // Change the language - trigger multiple ways for reliability
-                    selector.value = newLang;
-                    console.log('[General Header] Desktop - Selector changed to:', newLang);
+                    // CRITICAL FIX: Reset to opposite first to force value change
+                    const resetLang = newLang === 'cy' ? 'en' : 'cy';
+                    console.log('[General Header] Desktop - Resetting to', resetLang, 'first...');
+                    selector.value = resetLang;
                     
-                    // Old-style event (what Google expects)
-                    const evt = document.createEvent('HTMLEvents');
-                    evt.initEvent('change', false, true);
-                    selector.dispatchEvent(evt);
+                    const resetEvt = document.createEvent('HTMLEvents');
+                    resetEvt.initEvent('change', false, true);
+                    selector.dispatchEvent(resetEvt);
                     
-                    // Modern event
-                    selector.dispatchEvent(new Event('change', { bubbles: true }));
-                    
-                    // jQuery trigger
-                    if (typeof $ !== 'undefined') {
-                        $(selector).trigger('change');
-                    }
-                    
-                    console.log('[General Header] Desktop - Translation event triggered');
+                    // Now change to target language after brief delay
+                    setTimeout(() => {
+                        console.log('[General Header] Desktop - Now changing to:', newLang);
+                        selector.value = newLang;
+                        
+                        // Trigger change event multiple ways
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', false, true);
+                        selector.dispatchEvent(evt);
+                        
+                        selector.dispatchEvent(new Event('change', { bubbles: true }));
+                        
+                        if (typeof $ !== 'undefined') {
+                            $(selector).trigger('change');
+                        }
+                        
+                        console.log('[General Header] Desktop - Translation triggered to:', newLang);
+                        
+                        // Update button using central function
+                        if (window.updateLanguageButton) {
+                            window.updateLanguageButton(newLang);
+                        }
+                    }, 200);
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -2440,11 +2477,6 @@
                             clearInterval(bannerCheckInterval);
                         }
                     }, 250);
-                    
-                    // Update button using central function
-                    if (window.updateLanguageButton) {
-                        window.updateLanguageButton(newLang);
-                    }
                     
                     log(`Language switched to ${newLang}`);
                 });
@@ -3733,4 +3765,5 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
+
 
