@@ -2190,11 +2190,21 @@
                         localStorage.setItem('vespaPreferredLanguage', newLang);
                     }
                     
-                    // Change the language
+                    // Change the language - trigger multiple ways for reliability
+                    console.log('[General Header] Mobile - Changing language to:', newLang);
                     selector.value = newLang;
+                    
                     const evt = document.createEvent('HTMLEvents');
                     evt.initEvent('change', false, true);
                     selector.dispatchEvent(evt);
+                    
+                    // Also try modern event and jQuery
+                    selector.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (typeof $ !== 'undefined') {
+                        $(selector).trigger('change');
+                    }
+                    
+                    console.log('[General Header] Mobile - Translation triggered');
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -2290,29 +2300,67 @@
                             isCheckingForTranslate = false;
                             
                             if (success) {
-                                console.log('[General Header] Google Translate loaded, toggling to Welsh');
+                                console.log('[General Header] Google Translate loaded successfully!');
+                                console.log('[General Header] Waiting for Google to be fully ready before translating...');
                                 
-                                // Automatically toggle to Welsh (since they clicked the button)
-                                const selectorNow = document.querySelector('.goog-te-combo');
-                                if (selectorNow) {
-                                    localStorage.setItem('vespaPreferredLanguage', 'cy');
-                                    selectorNow.value = 'cy';
-                                    const evt = document.createEvent('HTMLEvents');
-                                    evt.initEvent('change', false, true);
-                                    selectorNow.dispatchEvent(evt);
-                                    
-                                    // Update button using central function
-                                    if (window.updateLanguageButton) {
-                                        window.updateLanguageButton('cy');
+                                // Wait 1 second for Google Translate to be fully ready before changing language
+                                // The initializeGoogleTranslate already waited 1 second for event listeners
+                                // This additional wait ensures translation actually triggers
+                                setTimeout(() => {
+                                    const selectorNow = document.querySelector('.goog-te-combo');
+                                    if (selectorNow) {
+                                        console.log('[General Header] Selector ready! Changing from', selectorNow.value, 'to cy');
+                                        
+                                        localStorage.setItem('vespaPreferredLanguage', 'cy');
+                                        selectorNow.value = 'cy';
+                                        
+                                        // Trigger change event multiple ways to ensure Google picks it up
+                                        const evt = document.createEvent('HTMLEvents');
+                                        evt.initEvent('change', false, true);
+                                        selectorNow.dispatchEvent(evt);
+                                        
+                                        // Also try modern event
+                                        selectorNow.dispatchEvent(new Event('change', { bubbles: true }));
+                                        
+                                        // And trigger via jQuery if available
+                                        if (typeof $ !== 'undefined') {
+                                            $(selectorNow).trigger('change');
+                                        }
+                                        
+                                        console.log('[General Header] Selector value after change:', selectorNow.value);
+                                        console.log('[General Header] Translation should be starting...');
+                                        
+                                        // Update button using central function
+                                        if (window.updateLanguageButton) {
+                                            window.updateLanguageButton('cy');
+                                        }
+                                        
+                                        // Hide banner aggressively
+                                        setTimeout(() => {
+                                            const banner = document.querySelector('.goog-te-banner-frame');
+                                            if (banner) {
+                                                banner.style.display = 'none';
+                                                banner.remove();
+                                            }
+                                            document.body.style.top = '0px';
+                                            document.body.style.position = 'relative';
+                                        }, 100);
+                                        
+                                        // Keep checking for 3 seconds
+                                        let count = 0;
+                                        const interval = setInterval(() => {
+                                            const banner = document.querySelector('.goog-te-banner-frame');
+                                            if (banner) {
+                                                banner.remove();
+                                                document.body.style.top = '0px';
+                                            }
+                                            count++;
+                                            if (count > 12) clearInterval(interval);
+                                        }, 250);
+                                    } else {
+                                        console.error('[General Header] Selector disappeared!');
                                     }
-                                    
-                                    // Hide banner
-                                    setTimeout(() => {
-                                        const banner = document.querySelector('.goog-te-banner-frame');
-                                        if (banner) banner.remove();
-                                        document.body.style.top = '0px';
-                                    }, 100);
-                                }
+                                }, 1000); // Wait 1 second for Google to be fully ready
                             } else {
                                 console.error('[General Header] Google Translate failed to initialize');
                                 if (label) label.textContent = 'Error';
@@ -2337,6 +2385,7 @@
                     const newLang = currentLang === 'cy' ? 'en' : 'cy';
                     
                     log(`Switching language from ${currentLang} to ${newLang}`);
+                    console.log('[General Header] Desktop - Current selector value:', selector.value);
                     
                     // Update localStorage (don't block loading, just set preference)
                     if (newLang === 'en') {
@@ -2345,11 +2394,24 @@
                         localStorage.setItem('vespaPreferredLanguage', newLang);
                     }
                     
-                    // Change the language
+                    // Change the language - trigger multiple ways for reliability
                     selector.value = newLang;
+                    console.log('[General Header] Desktop - Selector changed to:', newLang);
+                    
+                    // Old-style event (what Google expects)
                     const evt = document.createEvent('HTMLEvents');
                     evt.initEvent('change', false, true);
                     selector.dispatchEvent(evt);
+                    
+                    // Modern event
+                    selector.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    // jQuery trigger
+                    if (typeof $ !== 'undefined') {
+                        $(selector).trigger('change');
+                    }
+                    
+                    console.log('[General Header] Desktop - Translation event triggered');
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -3671,3 +3733,4 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
+
