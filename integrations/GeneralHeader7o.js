@@ -912,17 +912,6 @@
             // Add Welsh/English toggle button (for breadcrumb row)
             const savedLang = localStorage.getItem('vespaPreferredLanguage');
             const isWelsh = savedLang === 'cy';
-            const isPinned = isWelsh; // If savedLang exists and is cy, it's pinned
-            
-            // Pin button HTML (only shows when page is in Welsh)
-            const pinButtonHTML = `
-                <button class="breadcrumb-pin-toggle ${isPinned ? 'active' : ''}" 
-                        id="languagePinBtn"
-                        title="${isPinned ? 'Preference saved (will auto-load Welsh)' : 'Click to remember Welsh preference'}"
-                        style="display: none;">
-                    <i class="fa fa-thumbtack"></i>
-                </button>
-            `;
             
             return `
                 <div id="vespaGeneralHeader" class="vespa-general-header-enhanced ${userType}">
@@ -959,7 +948,6 @@
                                 <i class="fa fa-language"></i>
                                 <span class="language-label">${isWelsh ? 'English' : 'Cymraeg'}</span>
                             </button>
-                            ${pinButtonHTML}
                         </div>
                     </div>
                     ` : ''}
@@ -1476,71 +1464,6 @@
                     
                     .breadcrumb-language-toggle .language-label {
                         font-size: 13px;
-                    }
-                    
-                    /* Pin Button Styling (Only visible when in Welsh mode) */
-                    .breadcrumb-pin-toggle {
-                        display: inline-flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 8px 10px;
-                        background: rgba(255,255,255,0.15);
-                        border: 2px solid rgba(255,255,255,0.25);
-                        border-radius: 8px;
-                        color: rgba(255,255,255,0.6);
-                        font-size: 14px;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-                        min-width: 36px;
-                        min-height: 36px;
-                    }
-                    
-                    .breadcrumb-pin-toggle:hover {
-                        background: rgba(255,255,255,0.25);
-                        border-color: rgba(255,255,255,0.35);
-                        color: rgba(255,255,255,0.8);
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-                    }
-                    
-                    .breadcrumb-pin-toggle.active {
-                        background: linear-gradient(135deg, rgba(7,155,170,0.4) 0%, rgba(7,155,170,0.3) 100%);
-                        border-color: rgba(7,155,170,0.5);
-                        color: white;
-                        box-shadow: 0 2px 8px rgba(7,155,170,0.3);
-                    }
-                    
-                    .breadcrumb-pin-toggle.active:hover {
-                        background: linear-gradient(135deg, rgba(7,155,170,0.5) 0%, rgba(7,155,170,0.4) 100%);
-                        border-color: rgba(7,155,170,0.6);
-                        box-shadow: 0 4px 12px rgba(7,155,170,0.4);
-                    }
-                    
-                    .breadcrumb-pin-toggle i {
-                        font-size: 14px;
-                        transition: transform 0.3s ease;
-                    }
-                    
-                    .breadcrumb-pin-toggle.active i {
-                        transform: rotate(45deg);
-                    }
-                    
-                    /* Show pin when in Welsh mode */
-                    .breadcrumb-pin-toggle.show {
-                        display: inline-flex !important;
-                        animation: fadeInScale 0.3s ease;
-                    }
-                    
-                    @keyframes fadeInScale {
-                        from {
-                            opacity: 0;
-                            transform: scale(0.8);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: scale(1);
-                        }
                     }
                     
                     /* Adjust body for enhanced header with dynamic height */
@@ -2338,155 +2261,16 @@
                 if (selector && window.updateLanguageButton) {
                     const currentLang = selector.value || 'en';
                     window.updateLanguageButton(currentLang);
-                    
-                    // Also update pin button visibility based on language
-                    updatePinVisibility(currentLang);
-                }
-            }
-            
-            // Show/hide pin button based on current language
-            function updatePinVisibility(currentLang) {
-                const pinBtn = document.getElementById('languagePinBtn');
-                if (pinBtn) {
-                    if (currentLang === 'cy') {
-                        // In Welsh mode - show pin with animation
-                        pinBtn.classList.add('show');
-                        
-                        // Update active state based on whether it's saved
-                        const savedLang = localStorage.getItem('vespaPreferredLanguage');
-                        const savedUser = localStorage.getItem('vespaLanguageUser');
-                        const currentUser = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes().email : null;
-                        
-                        if (savedLang === 'cy' && savedUser === currentUser) {
-                            pinBtn.classList.add('active');
-                            pinBtn.title = 'Preference saved (will auto-load Welsh)';
-                        } else {
-                            pinBtn.classList.remove('active');
-                            pinBtn.title = 'Click to remember Welsh preference';
-                        }
-                    } else {
-                        // In English mode - hide pin
-                        pinBtn.classList.remove('show');
-                        setTimeout(() => {
-                            if (!pinBtn.classList.contains('show')) {
-                                pinBtn.style.display = 'none';
-                            }
-                        }, 300); // Wait for fade animation
-                    }
                 }
             }
             
             // Sync every 2 seconds to catch auto-translate changes
             setInterval(syncButtonWithGoogleState, 2000);
             
-            // Initial sync on page load
-            setTimeout(syncButtonWithGoogleState, 1000);
-            
             // Also sync immediately after scene renders
             $(document).on('knack-scene-render.any', function() {
                 setTimeout(syncButtonWithGoogleState, 500);
             });
-            
-            // Pin button handler (save/unsave Welsh preference)
-            const languagePinBtn = document.getElementById('languagePinBtn');
-            if (languagePinBtn) {
-                log('Attaching click event to pin button');
-                
-                languagePinBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation(); // Don't trigger language toggle!
-                    
-                    const selector = document.querySelector('.goog-te-combo');
-                    if (!selector) {
-                        console.warn('[General Header] Cannot pin - Google Translate not loaded');
-                        return;
-                    }
-                    
-                    const currentLang = selector.value || 'en';
-                    const currentUser = (typeof Knack !== 'undefined' && Knack.getUserAttributes) ? Knack.getUserAttributes().email : null;
-                    
-                    if (currentLang !== 'cy') {
-                        console.log('[General Header] Pin only available in Welsh mode');
-                        return;
-                    }
-                    
-                    const isPinned = localStorage.getItem('vespaPreferredLanguage') === 'cy';
-                    
-                    if (isPinned) {
-                        // Unpin - clear saved preference
-                        console.log('[General Header] Unpinning Welsh preference');
-                        localStorage.removeItem('vespaPreferredLanguage');
-                        localStorage.removeItem('vespaLanguageUser');
-                        
-                        languagePinBtn.classList.remove('active');
-                        languagePinBtn.title = 'Click to remember Welsh preference';
-                        
-                        // Show brief feedback
-                        showPinFeedback('Session only (will reset on logout)');
-                    } else {
-                        // Pin - save preference with user email
-                        console.log('[General Header] Pinning Welsh preference for user:', currentUser);
-                        localStorage.setItem('vespaPreferredLanguage', 'cy');
-                        if (currentUser) {
-                            localStorage.setItem('vespaLanguageUser', currentUser);
-                        }
-                        
-                        languagePinBtn.classList.add('active');
-                        languagePinBtn.title = 'Preference saved (will auto-load Welsh)';
-                        
-                        // Show brief feedback
-                        showPinFeedback('✓ Welsh preference saved!');
-                    }
-                });
-            }
-            
-            // Show brief feedback notification near pin button
-            function showPinFeedback(message) {
-                const pinBtn = document.getElementById('languagePinBtn');
-                if (!pinBtn) return;
-                
-                // Create feedback tooltip
-                const feedback = document.createElement('div');
-                feedback.className = 'pin-feedback-tooltip';
-                feedback.textContent = message;
-                feedback.style.cssText = `
-                    position: absolute;
-                    top: -35px;
-                    right: 0;
-                    background: rgba(7,155,170,0.95);
-                    color: white;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    white-space: nowrap;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    animation: fadeInOut 2s ease;
-                    z-index: 10001;
-                    pointer-events: none;
-                `;
-                
-                // Add animation
-                const style = document.createElement('style');
-                style.textContent = `
-                    @keyframes fadeInOut {
-                        0% { opacity: 0; transform: translateY(5px); }
-                        20% { opacity: 1; transform: translateY(0); }
-                        80% { opacity: 1; transform: translateY(0); }
-                        100% { opacity: 0; transform: translateY(-5px); }
-                    }
-                `;
-                if (!document.getElementById('pin-feedback-animation')) {
-                    style.id = 'pin-feedback-animation';
-                    document.head.appendChild(style);
-                }
-                
-                pinBtn.parentElement.style.position = 'relative';
-                pinBtn.parentElement.appendChild(feedback);
-                
-                // Remove after animation
-                setTimeout(() => feedback.remove(), 2000);
-            }
             
             // Language toggle handler with loading check
             const languageToggleBtn = document.getElementById('languageToggleBtn');
@@ -3887,11 +3671,9 @@
                 window._generalHeaderLoaded = false;
                 // Clear session storage flag
                 sessionStorage.removeItem('_generalHeaderLoadedSession');
-                
-                // DON'T clear language preferences on logout
-                // They are user-specific and will be checked on next login
-                // If different user logs in, checkAndAutoInitialize will clear them
-                log('Preserving language preferences (user-specific)');
+                // Clear translation preferences on logout
+                localStorage.removeItem('vespaPreferredLanguage');
+                log('Cleared translation preferences on logout');
                 
                 // Since we navigate BEFORE logout, user should already be on home page
                 log('Logout complete - user should already be on home page');
