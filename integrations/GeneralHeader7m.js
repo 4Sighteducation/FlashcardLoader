@@ -2190,18 +2190,18 @@
                         localStorage.setItem('vespaPreferredLanguage', newLang);
                     }
                     
-                    // CRITICAL FIX: Reset to opposite first to force value change
-                    const resetLang = newLang === 'cy' ? 'en' : 'cy';
-                    console.log('[General Header] Mobile - Resetting to', resetLang, 'first...');
-                    selector.value = resetLang;
+                    // SIMPLE FIX: Always reset to English first, THEN go to target
+                    console.log('[General Header] Mobile - Force reset to English, then switch to:', newLang);
                     
+                    // Step 1: Reset to English
+                    selector.value = 'en';
                     const resetEvt = document.createEvent('HTMLEvents');
                     resetEvt.initEvent('change', false, true);
                     selector.dispatchEvent(resetEvt);
                     
-                    // Now change to target language after brief delay
+                    // Step 2: Change to target language after brief delay
                     setTimeout(() => {
-                        console.log('[General Header] Mobile - Now changing to:', newLang);
+                        console.log('[General Header] Mobile - Now switching to:', newLang);
                         selector.value = newLang;
                         
                         const evt = document.createEvent('HTMLEvents');
@@ -2213,13 +2213,13 @@
                             $(selector).trigger('change');
                         }
                         
-                        console.log('[General Header] Mobile - Translation triggered to:', newLang);
+                        console.log('[General Header] Mobile - Translation complete! Final value:', selector.value);
                         
                         // Update both buttons using central function
                         if (window.updateLanguageButton) {
                             window.updateLanguageButton(newLang);
                         }
-                    }, 200);
+                    }, 300);
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -2417,18 +2417,19 @@
                         localStorage.setItem('vespaPreferredLanguage', newLang);
                     }
                     
-                    // CRITICAL FIX: Reset to opposite first to force value change
-                    const resetLang = newLang === 'cy' ? 'en' : 'cy';
-                    console.log('[General Header] Desktop - Resetting to', resetLang, 'first...');
-                    selector.value = resetLang;
+                    // SIMPLE FIX: Always reset to English first, THEN go to target
+                    // This ensures a value change regardless of cookies/cache
+                    console.log('[General Header] Desktop - Force reset to English, then switch to:', newLang);
                     
-                    const resetEvt = document.createEvent('HTMLEvents');
+                    // Step 1: Reset to English
+                    selector.value = 'en';
+                    let resetEvt = document.createEvent('HTMLEvents');
                     resetEvt.initEvent('change', false, true);
                     selector.dispatchEvent(resetEvt);
                     
-                    // Now change to target language after brief delay
+                    // Step 2: Change to target language after brief delay
                     setTimeout(() => {
-                        console.log('[General Header] Desktop - Now changing to:', newLang);
+                        console.log('[General Header] Desktop - Now switching to:', newLang);
                         selector.value = newLang;
                         
                         // Trigger change event multiple ways
@@ -2442,13 +2443,13 @@
                             $(selector).trigger('change');
                         }
                         
-                        console.log('[General Header] Desktop - Translation triggered to:', newLang);
+                        console.log('[General Header] Desktop - Translation complete! Final value:', selector.value);
                         
                         // Update button using central function
                         if (window.updateLanguageButton) {
                             window.updateLanguageButton(newLang);
                         }
-                    }, 200);
+                    }, 300);
                     
                     // IMMEDIATELY hide any banner that appears
                     setTimeout(() => {
@@ -3765,5 +3766,3 @@
         console.log('[General Header] Script setup complete, initializer function ready');
     }
 })();
-
-
