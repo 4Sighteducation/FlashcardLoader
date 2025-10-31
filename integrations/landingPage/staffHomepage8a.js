@@ -432,7 +432,7 @@ const KnackAPIQueue = (function() {
     resources: [
       {
         name: "Resources",
-        url: "#tutor-activities/resources-levels",
+        url: "#curriculum-resources/",
         scene: "scene_481",
         icon: "fa-folder-open",
         description: "Access teaching resources and materials"
