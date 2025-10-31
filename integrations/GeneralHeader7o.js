@@ -692,7 +692,7 @@
                 accentColor: '#06206e',
                 primaryRow: [
                     { label: 'Home', icon: 'fa-home', href: '#resources-homepage/', scene: 'scene_1278' }, // Using correct Knack slug
-                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' }
                 ],
@@ -718,7 +718,7 @@
                     { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
                 ],
                 secondaryRow: [
-                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels', scene: 'scene_481' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' }
@@ -738,7 +738,7 @@
                 primaryRow: [
                     { label: 'Home', icon: 'fa-home', href: '#resources-homepage/', scene: 'scene_1278' }, // Using correct Knack slug
                     { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-management/', scene: 'scene_1272', isManagement: true },
-                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' }
                 ],
                 secondaryRow: [
@@ -766,7 +766,7 @@
                 ],
                 secondaryRow: [
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
-                    { label: 'Resources', icon: 'fa-folder-open', href: '#tutor-activities/resources-levels/', scene: 'scene_481' },
+                    { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
                     { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
@@ -3557,7 +3557,7 @@
             
             // Also disable Universal Redirect if we're on a Resource Portal specific page
             if (currentPath.includes('#resource-staff-management') || 
-                currentPath.includes('#tutor-activities/resources-levels') ||
+                currentPath.includes('#curriculum-resources/') ||
                 currentPath.includes('scene_1272') || 
                 currentPath.includes('scene_481')) {
                 window._universalRedirectCompleted = true;
