@@ -22,7 +22,7 @@
     const MY_RESOURCES_APPS = [
         {
             name: "Resources",
-            url: "#tutor-activities/resources-levels",  // Changed from full URL to hash
+            url: "#curriculum-resources/",  // Changed from full URL to hash
             scene: "scene_481",
             icon: "fas fa-folder-open",
             color: "#7bd8d0",
