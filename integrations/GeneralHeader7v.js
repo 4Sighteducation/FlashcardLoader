@@ -675,8 +675,8 @@
                 accentColor: '#06206e', // Dark blue for accents
                 primaryRow: [
                     { label: 'Home', icon: 'fa-home', href: '#landing-page/', scene: 'scene_1210' },
-                    { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#add-q', scene: 'scene_358' },
-                    { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-results', scene: 'scene_43' },
+                    { label: 'VESPA Questionnaire', icon: 'fa-question-circle', href: '#vespaquestionnaire', scene: 'scene_1282' },
+                    { label: 'Coaching Report', icon: 'fa-comments', href: '#vespa-coaching-report/', scene: 'scene_1284' },
                     { label: 'My Activities', icon: 'fa-book', href: '#my-vespa-activities', scene: 'scene_1258' }
                 ],
                 secondaryRow: [], // Will be filled conditionally with productivity buttons
@@ -712,7 +712,7 @@
                 accentColor: '#06206e',
                 primaryRow: [
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
-                    { label: 'Coaching', icon: 'fa-comments', href: '#mygroup-vespa-results2/', scene: 'scene_1095' },
+                    { label: 'Coaching', icon: 'fa-comments', href: '#staffoverview', scene: 'scene_1286' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
                     { label: 'Activities', icon: 'fa-book', href: '#activity-manage', scene: 'scene_1256' },
                     { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
