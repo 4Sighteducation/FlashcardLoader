@@ -3506,6 +3506,23 @@
         function init() {
             log('Starting General Header initialization...');
             
+            // CHECK: Don't load header if we're inside a REPORT MODAL iframe
+            // But DO load for student emulator iframe
+            if (window.self !== window.top) {
+                // Check if parent window has the report modal marker
+                try {
+                    if (window.parent && window.parent.document && 
+                        window.parent.document.querySelector('.report-modal-overlay')) {
+                        log('Inside report modal iframe, skipping header initialization');
+                        return;
+                    }
+                } catch (e) {
+                    // Cross-origin - can't check parent, assume it's ok to load
+                    log('Cannot access parent window (cross-origin), loading header anyway');
+                }
+                log('Inside iframe but not report modal, loading header normally');
+            }
+            
             // ROBUST FIX: Disable Universal Redirect when user is logged in and navigating
             // Check if user is logged in
             const userType = getUserType();
