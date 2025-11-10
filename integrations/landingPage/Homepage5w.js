@@ -97,21 +97,21 @@
     vespa: [
       {
         name: "VESPA Questionnaire",
-        url: "#add-q",  // Changed to match GeneralHeader navigation
+        url: "#vespaquestionnaire",  // Updated to V2 slug
         icon: "fa-solid fa-clipboard-list",
         iconType: "fontawesome",
         fallbackIcon: "📋",
         description: "Discover your learning superpowers with our questionnaire on Vision, Effort, Systems, Practice and Attitude!",
-        scene: "scene_358"  // Added scene for validator to recognize
+        scene: "scene_1282"  // Updated to V2 scene
       },
       {
         name: "MYVESPA Report",
-        url: "#vespa-results",  // Changed to match GeneralHeader navigation
+        url: "#vespa-coaching-report/",  // Updated to V2 slug
         icon: "fa-solid fa-chart-column",
         iconType: "fontawesome",
         fallbackIcon: "📊",
         description: "See how awesome you can be! Your personal roadmap to success with tailored feedback just for you.",
-        scene: "scene_43"
+        scene: "scene_1284"  // Updated to V2 scene
       },
       {
         name: "MYVESPA Activities",
