@@ -402,8 +402,8 @@ const KnackAPIQueue = (function() {
     group: [
       {
         name: "Coaching",
-        url: "#mygroup-vespa-results2/",
-        scene: "scene_1095",
+        url: "#staffoverview",
+        scene: "scene_1286",
         icon: "fa-comments",
         description: "Access coaching reports and feedback for your student group"
       },
