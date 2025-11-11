@@ -759,7 +759,7 @@
                 primaryRow: [
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Manage', icon: 'fa-cog', href: '#upload-manager', scene: 'scene_1212', isManagement: true },
-                    { label: 'Coaching', icon: 'fa-comments', href: '#admin-coaching', scene: 'scene_1014', isManagement: true },
+                    { label: 'Coaching', icon: 'fa-comments', href: '#staffoverview', scene: 'scene_1286', isManagement: true },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227', isManagement: true },
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225', isManagement: true },
                     { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234', isManagement: true },
