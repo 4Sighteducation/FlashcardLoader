@@ -2837,21 +2837,21 @@ function renderGroupSection(hasAdminRole = false) {
     // If this is the Coaching button, return the appropriate version
     if (app.name === "Coaching") {
       console.log('[Staff Homepage - DEBUG] Configuring Coaching button, hasAdminRole:', hasAdminRole);
-      if (hasAdminRole) {
-        // Return admin coaching configuration
-        return {
-          name: "Coaching",
-          url: "#admin-coaching",
-          scene: "scene_1014",
-          icon: "fa-comments",
-          description: "Access admin coaching tools and student reports"
-        };
+        if (hasAdminRole) {
+                // Return admin coaching configuration
+                return {
+                  name: "Coaching",
+                  url: "#staffoverview",
+                  scene: "scene_1286",
+                  icon: "fa-comments",
+                  description: "Access admin coaching tools and student reports"
+                };
       } else {
-        // Return normal staff coaching configuration
+        // Return normal staff coaching configuration  
         return {
           name: "Coaching",
-          url: "#mygroup-vespa-results2/",
-          scene: "scene_1095",
+          url: "#staffoverview",
+          scene: "scene_1286",
           icon: "fa-comments",
           description: "Access coaching reports and feedback for your student group"
         };
@@ -2941,15 +2941,15 @@ window.handleCoachingNavigation = function() {
   // Choose the appropriate coaching scene and hash
   let coachingScene, coachingHash;
   if (hasAdminRole) {
-    // Staff Admin goes to scene_1014
-    coachingScene = 'scene_1014';
-    coachingHash = '#admin-coaching';
-    console.log('[Staff Homepage] Staff Admin detected, navigating to admin coaching');
+    // Staff Admin goes to scene_1286 (Staff Overview V2)
+    coachingScene = 'scene_1286';
+    coachingHash = '#staffoverview';
+    console.log('[Staff Homepage] Staff Admin detected, navigating to staff overview');
   } else {
-    // Regular staff goes to scene_1095
-    coachingScene = 'scene_1095';
-    coachingHash = '#mygroup-vespa-results2/';
-    console.log('[Staff Homepage] Regular staff detected, navigating to staff coaching');
+    // Regular staff also goes to scene_1286 (Staff Overview V2)
+    coachingScene = 'scene_1286';
+    coachingHash = '#staffoverview';
+    console.log('[Staff Homepage] Regular staff detected, navigating to staff overview');
   }
   
   // Use the fixed navigateToScene function for consistent hash navigation
@@ -8913,4 +8913,3 @@ async function createCycleRecord(customerId, cycleNumber, startDate, endDate) {
 }
 
 })(); // Close main IIFE
-
