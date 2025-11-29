@@ -476,11 +476,11 @@ const KnackAPIQueue = (function() {
         description: "Detailed results analysis for all students"
       },
       {
-        name: "Manage",
-        url: "#upload-manager",
-        scene: "scene_1212",
-        icon: "fa-cog",
-        description: "Upload and manage staff & student accounts"
+        name: "Account Manager",
+        url: "#vespa-account-management",
+        scene: "scene_1292",
+        icon: "fa-users-cog",
+        description: "Manage staff & student accounts, roles, and connections"
       },
       {
         name: "Print Reports",
