@@ -115,12 +115,12 @@
       },
       {
         name: "MYVESPA Activities",
-        url: "#my-vespa-activities",  // Changed to match GeneralHeader navigation
+        url: "#vespa-activities",  // Updated to production scene
         icon: "fa-solid fa-list-check",
         iconType: "fontawesome",
         fallbackIcon: "✅",
         description: "Unlock fun activities and cool ideas perfectly matched to your unique learning style and VESPA scores!",
-        scene: "scene_1258"
+        scene: "scene_1288"
       }
     ],
     productivity: [
