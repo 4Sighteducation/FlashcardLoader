@@ -416,8 +416,8 @@ const KnackAPIQueue = (function() {
       },
       {
         name: "Activities",
-        url: "#activity-manage",
-        scene: "scene_1256",
+        url: "#activity-dashboard",
+        scene: "scene_1290",
         icon: "fa-book",
         description: "Browse and manage student activities"
       },
