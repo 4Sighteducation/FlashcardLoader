@@ -2253,7 +2253,12 @@
     // Add content to the container
     container.innerHTML += `
       <div id="vespa-homepage">
-        ${displayPreferences.showAcademicProfile ? renderProfileSection(profileData, actualScores, displayPreferences.showVespaScores, activityData) : ''}
+        ${displayPreferences.showAcademicProfile ? `
+          <section class="vespa-section">
+            <div id="academic-profile-v2-home"></div>
+          </section>
+          ${displayPreferences.showVespaScores ? renderStandaloneVespaSection(actualScores, activityData) : ''}
+        ` : ''}
         ${!displayPreferences.showAcademicProfile && displayPreferences.showVespaScores ? renderStandaloneVespaSection(actualScores, activityData) : ''}
         <div class="app-hubs-container">
           ${renderAppHubSection('VESPA Hub', APP_HUBS.vespa)}
@@ -2301,6 +2306,42 @@
     setupTooltips();
     // Initialize profile info tooltip
     setupProfileInfoTooltip();
+
+    // Mount Academic Profile V2 (Supabase) on homepage when enabled
+    if (displayPreferences.showAcademicProfile) {
+      try {
+        const ensureScriptLoaded = (src) => new Promise((resolve, reject) => {
+          if (document.querySelector(`script[src="${src}"]`)) return resolve();
+          const s = document.createElement('script');
+          s.src = src;
+          s.async = true;
+          s.onload = () => resolve();
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+
+        // Configure Academic Profile V2 (reuses the same global expected by the bundle)
+        window.ACADEMIC_PROFILE_V2_CONFIG = {
+          apiUrl: 'https://vespa-dashboard-9a1f84ee5341.herokuapp.com',
+          elementSelector: '#academic-profile-v2-home',
+          editable: false,
+          defaultVisible: true,
+          mode: 'inline'
+        };
+
+        ensureScriptLoaded('https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-report-v2@main/academic-profile/dist/academic-profile1i.js')
+          .then(() => {
+            if (typeof window.initializeAcademicProfileV2 === 'function') {
+              window.initializeAcademicProfileV2();
+            }
+          })
+          .catch((e) => {
+            console.warn('[Homepage] Failed to load Academic Profile V2 bundle', e);
+          });
+      } catch (e) {
+        console.warn('[Homepage] Academic Profile V2 init error', e);
+      }
+    }
     
     // Add PDF modal functions to global scope
     window.openPdfModal = function(pdfUrl, activityName) {
