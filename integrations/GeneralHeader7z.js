@@ -786,6 +786,7 @@
                     { label: 'Home', icon: 'fa-home', href: '#oversight-page/', scene: 'scene_1268' },
                     { label: 'Account Manager', icon: 'fa-users-cog', href: '#vespa-account-management', scene: 'scene_1292', isManagement: true },
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225', isManagement: true },
+                    { label: 'Activities', icon: 'fa-book', href: '#activity-dashboard', scene: 'scene_1290', isManagement: true },
                     { label: 'CRM', icon: 'fa-users', href: '#vespa-customers/', scene: 'scene_1226', isManagement: true }
                 ],
                 secondaryRow: [
