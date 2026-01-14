@@ -5,6 +5,7 @@
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const DEFAULT_SUPABASE_EDGE_URL = 'https://qcdcdzfanrlvdcagmwmg.supabase.co/functions/v1/staff-admin-cache';
   let hasWarnedMissingEdgeUrl = false;
+  const EDGE_DEBUG = new URLSearchParams(window.location.search).get('edgeDebug') === '1';
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
   const DEBUG_MODE = false; // Enable console logging
 
@@ -241,6 +242,30 @@
     }
     return edgeUrl;
   }
+
+  async function debugSupabaseEdgePing() {
+    if (!EDGE_DEBUG) return;
+    const edgeUrl = getSupabaseEdgeUrl();
+    if (!edgeUrl) {
+      console.error('[Homepage] Edge debug ping skipped: missing edge URL.');
+      return;
+    }
+    try {
+      const response = await fetch(edgeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'cacheGet',
+          cacheKey: '__edge_debug__'
+        })
+      });
+      console.error(`[Homepage] Edge debug ping status: ${response.status}`);
+    } catch (err) {
+      console.error('[Homepage] Edge debug ping error:', err);
+    }
+  }
+
+  debugSupabaseEdgePing();
 
   async function fetchKnackWithSupabaseCache(cacheKey, knackUrl) {
     const edgeUrl = getSupabaseEdgeUrl();
