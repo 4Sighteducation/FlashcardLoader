@@ -3,6 +3,8 @@
 (function() {
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
+  const DEFAULT_SUPABASE_EDGE_URL = 'https://qcdcdzfanrlvdcagmwmg.supabase.co/functions/v1/staff-admin-cache';
+  let hasWarnedMissingEdgeUrl = false;
   const HOMEPAGE_OBJECT = 'object_112'; // User Profile object for homepage
   const DEBUG_MODE = false; // Enable console logging
 
@@ -231,8 +233,17 @@
     }
   };
 
+  function getSupabaseEdgeUrl() {
+    const edgeUrl = window.VESPA_SUPABASE_EDGE_URL || DEFAULT_SUPABASE_EDGE_URL;
+    if (!window.VESPA_SUPABASE_EDGE_URL && !hasWarnedMissingEdgeUrl) {
+      console.warn('[Homepage] VESPA_SUPABASE_EDGE_URL missing; using default edge URL.');
+      hasWarnedMissingEdgeUrl = true;
+    }
+    return edgeUrl;
+  }
+
   async function fetchKnackWithSupabaseCache(cacheKey, knackUrl) {
-    const edgeUrl = window.VESPA_SUPABASE_EDGE_URL;
+    const edgeUrl = getSupabaseEdgeUrl();
     if (!edgeUrl) return null;
     try {
       const response = await fetch(edgeUrl, {
@@ -244,10 +255,14 @@
           knackUrl
         })
       });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.warn('[Homepage] Supabase knackCache failed:', response.status);
+        return null;
+      }
       const payload = await response.json();
       return payload?.data || null;
     } catch (_err) {
+      console.warn('[Homepage] Supabase knackCache error:', _err);
       return null;
     }
   }
