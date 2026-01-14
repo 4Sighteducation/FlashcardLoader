@@ -6,6 +6,7 @@
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const DEFAULT_SUPABASE_EDGE_URL = 'https://qcdcdzfanrlvdcagmwmg.supabase.co/functions/v1/staff-admin-cache';
   let hasWarnedMissingEdgeUrl = false;
+  const EDGE_DEBUG = new URLSearchParams(window.location.search).get('edgeDebug') === '1';
   const DEBUG_MODE = false; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
@@ -217,6 +218,30 @@ function getSupabaseEdgeUrl() {
   }
   return edgeUrl;
 }
+
+async function debugSupabaseEdgePing() {
+  if (!EDGE_DEBUG) return;
+  const edgeUrl = getSupabaseEdgeUrl();
+  if (!edgeUrl) {
+    console.error('[Staff Homepage] Edge debug ping skipped: missing edge URL.');
+    return;
+  }
+  try {
+    const response = await fetch(edgeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'cacheGet',
+        cacheKey: '__edge_debug__'
+      })
+    });
+    console.error(`[Staff Homepage] Edge debug ping status: ${response.status}`);
+  } catch (err) {
+    console.error('[Staff Homepage] Edge debug ping error:', err);
+  }
+}
+
+debugSupabaseEdgePing();
 
 async function fetchSupabaseCache(cacheKey) {
   const edgeUrl = getSupabaseEdgeUrl();
