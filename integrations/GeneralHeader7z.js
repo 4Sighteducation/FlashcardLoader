@@ -2559,18 +2559,26 @@
         function handleNavigationClick(e) {
                     // Check if this is the refresh button
                     if (this.getAttribute('data-refresh') === 'true') {
-                        log('Refresh button clicked - performing page reload');
+                        log('Refresh button clicked - refreshing data');
                         
                         // Show loading screen
                         if (window.showUniversalLoadingScreen) {
-                            window.showUniversalLoadingScreen('Refreshing page...');
+                            window.showUniversalLoadingScreen('Refreshing data...');
                         }
                         
-                        // Simply reload the page like F5 - this is more reliable
-                        // and mimics what works for the user
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 100);
+                        const reloadPage = () => {
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 150);
+                        };
+                        
+                        if (typeof window.__VESPA_REFRESH_DATA === 'function') {
+                            Promise.resolve(window.__VESPA_REFRESH_DATA())
+                                .catch(() => {})
+                                .finally(reloadPage);
+                        } else {
+                            reloadPage();
+                        }
                         
                         return;
                     }
