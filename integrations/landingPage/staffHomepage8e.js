@@ -4,6 +4,8 @@
   window.STAFFHOMEPAGE_ACTIVE = false;
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
+  const DEFAULT_SUPABASE_EDGE_URL = 'https://qcdcdzfanrlvdcagmwmg.supabase.co/functions/v1/staff-admin-cache';
+  let hasWarnedMissingEdgeUrl = false;
   const DEBUG_MODE = false; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
@@ -207,8 +209,17 @@ window.__VESPA_REFRESH_DATA = async function() {
   }
 };
 
+function getSupabaseEdgeUrl() {
+  const edgeUrl = window.VESPA_SUPABASE_EDGE_URL || DEFAULT_SUPABASE_EDGE_URL;
+  if (!window.VESPA_SUPABASE_EDGE_URL && !hasWarnedMissingEdgeUrl) {
+    console.warn('[Staff Homepage] VESPA_SUPABASE_EDGE_URL missing; using default edge URL.');
+    hasWarnedMissingEdgeUrl = true;
+  }
+  return edgeUrl;
+}
+
 async function fetchSupabaseCache(cacheKey) {
-  const edgeUrl = window.VESPA_SUPABASE_EDGE_URL;
+  const edgeUrl = getSupabaseEdgeUrl();
   if (!edgeUrl) return null;
   try {
     const response = await fetch(edgeUrl, {
@@ -219,19 +230,23 @@ async function fetchSupabaseCache(cacheKey) {
         cacheKey
       })
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn('[Staff Homepage] Supabase cacheGet failed:', response.status);
+      return null;
+    }
     const payload = await response.json();
     return payload?.data || null;
   } catch (_err) {
+    console.warn('[Staff Homepage] Supabase cacheGet error:', _err);
     return null;
   }
 }
 
 async function storeSupabaseCache(cacheKey, payload) {
-  const edgeUrl = window.VESPA_SUPABASE_EDGE_URL;
+  const edgeUrl = getSupabaseEdgeUrl();
   if (!edgeUrl) return;
   try {
-    await fetch(edgeUrl, {
+    const response = await fetch(edgeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -240,8 +255,11 @@ async function storeSupabaseCache(cacheKey, payload) {
         payload
       })
     });
+    if (!response.ok) {
+      console.warn('[Staff Homepage] Supabase cacheSet failed:', response.status);
+    }
   } catch (_err) {
-    // ignore errors
+    console.warn('[Staff Homepage] Supabase cacheSet error:', _err);
   }
 }
 
