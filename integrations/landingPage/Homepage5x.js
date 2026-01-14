@@ -173,6 +173,85 @@
     return data;
   }
 
+  const LOCAL_CACHE_PREFIX = 'vespa-homepage-cache';
+  const DEFAULT_CACHE_TTL_MINUTES = 30;
+
+  function getCacheTtlMs() {
+    if (window.HOMEPAGE_CONFIG && window.HOMEPAGE_CONFIG.cacheTtlMinutes) {
+      return window.HOMEPAGE_CONFIG.cacheTtlMinutes * 60 * 1000;
+    }
+    return DEFAULT_CACHE_TTL_MINUTES * 60 * 1000;
+  }
+
+  function getLocalCache(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (!parsed.timestamp || !('data' in parsed)) return null;
+      if ((Date.now() - parsed.timestamp) > getCacheTtlMs()) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return parsed.data;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function setLocalCache(key, data) {
+    try {
+      localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch (_err) {
+      // ignore localStorage errors
+    }
+  }
+
+  function clearLocalCache(prefix) {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } catch (_err) {
+      // ignore localStorage errors
+    }
+  }
+
+  const previousRefreshHandler = window.__VESPA_REFRESH_DATA;
+  window.__VESPA_REFRESH_DATA = async function() {
+    clearLocalCache(LOCAL_CACHE_PREFIX);
+    if (typeof previousRefreshHandler === 'function') {
+      await Promise.resolve(previousRefreshHandler());
+    }
+  };
+
+  async function fetchKnackWithSupabaseCache(cacheKey, knackUrl) {
+    const edgeUrl = window.VESPA_SUPABASE_EDGE_URL;
+    if (!edgeUrl) return null;
+    try {
+      const response = await fetch(edgeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'knackCache',
+          cacheKey,
+          knackUrl
+        })
+      });
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return payload?.data || null;
+    } catch (_err) {
+      return null;
+    }
+  }
+
   // Safe JSON parsing function
   function safeParseJSON(jsonString, defaultVal = null) {
     if (!jsonString) return defaultVal;
@@ -1081,6 +1160,22 @@
     }
     debugLog(`Fetching flashcard review data for user ID: ${userId}`);
 
+    const cacheKey = `${LOCAL_CACHE_PREFIX}:flashcards:${userId}`;
+    const cached = getLocalCache(cacheKey);
+    if (cached) {
+      debugLog(`Using cached flashcard data for user ${userId}`);
+      return cached;
+    }
+
+    const supabaseCached = await fetchKnackWithSupabaseCache(
+      cacheKey,
+      `/objects/${FLASHCARD_DATA_OBJECT}/records?filters=${findFilters}&fields=${fieldsToRequest}`
+    );
+    if (supabaseCached && supabaseCached.records && supabaseCached.records.length > 0) {
+      setLocalCache(cacheKey, supabaseCached.records[0]);
+      return supabaseCached.records[0];
+    }
+
     const findFilters = encodeURIComponent(JSON.stringify({
       match: 'and',
       rules: [
@@ -1106,6 +1201,7 @@
 
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found flashcard data record for user ${userId}`, response.records[0]);
+        setLocalCache(cacheKey, response.records[0]);
         return response.records[0];
       } else {
         debugLog(`No flashcard data record found for user ${userId}`);
@@ -1196,6 +1292,24 @@
       return null;
     }
     debugLog(`Fetching Study Planner data for user ID: ${userId}`);
+
+    const cacheKey = `${LOCAL_CACHE_PREFIX}:studyplanner:${userId}`;
+    const cached = getLocalCache(cacheKey);
+    if (cached) {
+      debugLog(`Using cached Study Planner data for user ${userId}`);
+      return cached;
+    }
+
+    const supabaseCached = await fetchKnackWithSupabaseCache(
+      cacheKey,
+      `/objects/${STUDY_PLANNER_OBJECT_ID}/records?filters=${findFilters}&fields=${STUDY_PLANNER_JSON_FIELD}`
+    );
+    if (supabaseCached && supabaseCached.records && supabaseCached.records.length > 0) {
+      const plannerJson = supabaseCached.records[0][STUDY_PLANNER_JSON_FIELD];
+      setLocalCache(cacheKey, plannerJson);
+      return plannerJson;
+    }
+
     const findFilters = encodeURIComponent(JSON.stringify({
       match: 'and',
       rules: [{ field: STUDY_PLANNER_USER_LINK_FIELD, operator: 'is', value: userId }]
@@ -1215,6 +1329,7 @@
       });
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found Study Planner data for user ${userId}`, response.records[0]);
+        setLocalCache(cacheKey, response.records[0][STUDY_PLANNER_JSON_FIELD]);
         return response.records[0][STUDY_PLANNER_JSON_FIELD];
       } else {
         debugLog(`No Study Planner data found for user ${userId}`);
@@ -1279,6 +1394,23 @@
       return null;
     }
     debugLog(`Fetching Taskboard data for user ID: ${userId}`);
+
+    const cacheKey = `${LOCAL_CACHE_PREFIX}:taskboard:${userId}`;
+    const cached = getLocalCache(cacheKey);
+    if (cached) {
+      debugLog(`Using cached Taskboard data for user ${userId}`);
+      return cached;
+    }
+
+    const supabaseCached = await fetchKnackWithSupabaseCache(
+      cacheKey,
+      `/objects/${TASKBOARD_OBJECT_ID}/records?filters=${findFilters}&fields=${TASKBOARD_JSON_FIELD}`
+    );
+    if (supabaseCached && supabaseCached.records && supabaseCached.records.length > 0) {
+      const taskboardJson = supabaseCached.records[0][TASKBOARD_JSON_FIELD];
+      setLocalCache(cacheKey, taskboardJson);
+      return taskboardJson;
+    }
     const findFilters = encodeURIComponent(JSON.stringify({
       match: 'and',
       rules: [{ field: TASKBOARD_USER_LINK_FIELD, operator: 'is', value: userId }]
@@ -1298,6 +1430,7 @@
       });
       if (response && response.records && response.records.length > 0) {
         debugLog(`Found Taskboard data for user ${userId}`, response.records[0]);
+        setLocalCache(cacheKey, response.records[0][TASKBOARD_JSON_FIELD]);
         return response.records[0][TASKBOARD_JSON_FIELD];
       } else {
         debugLog(`No Taskboard data found for user ${userId}`);
@@ -1564,6 +1697,40 @@
     }
     debugLog(`Fetching VESPA scores for email: ${userEmail}`);
 
+    const cacheKey = `${LOCAL_CACHE_PREFIX}:vespascores:${userEmail}`;
+    const cached = getLocalCache(cacheKey);
+    if (cached) {
+      debugLog(`Using cached VESPA scores for user ${userEmail}`);
+      return cached;
+    }
+
+    const supabaseCached = await fetchKnackWithSupabaseCache(
+      cacheKey,
+      `/objects/${VESPA_SCORES_OBJECT}/records?filters=${findFilters}&fields=${fieldsToRequest}`
+    );
+    if (supabaseCached && supabaseCached.records && supabaseCached.records.length > 0) {
+      const record = supabaseCached.records[0];
+      const scores = {};
+      for (const key in VESPA_SCORES_FIELDS) {
+        scores[key] = sanitizeField(record[VESPA_SCORES_FIELDS[key]] || 'N/A');
+      }
+      const userAttributes = Knack.getUserAttributes();
+      const showAcademicProfileValue = userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showAcademicProfile];
+      const showProductivityHubValue = userAttributes?.values?.[DISPLAY_PREFERENCE_FIELDS.showProductivityHub];
+      const directAcademicProfileValue = userAttributes?.values?.field_3646;
+      const directProductivityHubValue = userAttributes?.values?.field_3647;
+      const finalAcademicValue = showAcademicProfileValue !== undefined ? showAcademicProfileValue : directAcademicProfileValue;
+      const finalProductivityValue = showProductivityHubValue !== undefined ? showProductivityHubValue : directProductivityHubValue;
+      const displayPreferences = {
+        showVespaScores: record[DISPLAY_PREFERENCE_FIELDS.showVespaScores] !== false,
+        showAcademicProfile: finalAcademicValue !== false,
+        showProductivityHub: finalProductivityValue !== false
+      };
+      const result = { scores, displayPreferences };
+      setLocalCache(cacheKey, result);
+      return result;
+    }
+
     const findFilters = encodeURIComponent(JSON.stringify({
       match: 'and',
       rules: [{ field: VESPA_SCORES_EMAIL_FIELD, operator: 'is', value: userEmail }]
@@ -1642,8 +1809,9 @@
         
         debugLog('Processed VESPA scores:', scores);
         debugLog('Display preferences:', displayPreferences);
-        
-        return { scores, displayPreferences };
+        const result = { scores, displayPreferences };
+        setLocalCache(cacheKey, result);
+        return result;
       } else {
         debugLog(`No VESPA scores record found for ${userEmail}`);
         // Default to showing all if no record found, but still check user attributes for Object_3 fields

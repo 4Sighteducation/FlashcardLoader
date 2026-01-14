@@ -151,6 +151,100 @@ const CURRENT_LOG_LEVEL = IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
   }
 })();
 
+// Local cache helpers (reduce repeated Knack calls on navigation)
+const LOCAL_CACHE_PREFIX = 'vespa-staff-homepage-cache';
+const DEFAULT_CACHE_TTL_MINUTES = 30;
+
+function getCacheTtlMs() {
+  return DEFAULT_CACHE_TTL_MINUTES * 60 * 1000;
+}
+
+function getLocalCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!parsed.timestamp || !('data' in parsed)) return null;
+    if ((Date.now() - parsed.timestamp) > getCacheTtlMs()) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed.data;
+  } catch (_err) {
+    return null;
+  }
+}
+
+function setLocalCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (_err) {
+    // ignore localStorage errors
+  }
+}
+
+function clearLocalCache(prefix) {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(prefix)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  } catch (_err) {
+    // ignore localStorage errors
+  }
+}
+
+const previousRefreshHandler = window.__VESPA_REFRESH_DATA;
+window.__VESPA_REFRESH_DATA = async function() {
+  clearLocalCache(LOCAL_CACHE_PREFIX);
+  if (typeof previousRefreshHandler === 'function') {
+    await Promise.resolve(previousRefreshHandler());
+  }
+};
+
+async function fetchSupabaseCache(cacheKey) {
+  const edgeUrl = window.VESPA_SUPABASE_EDGE_URL;
+  if (!edgeUrl) return null;
+  try {
+    const response = await fetch(edgeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'cacheGet',
+        cacheKey
+      })
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return payload?.data || null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+async function storeSupabaseCache(cacheKey, payload) {
+  const edgeUrl = window.VESPA_SUPABASE_EDGE_URL;
+  if (!edgeUrl) return;
+  try {
+    await fetch(edgeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'cacheSet',
+        cacheKey,
+        payload
+      })
+    });
+  } catch (_err) {
+    // ignore errors
+  }
+}
+
 // Add data sanitization function for logging
 function sanitizeDataForLogging(data) {
   if (!data) return data;
@@ -843,6 +937,20 @@ async function getAllRecordsWithPagination(url, filters, maxPages = 10) {
   let allRecords = [];
   let currentPage = 1;
   let hasMoreRecords = true;
+
+  const cacheKey = `${LOCAL_CACHE_PREFIX}:${url}?${filters || ''}`;
+  const cached = getLocalCache(cacheKey);
+  if (cached) {
+    console.log(`[Staff Homepage] Using cached pagination data for ${url}`);
+    return cached;
+  }
+
+  const supabaseCached = await fetchSupabaseCache(cacheKey);
+  if (supabaseCached) {
+    console.log(`[Staff Homepage] Using Supabase cached pagination data for ${url}`);
+    setLocalCache(cacheKey, supabaseCached);
+    return supabaseCached;
+  }
   
   try {
     // Use a higher rows_per_page to minimize API calls (Knack's max is 1000)
@@ -884,6 +992,8 @@ async function getAllRecordsWithPagination(url, filters, maxPages = 10) {
     }
     
     console.log(`[Staff Homepage] Total records retrieved through pagination: ${allRecords.length}`);
+    setLocalCache(cacheKey, allRecords);
+    storeSupabaseCache(cacheKey, allRecords);
     return allRecords;
   } catch (error) {
     console.error(`[Staff Homepage] Pagination error:`, error);
@@ -5579,7 +5689,7 @@ const studentEmulatorModal = `
     </div>
     <div class="emulator-body">
       <iframe id="student-emulator-iframe" 
-              src="https://vespaacademy.knack.com/vespa-academy?student_emulator=true#landing-page/" 
+              src="https://vespaacademy.knack.com/vespa-academy#vespa-activities/" 
               frameborder="0">
       </iframe>
     </div>
