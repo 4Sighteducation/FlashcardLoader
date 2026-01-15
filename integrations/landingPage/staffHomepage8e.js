@@ -2269,25 +2269,73 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     
     console.log(`[Staff Homepage] Detected roles - Tutor: ${useTutorRole}, HoY: ${useHeadOfYearRole}, SubjectTeacher: ${useSubjectTeacherRole}, StaffAdmin: ${useStaffAdminRole}`);
     
-    // Get all school records
-    const schoolFilter = JSON.stringify({
-      match: 'and',
-      rules: [
-        { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
-      ]
-    });
-    
-    console.log("[Staff Homepage] Fetching ALL school records to filter locally");
-    
-    const allSchoolRecords = await getAllRecordsWithPagination(
-      `${KNACK_API_URL}/objects/object_10/records`, 
-      encodeURIComponent(schoolFilter),
-      10, // Reasonable limit for pagination
-      `school:${schoolId}:staff:${staffEmail}`
-    ).catch(error => {
-      console.error('[Staff Homepage] Error getting school records:', error);
-      return [];
-    });
+    // --------------------------------------------------------------------
+    // PERFORMANCE OPTIMISATION
+    // Instead of downloading ALL school records then filtering locally,
+    // first attempt a server-side filter by the staff connection fields.
+    // This massively reduces payload size and JS processing time.
+    // Fallback to all-school download only if the connection-field filter
+    // yields no matches (some Knack connection fields can be awkward).
+    // --------------------------------------------------------------------
+    let allSchoolRecords = [];
+
+    async function tryFetchConnectedRecords(connectionField, roleLabel) {
+      const connectedFilter = JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId },
+          // These connection fields often contain mailto HTML; "contains" on email is robust.
+          { field: connectionField, operator: 'contains', value: staffEmail }
+        ]
+      });
+
+      return await getAllRecordsWithPagination(
+        `${KNACK_API_URL}/objects/object_10/records`,
+        encodeURIComponent(connectedFilter),
+        5, // Connected groups should be small; avoid 10k+ downloads
+        `school:${schoolId}:staff:${staffEmail}:connected:${String(roleLabel).toLowerCase().replace(/\s+/g, '_')}`
+      ).catch(error => {
+        console.warn(`[Staff Homepage] Connected-record fetch failed for ${roleLabel}:`, error);
+        return [];
+      });
+    }
+
+    const roleFieldPriority = [];
+    if (useTutorRole) roleFieldPriority.push({ field: FIELD_MAPPING.tutor, label: 'Tutor' });
+    if (useHeadOfYearRole) roleFieldPriority.push({ field: FIELD_MAPPING.headOfYear, label: 'Head of Year' });
+    if (useSubjectTeacherRole) roleFieldPriority.push({ field: FIELD_MAPPING.subjectTeacher, label: 'Subject Teacher' });
+    if (useStaffAdminRole) roleFieldPriority.push({ field: FIELD_MAPPING.staffAdmin, label: 'Staff Admin' });
+
+    for (const candidate of roleFieldPriority) {
+      const records = await tryFetchConnectedRecords(candidate.field, candidate.label);
+      if (records && records.length > 0) {
+        allSchoolRecords = records;
+        console.log(`[Staff Homepage] Using server-side filtered records for ${candidate.label}: ${records.length} records`);
+        break;
+      }
+    }
+
+    if (!allSchoolRecords || allSchoolRecords.length === 0) {
+      // Fallback: Get all school records (legacy approach)
+      const schoolFilter = JSON.stringify({
+        match: 'and',
+        rules: [
+          { field: FIELD_MAPPING.resultsSchool, operator: 'contains', value: schoolId }
+        ]
+      });
+      
+      console.log("[Staff Homepage] No server-side connected matches; fetching ALL school records to filter locally");
+      
+      allSchoolRecords = await getAllRecordsWithPagination(
+        `${KNACK_API_URL}/objects/object_10/records`, 
+        encodeURIComponent(schoolFilter),
+        10, // Reasonable limit for pagination
+        `school:${schoolId}:staff:${staffEmail}:all`
+      ).catch(error => {
+        console.error('[Staff Homepage] Error getting school records:', error);
+        return [];
+      });
+    }
     
     console.log(`[Staff Homepage] Retrieved ${allSchoolRecords.length} total school records`);
     
@@ -2470,9 +2518,13 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
       }
     }
     
-    // If no connected students found, return null
+    // If no connected students found, Staff Admins fall back to all-school results.
     if (filteredRecords.length === 0) {
       console.log("[Staff Homepage] No connected students found for this staff member");
+      if (useStaffAdminRole) {
+        const schoolAverages = await getSchoolVESPAResults(schoolId);
+        if (schoolAverages) return schoolAverages;
+      }
       return null;
     }
     
