@@ -246,6 +246,9 @@ async function debugSupabaseEdgePing() {
       })
     });
     window.__VESPA_EDGE_DEBUG.staffHomepagePing.status = response.status;
+    try {
+      window.__VESPA_EDGE_DEBUG.staffHomepagePing.bodyText = (await response.text()).slice(0, 1000);
+    } catch (_e) {}
     logInfo(`[Staff Homepage] Edge debug ping status: ${response.status}`);
     logError(`[Staff Homepage] Edge debug ping status: ${response.status}`);
   } catch (err) {

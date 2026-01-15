@@ -270,6 +270,9 @@
         })
       });
       window.__VESPA_EDGE_DEBUG.homepagePing.status = response.status;
+      try {
+        window.__VESPA_EDGE_DEBUG.homepagePing.bodyText = (await response.text()).slice(0, 1000);
+      } catch (_e) {}
       logInfo(`[Homepage] Edge debug ping status: ${response.status}`);
       logError(`[Homepage] Edge debug ping status: ${response.status}`);
     } catch (err) {
