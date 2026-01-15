@@ -3269,6 +3269,18 @@ function renderVESPADashboard(schoolResults, staffResults, hasAdminRole, cycleDa
   console.log('[Staff Homepage - DEBUG] - schoolResults:', schoolResults);
   console.log('[Staff Homepage - DEBUG] - hasAdminRole:', hasAdminRole);
   
+  // Allow rendering a fast "skeleton" state while data loads in the background.
+  if (schoolResults && schoolResults.__loading === true) {
+    return `
+      <section class="vespa-section dashboard-section">
+        <h2 class="vespa-section-title">VESPA Dashboard</h2>
+        <div class="no-results" style="opacity:0.9;">
+          Loading VESPA data...
+        </div>
+      </section>
+    `;
+  }
+
   if (!schoolResults) {
     console.error('[Staff Homepage - DEBUG] NO SCHOOL RESULTS - Chart will not display!');
     return `
@@ -6008,24 +6020,12 @@ try {
   console.log(`[Staff Homepage - DEBUG] School ID: ${profileData.schoolId}`);
   console.log(`[Staff Homepage - DEBUG] User Email: ${profileData.email}`);
   
-  // Update loading progress
-  if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
-    window.VespaLoadingScreen.updateProgress('Loading VESPA data...');
-  }
-  
-  console.log('[Staff Homepage - DEBUG] About to fetch VESPA data...');
-  const [schoolResults, staffResults, cycleData, nationalData] = await Promise.all([
-    getSchoolVESPAResults(profileData.schoolId),
-    profileData.email ? getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null,
-    profileData.userId ? getQuestionnaireCycleData(profileData.userId, profileData.schoolId) : null,
-    getNationalBenchmarkData() // Fetch national benchmark data
-  ]);
-  
-  console.log('[Staff Homepage - DEBUG] VESPA Data Fetched:');
-  console.log('[Staff Homepage - DEBUG] - schoolResults:', schoolResults ? `Found ${schoolResults.count} students` : 'NULL');
-  console.log('[Staff Homepage - DEBUG] - staffResults:', staffResults ? `Found ${staffResults.count} students` : 'NULL');
-  console.log('[Staff Homepage - DEBUG] - cycleData:', cycleData ? 'Available' : 'NULL');
-  console.log('[Staff Homepage - DEBUG] - nationalData:', nationalData ? 'Available' : 'NULL');
+  // Render the page shell immediately (fast), then load heavy data in the background.
+  // This avoids holding the universal loading screen open while we fetch cycles/results.
+  let schoolResults = { __loading: true };
+  let staffResults = null;
+  let cycleData = null;
+  let nationalData = null;
   
   // Build the homepage HTML with updated layout
   const homepageHTML = `
@@ -6136,8 +6136,13 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   container.appendChild(fragment);
   
   // Initialize charts with lazy loading - pass national data
-  if (schoolResults) {
+  if (schoolResults && !schoolResults.__loading) {
     lazyLoadVESPACharts(schoolResults, staffResults, hasAdminRole, nationalData, cycleData);
+  }
+
+  // Hide the universal loading screen as soon as the UI shell is visible.
+  if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+    window.VespaLoadingScreen.hide();
   }
   
   // Initialize tooltips
@@ -6145,6 +6150,65 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
   
   // Track page view
   trackPageView('VESPA Dashboard').catch(err => console.warn('[Staff Homepage] Dashboard view tracking failed:', err));
+
+  // Kick off heavy data fetch in the background and then hydrate the dashboard.
+  (async () => {
+    try {
+      if (window.VespaLoadingScreen && window.VespaLoadingScreen.isActive()) {
+        window.VespaLoadingScreen.updateProgress('Loading VESPA data...');
+      }
+
+      const results = await Promise.all([
+        getSchoolVESPAResults(profileData.schoolId),
+        profileData.email ? getStaffVESPAResults(profileData.email, profileData.schoolId, profileData.roles) : null,
+        profileData.userId ? getQuestionnaireCycleData(profileData.userId, profileData.schoolId) : null,
+        getNationalBenchmarkData(),
+      ]);
+
+      const realSchoolResults = results[0];
+      const realStaffResults = results[1];
+      const realCycleData = results[2];
+      const realNationalData = results[3];
+
+      const dashboardContainer = container.querySelector('.dashboard-container');
+      if (dashboardContainer) {
+        dashboardContainer.innerHTML = renderVESPADashboard(
+          realSchoolResults,
+          realStaffResults,
+          hasAdminRole,
+          realCycleData
+        );
+      }
+
+      if (realSchoolResults) {
+        lazyLoadVESPACharts(realSchoolResults, realStaffResults, hasAdminRole, realNationalData, realCycleData);
+      }
+
+      // Re-attach cycle buttons after injecting cycle section.
+      if (profileData && profileData.userId) {
+        setupCycleRefresh(profileData.userId, profileData.schoolId, profileData.email, profileData.roles);
+      }
+      if (hasAdminRole) {
+        setTimeout(() => {
+          const manageCyclesBtn = document.getElementById('manage-cycles-btn');
+          if (manageCyclesBtn) {
+            manageCyclesBtn.addEventListener('click', window.openCycleManagementModal);
+          }
+        }, 100);
+      }
+    } catch (e) {
+      console.error('[Staff Homepage] Background VESPA data load failed:', e);
+      const dashboardContainer = container.querySelector('.dashboard-container');
+      if (dashboardContainer) {
+        dashboardContainer.innerHTML = `
+          <section class="vespa-section dashboard-section">
+            <h2 class="vespa-section-title">VESPA Dashboard</h2>
+            <div class="no-results">Unable to load VESPA data right now. Please refresh.</div>
+          </section>
+        `;
+      }
+    }
+  })();
   // Setup logo controls for admin users
   if (hasAdminRole) {
     // Define default logo
