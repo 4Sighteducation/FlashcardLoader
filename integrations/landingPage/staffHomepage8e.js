@@ -990,14 +990,17 @@ function getKnackHeaders() {
 }
 
 // Helper function to paginate through all records in a Knack object
-async function getAllRecordsWithPagination(url, filters, maxPages = 10) {
+// cacheScopeKey lets callers add a stable "hybrid" prefix (e.g. school/role/staff)
+// while still including the raw url+filters to avoid collisions.
+async function getAllRecordsWithPagination(url, filters, maxPages = 10, cacheScopeKey = '') {
   console.log(`[Staff Homepage] Starting pagination for ${url} with filters: ${filters}`);
   
   let allRecords = [];
   let currentPage = 1;
   let hasMoreRecords = true;
 
-  const cacheKey = `${LOCAL_CACHE_PREFIX}:${url}?${filters || ''}`;
+  const scopePrefix = cacheScopeKey ? `${cacheScopeKey}:` : '';
+  const cacheKey = `${LOCAL_CACHE_PREFIX}:${scopePrefix}${url}?${filters || ''}`;
   const cached = getLocalCache(cacheKey);
   if (cached) {
     console.log(`[Staff Homepage] Using cached pagination data for ${url}`);
@@ -2017,12 +2020,9 @@ if (!schoolId) {
 }
 
 try {
-  // Get current user
-  const user = Knack.getUserAttributes();
-  const userEmail = user?.email || 'anonymous';
-  
-  // Create a user-specific cache key for this school's VESPA results
-  const cacheKey = `school_vespa_${schoolId}_${userEmail}`;
+  // Create a school-scoped cache key for this school's VESPA results
+  // (CacheManager stores this in Knack under app permissions)
+  const cacheKey = `school_vespa_${schoolId}`;
   
   // Try to get from cache first
   const cachedResults = await CacheManager.get(cacheKey, 'SchoolResults');
@@ -2063,7 +2063,8 @@ try {
   let allRecords = await getAllRecordsWithPagination(
     `${KNACK_API_URL}/objects/object_10/records`,
     encodeURIComponent(schoolIdFilter),
-    20 // Allow up to 20 pages = 20,000 student records with 1000 per page
+    20, // Allow up to 20 pages = 20,000 student records with 1000 per page
+    `school:${schoolId}:audience:all`
   ).catch(error => {
     console.error('[Staff Homepage - DEBUG] Error with schoolId pagination:', error);
     return [];
@@ -2099,7 +2100,8 @@ try {
     allRecords = await getAllRecordsWithPagination(
       `${KNACK_API_URL}/objects/object_10/records`, 
       encodeURIComponent(nameFilters),
-      20 // Allow up to 20 pages = 20,000 student records with 1000 per page
+      20, // Allow up to 20 pages = 20,000 student records with 1000 per page
+      `school:${schoolId}:audience:all`
     ).catch(error => {
       console.error('[Staff Homepage] Error with name filter pagination:', error);
       return [];
@@ -2210,8 +2212,16 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
   }
   
   try {
-    // Create a unique cache key for this staff member's students & VESPA results
-    const staffCacheKey = `staff_students_vespa_${schoolId}_${staffEmail}`;
+    // Create a unique cache key for this staff member's students & VESPA results.
+    // Include roles to avoid stale cache if roles/permissions change.
+    const rolesKey = Array.isArray(userRoles)
+      ? userRoles
+          .map(r => String(r || '').trim().toLowerCase().replace(/\s+/g, '_'))
+          .filter(Boolean)
+          .sort()
+          .join('|')
+      : 'unknown';
+    const staffCacheKey = `staff_students_vespa_${schoolId}_${staffEmail}_${rolesKey}`;
     
     // Try to get from cache first
     const cachedStaffResults = await CacheManager.get(staffCacheKey, 'StaffResults');
@@ -2272,7 +2282,8 @@ async function getStaffVESPAResults(staffEmail, schoolId, userRoles) {
     const allSchoolRecords = await getAllRecordsWithPagination(
       `${KNACK_API_URL}/objects/object_10/records`, 
       encodeURIComponent(schoolFilter),
-      10 // Reasonable limit for pagination
+      10, // Reasonable limit for pagination
+      `school:${schoolId}:staff:${staffEmail}`
     ).catch(error => {
       console.error('[Staff Homepage] Error getting school records:', error);
       return [];
@@ -3771,7 +3782,7 @@ function setupTooltips() {
 }
 
 // Setup refresh button for cycles
-function setupCycleRefresh(userId, schoolId) {
+function setupCycleRefresh(userId, schoolId, staffEmail, userRoles) {
   const refreshBtn = document.getElementById('refresh-cycles-btn');
   if (!refreshBtn) return;
   
@@ -3784,7 +3795,18 @@ function setupCycleRefresh(userId, schoolId) {
       // Invalidate relevant caches
       const userCacheKey = `user_cycles_${userId}`;
       const schoolCacheKey = `school_vespa_${schoolId}`;
-      const staffCacheKey = `staff_students_vespa_${schoolId}_${Knack.getUserAttributes().email}`;
+      const effectiveEmail = staffEmail || Knack.getUserAttributes().email;
+      const effectiveRoles = Array.isArray(userRoles)
+        ? userRoles
+        : (Knack.getUserRoles ? Knack.getUserRoles() : []);
+      const rolesKey = Array.isArray(effectiveRoles)
+        ? effectiveRoles
+            .map(r => String(r || '').trim().toLowerCase().replace(/\s+/g, '_'))
+            .filter(Boolean)
+            .sort()
+            .join('|')
+        : 'unknown';
+      const staffCacheKey = `staff_students_vespa_${schoolId}_${effectiveEmail}_${rolesKey}`;
       
       // Invalidate caches in parallel
       await Promise.all([
@@ -6108,7 +6130,7 @@ document.body.insertAdjacentHTML('beforeend', feedbackSystem);
 }
 // Setup cycle refresh button
 if (profileData && profileData.userId) {
-  setupCycleRefresh(profileData.userId, profileData.schoolId);
+  setupCycleRefresh(profileData.userId, profileData.schoolId, profileData.email, profileData.roles);
 }
 
 // Setup cycle management button for admins
@@ -8782,7 +8804,12 @@ function updateCycleDisplay(cycleData) {
     cycleSection.innerHTML = newCycleHTML;
     
     // Re-attach event listeners
-    setupCycleRefresh(Knack.getUserAttributes().id, cycleData.schoolId);
+    setupCycleRefresh(
+      Knack.getUserAttributes().id,
+      cycleData.schoolId,
+      Knack.getUserAttributes().email,
+      (Knack.getUserRoles ? Knack.getUserRoles() : [])
+    );
     
     // Re-attach manage cycles button if admin
     if (hasAdminRole) {
@@ -8938,7 +8965,7 @@ window.saveCycles = async function(customerId, existingCycles) {
       if (user && user.id) {
         // Build cache keys to invalidate
         const userCacheKey = CacheManager.createKey('user_cycles', `${user.id}_school_${customerId}`);
-        const schoolCacheKey = CacheManager.createKey('school_vespa', customerId, false);
+        const schoolCacheKey = `school_vespa_${customerId}`;
         
         // Invalidate the caches
         await Promise.all([
