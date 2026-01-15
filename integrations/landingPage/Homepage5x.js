@@ -251,13 +251,16 @@
 
   async function debugSupabaseEdgePing() {
     if (!isEdgeDebugEnabled()) return;
-    const logError = (window._VESPA_ORIGINAL_CONSOLE_ERROR || console.error).bind(console);
+    const logError = (window._VESPA_ORIGINAL_CONSOLE?.error || window._VESPA_ORIGINAL_CONSOLE_ERROR || console.error).bind(console);
+    const logInfo = (window._VESPA_ORIGINAL_CONSOLE?.info || console.info).bind(console);
     const edgeUrl = getSupabaseEdgeUrl();
     if (!edgeUrl) {
       logError('[Homepage] Edge debug ping skipped: missing edge URL.');
       return;
     }
     try {
+      window.__VESPA_EDGE_DEBUG = window.__VESPA_EDGE_DEBUG || {};
+      window.__VESPA_EDGE_DEBUG.homepagePing = { startedAt: Date.now(), edgeUrl };
       const response = await fetch(edgeUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,8 +269,11 @@
           cacheKey: '__edge_debug__'
         })
       });
+      window.__VESPA_EDGE_DEBUG.homepagePing.status = response.status;
+      logInfo(`[Homepage] Edge debug ping status: ${response.status}`);
       logError(`[Homepage] Edge debug ping status: ${response.status}`);
     } catch (err) {
+      window.__VESPA_EDGE_DEBUG.homepagePing = { startedAt: Date.now(), edgeUrl, error: String(err) };
       logError('[Homepage] Edge debug ping error:', err);
     }
   }
