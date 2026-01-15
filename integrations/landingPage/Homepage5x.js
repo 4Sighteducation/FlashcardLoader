@@ -249,9 +249,10 @@
 
   async function debugSupabaseEdgePing() {
     if (!EDGE_DEBUG) return;
+    const logError = (window._VESPA_ORIGINAL_CONSOLE_ERROR || console.error).bind(console);
     const edgeUrl = getSupabaseEdgeUrl();
     if (!edgeUrl) {
-      console.error('[Homepage] Edge debug ping skipped: missing edge URL.');
+      logError('[Homepage] Edge debug ping skipped: missing edge URL.');
       return;
     }
     try {
@@ -263,9 +264,9 @@
           cacheKey: '__edge_debug__'
         })
       });
-      console.error(`[Homepage] Edge debug ping status: ${response.status}`);
+      logError(`[Homepage] Edge debug ping status: ${response.status}`);
     } catch (err) {
-      console.error('[Homepage] Edge debug ping error:', err);
+      logError('[Homepage] Edge debug ping error:', err);
     }
   }
 
