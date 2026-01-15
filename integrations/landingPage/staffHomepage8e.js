@@ -6,7 +6,11 @@
   const KNACK_API_URL = 'https://api.knack.com/v1';
   const DEFAULT_SUPABASE_EDGE_URL = 'https://qcdcdzfanrlvdcagmwmg.supabase.co/functions/v1/staff-admin-cache';
   let hasWarnedMissingEdgeUrl = false;
-  const EDGE_DEBUG = new URLSearchParams(window.location.search).get('edgeDebug') === '1';
+  function isEdgeDebugEnabled() {
+    if (window.location.href.includes('edgeDebug=1')) return true;
+    return localStorage.getItem('edgeDebug') === '1';
+  }
+  const EDGE_DEBUG = isEdgeDebugEnabled();
   const DEBUG_MODE = false; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
