@@ -227,13 +227,16 @@ function getSupabaseEdgeUrl() {
 
 async function debugSupabaseEdgePing() {
   if (!isEdgeDebugEnabled()) return;
-  const logError = (window._VESPA_ORIGINAL_CONSOLE_ERROR || console.error).bind(console);
+  const logError = (window._VESPA_ORIGINAL_CONSOLE?.error || window._VESPA_ORIGINAL_CONSOLE_ERROR || console.error).bind(console);
+  const logInfo = (window._VESPA_ORIGINAL_CONSOLE?.info || console.info).bind(console);
   const edgeUrl = getSupabaseEdgeUrl();
   if (!edgeUrl) {
     logError('[Staff Homepage] Edge debug ping skipped: missing edge URL.');
     return;
   }
   try {
+    window.__VESPA_EDGE_DEBUG = window.__VESPA_EDGE_DEBUG || {};
+    window.__VESPA_EDGE_DEBUG.staffHomepagePing = { startedAt: Date.now(), edgeUrl };
     const response = await fetch(edgeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -242,8 +245,11 @@ async function debugSupabaseEdgePing() {
         cacheKey: '__edge_debug__'
       })
     });
+    window.__VESPA_EDGE_DEBUG.staffHomepagePing.status = response.status;
+    logInfo(`[Staff Homepage] Edge debug ping status: ${response.status}`);
     logError(`[Staff Homepage] Edge debug ping status: ${response.status}`);
   } catch (err) {
+    window.__VESPA_EDGE_DEBUG.staffHomepagePing = { startedAt: Date.now(), edgeUrl, error: String(err) };
     logError('[Staff Homepage] Edge debug ping error:', err);
   }
 }
