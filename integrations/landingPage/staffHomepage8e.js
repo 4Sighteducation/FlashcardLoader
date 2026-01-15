@@ -8,9 +8,11 @@
   let hasWarnedMissingEdgeUrl = false;
   function isEdgeDebugEnabled() {
     if (window.location.href.includes('edgeDebug=1')) return true;
+    if (sessionStorage.getItem('edgeDebug') === '1') return true;
     return localStorage.getItem('edgeDebug') === '1';
   }
-  const EDGE_DEBUG = isEdgeDebugEnabled();
+  // Don't capture this at load time; re-check dynamically.
+  const EDGE_DEBUG = false;
   const DEBUG_MODE = false; // Set to true for development/testing
 
   // VESPA Colors for the dashboard
@@ -224,7 +226,7 @@ function getSupabaseEdgeUrl() {
 }
 
 async function debugSupabaseEdgePing() {
-  if (!EDGE_DEBUG) return;
+  if (!isEdgeDebugEnabled()) return;
   const logError = (window._VESPA_ORIGINAL_CONSOLE_ERROR || console.error).bind(console);
   const edgeUrl = getSupabaseEdgeUrl();
   if (!edgeUrl) {
