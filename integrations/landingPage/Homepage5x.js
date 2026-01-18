@@ -428,6 +428,21 @@
     return `${Math.round(num * 100)}%`;
   }
 
+  // Helper: get initials for avatar display
+  function getInitials(fullName) {
+    const parts = String(fullName || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const first = (parts[0] || '').charAt(0);
+    const last =
+      parts.length > 1
+        ? (parts[parts.length - 1] || '').charAt(0)
+        : (parts[0] || '').charAt(1);
+    const initials = `${first}${last}`.toUpperCase().trim();
+    return initials || 'VP';
+  }
+
   // Generic retry function for API calls
   function retryApiCall(apiCall, maxRetries = 3, delay = 1000) {
     return new Promise((resolve, reject) => {
@@ -2808,6 +2823,7 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
   // Render the profile section with responsive grid layout
   function renderProfileSection(profileData, vespaScoresData, showVespaScores, activityData = null) {
     const name = sanitizeField(profileData.name);
+    const initials = getInitials(name);
     
     // Fix for school field - handle if it's an object - improved to handle connection fields better
     let schoolDisplay = 'N/A';
@@ -3014,47 +3030,49 @@ function renderVespaQuestionnaireSection(vespaScoresData = null) {
     } 
     return `
       <section class="vespa-section profile-section">
-        <h2 class="vespa-section-title">
-          Student Profile
-          <span class="profile-info-button" title="Understanding Your Grades">i</span>
-        </h2>
-        <div class="profile-info">
-          <div class="profile-details">
-            <div class="profile-name">${name}</div>
-            
-            <div class="profile-item">
-              <span class="profile-label">School:</span>
-              <span class="profile-value">${schoolDisplay}</span>
+        <div class="profile-header">
+          <div class="profile-header-left">
+            <div class="profile-avatar" aria-hidden="true">${initials}</div>
+            <div class="profile-header-text">
+              <div class="profile-title-row">
+                <div class="profile-title">STUDENT PROFILE</div>
+                <div class="profile-student-name">${name}</div>
+              </div>
+              <div class="profile-meta">
+                <div class="profile-meta-item">
+                  <div class="profile-meta-label">School</div>
+                  <div class="profile-meta-value">${schoolDisplay}</div>
+                </div>
+                ${yearGroup ? `
+                <div class="profile-meta-item">
+                  <div class="profile-meta-label">Year</div>
+                  <div class="profile-meta-value">${yearGroup}</div>
+                </div>
+                ` : ''}
+                ${tutorGroup ? `
+                <div class="profile-meta-item">
+                  <div class="profile-meta-label">Tutor</div>
+                  <div class="profile-meta-value">${tutorGroup}</div>
+                </div>
+                ` : ''}
+                ${attendance ? `
+                <div class="profile-meta-item">
+                  <div class="profile-meta-label">Attendance</div>
+                  <div class="profile-meta-value">${attendance}</div>
+                </div>
+                ` : ''}
+              </div>
             </div>
-            
-          ${yearGroup ? `
-          <div class="profile-item">
-            <span class="profile-label">Year Group:</span>
-            <span class="profile-value">${yearGroup}</span>
           </div>
-          ` : ''}
-          
-          ${tutorGroup ? `
-          <div class="profile-item">
-            <span class="profile-label">Tutor Group:</span>
-            <span class="profile-value">${tutorGroup}</span>
-          </div>
-          ` : ''}
-          
-          ${attendance ? `
-          <div class="profile-item">
-            <span class="profile-label">Attendance:</span>
-            <span class="profile-value">${attendance}</span>
-          </div>
-          ` : ''}
-          </div>
-          
-          <div class="subjects-container">
-            <div class="subjects-grid">
-              ${subjectsHTML}
-            </div>
+          <button class="profile-info-button" type="button" title="Understanding Your Grades" aria-label="Understanding Your Grades">i</button>
+        </div>
+
+        <div class="subjects-container">
+          <div class="subjects-grid">
+            ${subjectsHTML}
           </div>
         </div>
+
         <div class="vespa-content-grid">
           <div class="vespa-questionnaire-section">
             ${renderVespaQuestionnaireSection(showVespaScores ? vespaScoresData : null)}
