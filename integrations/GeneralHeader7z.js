@@ -2265,6 +2265,13 @@
                 }
             }
 
+            function syncButtonWithWeglotState() {
+                if (!window.Weglot || typeof window.Weglot.getCurrentLang !== 'function') return;
+                if (!window.updateLanguageButton) return;
+                const currentLang = window.Weglot.getCurrentLang() || 'en';
+                window.updateLanguageButton(currentLang);
+            }
+
             // Nudge Google Translate after Knack renders dynamic content
             function nudgeTranslateIfWelsh(reason) {
                 const selector = document.querySelector('.goog-te-combo');
@@ -2331,17 +2338,26 @@
             
             // Sync every 2 seconds to catch auto-translate changes
             setInterval(syncButtonWithGoogleState, 2000);
+            setInterval(syncButtonWithWeglotState, 2000);
             
             // Also sync immediately after scene renders
             $(document).on('knack-scene-render.any', function() {
                 setTimeout(syncButtonWithGoogleState, 500);
                 setTimeout(() => nudgeTranslateIfWelsh('scene render'), 1200);
+                setTimeout(syncButtonWithWeglotState, 500);
             });
 
             // Nudge after view renders too (Knack often injects content late)
             $(document).on('knack-view-render.any', function() {
                 setTimeout(() => nudgeTranslateIfWelsh('view render'), 800);
+                setTimeout(syncButtonWithWeglotState, 500);
             });
+
+            if (window.Weglot && typeof window.Weglot.on === 'function') {
+                window.Weglot.on('languageChanged', () => {
+                    syncButtonWithWeglotState();
+                });
+            }
             
             // Language toggle handler with loading check
             const languageToggleBtn = document.getElementById('languageToggleBtn');
@@ -2357,6 +2373,24 @@
                     e.stopPropagation();
                     
                     log('Language toggle clicked');
+
+                    // Weglot integration (preferred when available)
+                    if (window.Weglot && typeof window.Weglot.getCurrentLang === 'function') {
+                        const currentLang = window.Weglot.getCurrentLang();
+                        const newLang = currentLang === 'cy' ? 'en' : 'cy';
+
+                        log(`Weglot switch: ${currentLang} -> ${newLang}`);
+                        window.Weglot.switchTo(newLang);
+                        if (newLang === 'en') {
+                            localStorage.removeItem('vespaPreferredLanguage');
+                        } else {
+                            localStorage.setItem('vespaPreferredLanguage', newLang);
+                        }
+                        if (window.updateLanguageButton) {
+                            window.updateLanguageButton(newLang);
+                        }
+                        return;
+                    }
                     
                     // Prevent multiple clicks while loading
                     if (isCheckingForTranslate) {
