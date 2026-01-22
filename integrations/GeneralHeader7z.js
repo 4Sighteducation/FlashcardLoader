@@ -2300,6 +2300,34 @@
                     logWarn('Translate nudge failed', error);
                 }
             }
+
+            function isTranslateApplied() {
+                const html = document.documentElement;
+                const body = document.body;
+                if (!html || !body) return false;
+                return (
+                    html.classList.contains('translated-ltr') ||
+                    html.classList.contains('translated-rtl') ||
+                    body.classList.contains('translated-ltr') ||
+                    body.classList.contains('translated-rtl')
+                );
+            }
+
+            function ensureTranslationApplied(targetLang, contextLabel) {
+                if (targetLang !== 'cy') return;
+                if (sessionStorage.getItem('vespaTranslateCookieFallback') === '1') return;
+
+                setTimeout(() => {
+                    if (isTranslateApplied()) return;
+
+                    console.warn('[General Header] Translation did not apply; using cookie fallback', contextLabel);
+                    sessionStorage.setItem('vespaTranslateCookieFallback', '1');
+                    document.cookie = 'googtrans=/en/cy; path=/';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 300);
+                }, 1500);
+            }
             
             // Sync every 2 seconds to catch auto-translate changes
             setInterval(syncButtonWithGoogleState, 2000);
@@ -2399,6 +2427,7 @@
                                             if (window.updateLanguageButton) {
                                                 window.updateLanguageButton('cy');
                                             }
+                                    ensureTranslationApplied('cy', 'lazy-init');
                                         }, 300); // Small delay between resets
                                         
                                         // Hide banner aggressively
@@ -2492,6 +2521,7 @@
                         if (window.updateLanguageButton) {
                             window.updateLanguageButton(newLang);
                         }
+                        ensureTranslationApplied(newLang, 'toggle');
                     }, 300);
                     
                     // IMMEDIATELY hide any banner that appears
