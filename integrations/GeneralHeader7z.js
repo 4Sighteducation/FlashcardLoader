@@ -2264,6 +2264,42 @@
                     window.updateLanguageButton(currentLang);
                 }
             }
+
+            // Nudge Google Translate after Knack renders dynamic content
+            function nudgeTranslateIfWelsh(reason) {
+                const selector = document.querySelector('.goog-te-combo');
+                if (!selector || selector.value !== 'cy') return;
+
+                const now = Date.now();
+                if (window._vespaTranslateNudging) return;
+                if (window._vespaTranslateNudgeAt && (now - window._vespaTranslateNudgeAt) < 3000) return;
+
+                window._vespaTranslateNudging = true;
+                window._vespaTranslateNudgeAt = now;
+                log(`Nudging Google Translate after ${reason}`);
+
+                try {
+                    selector.value = 'en';
+                    const resetEvt = document.createEvent('HTMLEvents');
+                    resetEvt.initEvent('change', false, true);
+                    selector.dispatchEvent(resetEvt);
+
+                    setTimeout(() => {
+                        selector.value = 'cy';
+                        const evt = document.createEvent('HTMLEvents');
+                        evt.initEvent('change', false, true);
+                        selector.dispatchEvent(evt);
+                        selector.dispatchEvent(new Event('change', { bubbles: true }));
+                        if (typeof $ !== 'undefined') {
+                            $(selector).trigger('change');
+                        }
+                        window._vespaTranslateNudging = false;
+                    }, 150);
+                } catch (error) {
+                    window._vespaTranslateNudging = false;
+                    logWarn('Translate nudge failed', error);
+                }
+            }
             
             // Sync every 2 seconds to catch auto-translate changes
             setInterval(syncButtonWithGoogleState, 2000);
@@ -2271,6 +2307,12 @@
             // Also sync immediately after scene renders
             $(document).on('knack-scene-render.any', function() {
                 setTimeout(syncButtonWithGoogleState, 500);
+                setTimeout(() => nudgeTranslateIfWelsh('scene render'), 1200);
+            });
+
+            // Nudge after view renders too (Knack often injects content late)
+            $(document).on('knack-view-render.any', function() {
+                setTimeout(() => nudgeTranslateIfWelsh('view render'), 800);
             });
             
             // Language toggle handler with loading check
