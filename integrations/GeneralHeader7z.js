@@ -2436,24 +2436,6 @@
                     }
                     
                     log('Language toggle clicked');
-
-                    // Weglot integration (preferred when available)
-                    if (window.Weglot && typeof window.Weglot.getCurrentLang === 'function') {
-                        const currentLang = window.Weglot.getCurrentLang();
-                        const newLang = currentLang === 'cy' ? 'en' : 'cy';
-
-                        log(`Weglot switch: ${currentLang} -> ${newLang}`);
-                        window.Weglot.switchTo(newLang);
-                        if (newLang === 'en') {
-                            localStorage.removeItem('vespaPreferredLanguage');
-                        } else {
-                            localStorage.setItem('vespaPreferredLanguage', newLang);
-                        }
-                        if (window.updateLanguageButton) {
-                            window.updateLanguageButton(newLang);
-                        }
-                        return;
-                    }
                     
                     // Prevent multiple clicks while loading
                     if (isCheckingForTranslate) {
