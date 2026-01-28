@@ -2152,6 +2152,10 @@
             if (mobileLanguageToggle) {
                 mobileLanguageToggle.addEventListener('click', async function(e) {
                     e.preventDefault();
+
+                    if (await toggleViaWeglotIfAvailable()) {
+                        return;
+                    }
                     
                     const selector = document.querySelector('.goog-te-combo');
                     if (!selector) {
@@ -2254,15 +2258,70 @@
             return mobileMenu;
         }
         
+        function getLanguageState() {
+            // Prefer Weglot if present (some deployments switched from Google Translate to Weglot).
+            try {
+                if (window.Weglot && typeof window.Weglot.getCurrentLang === 'function') {
+                    const lang = window.Weglot.getCurrentLang();
+                    if (lang) return lang;
+                }
+            } catch (e) {}
+            
+            // Otherwise fall back to Google Translate selector (if initialized)
+            const selector = document.querySelector('.goog-te-combo');
+            if (selector && selector.value) return selector.value;
+            
+            // Finally, use persisted preference
+            return localStorage.getItem('vespaPreferredLanguage') || 'en';
+        }
+
+        async function toggleViaWeglotIfAvailable() {
+            if (!window.Weglot || typeof window.Weglot.switchTo !== 'function') return false;
+            
+            const current = getLanguageState();
+            const next = current === 'cy' ? 'en' : 'cy';
+            
+            try {
+                const result = window.Weglot.switchTo(next);
+                // Some Weglot versions return a Promise; support both.
+                if (result && typeof result.then === 'function') {
+                    await result;
+                }
+            } catch (err) {
+                console.warn('[General Header] Weglot toggle failed:', err);
+                return false;
+            }
+            
+            // Verify Weglot actually switched; if not, allow the Google Translate path.
+            try {
+                await new Promise(resolve => setTimeout(resolve, 150));
+                const actual = (window.Weglot && typeof window.Weglot.getCurrentLang === 'function')
+                    ? window.Weglot.getCurrentLang()
+                    : getLanguageState();
+                if (actual !== next) {
+                    console.warn('[General Header] Weglot did not switch language as expected. Expected:', next, 'Actual:', actual);
+                    return false;
+                }
+            } catch (err) {
+                console.warn('[General Header] Weglot post-switch verification failed:', err);
+                return false;
+            }
+            
+            // Only persist preference if switch actually happened.
+            if (next === 'en') localStorage.removeItem('vespaPreferredLanguage');
+            else localStorage.setItem('vespaPreferredLanguage', next);
+            
+            if (window.updateLanguageButton) window.updateLanguageButton(next);
+            
+            return true;
+        }
+
         // Setup event listeners
         function setupEventListeners() {
             // Sync button with actual Google Translate state periodically
             function syncButtonWithGoogleState() {
-                const selector = document.querySelector('.goog-te-combo');
-                if (selector && window.updateLanguageButton) {
-                    const currentLang = selector.value || 'en';
-                    window.updateLanguageButton(currentLang);
-                }
+                const currentLang = getLanguageState();
+                if (window.updateLanguageButton) window.updateLanguageButton(currentLang);
             }
 
             function syncButtonWithWeglotState() {
@@ -2371,6 +2430,10 @@
                 languageToggleBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
                     e.stopPropagation();
+
+                    if (await toggleViaWeglotIfAvailable()) {
+                        return;
+                    }
                     
                     log('Language toggle clicked');
 
