@@ -519,20 +519,37 @@
             
             // If we have roles to check
             if (allRoles.length > 0) {
+                // Normalize role tokens so multi-role users (role objects) are handled correctly
+                function roleToTokens(role) {
+                    if (!role) return [];
+                    if (typeof role === 'string') return [role];
+                    if (typeof role === 'object') {
+                        const tokens = [];
+                        if (role.identifier) tokens.push(role.identifier);
+                        if (role.id) tokens.push(role.id);
+                        if (role.key) tokens.push(role.key);
+                        if (role.name) tokens.push(role.name);
+                        return tokens;
+                    }
+                    return [String(role)];
+                }
                 
                 for (const role of allRoles) {
-                    const roleStr = role.toString();
-                    log('DEBUG - Checking role:', roleStr, 'maps to:', profileMapping[roleStr]);
-                    
-                    if (profileMapping[roleStr] === 'staff') {
-                        hasStaffRole = true;
-                    } else if (profileMapping[roleStr] === 'student') {
-                        hasStudentRole = true;
-                    } else if (profileMapping[roleStr] === 'staffAdmin') {
-                        hasStaffAdminRole = true;
-                    } else if (profileMapping[roleStr] === 'superUser') {
-                        log('DEBUG - Found super user role!');
-                        hasSuperUserRole = true;
+                    const tokens = roleToTokens(role);
+                    for (const token of tokens) {
+                        const roleStr = String(token);
+                        log('DEBUG - Checking role:', roleStr, 'maps to:', profileMapping[roleStr]);
+                        
+                        if (profileMapping[roleStr] === 'staff') {
+                            hasStaffRole = true;
+                        } else if (profileMapping[roleStr] === 'student') {
+                            hasStudentRole = true;
+                        } else if (profileMapping[roleStr] === 'staffAdmin') {
+                            hasStaffAdminRole = true;
+                        } else if (profileMapping[roleStr] === 'superUser') {
+                            log('DEBUG - Found super user role!');
+                            hasSuperUserRole = true;
+                        }
                     }
                 }
             }

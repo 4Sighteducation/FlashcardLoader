@@ -1601,16 +1601,35 @@ function isStaffAdmin(roles) {
     return false;
   }
 
-  const result = roles.some(role => {
-    if (typeof role !== 'string') return false;
+  const normalizeRoleTokens = (rolesArr) => {
+    return rolesArr
+      .flatMap((r) => {
+        if (!r) return [];
+        if (typeof r === 'string') return [r];
+        // Knack can return role objects (id/key/name/identifier) for multi-role users
+        const tokens = [];
+        if (r.identifier) tokens.push(r.identifier);
+        if (r.id) tokens.push(r.id);
+        if (r.key) tokens.push(r.key);
+        if (r.name) tokens.push(r.name);
+        return tokens;
+      })
+      .map((t) => String(t).toLowerCase().replace(/\s+/g, ''))
+      .filter(Boolean);
+  };
 
-    const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
-    const isAdmin = normalizedRole.includes('staffadmin') || normalizedRole === 'admin' || normalizedRole === 'profile_5';
-    
+  const tokens = normalizeRoleTokens(roles);
+
+  const result = tokens.some((normalizedRole) => {
+    const isAdmin =
+      normalizedRole.includes('staffadmin') ||
+      normalizedRole === 'admin' ||
+      normalizedRole === 'profile_5' ||
+      normalizedRole === 'object_5';
+
     if (isAdmin) {
-      console.log('[Staff Homepage - DEBUG] Found admin role match:', role, '-> normalized:', normalizedRole);
+      console.log('[Staff Homepage - DEBUG] Found admin role match:', normalizedRole);
     }
-    
     return isAdmin;
   });
 
@@ -1624,15 +1643,35 @@ function hasTeachingRole(roles) {
     return false;
   }
   
-  // Check for teaching roles
-  return roles.some(role => {
-    if (typeof role !== 'string') return false;
-    
-    const normalizedRole = role.toLowerCase().replace(/\s+/g, '');
-    
-    return normalizedRole.includes('tutor') || 
-           normalizedRole.includes('headofyear') ||
-           normalizedRole.includes('subjectteacher');
+  const normalizeRoleTokens = (rolesArr) => {
+    return rolesArr
+      .flatMap((r) => {
+        if (!r) return [];
+        if (typeof r === 'string') return [r];
+        const tokens = [];
+        if (r.identifier) tokens.push(r.identifier);
+        if (r.id) tokens.push(r.id);
+        if (r.key) tokens.push(r.key);
+        if (r.name) tokens.push(r.name);
+        return tokens;
+      })
+      .map((t) => String(t).toLowerCase().replace(/\s+/g, ''))
+      .filter(Boolean);
+  };
+
+  const tokens = normalizeRoleTokens(roles);
+
+  // Check for teaching roles (by name hints OR known profile/object keys)
+  return tokens.some((normalizedRole) => {
+    return (
+      normalizedRole.includes('tutor') ||
+      normalizedRole.includes('headofyear') ||
+      normalizedRole.includes('subjectteacher') ||
+      normalizedRole === 'profile_7' ||
+      normalizedRole === 'object_7' ||
+      normalizedRole === 'object_18' ||
+      normalizedRole === 'object_78'
+    );
   });
 }
 
