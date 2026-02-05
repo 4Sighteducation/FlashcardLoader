@@ -426,7 +426,57 @@
 
   function normalizeMode(mode) {
     // Backwards compat (older state used "builder")
-    return (mode === 'builder') ? 'curriculum' : mode;
+    if (mode === 'builder') return 'curriculum';
+    if (mode === 'saved') return 'saved';
+    return mode;
+  }
+
+  function getCurrentUserEmail() {
+    try {
+      if (typeof Knack !== 'undefined' && typeof Knack.getUserAttributes === 'function') {
+        const u = Knack.getUserAttributes();
+        if (u && u.email) return String(u.email).trim().toLowerCase();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function currLibraryStorageKey() {
+    const email = getCurrentUserEmail();
+    return `vespa.curriculumLibrary.v1.${email || 'anon'}`;
+  }
+
+  function loadCurriculumLibrary() {
+    try {
+      const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(currLibraryStorageKey()) : null;
+      if (!raw) return [];
+      const j = JSON.parse(raw);
+      return Array.isArray(j) ? j : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveCurriculumLibrary(items) {
+    try {
+      if (typeof localStorage === 'undefined') return false;
+      localStorage.setItem(currLibraryStorageKey(), JSON.stringify(items || []));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function downloadJson(filename, obj) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   function pathwayLabel(pw) {
@@ -644,7 +694,7 @@
       #vespa-activity-hub-root ::-webkit-scrollbar{width:6px}
       #vespa-activity-hub-root ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
 
-      .vah-shell{background:#F1F5F9;min-height:100vh;font-size:16px}
+      .vah-shell{background:#F1F5F9;min-height:100vh;font-size:18px}
       .vah-hero{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#1E40AF 100%);color:#fff;padding:20px 28px 0}
       .vah-hero-inner{max-width:1200px;margin:0 auto}
       .vah-hero h1{font-size:23px;font-weight:900;margin:0}
@@ -669,9 +719,9 @@
       .vah-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
       .vah-item{background:#fff;border:1px solid #E2E8F0;border-left:3px solid #CBD5E1;border-radius:14px;padding:14px 16px;cursor:pointer;transition:all 0.15s}
       .vah-item:hover{box-shadow:0 4px 16px rgba(0,0,0,0.08);transform:translateY(-1px)}
-      .vah-item h3{margin:0 0 4px;font-size:16px;font-weight:900;color:#0F172A}
+      .vah-item h3{margin:0 0 4px;font-size:18px;font-weight:900;color:#0F172A}
       .vah-item .meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
-      .vah-item .desc{color:#64748B;font-size:14px;line-height:1.5}
+      .vah-item .desc{color:#64748B;font-size:16px;line-height:1.55}
       .vah-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:900;white-space:nowrap}
       .vah-badge.q{background:#DBEAFE;color:#1D4ED8}
       .vah-badge.c{background:#FEF3C7;color:#92400E}
@@ -764,6 +814,10 @@
             class: `vah-tab ${mode === 'library' ? 'is-active' : ''}`,
             onclick: () => { state.mode = 'library'; state.drawerItem = null; render(root, state); },
           }, '📚 Activity Library'),
+          el('button', {
+            class: `vah-tab ${mode === 'saved' ? 'is-active' : ''}`,
+            onclick: () => { state.mode = 'saved'; state.drawerItem = null; render(root, state); },
+          }, '💾 Curriculum Library'),
         ]),
       ])
     ]);
@@ -773,7 +827,117 @@
 
     const currentLang = getCurrentLang();
 
-    if (mode === 'library') {
+    if (mode === 'saved') {
+      const saved = loadCurriculumLibrary();
+      const q = String(state.savedSearch || '').trim().toLowerCase();
+      const filtered = saved.filter((p) => {
+        if (!q) return true;
+        const hay = `${p.name || ''} ${p.yearGroup || ''} ${p.profile || ''} ${p.pathway || ''}`.toLowerCase();
+        return hay.includes(q);
+      }).sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+
+      panel.appendChild(el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px' }, [
+        el('div', { class: 'vah-search', style: 'flex:1;min-width:260px' }, [
+          el('span', { style: 'color:#94A3B8' }, '🔍'),
+          el('input', {
+            value: state.savedSearch || '',
+            'data-focus-key': 'savedSearch',
+            placeholder: `Search ${saved.length} saved curricula...`,
+            oninput: (e) => {
+              state.savedSearch = e.target.value;
+              setFocusRestore(state, 'savedSearch', e.target.selectionStart, e.target.selectionEnd);
+              render(root, state);
+            },
+          }),
+          (state.savedSearch ? el('button', { style: 'background:none;border:none;cursor:pointer;color:#94A3B8', onclick: () => { state.savedSearch = ''; render(root, state); } }, '✕') : null),
+        ].filter(Boolean)),
+        el('button', {
+          class: 'vah-btn ghost',
+          onclick: () => {
+            // Import from JSON file
+            const inp = document.createElement('input');
+            inp.type = 'file';
+            inp.accept = 'application/json';
+            inp.onchange = async () => {
+              try {
+                const f = inp.files && inp.files[0];
+                if (!f) return;
+                const txt = await f.text();
+                const j = JSON.parse(txt);
+                const arr = Array.isArray(j) ? j : (Array.isArray(j.items) ? j.items : null);
+                if (!arr) return;
+                const existing = loadCurriculumLibrary();
+                // merge by id if present, else append
+                const byId = new Map(existing.map((x) => [x.id, x]));
+                arr.forEach((x) => {
+                  const id = x && x.id ? x.id : null;
+                  if (id && byId.has(id)) byId.set(id, { ...byId.get(id), ...x, updatedAt: new Date().toISOString() });
+                  else existing.push({ ...x, id: id || `plan_${Date.now()}_${Math.random().toString(16).slice(2)}` });
+                });
+                saveCurriculumLibrary(existing);
+                render(root, state);
+              } catch (_) {}
+            };
+            inp.click();
+          },
+        }, '⬆ Import JSON'),
+        el('button', {
+          class: 'vah-btn ghost',
+          onclick: () => downloadJson(`VESPA_CurriculumLibrary_${getCurrentUserEmail() || 'export'}.json`, loadCurriculumLibrary()),
+        }, '⬇ Export JSON'),
+      ]));
+
+      panel.appendChild(el('div', { class: 'vah-muted', style: 'margin-bottom:10px' }, 'Saved programmes are stored in this browser for the current user. Use Export/Import to move between devices.'));
+
+      const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px' });
+      filtered.forEach((p) => {
+        const card = el('div', { class: 'vah-item', style: 'border-left-color:#0F766E;cursor:default' }, [
+          el('div', { class: 'meta' }, [
+            el('span', { class: 'vah-pill' }, `Year ${p.yearGroup || ''}`),
+            el('span', { class: 'vah-pill' }, pathwayLabel(p.pathway || '')),
+            el('span', { class: 'vah-pill' }, p.profile || ''),
+          ].filter(Boolean)),
+          el('h3', null, p.name || 'Untitled curriculum'),
+          el('div', { class: 'desc' }, `${(p.count || 0)} activities • Updated ${String(p.updatedAt || '').slice(0, 10)}`),
+          el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px' }, [
+            el('button', {
+              class: 'vah-btn primary',
+              onclick: () => {
+                if (!p.settings || !p.curriculum) return;
+                state.mode = 'curriculum';
+                state.settings = p.settings;
+                state.curriculum = ensureUids(p.curriculum);
+                state.curriculum = resequence(sortCurriculum(state.curriculum));
+                state.currView = 'month';
+                state.editing = false;
+                state.showPool = false;
+                state.drawerItem = null;
+                render(root, state);
+              },
+            }, 'Load'),
+            el('button', {
+              class: 'vah-btn ghost',
+              onclick: () => downloadJson(`VESPA_Curriculum_${(p.name || 'untitled').replace(/[^a-z0-9_-]+/gi,'_')}.json`, p),
+            }, 'Download'),
+            el('button', {
+              class: 'vah-btn ghost',
+              onclick: () => {
+                const lib = loadCurriculumLibrary().filter((x) => x.id !== p.id);
+                saveCurriculumLibrary(lib);
+                render(root, state);
+              },
+            }, 'Delete'),
+          ]),
+        ]);
+        grid.appendChild(card);
+      });
+
+      if (!filtered.length) {
+        grid.appendChild(el('div', { style: 'padding:24px;text-align:center;color:#94A3B8;font-size:13px;grid-column:1/-1' }, 'No saved curricula yet. Build one, then use “Save” in the Curriculum Builder.'));
+      }
+      panel.appendChild(grid);
+
+    } else if (mode === 'library') {
       const filtered = makeLibraryFiltered(state);
       const topFilters = el('div', { style: 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center' }, [
         el('div', { class: 'vah-search' }, [
@@ -1101,6 +1265,36 @@
           style: 'padding:5px 12px;background:#fff;color:#475569;border:1px solid #E2E8F0;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer',
           onclick: () => window.print(),
         }, '🖨 Print'));
+        right.appendChild(el('button', {
+          style: 'padding:5px 12px;background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer',
+          onclick: () => {
+            if (!state.settings || !(state.curriculum || []).length) return;
+            const nameDefault = `Y${s.yearGroup} ${pw} ${s.profile}`;
+            const name = String(window.prompt('Name this curriculum', nameDefault) || '').trim();
+            if (!name) return;
+            const now = new Date().toISOString();
+            const hasCrypto = (typeof crypto !== 'undefined' && crypto && typeof crypto.randomUUID === 'function');
+            const id = hasCrypto ? crypto.randomUUID() : `plan_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+            const entry = {
+              id,
+              name,
+              createdAt: now,
+              updatedAt: now,
+              ownerEmail: getCurrentUserEmail() || '',
+              yearGroup: s.yearGroup,
+              pathway: s.pathway,
+              profile: s.profile,
+              count: (state.curriculum || []).length,
+              settings: state.settings,
+              curriculum: state.curriculum,
+            };
+            const lib = loadCurriculumLibrary();
+            lib.unshift(entry);
+            saveCurriculumLibrary(lib.slice(0, 100)); // cap
+            state.mode = 'saved';
+            render(root, state);
+          },
+        }, '💾 Save'));
         right.appendChild(el('button', {
           style: 'padding:5px 12px;background:#fff;color:#475569;border:1px solid #E2E8F0;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer',
           onclick: () => { state.settings = null; state.curriculum = []; state.editing = false; state.showPool = false; state.drawerItem = null; state.wizardStep = 0; render(root, state); },
@@ -1641,6 +1835,7 @@
       // pool state (editing)
       poolSearch: '',
       poolFilterEl: null,
+      savedSearch: '',
       drawerItem: null,
       settings: null,
       curriculum: [],
