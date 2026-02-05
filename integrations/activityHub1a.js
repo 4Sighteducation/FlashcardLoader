@@ -688,7 +688,7 @@
     const id = 'vespa-activity-hub-styles';
     if (document.getElementById(id)) return;
     const css = `
-      #vespa-activity-hub-root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+      #vespa-activity-hub-root{font-family:'Nunito',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
       #vespa-activity-hub-root *{box-sizing:border-box}
       #vespa-activity-hub-root ::-webkit-scrollbar{width:6px;height:6px}
       #vespa-activity-hub-root ::-webkit-scrollbar-track{background:transparent}
@@ -701,7 +701,7 @@
       @keyframes heroShimmer{0%,100%{transform:translateX(-25%)}50%{transform:translateX(25%)}}
       .vah-hero-inner{max-width:1200px;margin:0 auto}
       .vah-hero h1{font-size:23px;font-weight:900;margin:0}
-      .vah-hero p{margin:2px 0 0;color:#93C5FD;font-size:12px;font-weight:600}
+      .vah-hero p{margin:2px 0 0;color:rgba(255,255,255,0.92);font-size:12px;font-weight:700}
       .vah-hero-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 
       .vah-content{max-width:1280px;margin:0 auto;padding:0 28px 60px}
@@ -834,19 +834,10 @@
       el('div', { class: 'vah-hero-inner' }, [
         el('div', { class: 'vah-hero-top' }, [
         el('div', null, [
-          el('div', { style: 'font-size:10px;font-weight:900;color:#60A5FA;text-transform:uppercase;letter-spacing:0.15em' }, 'VESPA Academy'),
+          el('div', { style: 'font-size:10px;font-weight:900;color:rgba(255,255,255,0.92);text-transform:uppercase;letter-spacing:0.15em' }, 'VESPA Academy'),
           el('h1', null, 'Activities & Curriculum'),
           el('p', null, `${state.allActivities.length} real activities • Build, edit, and export bespoke programmes`),
         ]),
-        el('div', { class: 'vah-row', style: 'gap:4px;flex-wrap:wrap;justify-content:flex-end' },
-          Object.keys(VESPA).map((k) => el('span', {
-            class: 'vah-pill',
-            style: `background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.12);color:#E5E7EB;font-size:10px;font-weight:700;padding:3px 9px 3px 6px`,
-          }, [
-            el('span', { style: `display:inline-block;width:7px;height:7px;border-radius:99px;background:${VESPA[k].color}` }),
-            VESPA[k].label,
-          ]))
-        ),
         ]),
         el('div', { class: 'vah-tabs' }, [
           el('button', {
