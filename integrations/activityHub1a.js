@@ -744,6 +744,15 @@
       .vah-viewtoggle{display:flex;background:#fff;border-radius:9px;padding:2px;border:1px solid #E2E8F0}
       .vah-viewtoggle button{padding:3px 11px;border:none;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer;background:transparent;color:#64748B}
       .vah-viewtoggle button.is-on{background:#1E40AF;color:#fff}
+      .vah-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden}
+      .vah-table th,.vah-table td{padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:14px;vertical-align:top}
+      .vah-table th{background:#F8FAFC;color:#475569;font-weight:900;text-align:left}
+      .vah-table tr:last-child td{border-bottom:none}
+      @media print{
+        .vah-hero,.vah-tabs,.vah-topbar .vah-row button,.vah-side,.vah-warn{display:none !important}
+        .vah-panel{padding:0 !important;background:#fff !important}
+        .vah-shell{background:#fff !important}
+      }
       .vah-warn{background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:6px;margin:10px 0 12px}
       .vah-chipbtn{padding:5px 11px;border-radius:99px;border:none;font-size:12px;font-weight:900;cursor:pointer}
       .vah-search{flex:1;min-width:230px;display:flex;align-items:center;gap:9px;background:#fff;border-radius:12px;padding:9px 13px;border:2px solid #E2E8F0}
@@ -1237,7 +1246,7 @@
         right.appendChild(editBtn);
 
         const viewToggle = el('div', { class: 'vah-viewtoggle' }, [
-          { id: 'month', l: 'Month' }, { id: 'term', l: 'Term' }, { id: 'year', l: 'Year' },
+          { id: 'month', l: 'Month' }, { id: 'term', l: 'Term' }, { id: 'year', l: 'Year' }, { id: 'table', l: 'Table' },
         ].map((v) => el('button', {
           class: (state.currView === v.id ? 'is-on' : ''),
           onclick: () => { state.currView = v.id; render(root, state); },
@@ -1473,6 +1482,42 @@
           }
 
           panel.appendChild(layout);
+        } else if (currView === 'table') {
+          const rows = (state.curriculum || []).slice().sort((a, b) => {
+            const d = MONTHS.indexOf(a.month) - MONTHS.indexOf(b.month);
+            if (d !== 0) return d;
+            return (a.sequence || 0) - (b.sequence || 0);
+          });
+          const table = el('table', { class: 'vah-table' }, [
+            el('thead', null, [
+              el('tr', null, [
+                el('th', null, '#'),
+                el('th', null, 'Month'),
+                el('th', null, 'VESPA'),
+                el('th', null, 'Activity'),
+                el('th', null, 'Book'),
+                el('th', null, 'Link'),
+              ]),
+            ]),
+            el('tbody', null, rows.map((i) => {
+              const v = VESPA[i.element] ? VESPA[i.element].label : i.element;
+              const link = (i.pdf || i.pdfCy) ? el('a', {
+                href: (currentLang === 'cy' && i.pdfCy) ? i.pdfCy : i.pdf,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                style: 'color:#1E40AF;font-weight:900;text-decoration:none',
+              }, 'Open PDF') : el('span', { style: 'color:#94A3B8' }, '-');
+              return el('tr', null, [
+                el('td', null, String(i.sequence || '')),
+                el('td', null, String(i.month || '')),
+                el('td', null, String(v || '')),
+                el('td', null, String(i.name || '')),
+                el('td', null, String(i.book || '')),
+                el('td', null, [link]),
+              ]);
+            })),
+          ]);
+          panel.appendChild(table);
         } else if (currView === 'term') {
           const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px' });
           Object.entries(TERMS).forEach(([term, months]) => {
@@ -1522,6 +1567,17 @@
     root.appendChild(shell);
 
     restoreFocusIfNeeded(state, root);
+
+    // Weglot: translate newly injected DOM (Supabase-loaded copy included).
+    try {
+      if (typeof window !== 'undefined') {
+        if (typeof window.__vespaRequestWeglotRefresh === 'function') {
+          window.__vespaRequestWeglotRefresh('activityHub render');
+        } else if (window.Weglot && typeof window.Weglot.refresh === 'function') {
+          window.Weglot.refresh();
+        }
+      }
+    } catch (_) {}
 
     // Add-to-month modal (edit mode)
     if (state.addMonth && state.settings) {
