@@ -297,18 +297,28 @@
     const id = 'vespa-activity-hub-styles';
     if (document.getElementById(id)) return;
     const css = `
-      #vespa-activity-hub-root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-      .vah-shell{background:#F1F5F9;min-height:calc(100vh - 80px)}
-      .vah-hero{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#1E40AF 100%);color:#fff;padding:18px 22px 0;border-radius:14px}
-      .vah-hero h1{font-size:22px;font-weight:900;margin:0}
-      .vah-hero p{margin:4px 0 12px;color:#93C5FD;font-size:12px}
-      .vah-tabs{display:flex;gap:6}
-      .vah-tab{border:none;border-radius:12px 12px 0 0;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer}
+      @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap');
+      #vespa-activity-hub-root{font-family:'Nunito Sans',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+      #vespa-activity-hub-root *{box-sizing:border-box}
+      #vespa-activity-hub-root ::-webkit-scrollbar{width:6px}
+      #vespa-activity-hub-root ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+
+      .vah-shell{background:#F1F5F9;min-height:100vh}
+      .vah-hero{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#1E40AF 100%);color:#fff;padding:20px 28px 0}
+      .vah-hero-inner{max-width:1200px;margin:0 auto}
+      .vah-hero h1{font-size:23px;font-weight:900;margin:0}
+      .vah-hero p{margin:2px 0 0;color:#93C5FD;font-size:12px}
+      .vah-hero-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+
+      .vah-content{max-width:1200px;margin:0 auto;padding:0 28px 60px}
+
+      .vah-tabs{display:flex;gap:3}
+      .vah-tab{border:none;border-radius:12px 12px 0 0;padding:9px 18px;font-size:12px;font-weight:800;cursor:pointer}
       .vah-tab.is-active{background:#fff;color:#1E293B}
       .vah-tab:not(.is-active){background:rgba(255,255,255,0.08);color:#93C5FD}
-      .vah-panel{background:#F8FAFC;border-radius:0 16px 16px 16px;padding:16px;border:1px solid #E2E8F0;border-top:none}
+      .vah-panel{background:#F8FAFC;border-radius:0 16px 16px 16px;padding:20px 22px;animation:vahFadeUp 0.3s ease}
       .vah-row{display:flex;gap:10;flex-wrap:wrap;align-items:center}
-      .vah-card{background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:14px}
+      .vah-card{background:#fff;border:1px solid #E2E8F0;border-radius:20px;padding:26px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
       .vah-btn{border:none;border-radius:10px;padding:8px 12px;font-weight:800;font-size:12px;cursor:pointer}
       .vah-btn.primary{background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff}
       .vah-btn.ghost{background:#fff;border:1px solid #E2E8F0;color:#475569}
@@ -338,6 +348,8 @@
       .vah-month-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px}
       .vah-month-tag{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900}
       .vah-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+      @keyframes vahFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     `;
     document.head.appendChild(el('style', { id }, css));
   }
@@ -348,34 +360,37 @@
 
     const shell = el('div', { class: 'vah-shell' });
     const hero = el('div', { class: 'vah-hero' }, [
-      el('div', { class: 'vah-row', style: 'justify-content:space-between;align-items:flex-start;gap:12px' }, [
+      el('div', { class: 'vah-hero-inner' }, [
+        el('div', { class: 'vah-hero-top' }, [
         el('div', null, [
           el('div', { style: 'font-size:10px;font-weight:900;color:#60A5FA;text-transform:uppercase;letter-spacing:0.15em' }, 'VESPA Academy'),
-          el('h1', null, 'Activities Hub'),
-          el('p', null, `${state.allActivities.length} activities • Supabase-backed`),
+          el('h1', null, 'Activities & Curriculum'),
+          el('p', null, `${state.allActivities.length} real activities • Build, edit, and export bespoke programmes`),
         ]),
-        el('div', { class: 'vah-row', style: 'gap:6px;justify-content:flex-end' },
+        el('div', { class: 'vah-row', style: 'gap:4px;flex-wrap:wrap;justify-content:flex-end' },
           Object.keys(VESPA).map((k) => el('span', {
             class: 'vah-pill',
-            style: `background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.12);color:#E5E7EB`,
+            style: `background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.12);color:#E5E7EB;font-size:10px;font-weight:700;padding:3px 9px 3px 6px`,
           }, [
-            el('span', { style: `display:inline-block;width:8px;height:8px;border-radius:99px;background:${VESPA[k].color}` }),
+            el('span', { style: `display:inline-block;width:7px;height:7px;border-radius:99px;background:${VESPA[k].color}` }),
             VESPA[k].label,
           ]))
         ),
-      ]),
-      el('div', { class: 'vah-tabs' }, [
-        el('button', {
-          class: `vah-tab ${state.mode === 'builder' ? 'is-active' : ''}`,
-          onclick: () => { state.mode = 'builder'; state.drawerItem = null; render(root, state); },
-        }, '📋 Curriculum Builder'),
-        el('button', {
-          class: `vah-tab ${state.mode === 'library' ? 'is-active' : ''}`,
-          onclick: () => { state.mode = 'library'; state.drawerItem = null; render(root, state); },
-        }, '📚 Activity Library'),
-      ]),
+        ]),
+        el('div', { class: 'vah-tabs' }, [
+          el('button', {
+            class: `vah-tab ${state.mode === 'builder' ? 'is-active' : ''}`,
+            onclick: () => { state.mode = 'builder'; state.drawerItem = null; render(root, state); },
+          }, '📋 Curriculum Builder'),
+          el('button', {
+            class: `vah-tab ${state.mode === 'library' ? 'is-active' : ''}`,
+            onclick: () => { state.mode = 'library'; state.drawerItem = null; render(root, state); },
+          }, '📚 Activity Library'),
+        ]),
+      ])
     ]);
 
+    const content = el('div', { class: 'vah-content' });
     const panel = el('div', { class: 'vah-panel' });
 
     if (state.mode === 'library') {
@@ -452,11 +467,11 @@
     } else {
       // Builder
       if (!state.settings) {
-        panel.appendChild(el('div', { class: 'vah-card', style: 'max-width:760px;margin:0 auto' }, [
+        panel.appendChild(el('div', { class: 'vah-card', style: 'max-width:660px;margin:0 auto' }, [
           el('div', { style: 'text-align:center;margin-bottom:10px' }, [
             el('div', { style: 'font-size:34px;margin-bottom:6px' }, '🎯'),
             el('div', { style: 'font-size:18px;font-weight:900;color:#0F172A' }, 'Build Your Annual Programme'),
-            el('div', { class: 'vah-muted' }, 'Answer a few questions, then export to CSV'),
+            el('div', { class: 'vah-muted' }, 'Answer a few questions, then edit freely'),
           ]),
           el('div', { class: 'vah-row', style: 'justify-content:center;margin:10px 0' }, [
             el('span', { class: 'vah-pill' }, 'Year Group'),
@@ -602,8 +617,9 @@
       }
     }
 
+    content.appendChild(panel);
     shell.appendChild(hero);
-    shell.appendChild(panel);
+    shell.appendChild(content);
     root.appendChild(shell);
 
     // Drawer
