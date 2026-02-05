@@ -688,95 +688,129 @@
     const id = 'vespa-activity-hub-styles';
     if (document.getElementById(id)) return;
     const css = `
-      @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap');
-      #vespa-activity-hub-root{font-family:'Nunito Sans',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+      #vespa-activity-hub-root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
       #vespa-activity-hub-root *{box-sizing:border-box}
-      #vespa-activity-hub-root ::-webkit-scrollbar{width:6px}
+      #vespa-activity-hub-root ::-webkit-scrollbar{width:6px;height:6px}
+      #vespa-activity-hub-root ::-webkit-scrollbar-track{background:transparent}
       #vespa-activity-hub-root ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+      #vespa-activity-hub-root ::-webkit-scrollbar-thumb:hover{background:#94A3B8}
 
       .vah-shell{background:#F1F5F9;min-height:100vh;font-size:18px}
-      .vah-hero{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#1E40AF 100%);color:#fff;padding:20px 28px 0}
+      .vah-hero{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#1E40AF 100%);color:#fff;padding:20px 28px 0;position:relative;overflow:hidden}
+      .vah-hero::before{content:'';position:absolute;top:0;left:-100%;width:200%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent);animation:heroShimmer 8s ease-in-out infinite}
+      @keyframes heroShimmer{0%,100%{transform:translateX(-25%)}50%{transform:translateX(25%)}}
       .vah-hero-inner{max-width:1200px;margin:0 auto}
       .vah-hero h1{font-size:23px;font-weight:900;margin:0}
-      .vah-hero p{margin:2px 0 0;color:#93C5FD;font-size:12px}
+      .vah-hero p{margin:2px 0 0;color:#93C5FD;font-size:12px;font-weight:600}
       .vah-hero-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 
       .vah-content{max-width:1280px;margin:0 auto;padding:0 28px 60px}
 
-      .vah-tabs{display:flex;gap:3}
-      .vah-tab{border:none;border-radius:12px 12px 0 0;padding:10px 18px;font-size:14px;font-weight:900;cursor:pointer}
+      .vah-tabs{display:flex;gap:3px}
+      .vah-tab{border:none;border-radius:12px 12px 0 0;padding:10px 18px;font-size:14px;font-weight:900;cursor:pointer;transition:all 0.2s ease;position:relative}
       .vah-tab.is-active{background:#fff;color:#1E293B}
       .vah-tab:not(.is-active){background:rgba(255,255,255,0.08);color:#93C5FD}
-      .vah-panel{background:#F8FAFC;border-radius:0 16px 16px 16px;padding:22px 24px;animation:vahFadeUp 0.3s ease}
+      .vah-tab:not(.is-active):hover{background:rgba(255,255,255,0.12);color:#fff;transform:translateY(-1px)}
+      .vah-tab:focus-visible{outline:2px solid #60A5FA;outline-offset:2px}
+
+      .vah-panel{background:#F8FAFC;border-radius:0 16px 16px 16px;padding:22px 24px;animation:vahFadeUp 0.3s ease;box-shadow:0 4px 20px rgba(15,23,42,0.04)}
       .vah-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-      .vah-card{background:#fff;border:1px solid #E2E8F0;border-radius:20px;padding:26px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-      .vah-btn{border:none;border-radius:10px;padding:9px 13px;font-weight:900;font-size:13px;cursor:pointer}
-      .vah-btn.primary{background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff}
+      .vah-card{background:#fff;border:1px solid #E2E8F0;border-radius:20px;padding:26px;box-shadow:0 2px 8px rgba(0,0,0,0.04),0 1px 2px rgba(0,0,0,0.02);transition:box-shadow 0.2s ease,transform 0.2s ease}
+      .vah-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08),0 2px 6px rgba(0,0,0,0.04)}
+
+      .vah-btn{border:none;border-radius:10px;padding:9px 13px;font-weight:900;font-size:13px;cursor:pointer;transition:all 0.15s ease;display:inline-flex;align-items:center;gap:6px}
+      .vah-btn:focus-visible{outline:2px solid #3B82F6;outline-offset:2px}
+      .vah-btn.primary{background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
+      .vah-btn.primary:hover{background:linear-gradient(135deg,#1E3A8A,#2563EB);box-shadow:0 4px 12px rgba(30,64,175,0.4);transform:translateY(-1px)}
+      .vah-btn.primary:active{transform:translateY(0);box-shadow:0 1px 4px rgba(30,64,175,0.3)}
       .vah-btn.ghost{background:#fff;border:1px solid #E2E8F0;color:#475569}
-      .vah-input{background:#fff;border:2px solid #E2E8F0;border-radius:12px;padding:9px 13px;font-size:14px;min-width:220px;flex:1;outline:none}
+      .vah-btn.ghost:hover{background:#F8FAFC;border-color:#CBD5E1;color:#1E293B}
+      .vah-btn.ghost:active{background:#F1F5F9}
+
+      .vah-input{background:#fff;border:2px solid #E2E8F0;border-radius:12px;padding:9px 13px;font-size:14px;min-width:220px;flex:1;outline:none;transition:border-color 0.15s ease,box-shadow 0.15s ease}
+      .vah-input:focus{border-color:#3B82F6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
       .vah-pill{display:inline-flex;align-items:center;gap:6;border-radius:999px;padding:3px 11px;font-size:12px;font-weight:900;border:1px solid #E2E8F0;background:#fff;color:#475569}
       .vah-pill.is-on{background:#1E40AF;color:#fff;border-color:#1E40AF}
-      .vah-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
-      .vah-item{background:#fff;border:1px solid #E2E8F0;border-left:3px solid #CBD5E1;border-radius:14px;padding:14px 16px;cursor:pointer;transition:all 0.15s}
-      .vah-item:hover{box-shadow:0 4px 16px rgba(0,0,0,0.08);transform:translateY(-1px)}
+      .vah-pill{transition:all 0.15s ease}
+
+      .vah-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
+      .vah-item{background:#fff;border:1px solid #E2E8F0;border-left:4px solid #CBD5E1;border-radius:14px;padding:14px 16px;cursor:pointer;transition:all 0.2s ease;position:relative}
+      .vah-item:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08);transform:translateY(-2px)}
+      .vah-item:active{transform:translateY(0)}
+      .vah-item[draggable="true"]{cursor:grab}
+      .vah-item[draggable="true"]:active{cursor:grabbing;opacity:0.85}
       .vah-item h3{margin:0 0 4px;font-size:18px;font-weight:900;color:#0F172A}
       .vah-item .meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
       .vah-item .desc{color:#64748B;font-size:16px;line-height:1.55}
       .vah-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:900;white-space:nowrap}
       .vah-badge.q{background:#DBEAFE;color:#1D4ED8}
       .vah-badge.c{background:#FEF3C7;color:#92400E}
-      .vah-drawer-mask{position:fixed;inset:0;background:rgba(15,23,42,0.45);backdrop-filter:blur(4px);z-index:10000}
-      .vah-drawer{position:fixed;top:0;right:0;bottom:0;width:min(540px,92vw);background:#fff;z-index:10001;box-shadow:-8px 0 30px rgba(0,0,0,0.15);display:flex;flex-direction:column}
-      .vah-drawer .hd{padding:16px 18px;border-bottom:1px solid #E2E8F0}
-      .vah-drawer .bd{padding:14px 18px;overflow:auto;flex:1}
-      .vah-drawer .x{border:none;background:none;cursor:pointer;font-size:18px;color:#94A3B8}
+      .vah-drawer-mask{position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:10000;animation:fadeIn 0.2s ease}
+      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      .vah-drawer{position:fixed;top:0;right:0;bottom:0;width:min(540px,92vw);background:#fff;z-index:10001;box-shadow:-8px 0 30px rgba(0,0,0,0.15);display:flex;flex-direction:column;animation:slideIn 0.25s ease}
+      @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+      .vah-drawer .hd{padding:16px 18px;border-bottom:1px solid #E2E8F0;background:linear-gradient(180deg,#fff,#FAFBFC)}
+      .vah-drawer .bd{padding:14px 18px;overflow:auto;flex:1;overscroll-behavior:contain}
+      .vah-drawer .x{border:none;background:none;cursor:pointer;font-size:20px;color:#94A3B8;padding:4px;border-radius:6px;transition:all 0.15s ease}
+      .vah-drawer .x:hover{background:#F1F5F9;color:#64748B}
       .vah-kv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 14px}
-      .vah-kv > div{background:#F8FAFC;border-radius:10px;padding:8px 10px;border:1px solid #E2E8F0}
+      .vah-kv > div{background:#F8FAFC;border-radius:10px;padding:10px 12px;border:1px solid #E2E8F0}
       .vah-kv .k{font-size:11px;font-weight:900;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em}
       .vah-kv .v{font-size:13px;font-weight:800;color:#334155}
       .vah-muted{color:#94A3B8;font-size:13px}
       .vah-month{margin:14px 0}
       .vah-month-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-      .vah-month-tag{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900}
+      .vah-month-tag{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;box-shadow:0 2px 8px rgba(30,64,175,0.25)}
       .vah-actions{display:flex;gap:8px;flex-wrap:wrap}
 
       .vah-topbar{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px}
-      .vah-viewtoggle{display:flex;background:#fff;border-radius:9px;padding:2px;border:1px solid #E2E8F0}
-      .vah-viewtoggle button{padding:3px 11px;border:none;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer;background:transparent;color:#64748B}
-      .vah-viewtoggle button.is-on{background:#1E40AF;color:#fff}
+      .vah-viewtoggle{display:flex;background:#fff;border-radius:10px;padding:3px;border:1px solid #E2E8F0;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+      .vah-viewtoggle button{padding:5px 12px;border:none;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer;background:transparent;color:#64748B;transition:all 0.15s ease}
+      .vah-viewtoggle button:hover:not(.is-on){background:#F1F5F9;color:#475569}
+      .vah-viewtoggle button.is-on{background:#1E40AF;color:#fff;box-shadow:0 1px 3px rgba(30,64,175,0.3)}
       .vah-table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden}
       .vah-table th,.vah-table td{padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:14px;vertical-align:top;word-break:break-word;white-space:normal}
       .vah-table th{background:#F8FAFC;color:#475569;font-weight:900;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:0.04em}
       .vah-table tr:last-child td{border-bottom:none}
+      .vah-table tr:hover td{background:#FAFBFC}
       @media print{
         .vah-hero,.vah-tabs,.vah-topbar .vah-row button,.vah-side,.vah-warn{display:none !important}
         .vah-panel{padding:0 !important;background:#fff !important}
         .vah-shell{background:#fff !important}
       }
-      .vah-warn{background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:10px 14px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:6px;margin:10px 0 12px}
-      .vah-chipbtn{padding:5px 11px;border-radius:99px;border:none;font-size:12px;font-weight:900;cursor:pointer}
-      .vah-search{flex:1;min-width:230px;display:flex;align-items:center;gap:9px;background:#fff;border-radius:12px;padding:9px 13px;border:2px solid #E2E8F0}
+      .vah-warn{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:12px;padding:12px 16px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px;margin:10px 0 12px;box-shadow:0 2px 8px rgba(251,191,36,0.15)}
+      .vah-chipbtn{padding:5px 11px;border-radius:99px;border:none;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.15s ease}
+      .vah-chipbtn:focus-visible{outline:2px solid #3B82F6;outline-offset:2px}
+      .vah-chipbtn:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,0.10)}
+      .vah-chipbtn:active{transform:translateY(0)}
+
+      .vah-search{flex:1;min-width:230px;display:flex;align-items:center;gap:9px;background:#fff;border-radius:12px;padding:9px 13px;border:2px solid #E2E8F0;transition:border-color 0.15s ease,box-shadow 0.15s ease}
+      .vah-search:focus-within{border-color:#3B82F6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
       .vah-search input{flex:1;border:none;background:transparent;outline:none;font-size:14px;font-family:inherit}
+      .vah-search input::placeholder{color:#94A3B8}
 
       .vah-layout{display:flex;gap:14px;align-items:flex-start}
       .vah-main{flex:1;min-width:0}
-      .vah-side{width:380px;min-width:320px;position:sticky;top:12px;align-self:flex-start}
+      .vah-side{width:380px;min-width:320px;position:sticky;top:12px;align-self:flex-start;background:#fff;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.06)}
       @media (max-width: 1100px){
         .vah-layout{flex-direction:column}
         .vah-side{width:100%;position:relative;top:auto}
       }
-      .vah-yearbtn{width:86px;height:86px;border-radius:16px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+      .vah-yearbtn{width:86px;height:86px;border-radius:16px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all 0.2s ease}
+      .vah-yearbtn:hover{border-color:#93C5FD;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
       .vah-yearbtn.is-on{border:3px solid #1E40AF;background:#EFF6FF}
       .vah-yearbtn .n{font-size:26px;font-weight:900;color:#64748B}
       .vah-yearbtn.is-on .n{color:#1E40AF}
       .vah-yearbtn .t{font-size:10px;font-weight:800;color:#94A3B8}
-      .vah-optbtn{width:180px;padding:20px 14px;border-radius:16px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
+      .vah-optbtn{width:180px;padding:20px 14px;border-radius:16px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;transition:all 0.2s ease}
+      .vah-optbtn:hover{border-color:#93C5FD;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
       .vah-optbtn.is-on{border:2px solid #1E40AF;background:#EFF6FF}
       .vah-optbtn .i{font-size:30px}
       .vah-optbtn .l{font-size:14px;font-weight:900;color:#1E293B}
       .vah-optbtn.is-on .l{color:#1E40AF}
       .vah-optbtn .d{font-size:11px;color:#64748B;line-height:1.3}
-      .vah-profbtn{padding:11px 15px;border-radius:12px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;text-align:left}
+      .vah-profbtn{padding:11px 15px;border-radius:12px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;text-align:left;transition:all 0.2s ease}
+      .vah-profbtn:hover{border-color:#93C5FD;background:#FAFBFC}
       .vah-profbtn.is-on{border:2px solid #1E40AF;background:#EFF6FF}
       .vah-profbtn .l{font-weight:900;font-size:14px;color:#1E293B;margin-bottom:1px}
       .vah-profbtn.is-on .l{color:#1E40AF}
