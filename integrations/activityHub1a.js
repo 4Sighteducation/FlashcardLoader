@@ -38,6 +38,13 @@
     'Summer 2': ['June', 'July'],
   };
   const PROFILES = ['Low', 'Low-Mid', 'Mid', 'Mid-High', 'High'];
+  const PROFILE_DESCS = {
+    'Low': 'Significant support needed. Foundations of effort, organisation, and confidence.',
+    'Low-Mid': 'Some foundations but inconsistent. Building routine and self-awareness.',
+    'Mid': 'Solid students needing stretching. Balanced mix across all VESPA elements.',
+    'Mid-High': 'Strong students ready for advanced strategies. Practice-focused.',
+    'High': 'High-performers aiming for top grades. Advanced practice and independence.',
+  };
 
   const VESPA = {
     VISION:   { label: 'Vision',   color: '#ff8f00', bg: '#FFF3E0' },
@@ -293,6 +300,104 @@
     URL.revokeObjectURL(url);
   }
 
+  function normalizeMode(mode) {
+    // Backwards compat (older state used "builder")
+    return (mode === 'builder') ? 'curriculum' : mode;
+  }
+
+  function pathwayLabel(pw) {
+    if (!pw) return '';
+    if (pw === 'academic') return 'Academic';
+    if (pw === 'vocational') return 'Vocational';
+    if (pw === 'both') return 'Mixed';
+    return String(pw);
+  }
+
+  function pathwayChip(pw) {
+    if (!pw || pw === 'both') return null;
+    const isAcademic = pw === 'academic';
+    const c = isAcademic ? { bg: '#EDE9FE', fg: '#6D28D9', label: '📝 Academic' } : { bg: '#FEF3C7', fg: '#92400E', label: '🔧 Vocational' };
+    return el('span', {
+      style: `font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${c.bg};color:${c.fg};white-space:nowrap`,
+    }, c.label);
+  }
+
+  function elementBadge(elKey, size) {
+    const v = VESPA[elKey];
+    if (!v) return null;
+    const isSm = size === 'sm';
+    return el('span', {
+      style: `font-size:${isSm ? 10 : 12}px;font-weight:800;padding:2px ${isSm ? 7 : 10}px;border-radius:99px;background:${v.bg};color:${v.color};border:1px solid ${v.color}25;white-space:nowrap`,
+    }, v.label);
+  }
+
+  function qBadge(type) {
+    if (!type) return null;
+    const c = type === 'QUESTIONNAIRE' ? { bg: '#DBEAFE', fg: '#1D4ED8', label: '📋 Questionnaire' } : { bg: '#FEF3C7', fg: '#92400E', label: '🗣 Coaching' };
+    return el('span', {
+      style: `font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;background:${c.bg};color:${c.fg};text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap`,
+    }, c.label);
+  }
+
+  function bookPill(book) {
+    if (!book) return null;
+    return el('span', {
+      style: 'font-size:11px;background:#F1F5F9;color:#64748B;padding:2px 10px;border-radius:99px;font-weight:700;white-space:nowrap',
+    }, book);
+  }
+
+  function vespabar(items) {
+    const counts = { VISION: 0, EFFORT: 0, SYSTEMS: 0, PRACTICE: 0, ATTITUDE: 0 };
+    (items || []).forEach((i) => { if (counts[i.element] !== undefined) counts[i.element] += 1; });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+    const bar = el('div', { style: 'display:flex;flex-direction:column;gap:5px;margin:10px 0 14px' }, [
+      el('div', { style: 'display:flex;height:8px;border-radius:99px;overflow:hidden;background:#E2E8F0' },
+        Object.keys(counts).map((k) => el('div', { style: `width:${(counts[k] / total) * 100}%;background:${VESPA[k].color};transition:width 0.4s` }))
+      ),
+      el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap' }, Object.keys(counts).map((k) => (
+        el('div', { style: 'display:flex;align-items:center;gap:4px;font-size:12px' }, [
+          el('div', { style: `width:8px;height:8px;border-radius:2px;background:${VESPA[k].color}` }),
+          el('span', { style: 'font-weight:900;color:#475569' }, VESPA[k].label),
+          el('span', { style: 'color:#94A3B8;font-weight:800' }, String(counts[k])),
+        ])
+      ))),
+    ]);
+    return bar;
+  }
+
+  function resequence(curr) {
+    const c = (curr || []).slice();
+    c.forEach((item, idx) => { item.sequence = idx + 1; });
+    return c;
+  }
+
+  function sortCurriculum(curr) {
+    const c = (curr || []).slice();
+    c.sort((a, b) => {
+      const d = MONTHS.indexOf(a.month) - MONTHS.indexOf(b.month);
+      if (d !== 0) return d;
+      if (a.isQ && !b.isQ) return -1;
+      if (!a.isQ && b.isQ) return 1;
+      return (a.sequence || 0) - (b.sequence || 0);
+    });
+    return c;
+  }
+
+  function makeLibraryFiltered(state) {
+    const s = String(state.libSearch || '').trim().toLowerCase();
+    return state.allActivities.filter((a) => {
+      if (s) {
+        const hay = `${a.name || ''} ${a.element || ''} ${a.summary || ''}`.toLowerCase();
+        if (!hay.includes(s)) return false;
+      }
+      if (state.libFilterEl && a.element !== state.libFilterEl) return false;
+      if (state.libFilterLevel) {
+        if (state.libFilterLevel !== '' && a.level !== state.libFilterLevel) return false;
+      }
+      return true;
+    });
+  }
+
   function ensureStyles() {
     const id = 'vespa-activity-hub-styles';
     if (document.getElementById(id)) return;
@@ -317,19 +422,19 @@
       .vah-tab.is-active{background:#fff;color:#1E293B}
       .vah-tab:not(.is-active){background:rgba(255,255,255,0.08);color:#93C5FD}
       .vah-panel{background:#F8FAFC;border-radius:0 16px 16px 16px;padding:20px 22px;animation:vahFadeUp 0.3s ease}
-      .vah-row{display:flex;gap:10;flex-wrap:wrap;align-items:center}
+      .vah-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
       .vah-card{background:#fff;border:1px solid #E2E8F0;border-radius:20px;padding:26px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
       .vah-btn{border:none;border-radius:10px;padding:8px 12px;font-weight:800;font-size:12px;cursor:pointer}
       .vah-btn.primary{background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff}
       .vah-btn.ghost{background:#fff;border:1px solid #E2E8F0;color:#475569}
-      .vah-input{background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:8px 10px;font-size:13px;min-width:220px;flex:1}
+      .vah-input{background:#fff;border:2px solid #E2E8F0;border-radius:12px;padding:8px 12px;font-size:13px;min-width:220px;flex:1;outline:none}
       .vah-pill{display:inline-flex;align-items:center;gap:6;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:800;border:1px solid #E2E8F0;background:#fff;color:#475569}
       .vah-pill.is-on{background:#1E40AF;color:#fff;border-color:#1E40AF}
-      .vah-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
-      .vah-item{background:#fff;border:1px solid #E2E8F0;border-left:4px solid #CBD5E1;border-radius:12px;padding:10px 12px;cursor:pointer}
+      .vah-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px}
+      .vah-item{background:#fff;border:1px solid #E2E8F0;border-left:3px solid #CBD5E1;border-radius:14px;padding:12px 14px;cursor:pointer;transition:all 0.15s}
       .vah-item:hover{box-shadow:0 4px 16px rgba(0,0,0,0.08);transform:translateY(-1px)}
       .vah-item h3{margin:0 0 3px;font-size:13px;font-weight:900;color:#0F172A}
-      .vah-item .meta{display:flex;gap:6;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+      .vah-item .meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
       .vah-item .desc{color:#64748B;font-size:12px;line-height:1.45}
       .vah-badge{display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font-size:10px;font-weight:900;white-space:nowrap}
       .vah-badge.q{background:#DBEAFE;color:#1D4ED8}
@@ -349,6 +454,34 @@
       .vah-month-tag{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900}
       .vah-actions{display:flex;gap:8px;flex-wrap:wrap}
 
+      .vah-topbar{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+      .vah-viewtoggle{display:flex;background:#fff;border-radius:9px;padding:2px;border:1px solid #E2E8F0}
+      .vah-viewtoggle button{padding:3px 11px;border:none;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer;background:transparent;color:#64748B}
+      .vah-viewtoggle button.is-on{background:#1E40AF;color:#fff}
+      .vah-warn{background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:9px 14px;font-size:11px;color:#92400E;display:flex;align-items:center;gap:6px;margin:10px 0 12px}
+      .vah-chipbtn{padding:4px 10px;border-radius:99px;border:none;font-size:11px;font-weight:900;cursor:pointer}
+      .vah-search{flex:1;min-width:230px;display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:8px 12px;border:2px solid #E2E8F0}
+      .vah-search input{flex:1;border:none;background:transparent;outline:none;font-size:13px;font-family:inherit}
+      .vah-yearbtn{width:86px;height:86px;border-radius:16px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+      .vah-yearbtn.is-on{border:3px solid #1E40AF;background:#EFF6FF}
+      .vah-yearbtn .n{font-size:26px;font-weight:900;color:#64748B}
+      .vah-yearbtn.is-on .n{color:#1E40AF}
+      .vah-yearbtn .t{font-size:10px;font-weight:800;color:#94A3B8}
+      .vah-optbtn{width:180px;padding:20px 14px;border-radius:16px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
+      .vah-optbtn.is-on{border:2px solid #1E40AF;background:#EFF6FF}
+      .vah-optbtn .i{font-size:30px}
+      .vah-optbtn .l{font-size:14px;font-weight:900;color:#1E293B}
+      .vah-optbtn.is-on .l{color:#1E40AF}
+      .vah-optbtn .d{font-size:11px;color:#64748B;line-height:1.3}
+      .vah-profbtn{padding:11px 15px;border-radius:12px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;text-align:left}
+      .vah-profbtn.is-on{border:2px solid #1E40AF;background:#EFF6FF}
+      .vah-profbtn .l{font-weight:900;font-size:14px;color:#1E293B;margin-bottom:1px}
+      .vah-profbtn.is-on .l{color:#1E40AF}
+      .vah-profbtn .d{font-size:11px;color:#64748B;line-height:1.4}
+      .vah-stepbar{display:flex;gap:4px;margin-bottom:22px}
+      .vah-stepbar > div{flex:1;height:4px;border-radius:99px;background:#E2E8F0}
+      .vah-stepbar > div.is-on{background:#1E40AF}
+
       @keyframes vahFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     `;
     document.head.appendChild(el('style', { id }, css));
@@ -358,6 +491,7 @@
     root.innerHTML = '';
     ensureStyles();
 
+    const mode = normalizeMode(state.mode || 'curriculum');
     const shell = el('div', { class: 'vah-shell' });
     const hero = el('div', { class: 'vah-hero' }, [
       el('div', { class: 'vah-hero-inner' }, [
@@ -379,11 +513,11 @@
         ]),
         el('div', { class: 'vah-tabs' }, [
           el('button', {
-            class: `vah-tab ${state.mode === 'builder' ? 'is-active' : ''}`,
-            onclick: () => { state.mode = 'builder'; state.drawerItem = null; render(root, state); },
+            class: `vah-tab ${mode === 'curriculum' ? 'is-active' : ''}`,
+            onclick: () => { state.mode = 'curriculum'; state.drawerItem = null; render(root, state); },
           }, '📋 Curriculum Builder'),
           el('button', {
-            class: `vah-tab ${state.mode === 'library' ? 'is-active' : ''}`,
+            class: `vah-tab ${mode === 'library' ? 'is-active' : ''}`,
             onclick: () => { state.mode = 'library'; state.drawerItem = null; render(root, state); },
           }, '📚 Activity Library'),
         ]),
@@ -393,60 +527,38 @@
     const content = el('div', { class: 'vah-content' });
     const panel = el('div', { class: 'vah-panel' });
 
-    if (state.mode === 'library') {
-      const filters = el('div', { class: 'vah-row', style: 'margin-bottom:12px' }, [
-        el('input', {
-          class: 'vah-input',
-          placeholder: `Search ${state.allActivities.length} activities...`,
-          value: state.search,
-          oninput: (e) => { state.search = e.target.value || ''; render(root, state); },
-        }),
-        el('div', { class: 'vah-row', style: 'gap:6px' },
-          Object.keys(VESPA).map((k) => el('button', {
-            class: `vah-pill ${state.filterEl === k ? 'is-on' : ''}`,
-            style: state.filterEl === k
-              ? 'border-color:#1E40AF'
-              : `border-color:${VESPA[k].color}30;background:${VESPA[k].bg};color:${VESPA[k].color}`,
-            onclick: () => { state.filterEl = (state.filterEl === k ? null : k); render(root, state); },
-          }, VESPA[k].label))
+    if (mode === 'library') {
+      const filtered = makeLibraryFiltered(state);
+      const topFilters = el('div', { style: 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center' }, [
+        el('div', { class: 'vah-search' }, [
+          el('span', { style: 'color:#94A3B8' }, '🔍'),
+          el('input', { value: state.libSearch || '', placeholder: `Search ${state.allActivities.length} activities...`, oninput: (e) => { state.libSearch = e.target.value; render(root, state); } }),
+          (state.libSearch ? el('button', { style: 'background:none;border:none;cursor:pointer;color:#94A3B8', onclick: () => { state.libSearch = ''; render(root, state); } }, '✕') : null),
+        ].filter(Boolean)),
+        el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' },
+          Object.keys(VESPA).map((k) => {
+            const v = VESPA[k];
+            const isOn = state.libFilterEl === k;
+            return el('button', {
+              class: 'vah-chipbtn',
+              style: `background:${isOn ? v.color : v.bg};color:${isOn ? '#fff' : v.color}`,
+              onclick: () => { state.libFilterEl = (isOn ? null : k); render(root, state); },
+            }, v.label);
+          })
         ),
-        el('div', { class: 'vah-row', style: 'gap:6px' }, [
-          el('button', {
-            class: `vah-pill ${state.filterLevel === '2' ? 'is-on' : ''}`,
-            onclick: () => { state.filterLevel = (state.filterLevel === '2' ? null : '2'); render(root, state); },
-          }, 'KS4'),
-          el('button', {
-            class: `vah-pill ${state.filterLevel === '3' ? 'is-on' : ''}`,
-            onclick: () => { state.filterLevel = (state.filterLevel === '3' ? null : '3'); render(root, state); },
-          }, 'KS5'),
-          el('button', {
-            class: `vah-pill ${state.filterPw === 'academic' ? 'is-on' : ''}`,
-            onclick: () => { state.filterPw = (state.filterPw === 'academic' ? null : 'academic'); render(root, state); },
-          }, 'Academic'),
-          el('button', {
-            class: `vah-pill ${state.filterPw === 'vocational' ? 'is-on' : ''}`,
-            onclick: () => { state.filterPw = (state.filterPw === 'vocational' ? null : 'vocational'); render(root, state); },
-          }, 'Vocational'),
-        ]),
+        el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' }, [
+          { v: '2', l: 'KS4' }, { v: '3', l: 'KS5' }, { v: '', l: 'All' },
+        ].map((lv) => {
+          const isOn = state.libFilterLevel === lv.v;
+          return el('button', {
+            class: 'vah-chipbtn',
+            style: `background:${isOn ? '#1E293B' : '#E2E8F0'};color:${isOn ? '#fff' : '#475569'};font-weight:800`,
+            onclick: () => { state.libFilterLevel = (isOn ? null : lv.v); render(root, state); },
+          }, lv.l);
+        })),
       ]);
 
-      const filtered = state.allActivities.filter((a) => {
-        if (state.search) {
-          const s = state.search.toLowerCase();
-          if (!a.name.toLowerCase().includes(s) &&
-              !a.element.toLowerCase().includes(s) &&
-              !(a.summary || '').toLowerCase().includes(s)) return false;
-        }
-        if (state.filterEl && a.element !== state.filterEl) return false;
-        if (state.filterLevel && a.level !== state.filterLevel && a.level !== '') return false;
-        if (state.filterPw) {
-          const pw = a.pathway || 'both';
-          if (!(pw === 'both' || pw === state.filterPw)) return false;
-        }
-        return true;
-      });
-
-      panel.appendChild(filters);
+      panel.appendChild(topFilters);
       panel.appendChild(el('div', { class: 'vah-muted', style: 'margin-bottom:10px' }, `Showing ${filtered.length} of ${state.allActivities.length}`));
 
       const grid = el('div', { class: 'vah-grid' });
@@ -454,9 +566,10 @@
         const v = VESPA[item.element] || VESPA.VISION;
         const card = el('div', { class: 'vah-item', style: `border-left-color:${v.color}` });
         card.appendChild(el('div', { class: 'meta' }, [
-          el('span', { class: 'vah-pill', style: `background:${v.bg};border-color:${v.color}25;color:${v.color}` }, v.label),
-          item.level ? el('span', { class: 'vah-pill' }, `Level ${item.level}`) : null,
-          (item.pathway && item.pathway !== 'both') ? el('span', { class: 'vah-pill' }, item.pathway) : null,
+          elementBadge(item.element, null),
+          item.isQ ? qBadge(item.qType) : null,
+          pathwayChip(item.pathway),
+          bookPill(item.book),
         ].filter(Boolean)));
         card.appendChild(el('h3', null, item.name));
         card.appendChild(el('div', { class: 'desc' }, item.summary || item.guidance || ''));
@@ -464,66 +577,107 @@
         grid.appendChild(card);
       });
       panel.appendChild(grid);
+      if (!filtered.length) {
+        panel.appendChild(el('div', { style: 'text-align:center;padding:36px 20px;color:#94A3B8' }, [
+          el('div', { style: 'font-size:30px;margin-bottom:4px' }, '🔍'),
+          el('div', { style: 'font-size:13px;font-weight:900' }, 'No activities found'),
+        ]));
+      }
     } else {
-      // Builder
-      if (!state.settings) {
-        panel.appendChild(el('div', { class: 'vah-card', style: 'max-width:660px;margin:0 auto' }, [
-          el('div', { style: 'text-align:center;margin-bottom:10px' }, [
-            el('div', { style: 'font-size:34px;margin-bottom:6px' }, '🎯'),
-            el('div', { style: 'font-size:18px;font-weight:900;color:#0F172A' }, 'Build Your Annual Programme'),
-            el('div', { class: 'vah-muted' }, 'Answer a few questions, then edit freely'),
-          ]),
-          el('div', { class: 'vah-row', style: 'justify-content:center;margin:10px 0' }, [
-            el('span', { class: 'vah-pill' }, 'Year Group'),
-            el('select', {
-              class: 'vah-input',
-              style: 'max-width:180px;min-width:180px;flex:0',
-              onchange: (e) => { state.tmp.yearGroup = e.target.value; },
+      // Curriculum builder
+      const wizardStep = Number(state.wizardStep || 0);
+
+      function renderWizard() {
+        const step = Number(state.wizardStep || 0);
+        const steps = [0, 1, 2, 3, 4];
+        const card = el('div', { class: 'vah-card', style: 'max-width:660px;margin:0 auto' }, []);
+        card.appendChild(el('div', { class: 'vah-stepbar' }, steps.map((i) => el('div', { class: i <= step ? 'is-on' : '' }))));
+        const header = el('div', { style: 'text-align:center;margin-bottom:18px' }, []);
+        card.appendChild(header);
+
+        const goNext = (n) => { state.wizardStep = n; render(root, state); };
+
+        if (step === 0) {
+          header.appendChild(el('div', { style: 'font-size:34px;margin-bottom:4px' }, '🎯'));
+          header.appendChild(el('div', { style: 'font-size:19px;font-weight:900;color:#0F172A;margin:0 0 3px' }, 'Which year group?'));
+          header.appendChild(el('div', { class: 'vah-muted' }, 'Determines KS4 vs KS5 activity selection'));
+          card.appendChild(el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center' }, [9, 10, 11, 12, 13].map((y) => {
+            const isOn = Number(state.tmp.yearGroup || 0) === y;
+            return el('button', {
+              class: `vah-yearbtn ${isOn ? 'is-on' : ''}`,
+              onclick: () => { state.tmp.yearGroup = y; goNext(1); },
+            }, [el('div', { class: 'n' }, String(y)), el('div', { class: 't' }, 'Year')]);
+          })));
+        }
+
+        if (step === 1) {
+          header.appendChild(el('div', { style: 'font-size:19px;font-weight:900;color:#0F172A;margin:0 0 3px' }, 'Academic or Vocational?'));
+          header.appendChild(el('div', { class: 'vah-muted' }, 'Tailors activity selection — vocational prioritises Systems & Effort for coursework management'));
+          const opts = [
+            { v: 'academic', i: '📝', l: 'Academic', d: 'A-Levels, GCSEs — exam techniques, revision strategies, mark schemes' },
+            { v: 'vocational', i: '🔧', l: 'Vocational', d: 'BTECs, T-Levels — project management, coursework deadlines, organisation' },
+            { v: 'both', i: '📚', l: 'Mixed', d: 'All activities — for mixed cohorts or general pastoral programmes' },
+          ];
+          card.appendChild(el('div', { style: 'display:flex;gap:12px;justify-content:center;flex-wrap:wrap' }, opts.map((o) => {
+            const isOn = state.tmp.pathway === o.v;
+            return el('button', {
+              class: `vah-optbtn ${isOn ? 'is-on' : ''}`,
+              onclick: () => { state.tmp.pathway = o.v; goNext(2); },
             }, [
-              el('option', { value: '' }, 'Select...'),
-              ...[9, 10, 11, 12, 13].map((y) => el('option', { value: String(y) }, `Year ${y}`)),
-            ]),
-            el('span', { class: 'vah-pill' }, 'Pathway'),
-            el('select', {
-              class: 'vah-input',
-              style: 'max-width:180px;min-width:180px;flex:0',
-              onchange: (e) => { state.tmp.pathway = e.target.value; },
-            }, [
-              el('option', { value: '' }, 'Select...'),
-              el('option', { value: 'academic' }, 'Academic'),
-              el('option', { value: 'vocational' }, 'Vocational'),
-              el('option', { value: 'both' }, 'Mixed'),
-            ]),
-            el('span', { class: 'vah-pill' }, 'Profile'),
-            el('select', {
-              class: 'vah-input',
-              style: 'max-width:180px;min-width:180px;flex:0',
-              onchange: (e) => { state.tmp.profile = e.target.value; },
-            }, [
-              el('option', { value: '' }, 'Select...'),
-              ...PROFILES.map((p) => el('option', { value: p }, p)),
-            ]),
-          ]),
-          el('div', { class: 'vah-row', style: 'justify-content:center;margin:10px 0' }, [
-            el('label', { class: 'vah-pill', style: 'cursor:pointer' }, [
-              el('input', {
-                type: 'checkbox',
-                checked: state.tmp.includeQuestionnaire,
-                onchange: (e) => { state.tmp.includeQuestionnaire = !!e.target.checked; },
-                style: 'margin-right:6px',
-              }),
-              'Include Questionnaire cycles',
-            ]),
-            el('span', { class: 'vah-pill' }, 'Activities / month'),
-            el('select', {
-              class: 'vah-input',
-              style: 'max-width:120px;min-width:120px;flex:0',
-              onchange: (e) => { state.tmp.activitiesPerMonth = Number(e.target.value || 2); },
-            }, [1, 2, 3, 4].map((n) => el('option', { value: String(n), selected: n === state.tmp.activitiesPerMonth }, String(n)))),
-          ]),
-          el('div', { class: 'vah-row', style: 'justify-content:center;margin-top:14px' }, [
+              el('div', { class: 'i' }, o.i),
+              el('div', { class: 'l' }, o.l),
+              el('div', { class: 'd' }, o.d),
+            ]);
+          })));
+        }
+
+        if (step === 2) {
+          header.appendChild(el('div', { style: 'font-size:19px;font-weight:900;color:#0F172A;margin:0 0 3px' }, 'Student profile?'));
+          header.appendChild(el('div', { class: 'vah-muted' }, 'Low profiles get more foundations, High profiles get stretch'));
+          card.appendChild(el('div', { style: 'display:flex;flex-direction:column;gap:6px;max-width:430px;margin:0 auto' }, PROFILES.map((p) => {
+            const isOn = state.tmp.profile === p;
+            return el('button', { class: `vah-profbtn ${isOn ? 'is-on' : ''}`, onclick: () => { state.tmp.profile = p; goNext(3); } }, [
+              el('div', { class: 'l' }, p),
+              el('div', { class: 'd' }, PROFILE_DESCS[p] || ''),
+            ]);
+          })));
+        }
+
+        if (step === 3) {
+          header.appendChild(el('div', { style: 'font-size:19px;font-weight:900;color:#0F172A;margin:0 0 3px' }, 'Include VESPA Questionnaire?'));
+          header.appendChild(el('div', { class: 'vah-muted' }, '3 cycles (Sept, Jan, April) + coaching sessions = 6 slots'));
+          const opts = [
+            { v: true, i: '📋', l: 'Yes', d: '3 questionnaire + 3 coaching' },
+            { v: false, i: '✕', l: 'No', d: 'All slots for activities' },
+          ];
+          card.appendChild(el('div', { style: 'display:flex;gap:14px;justify-content:center;flex-wrap:wrap' }, opts.map((o) => {
+            const isOn = state.tmp.includeQuestionnaire === o.v;
+            return el('button', { class: `vah-optbtn ${isOn ? 'is-on' : ''}`, onclick: () => { state.tmp.includeQuestionnaire = o.v; goNext(4); } }, [
+              el('div', { class: 'i' }, o.i),
+              el('div', { class: 'l' }, o.l),
+              el('div', { class: 'd' }, o.d),
+            ]);
+          })));
+        }
+
+        if (step === 4) {
+          header.appendChild(el('div', { style: 'font-size:19px;font-weight:900;color:#0F172A;margin:0 0 3px' }, 'Activities per month?'));
+          header.appendChild(el('div', { class: 'vah-muted' }, `Default 2, max 4${state.tmp.includeQuestionnaire ? ' (questionnaire uses some slots)' : ''}`));
+          const pm = Number(state.tmp.activitiesPerMonth || 2);
+          const totalSlots = pm * MONTHS.length;
+          card.appendChild(el('div', { style: 'max-width:380px;margin:0 auto;text-align:center' }, [
+            el('div', { style: 'display:flex;gap:10px;justify-content:center;margin-bottom:16px' }, [1, 2, 3, 4].map((n) => {
+              const isOn = pm === n;
+              return el('button', {
+                style: `width:56px;height:56px;border-radius:14px;border:${isOn ? '3px' : '2px'} solid ${isOn ? '#1E40AF' : '#E2E8F0'};background:${isOn ? '#EFF6FF' : '#fff'};cursor:pointer;font-size:22px;font-weight:900;color:${isOn ? '#1E40AF' : '#64748B'}`,
+                onclick: () => { state.tmp.activitiesPerMonth = n; render(root, state); },
+              }, String(n));
+            })),
+            el('div', { style: 'font-size:12px;color:#64748B;margin-bottom:20px' },
+              `${pm}/month = ${totalSlots} slots${state.tmp.includeQuestionnaire ? ` (6 questionnaire = ${Math.max(0, totalSlots - 6)} activities)` : ''}`
+            ),
             el('button', {
-              class: 'vah-btn primary',
+              style: `padding:12px 36px;border-radius:14px;background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff;border:none;font-size:15px;font-weight:900;cursor:pointer`,
               onclick: () => {
                 const yearGroup = Number(state.tmp.yearGroup || 0);
                 const pathway = state.tmp.pathway || '';
@@ -538,82 +692,300 @@
                 };
                 state.settings = settings;
                 state.curriculum = generateCurriculum({ allActivities: state.allActivities, ...settings });
+                state.curriculum = resequence(sortCurriculum(state.curriculum));
+                state.currView = 'month';
+                state.editing = false;
                 render(root, state);
               },
-            }, '✨ Generate'),
-            el('button', {
-              class: 'vah-btn ghost',
-              onclick: () => { state.mode = 'library'; render(root, state); },
-            }, 'Browse Library'),
+            }, '✨ Generate Curriculum'),
+          ]));
+        }
+
+        if (step > 0) {
+          card.appendChild(el('button', {
+            style: 'margin-top:14px;background:none;border:none;color:#64748B;font-size:12px;font-weight:800;cursor:pointer;display:block;margin:14px auto 0',
+            onclick: () => { state.wizardStep = Math.max(0, step - 1); render(root, state); },
+          }, '← Back'));
+        }
+
+        return card;
+      }
+
+      function usedIdsSet() {
+        return new Set((state.curriculum || []).map((c) => c.id));
+      }
+
+      function activityPool({ usedIds, pathway, level, onAdd }) {
+        const poolWrap = el('div', { style: 'background:#fff;borderRadius:16px;border:1px solid #E2E8F0' });
+        const top = el('div', { style: 'padding:12px 16px;border-bottom:1px solid #E2E8F0' });
+        const search = String(state.poolSearch || '');
+        const filterEl = state.poolFilterEl || null;
+        const pool = state.allActivities.filter((a) => {
+          if (usedIds && usedIds.has(a.id)) return false;
+          if (level && a.level && a.level !== level && a.level !== '') return false;
+          if (pathway && a.pathway && !(a.pathway === 'both' || a.pathway === pathway)) return false;
+          if (filterEl && a.element !== filterEl) return false;
+          if (search) {
+            const s = search.toLowerCase();
+            const hay = `${a.name || ''} ${a.summary || ''}`.toLowerCase();
+            if (!hay.includes(s)) return false;
+          }
+          return true;
+        });
+
+        top.appendChild(el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [
+          el('div', { class: 'vah-search', style: 'min-width:260px' }, [
+            el('span', { style: 'color:#94A3B8' }, '🔍'),
+            el('input', { value: search, placeholder: `Search ${pool.length} available...`, oninput: (e) => { state.poolSearch = e.target.value; render(root, state); } }),
           ]),
-          el('div', { class: 'vah-muted', style: 'text-align:center;margin-top:10px' },
-            'Tip: this is deterministic-ish but uses a small random jitter for variety.'
+          el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' },
+            Object.keys(VESPA).map((k) => {
+              const v = VESPA[k];
+              const isOn = filterEl === k;
+              return el('button', {
+                class: 'vah-chipbtn',
+                style: `background:${isOn ? v.color : v.bg};color:${isOn ? '#fff' : v.color};font-size:10px`,
+                onclick: () => { state.poolFilterEl = isOn ? null : k; render(root, state); },
+              }, v.label);
+            })
           ),
         ]));
-      } else {
-        const s = state.settings;
-        const top = el('div', { class: 'vah-row', style: 'justify-content:space-between;margin-bottom:12px' }, [
-          el('div', null, [
-            el('div', { style: 'font-weight:900;color:#0F172A' }, `Year ${s.yearGroup} — ${s.profile} — ${s.pathway}`),
-            el('div', { class: 'vah-muted' }, `${state.curriculum.length} sessions${s.includeQuestionnaire ? ' • questionnaire included' : ''}`),
-          ]),
-          el('div', { class: 'vah-actions' }, [
-            el('button', {
-              class: 'vah-btn ghost',
-              onclick: () => {
-                const rows = [['Sequence', 'Month', 'Activity', 'VESPA Element', 'Pathway', 'Profile', 'Tutor Guidance']];
-                state.curriculum.forEach((i) => {
-                  rows.push([
-                    i.sequence,
-                    i.month,
-                    i.name,
-                    (VESPA[i.element] ? VESPA[i.element].label : i.element),
-                    i.isQ ? (i.qType || '') : (s.pathway || ''),
-                    s.profile,
-                    i.guidance || i.summary || '',
-                  ]);
-                });
-                downloadCsv(`VESPA_Curriculum_Y${s.yearGroup}_${s.profile}.csv`, rows);
-              },
-            }, '📥 CSV'),
-            el('button', { class: 'vah-btn ghost', onclick: () => window.print() }, '🖨 Print'),
-            el('button', {
-              class: 'vah-btn ghost',
-              onclick: () => { state.settings = null; state.curriculum = []; render(root, state); },
-            }, '↻ Rebuild'),
-          ]),
-        ]);
-        panel.appendChild(top);
+        poolWrap.appendChild(top);
 
-        // Group by month
-        MONTHS.forEach((month) => {
-          const items = state.curriculum.filter((c) => c.month === month);
-          if (!items.length) return;
-          const monthBox = el('div', { class: 'vah-month' });
-          monthBox.appendChild(el('div', { class: 'vah-month-hd' }, [
-            el('div', { class: 'vah-month-tag' }, month.slice(0, 3).toUpperCase()),
-            el('div', null, [
-              el('div', { style: 'font-weight:900;color:#1E293B' }, month),
-              el('div', { class: 'vah-muted' }, `${items.length} session${items.length === 1 ? '' : 's'}`),
+        const grid = el('div', { style: 'max-height:280px;overflow:auto;padding:10px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px' });
+        pool.slice(0, 60).forEach((a) => {
+          const v = VESPA[a.element] || VESPA.VISION;
+          const card = el('div', {
+            style: `background:#fff;border-radius:8px;padding:8px 10px;border-left:3px solid ${v.color};border:1px solid #E2E8F0;cursor:pointer;transition:all 0.15s`,
+            onclick: () => onAdd(a),
+          }, [
+            el('div', { style: 'display:flex;align-items:center;gap:4px;margin-bottom:2px;flex-wrap:wrap' }, [
+              el('span', { style: 'font-weight:900;font-size:12px;color:#1E293B' }, a.name),
+              elementBadge(a.element, 'sm'),
             ]),
-          ]));
-          const list = el('div', { style: 'display:flex;flex-direction:column;gap:8px;padding-left:44px' });
-          items.forEach((item) => {
-            const v = VESPA[item.element] || VESPA.VISION;
-            const card = el('div', { class: 'vah-item', style: `border-left-color:${v.color};cursor:pointer` });
-            card.appendChild(el('div', { class: 'meta' }, [
-              el('span', { class: 'vah-pill', style: `background:${v.bg};border-color:${v.color}25;color:${v.color}` }, v.label),
-              item.isQ ? el('span', { class: `vah-badge ${item.qType === 'QUESTIONNAIRE' ? 'q' : 'c'}` }, item.qType === 'QUESTIONNAIRE' ? '📋 Questionnaire' : '🗣 Coaching') : null,
-              item.book ? el('span', { class: 'vah-pill' }, item.book) : null,
-            ].filter(Boolean)));
-            card.appendChild(el('h3', null, `${item.sequence}. ${item.name}`));
-            card.appendChild(el('div', { class: 'desc' }, item.guidance || item.summary || ''));
-            card.addEventListener('click', () => { state.drawerItem = item; render(root, state); });
-            list.appendChild(card);
-          });
-          monthBox.appendChild(list);
-          panel.appendChild(monthBox);
+            el('div', { style: 'font-size:10px;color:#64748B;line-height:1.4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis' }, a.summary || ''),
+          ]);
+          card.addEventListener('mouseenter', () => { card.style.background = v.bg; card.style.borderColor = v.color; });
+          card.addEventListener('mouseleave', () => { card.style.background = '#fff'; card.style.borderColor = '#E2E8F0'; });
+          grid.appendChild(card);
         });
+        if (!pool.length) {
+          grid.appendChild(el('div', { style: 'padding:20px;text-align:center;color:#94A3B8;font-size:12px;grid-column:1/-1' }, 'No matching activities'));
+        }
+        poolWrap.appendChild(grid);
+        return poolWrap;
+      }
+
+      function curriculumHeader() {
+        const s = state.settings;
+        if (!s) return null;
+        const pw = (s.pathway === 'academic') ? 'Academic' : (s.pathway === 'vocational') ? 'Vocational' : 'Mixed';
+        const right = el('div', { class: 'vah-row', style: 'gap:5px;flex-wrap:wrap;align-items:center' }, []);
+
+        const editBtn = el('button', {
+          style: `padding:5px 12px;background:${state.editing ? '#FEF2F2' : '#fff'};color:${state.editing ? '#DC2626' : '#475569'};border:${state.editing ? '2px solid #FCA5A5' : '1px solid #E2E8F0'};border-radius:10px;font-size:11px;font-weight:900;cursor:pointer`,
+          onclick: () => { state.editing = !state.editing; state.showPool = !!state.editing; render(root, state); },
+        }, state.editing ? '✓ Done' : '✏️ Edit');
+        right.appendChild(editBtn);
+
+        const viewToggle = el('div', { class: 'vah-viewtoggle' }, [
+          { id: 'month', l: 'Month' }, { id: 'term', l: 'Term' }, { id: 'year', l: 'Year' },
+        ].map((v) => el('button', {
+          class: (state.currView === v.id ? 'is-on' : ''),
+          onclick: () => { state.currView = v.id; render(root, state); },
+        }, v.l)));
+        right.appendChild(viewToggle);
+
+        right.appendChild(el('button', {
+          style: 'padding:5px 12px;background:#fff;color:#475569;border:1px solid #E2E8F0;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer',
+          onclick: () => {
+            const rows = [['Sequence', 'Month', 'Activity', 'VESPA Element', 'Book', 'Pathway', 'Profile', 'Tutor Guidance']];
+            (state.curriculum || []).forEach((i) => rows.push([
+              i.sequence,
+              i.month,
+              i.name,
+              (VESPA[i.element] ? VESPA[i.element].label : i.element),
+              i.book || '',
+              i.isQ ? (i.qType || '') : (s.pathway || ''),
+              s.profile,
+              i.guidance || i.summary || '',
+            ]));
+            downloadCsv(`VESPA_Curriculum_Y${s.yearGroup}_${s.profile}.csv`, rows);
+          },
+        }, '📥 CSV'));
+        right.appendChild(el('button', {
+          style: 'padding:5px 12px;background:#fff;color:#475569;border:1px solid #E2E8F0;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer',
+          onclick: () => window.print(),
+        }, '🖨 Print'));
+        right.appendChild(el('button', {
+          style: 'padding:5px 12px;background:#fff;color:#475569;border:1px solid #E2E8F0;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer',
+          onclick: () => { state.settings = null; state.curriculum = []; state.editing = false; state.showPool = false; state.drawerItem = null; state.wizardStep = 0; render(root, state); },
+        }, '↻ Rebuild'));
+
+        return el('div', { class: 'vah-topbar' }, [
+          el('div', null, [
+            el('div', { style: 'font-size:17px;font-weight:900;color:#0F172A;margin:"0 0 2px"' }, `Year ${s.yearGroup} — ${s.profile} — ${pw}`),
+            el('div', { style: 'font-size:11px;color:#64748B;font-weight:800' }, `${(state.curriculum || []).length} activities${s.includeQuestionnaire ? ' • Questionnaire included' : ''}`),
+          ]),
+          right,
+        ]);
+      }
+
+      function activityCard(item, idxGlobal) {
+        const v = VESPA[item.element] || VESPA.VISION;
+        const row = el('div', { class: 'vah-item', style: `border-left-color:${v.color}` });
+        const meta = el('div', { class: 'meta' }, [
+          elementBadge(item.element),
+          item.isQ ? qBadge(item.qType) : null,
+          pathwayChip(item.pathway),
+          bookPill(item.book),
+        ].filter(Boolean));
+        const title = el('div', { style: 'font-weight:900;font-size:12px;color:#1E293B;display:flex;align-items:center;gap:6px;flex-wrap:wrap' }, [
+          el('span', null, `${item.sequence}. ${item.name}`),
+        ]);
+        const desc = el('div', { class: 'desc' }, item.summary || item.guidance || '');
+        row.appendChild(meta);
+        row.appendChild(title);
+        row.appendChild(desc);
+
+        if (state.editing && !item.isQ) {
+          const controls = el('div', { style: 'display:flex;gap:6px;margin-top:8px;justify-content:flex-end' }, [
+            el('button', { style: 'border:1px solid #E2E8F0;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#64748B', onclick: (e) => { e.stopPropagation(); if (idxGlobal > 0) { const c = (state.curriculum || []).slice(); const ni = idxGlobal - 1; [c[idxGlobal], c[ni]] = [c[ni], c[idxGlobal]]; state.curriculum = resequence(sortCurriculum(c)); render(root, state); } } }, '↑'),
+            el('button', { style: 'border:1px solid #E2E8F0;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#64748B', onclick: (e) => { e.stopPropagation(); const c = (state.curriculum || []).slice(); const ni = idxGlobal + 1; if (ni < c.length) { [c[idxGlobal], c[ni]] = [c[ni], c[idxGlobal]]; state.curriculum = resequence(sortCurriculum(c)); render(root, state); } } }, '↓'),
+            el('button', { style: 'border:1px solid #FCA5A5;background:#FEF2F2;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#DC2626', onclick: (e) => { e.stopPropagation(); const c = (state.curriculum || []).slice(); c.splice(idxGlobal, 1); state.curriculum = resequence(sortCurriculum(c)); render(root, state); } }, '✕'),
+          ]);
+          row.appendChild(controls);
+        }
+
+        row.addEventListener('click', () => { state.drawerItem = item; render(root, state); });
+        return row;
+      }
+
+      if (!state.settings) {
+        panel.appendChild(el('div', { style: 'text-align:center;margin-bottom:22px' }, [
+          el('div', { style: 'font-size:34px;margin-bottom:4px' }, '🎯'),
+          el('div', { style: 'font-size:18px;font-weight:900;color:#0F172A;margin:"0 0 3px"' }, 'Build Your Annual Programme'),
+          el('div', { class: 'vah-muted' }, 'Answer a few questions, then edit freely'),
+        ]));
+        panel.appendChild(renderWizard());
+      } else {
+        panel.appendChild(curriculumHeader());
+        if (state.editing) {
+          panel.appendChild(el('div', { class: 'vah-warn' }, [
+            el('span', { style: 'font-size:14px' }, '✏️'),
+            el('span', null, 'Edit Mode: use ↑ ↓ to move, ✕ to remove, click a card to view details. Use the pool below or + Add buttons to add activities.'),
+          ]));
+        }
+
+        panel.appendChild(vespabar(state.curriculum || []));
+
+        const s = state.settings;
+        const currView = state.currView || 'month';
+
+        if (currView === 'month') {
+          MONTHS.forEach((month) => {
+            const items = (state.curriculum || []).filter((c) => c.month === month);
+            if (!items.length) return;
+            const monthBox = el('div', { style: 'margin-bottom:16px' });
+            const left = el('div', { style: 'flex:1' }, [
+              el('div', { style: 'font-size:13px;font-weight:900;color:#1E293B' }, month),
+              el('div', { style: 'font-size:10px;color:#94A3B8;font-weight:800' }, `${items.length} ${items.length === 1 ? 'activity' : 'activities'}`),
+            ]);
+            const hd = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:7px' }, [
+              el('div', { style: 'width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#1E40AF,#3B82F6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900' }, month.slice(0, 3).toUpperCase()),
+              left,
+              (state.editing ? el('button', {
+                style: 'font-size:10px;font-weight:900;color:#1E40AF;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:7px;padding:4px 10px;cursor:pointer',
+                onclick: () => { state.addMonth = month; render(root, state); },
+              }, '+ Add') : null),
+            ].filter(Boolean));
+            monthBox.appendChild(hd);
+
+            const list = el('div', { style: 'display:flex;flex-direction:column;gap:6px;padding-left:42px' });
+            items.forEach((it) => {
+              const idxGlobal = (state.curriculum || []).indexOf(it);
+              list.appendChild(activityCard(it, idxGlobal));
+            });
+            monthBox.appendChild(list);
+            panel.appendChild(monthBox);
+          });
+        } else if (currView === 'term') {
+          const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px' });
+          Object.entries(TERMS).forEach(([term, months]) => {
+            const ti = (state.curriculum || []).filter((c) => months.includes(c.month));
+            const card = el('div', { style: 'background:#fff;border-radius:14px;padding:14px;border:1px solid #E2E8F0' });
+            card.appendChild(el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px' }, [
+              el('div', null, [
+                el('div', { style: 'font-size:13px;font-weight:900;color:#1E293B' }, term),
+                el('div', { style: 'font-size:10px;color:#94A3B8;font-weight:800' }, `${months.join(' & ')} • ${ti.length}`),
+              ]),
+              (state.editing ? el('button', { style: 'font-size:10px;font-weight:900;color:#1E40AF;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 9px;cursor:pointer', onclick: () => { state.addMonth = months[0]; render(root, state); } }, '+') : null),
+            ].filter(Boolean)));
+            const list = el('div', { style: 'display:flex;flex-direction:column;gap:5px' });
+            if (ti.length) {
+              ti.forEach((it) => list.appendChild(activityCard(it, (state.curriculum || []).indexOf(it))));
+            } else {
+              list.appendChild(el('div', { style: 'padding:12px;text-align:center;color:#CBD5E1;font-size:11px' }, 'No activities'));
+            }
+            card.appendChild(list);
+            grid.appendChild(card);
+          });
+          panel.appendChild(grid);
+        } else {
+          // year view (group by term)
+          Object.entries(TERMS).forEach(([term, months]) => {
+            const ti = (state.curriculum || []).filter((c) => months.includes(c.month));
+            if (!ti.length) return;
+            const wrap = el('div', { style: 'margin-bottom:14px' });
+            wrap.appendChild(el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px' }, [
+              el('div', { style: 'font-size:11px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:0.08em' }, term),
+              (state.editing ? el('button', { style: 'font-size:10px;font-weight:900;color:#1E40AF;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 9px;cursor:pointer', onclick: () => { state.addMonth = months[0]; render(root, state); } }, '+') : null),
+            ].filter(Boolean)));
+            const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px' });
+            ti.forEach((it) => grid.appendChild(activityCard(it, (state.curriculum || []).indexOf(it))));
+            wrap.appendChild(grid);
+            panel.appendChild(wrap);
+          });
+        }
+
+        // Activity pool when editing
+        if (state.editing && state.showPool) {
+          const usedIds = usedIdsSet();
+          const lv = (Number(s.yearGroup) <= 11) ? '2' : '3';
+          const pool = activityPool({
+            usedIds,
+            pathway: s.pathway || 'both',
+            level: lv,
+            onAdd: (a) => {
+              // add to month with fewest items
+              const counts = {};
+              MONTHS.forEach((m) => { counts[m] = (state.curriculum || []).filter((c) => c.month === m).length; });
+              const minMonth = MONTHS.reduce((best, m) => (counts[m] < counts[best] ? m : best), MONTHS[0]);
+              const newItem = {
+                id: a.id,
+                name: a.name,
+                element: a.element,
+                month: minMonth,
+                guidance: a.guidance,
+                summary: a.summary,
+                pdf: a.pdf,
+                sequence: 0,
+                yearGroup: s.yearGroup,
+                profile: s.profile,
+                pathway: s.pathway,
+                qType: null,
+                isQ: false,
+                book: a.book,
+              };
+              state.curriculum = resequence(sortCurriculum([...(state.curriculum || []), newItem]));
+              render(root, state);
+            },
+          });
+          panel.appendChild(el('div', { style: 'margin-top:20px' }, [
+            el('div', { style: 'font-weight:900;color:#0F172A;margin-bottom:8px' }, 'Activity Pool'),
+            pool,
+          ]));
+        }
       }
     }
 
@@ -621,6 +993,112 @@
     shell.appendChild(hero);
     shell.appendChild(content);
     root.appendChild(shell);
+
+    // Add-to-month modal (edit mode)
+    if (state.addMonth && state.settings) {
+      const month = state.addMonth;
+      const s = state.settings;
+      const usedIds = new Set((state.curriculum || []).map((c) => c.id));
+      const lv = (Number(s.yearGroup) <= 11) ? '2' : '3';
+      const overlay = el('div', { style: 'position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:11000', onclick: () => { state.addMonth = null; render(root, state); } });
+      const modal = el('div', { style: 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(540px,92vw);max-height:78vh;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.2);z-index:11001;display:flex;flex-direction:column' });
+      modal.appendChild(el('div', { style: 'padding:16px 20px 12px;border-bottom:1px solid #E2E8F0' }, [
+        el('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:12px' }, [
+          el('div', { style: 'font-size:16px;font-weight:900;color:#0F172A' }, `Add to ${month}`),
+          el('button', { style: 'background:none;border:none;cursor:pointer;color:#94A3B8;font-size:16px', onclick: (e) => { e.stopPropagation(); state.addMonth = null; render(root, state); } }, '✕'),
+        ]),
+      ]));
+      modal.appendChild(el('div', { style: 'flex:1;overflow:auto;padding:12px 20px' }, [
+        (function () {
+          const pool = el('div', { style: 'background:#fff;borderRadius:0' });
+          // Reuse pool UI
+          const onAdd = (a) => {
+            const newItem = {
+              id: a.id,
+              name: a.name,
+              element: a.element,
+              month,
+              guidance: a.guidance,
+              summary: a.summary,
+              pdf: a.pdf,
+              sequence: 0,
+              yearGroup: s.yearGroup,
+              profile: s.profile,
+              pathway: s.pathway,
+              qType: null,
+              isQ: false,
+              book: a.book,
+            };
+            state.curriculum = resequence(sortCurriculum([...(state.curriculum || []), newItem]));
+            state.addMonth = null;
+            render(root, state);
+          };
+          // Minimal embedded pool
+          const tmpState = { poolSearch: state.poolSearch || '', poolFilterEl: state.poolFilterEl || null };
+          state.poolSearch = tmpState.poolSearch;
+          state.poolFilterEl = tmpState.poolFilterEl;
+          return (function () {
+            // inline pool rendering (same as above activityPool)
+            const wrap = el('div', { style: 'background:#fff;border:1px solid #E2E8F0;border-radius:16px' });
+            const top = el('div', { style: 'padding:12px 16px;border-bottom:1px solid #E2E8F0' });
+            const search = String(state.poolSearch || '');
+            const filterEl = state.poolFilterEl || null;
+            const list = state.allActivities.filter((a) => {
+              if (usedIds.has(a.id)) return false;
+              if (lv && a.level && a.level !== lv && a.level !== '') return false;
+              if (s.pathway && a.pathway && !(a.pathway === 'both' || a.pathway === s.pathway)) return false;
+              if (filterEl && a.element !== filterEl) return false;
+              if (search) {
+                const ss = search.toLowerCase();
+                const hay = `${a.name || ''} ${a.summary || ''}`.toLowerCase();
+                if (!hay.includes(ss)) return false;
+              }
+              return true;
+            });
+            top.appendChild(el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [
+              el('div', { class: 'vah-search', style: 'min-width:260px' }, [
+                el('span', { style: 'color:#94A3B8' }, '🔍'),
+                el('input', { value: search, placeholder: `Search ${list.length} available...`, oninput: (e) => { state.poolSearch = e.target.value; render(root, state); } }),
+              ]),
+              el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' },
+                Object.keys(VESPA).map((k) => {
+                  const v = VESPA[k];
+                  const isOn = filterEl === k;
+                  return el('button', {
+                    class: 'vah-chipbtn',
+                    style: `background:${isOn ? v.color : v.bg};color:${isOn ? '#fff' : v.color};font-size:10px`,
+                    onclick: () => { state.poolFilterEl = isOn ? null : k; render(root, state); },
+                  }, v.label);
+                })
+              ),
+            ]));
+            wrap.appendChild(top);
+            const grid = el('div', { style: 'max-height:56vh;overflow:auto;padding:10px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px' });
+            list.slice(0, 80).forEach((a) => {
+              const v = VESPA[a.element] || VESPA.VISION;
+              const card = el('div', {
+                style: `background:#fff;border-radius:8px;padding:8px 10px;border-left:3px solid ${v.color};border:1px solid #E2E8F0;cursor:pointer;transition:all 0.15s`,
+                onclick: () => onAdd(a),
+              }, [
+                el('div', { style: 'display:flex;align-items:center;gap:4px;margin-bottom:2px;flex-wrap:wrap' }, [
+                  el('span', { style: 'font-weight:900;font-size:12px;color:#1E293B' }, a.name),
+                  elementBadge(a.element, 'sm'),
+                ]),
+                el('div', { style: 'font-size:10px;color:#64748B;line-height:1.4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis' }, a.summary || ''),
+              ]);
+              card.addEventListener('mouseenter', () => { card.style.background = v.bg; card.style.borderColor = v.color; });
+              card.addEventListener('mouseleave', () => { card.style.background = '#fff'; card.style.borderColor = '#E2E8F0'; });
+              grid.appendChild(card);
+            });
+            if (!list.length) grid.appendChild(el('div', { style: 'padding:20px;text-align:center;color:#94A3B8;font-size:12px;grid-column:1/-1' }, 'No matching activities'));
+            wrap.appendChild(grid);
+            return wrap;
+          })();
+        })(),
+      ]));
+      document.body.appendChild(overlay);
+      document.body.appendChild(modal);
+    }
 
     // Drawer
     if (state.drawerItem) {
@@ -632,12 +1110,13 @@
         el('div', { class: 'vah-row', style: 'justify-content:space-between;align-items:flex-start' }, [
           el('div', null, [
             el('div', { class: 'vah-row', style: 'gap:6px;margin-bottom:6px' }, [
-              el('span', { class: 'vah-pill', style: `background:${v.bg};border-color:${v.color}25;color:${v.color}` }, v.label),
-              item.isQ ? el('span', { class: `vah-badge ${item.qType === 'QUESTIONNAIRE' ? 'q' : 'c'}` }, item.qType === 'QUESTIONNAIRE' ? '📋 Questionnaire' : '🗣 Coaching') : null,
+              elementBadge(item.element),
+              item.isQ ? qBadge(item.qType) : null,
               item.level ? el('span', { class: 'vah-pill' }, `Level ${item.level}`) : null,
-              item.book ? el('span', { class: 'vah-pill' }, item.book) : null,
+              pathwayChip(item.pathway),
+              bookPill(item.book),
             ].filter(Boolean)),
-            el('div', { style: 'font-size:18px;font-weight:900;color:#0F172A' }, item.name || ''),
+            el('div', { style: 'font-size:20px;font-weight:900;color:#0F172A' }, item.name || ''),
           ]),
           el('button', { class: 'x', onclick: (e) => { e.stopPropagation(); state.drawerItem = null; render(root, state); } }, '✕'),
         ]),
