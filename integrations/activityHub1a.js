@@ -744,8 +744,8 @@
       .vah-viewtoggle{display:flex;background:#fff;border-radius:9px;padding:2px;border:1px solid #E2E8F0}
       .vah-viewtoggle button{padding:3px 11px;border:none;border-radius:7px;font-size:11px;font-weight:900;cursor:pointer;background:transparent;color:#64748B}
       .vah-viewtoggle button.is-on{background:#1E40AF;color:#fff}
-      .vah-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden}
-      .vah-table th,.vah-table td{padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:14px;vertical-align:top}
+      .vah-table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden}
+      .vah-table th,.vah-table td{padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:14px;vertical-align:top;word-break:break-word;white-space:normal}
       .vah-table th{background:#F8FAFC;color:#475569;font-weight:900;text-align:left}
       .vah-table tr:last-child td{border-bottom:none}
       @media print{
@@ -1489,6 +1489,15 @@
             return (a.sequence || 0) - (b.sequence || 0);
           });
           const table = el('table', { class: 'vah-table' }, [
+            el('colgroup', null, [
+              el('col', { style: 'width:46px' }),
+              el('col', { style: 'width:110px' }),
+              el('col', { style: 'width:90px' }),
+              el('col', { style: 'width:240px' }),
+              el('col', { style: 'width:140px' }),
+              el('col', { style: 'width:90px' }),
+              el('col', { style: 'width:auto' }),
+            ]),
             el('thead', null, [
               el('tr', null, [
                 el('th', null, '#'),
@@ -1497,6 +1506,7 @@
                 el('th', null, 'Activity'),
                 el('th', null, 'Book'),
                 el('th', null, 'Link'),
+                el('th', null, 'Description'),
               ]),
             ]),
             el('tbody', null, rows.map((i) => {
@@ -1507,6 +1517,7 @@
                 rel: 'noopener noreferrer',
                 style: 'color:#1E40AF;font-weight:900;text-decoration:none',
               }, 'Open PDF') : el('span', { style: 'color:#94A3B8' }, '-');
+              const desc = String(i.guidance || i.summary || '').trim();
               return el('tr', null, [
                 el('td', null, String(i.sequence || '')),
                 el('td', null, String(i.month || '')),
@@ -1514,6 +1525,7 @@
                 el('td', null, String(i.name || '')),
                 el('td', null, String(i.book || '')),
                 el('td', null, [link]),
+                el('td', null, desc || ''),
               ]);
             })),
           ]);
