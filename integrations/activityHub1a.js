@@ -525,6 +525,33 @@
     });
   }
 
+  function setFocusRestore(state, key, posStart, posEnd) {
+    try {
+      state.__restoreFocus = {
+        key: String(key || ''),
+        posStart: (typeof posStart === 'number') ? posStart : null,
+        posEnd: (typeof posEnd === 'number') ? posEnd : null,
+      };
+    } catch (_) {}
+  }
+
+  function restoreFocusIfNeeded(state, root) {
+    try {
+      const r = state.__restoreFocus;
+      if (!r || !r.key) return;
+      // Use a microtask so DOM is fully attached.
+      Promise.resolve().then(() => {
+        const eln = qs(`[data-focus-key="${r.key}"]`, root);
+        if (!eln) return;
+        if (document.activeElement !== eln) eln.focus();
+        if (typeof r.posStart === 'number' && typeof eln.setSelectionRange === 'function') {
+          const pe = (typeof r.posEnd === 'number') ? r.posEnd : r.posStart;
+          try { eln.setSelectionRange(r.posStart, pe); } catch (_) {}
+        }
+      });
+    } catch (_) {}
+  }
+
   function ensureUids(curr) {
     const c = (curr || []).slice();
     const hasCrypto = (typeof crypto !== 'undefined' && crypto && typeof crypto.randomUUID === 'function');
@@ -564,6 +591,49 @@
     state.curriculum = resequence(sortCurriculum(curr));
   }
 
+  function addActivityToCurriculum(state, a, month, insertBeforeUid) {
+    if (!state || !a || !a.id || !month) return;
+    if (!state.settings) return;
+    const s = state.settings;
+    const curr = ensureUids(state.curriculum || []);
+    const used = new Set(curr.map((c) => c.id));
+    if (used.has(a.id)) return;
+
+    const hasCrypto = (typeof crypto !== 'undefined' && crypto && typeof crypto.randomUUID === 'function');
+    const uid = hasCrypto ? crypto.randomUUID() : `uid_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const newItem = {
+      id: a.id,
+      uid,
+      name: a.name,
+      element: a.element,
+      month,
+      guidance: a.guidance,
+      summary: a.summary,
+      pdf: a.pdf,
+      pdfCy: a.pdfCy || '',
+      sequence: 0,
+      yearGroup: s.yearGroup,
+      profile: s.profile,
+      pathway: s.pathway,
+      qType: null,
+      isQ: false,
+      book: a.book,
+      level: a.level,
+    };
+
+    // Insert before specific uid if provided, otherwise append then sort.
+    if (insertBeforeUid) {
+      const idx = curr.findIndex((x) => x.uid === insertBeforeUid);
+      if (idx >= 0) {
+        curr.splice(idx, 0, newItem);
+        state.curriculum = resequence(sortCurriculum(curr));
+        return;
+      }
+    }
+
+    state.curriculum = resequence(sortCurriculum([...(curr || []), newItem]));
+  }
+
   function ensureStyles() {
     const id = 'vespa-activity-hub-styles';
     if (document.getElementById(id)) return;
@@ -574,14 +644,14 @@
       #vespa-activity-hub-root ::-webkit-scrollbar{width:6px}
       #vespa-activity-hub-root ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
 
-      .vah-shell{background:#F1F5F9;min-height:100vh}
+      .vah-shell{background:#F1F5F9;min-height:100vh;font-size:16px}
       .vah-hero{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#1E40AF 100%);color:#fff;padding:20px 28px 0}
       .vah-hero-inner{max-width:1200px;margin:0 auto}
       .vah-hero h1{font-size:23px;font-weight:900;margin:0}
       .vah-hero p{margin:2px 0 0;color:#93C5FD;font-size:12px}
       .vah-hero-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 
-      .vah-content{max-width:1200px;margin:0 auto;padding:0 28px 60px}
+      .vah-content{max-width:1280px;margin:0 auto;padding:0 28px 60px}
 
       .vah-tabs{display:flex;gap:3}
       .vah-tab{border:none;border-radius:12px 12px 0 0;padding:10px 18px;font-size:14px;font-weight:900;cursor:pointer}
@@ -596,7 +666,7 @@
       .vah-input{background:#fff;border:2px solid #E2E8F0;border-radius:12px;padding:9px 13px;font-size:14px;min-width:220px;flex:1;outline:none}
       .vah-pill{display:inline-flex;align-items:center;gap:6;border-radius:999px;padding:3px 11px;font-size:12px;font-weight:900;border:1px solid #E2E8F0;background:#fff;color:#475569}
       .vah-pill.is-on{background:#1E40AF;color:#fff;border-color:#1E40AF}
-      .vah-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px}
+      .vah-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
       .vah-item{background:#fff;border:1px solid #E2E8F0;border-left:3px solid #CBD5E1;border-radius:14px;padding:14px 16px;cursor:pointer;transition:all 0.15s}
       .vah-item:hover{box-shadow:0 4px 16px rgba(0,0,0,0.08);transform:translateY(-1px)}
       .vah-item h3{margin:0 0 4px;font-size:16px;font-weight:900;color:#0F172A}
@@ -628,6 +698,14 @@
       .vah-chipbtn{padding:5px 11px;border-radius:99px;border:none;font-size:12px;font-weight:900;cursor:pointer}
       .vah-search{flex:1;min-width:230px;display:flex;align-items:center;gap:9px;background:#fff;border-radius:12px;padding:9px 13px;border:2px solid #E2E8F0}
       .vah-search input{flex:1;border:none;background:transparent;outline:none;font-size:14px;font-family:inherit}
+
+      .vah-layout{display:flex;gap:14px;align-items:flex-start}
+      .vah-main{flex:1;min-width:0}
+      .vah-side{width:380px;min-width:320px;position:sticky;top:12px;align-self:flex-start}
+      @media (max-width: 1100px){
+        .vah-layout{flex-direction:column}
+        .vah-side{width:100%;position:relative;top:auto}
+      }
       .vah-yearbtn{width:86px;height:86px;border-radius:16px;border:2px solid #E2E8F0;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
       .vah-yearbtn.is-on{border:3px solid #1E40AF;background:#EFF6FF}
       .vah-yearbtn .n{font-size:26px;font-weight:900;color:#64748B}
@@ -700,7 +778,16 @@
       const topFilters = el('div', { style: 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center' }, [
         el('div', { class: 'vah-search' }, [
           el('span', { style: 'color:#94A3B8' }, '🔍'),
-          el('input', { value: state.libSearch || '', placeholder: `Search ${state.allActivities.length} activities...`, oninput: (e) => { state.libSearch = e.target.value; render(root, state); } }),
+          el('input', {
+            value: state.libSearch || '',
+            'data-focus-key': 'libSearch',
+            placeholder: `Search ${state.allActivities.length} activities...`,
+            oninput: (e) => {
+              state.libSearch = e.target.value;
+              setFocusRestore(state, 'libSearch', e.target.selectionStart, e.target.selectionEnd);
+              render(root, state);
+            },
+          }),
           (state.libSearch ? el('button', { style: 'background:none;border:none;cursor:pointer;color:#94A3B8', onclick: () => { state.libSearch = ''; render(root, state); } }, '✕') : null),
         ].filter(Boolean)),
         el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' },
@@ -908,7 +995,7 @@
           if (filterEl && a.element !== filterEl) return false;
           if (search) {
             const s = search.toLowerCase();
-            const hay = `${a.name || ''} ${a.summary || ''}`.toLowerCase();
+            const hay = `${a.name || ''} ${a.summary || ''} ${a.guidance || ''}`.toLowerCase();
             if (!hay.includes(s)) return false;
           }
           return true;
@@ -917,7 +1004,16 @@
         top.appendChild(el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [
           el('div', { class: 'vah-search', style: 'min-width:260px' }, [
             el('span', { style: 'color:#94A3B8' }, '🔍'),
-            el('input', { value: search, placeholder: `Search ${pool.length} available...`, oninput: (e) => { state.poolSearch = e.target.value; render(root, state); } }),
+            el('input', {
+              value: search,
+              'data-focus-key': 'poolSearch',
+              placeholder: `Search ${pool.length} available...`,
+              oninput: (e) => {
+                state.poolSearch = e.target.value;
+                setFocusRestore(state, 'poolSearch', e.target.selectionStart, e.target.selectionEnd);
+                render(root, state);
+              },
+            }),
           ]),
           el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' },
             Object.keys(VESPA).map((k) => {
@@ -933,11 +1029,12 @@
         ]));
         poolWrap.appendChild(top);
 
-        const grid = el('div', { style: 'max-height:280px;overflow:auto;padding:10px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px' });
+        const grid = el('div', { style: 'max-height:320px;overflow:auto;padding:10px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px' });
         pool.slice(0, 60).forEach((a) => {
           const v = VESPA[a.element] || VESPA.VISION;
           const card = el('div', {
-            style: `background:#fff;border-radius:8px;padding:8px 10px;border-left:3px solid ${v.color};border:1px solid #E2E8F0;cursor:pointer;transition:all 0.15s`,
+            style: `background:#fff;border-radius:8px;padding:8px 10px;border-left:3px solid ${v.color};border:1px solid #E2E8F0;cursor:grab;transition:all 0.15s`,
+            draggable: 'true',
             onclick: () => onAdd(a),
           }, [
             el('div', { style: 'display:flex;align-items:center;gap:4px;margin-bottom:2px;flex-wrap:wrap' }, [
@@ -946,6 +1043,12 @@
             ]),
               el('div', { style: 'font-size:10px;color:#64748B;line-height:1.4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis' }, a.summary || a.guidance || ''),
           ]);
+          card.addEventListener('dragstart', (e) => {
+            try {
+              e.dataTransfer.setData('text/plain', `ADD:${String(a.id)}`);
+              e.dataTransfer.effectAllowed = 'copy';
+            } catch (_) {}
+          });
           card.addEventListener('mouseenter', () => { card.style.background = v.bg; card.style.borderColor = v.color; });
           card.addEventListener('mouseleave', () => { card.style.background = '#fff'; card.style.borderColor = '#E2E8F0'; });
           grid.appendChild(card);
@@ -1057,7 +1160,17 @@
             e.preventDefault();
             e.stopPropagation();
             const dragged = (e.dataTransfer && e.dataTransfer.getData) ? e.dataTransfer.getData('text/plain') : '';
-            if (!dragged || dragged === uid) return;
+            if (!dragged) return;
+            if (String(dragged).startsWith('ADD:')) {
+              const id = String(dragged).slice(4);
+              const a = (state.allActivities || []).find((x) => x.id === id);
+              if (a) {
+                addActivityToCurriculum(state, a, item.month, uid);
+                render(root, state);
+              }
+              return;
+            }
+            if (dragged === uid) return;
             moveItemByUid(state, dragged, uid, item.month);
             render(root, state);
           });
@@ -1090,6 +1203,9 @@
         const currView = state.currView || 'month';
 
         if (currView === 'month') {
+          const layout = el('div', { class: 'vah-layout' });
+          const main = el('div', { class: 'vah-main' });
+
           MONTHS.forEach((month) => {
             const items = (state.curriculum || []).filter((c) => c.month === month);
             if (!items.length) return;
@@ -1115,7 +1231,16 @@
                 e.preventDefault();
                 const dragged = (e.dataTransfer && e.dataTransfer.getData) ? e.dataTransfer.getData('text/plain') : '';
                 if (!dragged) return;
-                // Dropping on the list inserts at end of that month
+                if (String(dragged).startsWith('ADD:')) {
+                  const id = String(dragged).slice(4);
+                  const a = (state.allActivities || []).find((x) => x.id === id);
+                  if (a) {
+                    addActivityToCurriculum(state, a, month, null);
+                    render(root, state);
+                  }
+                  return;
+                }
+                // Dropping an existing curriculum card inserts at end of that month
                 moveItemByUid(state, dragged, null, month);
                 render(root, state);
               });
@@ -1125,8 +1250,35 @@
               list.appendChild(activityCard(it, idxGlobal));
             });
             monthBox.appendChild(list);
-            panel.appendChild(monthBox);
+            main.appendChild(monthBox);
           });
+
+          layout.appendChild(main);
+
+          if (state.editing) {
+            const usedIds = usedIdsSet();
+            const lv = (Number(s.yearGroup) <= 11) ? '2' : '3';
+            const side = el('div', { class: 'vah-side' }, [
+              el('div', { style: 'font-weight:900;color:#0F172A;margin:2px 0 8px' }, 'Activity Pool'),
+              el('div', { class: 'vah-muted', style: 'margin-bottom:10px' }, 'Drag into a month (or click to add)'),
+              activityPool({
+                usedIds,
+                pathway: s.pathway || 'both',
+                level: lv,
+                onAdd: (a) => {
+                  // default click behaviour: add to month with fewest items
+                  const counts = {};
+                  MONTHS.forEach((m) => { counts[m] = (state.curriculum || []).filter((c) => c.month === m).length; });
+                  const minMonth = MONTHS.reduce((best, m) => (counts[m] < counts[best] ? m : best), MONTHS[0]);
+                  addActivityToCurriculum(state, a, minMonth, null);
+                  render(root, state);
+                },
+              }),
+            ]);
+            layout.appendChild(side);
+          }
+
+          panel.appendChild(layout);
         } else if (currView === 'term') {
           const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px' });
           Object.entries(TERMS).forEach(([term, months]) => {
@@ -1166,46 +1318,7 @@
           });
         }
 
-        // Activity pool when editing
-        if (state.editing && state.showPool) {
-          const usedIds = usedIdsSet();
-          const lv = (Number(s.yearGroup) <= 11) ? '2' : '3';
-          const pool = activityPool({
-            usedIds,
-            pathway: s.pathway || 'both',
-            level: lv,
-            onAdd: (a) => {
-              // add to month with fewest items
-              const counts = {};
-              MONTHS.forEach((m) => { counts[m] = (state.curriculum || []).filter((c) => c.month === m).length; });
-              const minMonth = MONTHS.reduce((best, m) => (counts[m] < counts[best] ? m : best), MONTHS[0]);
-              const newItem = {
-                id: a.id,
-                uid: a.uid || a.id,
-                name: a.name,
-                element: a.element,
-                month: minMonth,
-                guidance: a.guidance,
-                summary: a.summary,
-                pdf: a.pdf,
-                pdfCy: a.pdfCy || '',
-                sequence: 0,
-                yearGroup: s.yearGroup,
-                profile: s.profile,
-                pathway: s.pathway,
-                qType: null,
-                isQ: false,
-                book: a.book,
-              };
-              state.curriculum = resequence(sortCurriculum([...(state.curriculum || []), newItem]));
-              render(root, state);
-            },
-          });
-          panel.appendChild(el('div', { style: 'margin-top:20px' }, [
-            el('div', { style: 'font-weight:900;color:#0F172A;margin-bottom:8px' }, 'Activity Pool'),
-            pool,
-          ]));
-        }
+        // Activity pool now appears as a right-hand panel in Month view (edit mode).
       }
     }
 
@@ -1213,6 +1326,8 @@
     shell.appendChild(hero);
     shell.appendChild(content);
     root.appendChild(shell);
+
+    restoreFocusIfNeeded(state, root);
 
     // Add-to-month modal (edit mode)
     if (state.addMonth && state.settings) {
@@ -1280,7 +1395,16 @@
             top.appendChild(el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, [
               el('div', { class: 'vah-search', style: 'min-width:260px' }, [
                 el('span', { style: 'color:#94A3B8' }, '🔍'),
-                el('input', { value: search, placeholder: `Search ${list.length} available...`, oninput: (e) => { state.poolSearch = e.target.value; render(root, state); } }),
+                el('input', {
+                  value: search,
+                  'data-focus-key': 'poolSearch',
+                  placeholder: `Search ${list.length} available...`,
+                  oninput: (e) => {
+                    state.poolSearch = e.target.value;
+                    setFocusRestore(state, 'poolSearch', e.target.selectionStart, e.target.selectionEnd);
+                    render(root, state);
+                  },
+                }),
               ]),
               el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' },
                 Object.keys(VESPA).map((k) => {
