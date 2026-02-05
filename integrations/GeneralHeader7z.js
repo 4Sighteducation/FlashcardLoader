@@ -710,8 +710,8 @@
                 primaryRow: [
                     { label: 'Home', icon: 'fa-home', href: '#resources-homepage/', scene: 'scene_1278' }, // Using correct Knack slug
                     { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' },
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' }
+                    // Combined hub page (replaces both Worksheets + Curriculum)
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#curriculum-builder/', scene: 'scene_1294' }
                 ],
                 secondaryRow: [
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
@@ -736,9 +736,9 @@
                 ],
                 secondaryRow: [
                     { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos', scene: 'scene_1266' },
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' }
+                    // Combined hub page (replaces both Worksheets + Curriculum)
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#curriculum-builder/', scene: 'scene_1294' }
 
                 ],
                 utilityButtons: [
@@ -756,10 +756,10 @@
                     { label: 'Home', icon: 'fa-home', href: '#resources-homepage/', scene: 'scene_1278' }, // Using correct Knack slug
                     { label: 'Manage', icon: 'fa-users-cog', href: '#resource-staff-management/', scene: 'scene_1272', isManagement: true },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets/', scene: 'scene_1169' }
+                    // Combined hub page (replaces both Worksheets + Curriculum)
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#curriculum-builder/', scene: 'scene_1294' }
                 ],
                 secondaryRow: [
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2/', scene: 'scene_1234' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' }
                 ],
@@ -779,12 +779,12 @@
                     { label: 'Coaching', icon: 'fa-comments', href: '#staffoverview', scene: 'scene_1286', isManagement: true },
                     { label: 'Print Reports', icon: 'fa-print', href: '#report-printing', scene: 'scene_1227', isManagement: true },
                     { label: 'Dashboard', icon: 'fa-tachometer-alt', href: '#dashboard', scene: 'scene_1225', isManagement: true },
-                    { label: 'Curriculum', icon: 'fa-calendar', href: '#suggested-curriculum2', scene: 'scene_1234', isManagement: true },
+                    // Combined hub page (replaces both Worksheets + Curriculum)
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#curriculum-builder/', scene: 'scene_1294', isManagement: true },
                 ],
                 secondaryRow: [
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
                     { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
-                    { label: 'Worksheets', icon: 'fa-files-o', href: '#worksheets', scene: 'scene_1169' },
                     { label: 'Videos', icon: 'fa-book-open', href: '#vespa-videos/', scene: 'scene_1266' },
                     { label: 'Newsletter', icon: 'fa-newspaper-o', href: '#vespa-newsletter/', scene: 'scene_1214' },
                 ],
@@ -816,6 +816,53 @@
                 ]
             }
         };
+
+        function getLanguageState() {
+            if (window.Weglot && typeof window.Weglot.getCurrentLang === 'function') {
+                const lang = window.Weglot.getCurrentLang();
+                if (lang) return lang;
+            }
+            const selector = document.querySelector('.goog-te-combo');
+            if (selector && selector.value) return selector.value;
+            return localStorage.getItem('vespaPreferredLanguage') || 'en';
+        }
+
+        function updateLanguageLabels(currentLang) {
+            const isWelsh = currentLang === 'cy';
+            const desktopBtn = document.getElementById('languageToggleBtn');
+            if (desktopBtn) {
+                const label = desktopBtn.querySelector('.language-label');
+                if (label) label.textContent = isWelsh ? 'English' : 'Cymraeg';
+                desktopBtn.title = isWelsh ? 'Switch to English' : 'Newid i Gymraeg (Switch to Welsh)';
+            }
+            const mobileBtn = document.getElementById('mobileLanguageToggle');
+            if (mobileBtn) {
+                const span = mobileBtn.querySelector('span');
+                if (span) span.textContent = isWelsh ? 'Switch to English' : 'Newid i Gymraeg';
+            }
+        }
+
+        async function toggleViaWeglotIfAvailable() {
+            if (!window.Weglot || typeof window.Weglot.switchTo !== 'function') return false;
+            const current = getLanguageState();
+            const next = current === 'cy' ? 'en' : 'cy';
+            try {
+                window.Weglot.switchTo(next);
+            } catch (err) {
+                console.warn('[General Header] Weglot toggle failed:', err);
+            }
+            if (next === 'en') {
+                localStorage.removeItem('vespaPreferredLanguage');
+            } else {
+                localStorage.setItem('vespaPreferredLanguage', next);
+            }
+            if (window.updateLanguageButton) {
+                window.updateLanguageButton(next);
+            } else {
+                updateLanguageLabels(next);
+            }
+            return true;
+        }
         
         // Create the enhanced header HTML with 2-row layout
         function createHeaderHTML(userType, currentScene) {
@@ -825,8 +872,10 @@
             log(`Creating enhanced header for userType: ${userType}`, visibilityPrefs);
             
             // Add productivity buttons for students if enabled
+            let effectivePrimaryRow = navConfig.primaryRow || [];
+            let effectiveSecondaryRow = navConfig.secondaryRow || [];
             if (userType === 'student') {
-                navConfig.secondaryRow = getProductivityButtons(visibilityPrefs.showProductivityHub);
+                effectiveSecondaryRow = getProductivityButtons(visibilityPrefs.showProductivityHub);
             }
             
             // Determine home page based on user type
@@ -842,9 +891,26 @@
                 homeScene = 'scene_1215';
             }
             const isHomePage = currentScene === homeScene;
+
+            // On resources/curriculum pages, collapse header navigation down to a single button:
+            // "Curriculum" (requested). Utility buttons (settings/logout/refresh) remain.
+            const RESOURCE_SCENES = new Set([
+                'scene_481',  // Resources
+                'scene_1169', // Worksheets (legacy)
+                'scene_1234', // Curriculum (legacy)
+                'scene_1214', // Newsletter
+                'scene_1266', // Videos
+                'scene_1294'  // New Curriculum Hub
+            ]);
+            if (userType !== 'student' && RESOURCE_SCENES.has(currentScene)) {
+                effectivePrimaryRow = [
+                    { label: 'Curriculum', icon: 'fa-calendar', href: '#curriculum-builder/', scene: 'scene_1294' }
+                ];
+                effectiveSecondaryRow = [];
+            }
             
             // Build primary row navigation items
-            const primaryRowHTML = navConfig.primaryRow.map(item => {
+            const primaryRowHTML = effectivePrimaryRow.map(item => {
                 const isActive = currentScene === item.scene;
                 let buttonClass = 'header-nav-button primary-button';
                 
@@ -879,9 +945,9 @@
             }).join('');
             
             // Build secondary row navigation items (if any)
-            const secondaryRowHTML = navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? `
+            const secondaryRowHTML = effectiveSecondaryRow && effectiveSecondaryRow.length > 0 ? `
                 <div class="header-secondary-row">
-                    ${navConfig.secondaryRow.map(item => {
+                    ${effectiveSecondaryRow.map(item => {
                         const isActive = currentScene === item.scene;
                         let buttonClass = 'header-nav-button secondary-button';
                         
@@ -1486,11 +1552,11 @@
                     
                     /* Adjust body for enhanced header with dynamic height */
                     body.has-general-header-enhanced {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '140px' : '85px'} !important;
+                        padding-top: ${effectiveSecondaryRow && effectiveSecondaryRow.length > 0 ? '140px' : '85px'} !important;
                     }
                     
                     body.has-general-header-enhanced:has(.header-breadcrumb) {
-                        padding-top: ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '180px' : '125px'} !important;
+                        padding-top: ${effectiveSecondaryRow && effectiveSecondaryRow.length > 0 ? '180px' : '125px'} !important;
                     }
                     
                     /* Hide Knack's default navigation */
@@ -1500,7 +1566,7 @@
                     
                     /* Ensure content is visible */
                     .kn-scene {
-                        min-height: calc(100vh - ${navConfig.secondaryRow && navConfig.secondaryRow.length > 0 ? '124px' : '72px'});
+                        min-height: calc(100vh - ${effectiveSecondaryRow && effectiveSecondaryRow.length > 0 ? '124px' : '72px'});
                     }
                     
                     /* Large Desktop Optimization */

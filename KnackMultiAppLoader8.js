@@ -182,7 +182,8 @@
         'generalHeader': {
             scenes: ['all'], // Special flag to load on all scenes
             views: ['any'],  // Special flag to load on any view
-            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/GeneralHeader1y.js',
+            // NOTE: Keep this pointing at the latest GeneralHeader build.
+            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/GeneralHeader7z.js',
             configBuilder: (baseConfig, sceneKey, viewKey) => ({
                 ...baseConfig,
                 appType: 'generalHeader',
@@ -200,6 +201,20 @@
             }),
             configGlobalVar: 'GENERAL_HEADER_CONFIG',
             initializerFunctionName: 'initializeGeneralHeader'
+        },
+        'resourcesNavigationFix': {
+            scenes: ['all'],
+            views: ['any'],
+            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/resources-navigation-fix1a.js',
+            configBuilder: (baseConfig, sceneKey, viewKey) => ({
+                ...baseConfig,
+                appType: 'resourcesNavigationFix',
+                debugMode: false,
+                sceneKey: sceneKey,
+                viewKey: viewKey
+            }),
+            configGlobalVar: 'RESOURCES_NAVIGATION_FIX_CONFIG',
+            initializerFunctionName: null // This script self-initializes
         },
         'staffHomepageResource': {
             scenes: ['scene_1215'],
@@ -325,6 +340,33 @@
             },
             configGlobalVar: 'DASHBOARD_CONFIG',
             initializerFunctionName: 'initializeDashboardApp'
+        },
+
+        // VESPA Activity Hub (new combined page for Worksheets + Curriculum)
+        'activityHub': {
+            // Load on the new hub scene AND legacy scenes (so old bookmarks redirect cleanly)
+            scenes: ['scene_1294', 'scene_1169', 'scene_1234'],
+            views: ['any'],
+            scriptUrl: 'https://cdn.jsdelivr.net/gh/4Sighteducation/FlashcardLoader@main/integrations/activityHub1a.js',
+            configBuilder: (baseConfig, sceneKey, viewKey) => {
+                const elementSelector = (sceneKey === 'scene_1294')
+                  ? '#view_3280 .kn-rich_text__content'
+                  : null;
+                return ({
+                    ...baseConfig,
+                    appType: 'activityHub',
+                    debugMode: false,
+                    sceneKey,
+                    viewKey,
+                    // Mount directly into the rich text view (no extra <div> needed)
+                    elementSelector,
+                    // Supabase shared defaults (can be overridden later if needed)
+                    supabaseUrl: (window.VESPA_SUPABASE_URL_DEFAULT || window.VESPA_SUPABASE_URL || undefined),
+                    supabaseAnon: (window.VESPA_SUPABASE_ANON_DEFAULT || window.VESPA_SUPABASE_ANON || undefined)
+                });
+            },
+            configGlobalVar: 'VESPA_ACTIVITY_HUB_CONFIG',
+            initializerFunctionName: 'initializeVespaActivityHub'
         }
     };
 

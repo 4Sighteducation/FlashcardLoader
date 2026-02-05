@@ -17,6 +17,7 @@
         'scene_481',  // Resources
         'scene_1169', // Worksheets
         'scene_1234', // Curriculum
+        'scene_1294', // Activities Hub (new combined page)
         'scene_1214', // Newsletter
         'scene_1266'  // Videos
     ];
@@ -50,7 +51,7 @@
     }
     
     // Intercept navigation to resource pages
-    $(document).on('click', 'a[href*="#tutor-activities"], a[href*="#worksheets"], a[href*="#suggested-curriculum"], a[href*="#vespa-newsletter"], a[href*="#vespa-videos"]', function(e) {
+    $(document).on('click', 'a[href*="#tutor-activities"], a[href*="#worksheets"], a[href*="#suggested-curriculum"], a[href*="#vespa-newsletter"], a[href*="#vespa-videos"], a[href*="#curriculum-builder"]', function(e) {
         const href = $(this).attr('href');
         log('Resource navigation link clicked:', href);
         
@@ -111,7 +112,7 @@
         const hash = window.location.hash;
         if (hash.includes('tutor-activities') || hash.includes('worksheets') || 
             hash.includes('suggested-curriculum') || hash.includes('vespa-newsletter') || 
-            hash.includes('vespa-videos')) {
+            hash.includes('vespa-videos') || hash.includes('curriculum-builder')) {
             log('Browser navigation to resource page detected');
             cleanupBeforeNavigation();
         }
