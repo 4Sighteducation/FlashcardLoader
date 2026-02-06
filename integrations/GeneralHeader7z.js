@@ -1037,7 +1037,7 @@
                     ` : ''}
                 </div>
                 <div class="mobile-nav-overlay"></div>
-                <style>
+                <style id="vespaGeneralHeaderStyles">
                     /* Hide Google Translate container visually but keep in DOM */
                     #google_translate_element {
                         position: absolute !important;
@@ -2038,7 +2038,7 @@
             `;
         }
         
-        // Function to inject the header
+        // Function to inject (or refresh) the header
         function injectHeader() {
             // FIRST: Ensure Google Translate container exists (persistent, outside header)
             if (!document.getElementById('google_translate_element')) {
@@ -2050,18 +2050,12 @@
             
             // Check if header already exists
             if (document.getElementById('vespaGeneralHeader')) {
-                log('Header already exists, checking if it should be removed');
-                const userType = getUserType();
-                if (!userType) {
-                    // User is not logged in, remove header
-                    log('User not logged in, removing header');
-                    const existingHeader = document.getElementById('vespaGeneralHeader');
-                    if (existingHeader) existingHeader.remove();
-                    // Reset body padding
-                    document.body.classList.remove('has-general-header-enhanced');
-                    document.body.style.paddingTop = '';
-                }
-                return;
+                log('Header already exists, refreshing for latest scene/view');
+                const existingHeader = document.getElementById('vespaGeneralHeader');
+                if (existingHeader) existingHeader.remove();
+                document.querySelectorAll('.mobile-nav-overlay').forEach((n) => n.remove());
+                const oldStyle = document.getElementById('vespaGeneralHeaderStyles');
+                if (oldStyle) oldStyle.remove();
             }
             
             const userType = getUserType();
@@ -2070,6 +2064,14 @@
             // Don't show header if user is not logged in
             if (!userType) {
                 log('User not logged in, not showing header');
+                // If we somehow still have header artifacts, remove them.
+                const existingHeader = document.getElementById('vespaGeneralHeader');
+                if (existingHeader) existingHeader.remove();
+                document.querySelectorAll('.mobile-nav-overlay').forEach((n) => n.remove());
+                const oldStyle = document.getElementById('vespaGeneralHeaderStyles');
+                if (oldStyle) oldStyle.remove();
+                document.body.classList.remove('has-general-header-enhanced');
+                document.body.style.paddingTop = '';
                 return;
             }
             

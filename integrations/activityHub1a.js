@@ -686,7 +686,7 @@
 
   function ensureStyles() {
     const id = 'vespa-activity-hub-styles';
-    if (document.getElementById(id)) return;
+    const existing = document.getElementById(id);
     const css = `
       #vespa-activity-hub-root{font-family:'Nunito',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
       #vespa-activity-hub-root *{box-sizing:border-box}
@@ -700,7 +700,7 @@
       .vah-hero::before{content:'';position:absolute;top:0;left:-100%;width:200%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent);animation:heroShimmer 8s ease-in-out infinite}
       @keyframes heroShimmer{0%,100%{transform:translateX(-25%)}50%{transform:translateX(25%)}}
       .vah-hero-inner{max-width:1200px;margin:0 auto}
-      .vah-hero h1{font-size:23px;font-weight:900;margin:0}
+      .vah-hero h1{font-size:23px;font-weight:900;margin:0;color:#fff !important;text-shadow:0 2px 14px rgba(0,0,0,0.35)}
       .vah-hero p{margin:2px 0 0;color:rgba(255,255,255,0.92);font-size:12px;font-weight:700}
       .vah-hero-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px}
 
@@ -821,6 +821,10 @@
 
       @keyframes vahFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     `;
+    if (existing) {
+      existing.textContent = css;
+      return;
+    }
     document.head.appendChild(el('style', { id }, css));
   }
 
