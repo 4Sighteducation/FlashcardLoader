@@ -72,6 +72,17 @@
       .replace(/'/g, '&#039;');
   }
 
+  function firstString(obj, keys) {
+    try {
+      for (const k of (keys || [])) {
+        const v = obj && obj[k];
+        const s = String(v || '').trim();
+        if (s) return s;
+      }
+    } catch (_) {}
+    return '';
+  }
+
   function qs(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -100,6 +111,94 @@
       });
     }
     return n;
+  }
+
+  function cleanupAssetModal() {
+    try {
+      const m = document.getElementById('vah-asset-mask');
+      if (m) m.remove();
+      const d = document.getElementById('vah-asset-modal');
+      if (d) d.remove();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', window.__vahAssetModalKeydown, true);
+      }
+      delete window.__vahAssetModalKeydown;
+    } catch (_) {}
+  }
+
+  function toGoogleSlidesEmbedUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    try {
+      const u = new URL(raw);
+      const hostOk = /(^|\.)docs\.google\.com$/i.test(u.hostname);
+      const isSlides = u.pathname.includes('/presentation/');
+      if (!hostOk || !isSlides) return raw;
+
+      if (u.pathname.includes('/embed')) return u.toString();
+
+      // Typical edit URL: /presentation/d/<id>/edit...
+      u.pathname = u.pathname.replace(/\/edit.*/i, '/embed');
+      u.search = 'start=false&loop=false&delayms=3000';
+      u.hash = '';
+      return u.toString();
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  function openAssetModal({ title, url, kind }) {
+    const raw = String(url || '').trim();
+    if (!raw) return;
+
+    cleanupAssetModal();
+
+    const finalUrl = (kind === 'slides') ? toGoogleSlidesEmbedUrl(raw) : raw;
+
+    const mask = el('div', {
+      id: 'vah-asset-mask',
+      style: 'position:fixed;inset:0;background:rgba(15,23,42,0.55);backdrop-filter:blur(4px);z-index:12000',
+      onclick: () => cleanupAssetModal(),
+    });
+
+    const modal = el('div', {
+      id: 'vah-asset-modal',
+      style: 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(1100px,94vw);height:min(92vh,860px);background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,0.25);z-index:12001;display:flex;flex-direction:column;overflow:hidden',
+      onclick: (e) => { e.stopPropagation(); },
+    });
+
+    const header = el('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #E2E8F0;background:linear-gradient(180deg,#fff,#FAFBFC)' }, [
+      el('div', { style: 'font-weight:900;color:#0F172A;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, title || 'Preview'),
+      el('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+        el('a', { href: raw, target: '_blank', rel: 'noopener noreferrer', style: 'font-size:12px;font-weight:900;color:#1E40AF;text-decoration:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:7px 10px' }, 'Open in new tab'),
+        el('button', { style: 'border:none;background:#F1F5F9;color:#64748B;border-radius:10px;padding:7px 10px;cursor:pointer;font-weight:900', onclick: () => cleanupAssetModal() }, '✕'),
+      ]),
+    ]);
+
+    const iframe = el('iframe', {
+      src: finalUrl,
+      style: 'flex:1;border:0;width:100%;background:#fff',
+      allowfullscreen: 'true',
+    });
+
+    const footer = el('div', { style: 'padding:8px 14px;border-top:1px solid #E2E8F0;background:#fff;color:#94A3B8;font-size:11px;font-weight:800' }, [
+      el('span', null, `If the preview is blank, use “Open in new tab”.`),
+    ]);
+
+    modal.appendChild(header);
+    modal.appendChild(iframe);
+    modal.appendChild(footer);
+
+    document.body.appendChild(mask);
+    document.body.appendChild(modal);
+
+    // ESC closes
+    try {
+      window.__vahAssetModalKeydown = function (e) {
+        if (e && (e.key === 'Escape' || e.key === 'Esc')) cleanupAssetModal();
+      };
+      document.addEventListener('keydown', window.__vahAssetModalKeydown, true);
+    } catch (_) {}
   }
 
   async function supabaseFetch({ url, anon, path, query }) {
@@ -175,6 +274,8 @@
           summary,
           guidance,
           pdf: r.pdf_link || '',
+          slides: '',
+          slidesCy: '',
           keywords: r.keywords,
         });
       }).filter((a) => a.id);
@@ -203,6 +304,8 @@
           summary,
           guidance,
           pdf: r.pdf_link || '',
+          slides: '',
+          slidesCy: '',
           keywords: r.keywords,
         });
       }).filter((a) => a.id);
@@ -257,9 +360,13 @@
       const c = (r && r.content && typeof r.content === 'object') ? r.content : {};
       const pdfEn = String(c.pdf_url_en || c.pdf_url || '').trim();
       const pdfCy = String(c.pdf_url_cy || '').trim();
+      const slidesEn = firstString(c, ['slides_url_en', 'slides_url', 'slides_embed_url_en', 'slides_embed_url', 'slides_link']);
+      const slidesCy = firstString(c, ['slides_url_cy', 'slides_embed_url_cy']);
       if (!map[code]) map[code] = {};
       if (pdfEn) map[code].pdfEn = pdfEn;
       if (pdfCy) map[code].pdfCy = pdfCy;
+      if (slidesEn) map[code].slidesEn = slidesEn;
+      if (slidesCy) map[code].slidesCy = slidesCy;
     });
     return map;
   }
@@ -565,6 +672,9 @@
         if (!hay.includes(s)) return false;
       }
       if (state.libFilterEl && a.element !== state.libFilterEl) return false;
+      if (state.libFilterPathway) {
+        if (a.pathway !== state.libFilterPathway) return false;
+      }
       if (state.libFilterLevel) {
         if (state.libFilterLevel !== '' && a.level !== state.libFilterLevel) return false;
       }
@@ -661,6 +771,8 @@
       summary: a.summary,
       pdf: a.pdf,
       pdfCy: a.pdfCy || '',
+      slides: a.slides || '',
+      slidesCy: a.slidesCy || '',
       sequence: 0,
       yearGroup: s.yearGroup,
       profile: s.profile,
@@ -779,7 +891,7 @@
         .vah-shell{background:#fff !important}
       }
       .vah-warn{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:12px;padding:12px 16px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px;margin:10px 0 12px;box-shadow:0 2px 8px rgba(251,191,36,0.15)}
-      .vah-chipbtn{padding:5px 11px;border-radius:99px;border:none;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.15s ease}
+      .vah-chipbtn{padding:7px 13px;border-radius:99px;border:none;font-size:13px;font-weight:900;cursor:pointer;transition:all 0.15s ease}
       .vah-chipbtn:focus-visible{outline:2px solid #3B82F6;outline-offset:2px}
       .vah-chipbtn:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,0.10)}
       .vah-chipbtn:active{transform:translateY(0)}
@@ -987,7 +1099,7 @@
     } else if (mode === 'library') {
       const filtered = makeLibraryFiltered(state);
       const topFilters = el('div', { style: 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center' }, [
-        el('div', { class: 'vah-search' }, [
+        el('div', { class: 'vah-search', style: 'flex:0 1 340px;max-width:340px' }, [
           el('span', { style: 'color:#94A3B8' }, '🔍'),
           el('input', {
             value: state.libSearch || '',
@@ -1021,6 +1133,16 @@
             style: `background:${isOn ? '#1E293B' : '#E2E8F0'};color:${isOn ? '#fff' : '#475569'};font-weight:800`,
             onclick: () => { state.libFilterLevel = (isOn ? null : lv.v); render(root, state); },
           }, lv.l);
+        })),
+        el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' }, [
+          { v: 'vocational', l: 'Vocational' }, { v: '', l: 'All' },
+        ].map((pw) => {
+          const isOn = (state.libFilterPathway || '') === pw.v;
+          return el('button', {
+            class: 'vah-chipbtn',
+            style: `background:${isOn ? '#0B4A6F' : '#E2E8F0'};color:${isOn ? '#fff' : '#475569'};font-weight:900`,
+            onclick: () => { state.libFilterPathway = (isOn || !pw.v) ? null : pw.v; render(root, state); },
+          }, pw.l);
         })),
         el('div', { style: 'display:flex;gap:3px;flex-wrap:wrap' }, [
           { v: 'A Level Mindset', l: 'A Level' },
@@ -1689,6 +1811,8 @@
               summary: a.summary,
               pdf: a.pdf,
               pdfCy: a.pdfCy || '',
+        slides: a.slides || '',
+        slidesCy: a.slidesCy || '',
               sequence: 0,
               yearGroup: s.yearGroup,
               profile: s.profile,
@@ -1779,6 +1903,9 @@
 
     // Drawer
     if (state.drawerItem) {
+      // Close any existing asset preview (prevents stuck overlays in SPA)
+      cleanupAssetModal();
+
       const item = state.drawerItem;
       const v = VESPA[item.element] || VESPA.VISION;
       const mask = el('div', { class: 'vah-drawer-mask', onclick: () => { state.drawerItem = null; render(root, state); } });
@@ -1819,6 +1946,8 @@
           summary: toAct.summary,
           pdf: toAct.pdf,
           pdfCy: toAct.pdfCy || '',
+        slides: toAct.slides || '',
+        slidesCy: toAct.slidesCy || '',
           book: toAct.book || existing.book,
           pathway: toAct.pathway || existing.pathway,
           level: toAct.level || existing.level,
@@ -1858,13 +1987,24 @@
         el('div', { style: 'font-size:11px;font-weight:900;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px' }, 'Tutor guidance'),
         el('div', { style: `background:linear-gradient(135deg,${v.bg}88,#F8FAFC);border:1px solid #E2E8F0;border-radius:12px;padding:12px 12px;font-size:13px;line-height:1.75;color:#334155` }, item.guidance || ''),
         el('div', { class: 'vah-row', style: 'margin-top:12px;gap:8px;flex-wrap:wrap' }, [
-          (item.pdf || item.pdfCy) ? el('a', {
+          (item.pdf || item.pdfCy) ? el('button', {
             class: 'vah-btn primary',
-            href: (currentLang === 'cy' && item.pdfCy) ? item.pdfCy : item.pdf,
-            target: '_blank',
-            rel: 'noopener noreferrer',
-            style: 'text-decoration:none;display:inline-flex;align-items:center;gap:6px',
+            style: 'display:inline-flex;align-items:center;gap:6px',
+            onclick: (e) => {
+              e.stopPropagation();
+              const u = (currentLang === 'cy' && item.pdfCy) ? item.pdfCy : item.pdf;
+              openAssetModal({ title: `${item.name || 'Activity'} — PDF`, url: u, kind: 'pdf' });
+            },
           }, (currentLang === 'cy' && item.pdfCy) ? '⬇ Open PDF (Cymraeg)' : '⬇ Open PDF') : null,
+          (item.slides || item.slidesCy) ? el('button', {
+            class: 'vah-btn ghost',
+            style: 'display:inline-flex;align-items:center;gap:6px',
+            onclick: (e) => {
+              e.stopPropagation();
+              const u = (currentLang === 'cy' && item.slidesCy) ? item.slidesCy : item.slides;
+              openAssetModal({ title: `${item.name || 'Activity'} — Slides`, url: u, kind: 'slides' });
+            },
+          }, (currentLang === 'cy' && item.slidesCy) ? '🖥 Launch Slides (Cymraeg)' : '🖥 Launch Slides') : null,
         ].filter(Boolean)),
 
         (state.editing && !item.isQ && state.settings) ? el('div', { style: 'margin-top:14px' }, [
@@ -1967,6 +2107,7 @@
       // library state (matches JSX style)
       libSearch: '',
       libFilterEl: null,
+      libFilterPathway: null, // 'vocational' | null
       libFilterLevel: null, // '2' | '3' | '' | null
       libFilterBook: null, // 'A Level Mindset' | 'GCSE Mindset' | 'VESPA Handbook' | '' | null
       // pool state (editing)
@@ -1994,7 +2135,9 @@
           const assets = state.assetsByCode[a.id] || {};
           const pdfEn = a.pdf || assets.pdfEn || '';
           const pdfCy = assets.pdfCy || '';
-          return { ...a, pdf: pdfEn, pdfCy };
+          const slidesEn = a.slides || assets.slidesEn || '';
+          const slidesCy = assets.slidesCy || '';
+          return { ...a, pdf: pdfEn, pdfCy, slides: slidesEn, slidesCy };
         });
       } catch (_) {}
       render(root, state);
