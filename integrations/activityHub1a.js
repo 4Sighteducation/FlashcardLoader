@@ -393,7 +393,16 @@
 
     const pool = allActivities.filter((a) => {
       const lvlOk = (a.level === level || a.level === '' || a.level == null);
-      const pwOk = (a.pathway === 'both' || a.pathway === pathway || a.pathway === '' || a.pathway == null);
+      // Pathway semantics:
+      // - 'both' = suitable for either pathway
+      // - 'academic' / 'vocational' = more suitable for that pathway
+      // For programme generation, we still want vocational-tagged activities to remain available to
+      // academic programmes (they're "more vocational", not "vocational-only").
+      const ap = String(a.pathway || '').trim().toLowerCase();
+      const sel = String(pathway || '').trim().toLowerCase();
+      const pwOk = (ap === '' || ap === 'both')
+        || (ap === sel)
+        || (sel === 'academic' && ap === 'vocational');
       return lvlOk && pwOk;
     });
 
