@@ -675,15 +675,9 @@
       if (state.libFilterPathway) {
         const ap = String(a.pathway || '').trim().toLowerCase();
         const fp = String(state.libFilterPathway || '').trim().toLowerCase();
-        // "Vocational Activities" should mean vocational-suitable:
-        // - activities explicitly tagged vocational
-        // - plus "both" (mixed) activities, which are used in vocational curricula
-        if (fp === 'vocational') {
-          const ok = (ap === 'vocational' || ap === 'both' || ap === '');
-          if (!ok) return false;
-        } else if (fp) {
-          if (ap !== fp) return false;
-        }
+        // In the Activity Library, "Vocational" should mean explicitly tagged vocational,
+        // so staff see the curated set (not the entire 'both' pool).
+        if (fp && ap !== fp) return false;
       }
       if (state.libFilterLevel) {
         if (state.libFilterLevel !== '' && a.level !== state.libFilterLevel) return false;
