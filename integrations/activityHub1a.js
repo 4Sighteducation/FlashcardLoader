@@ -829,6 +829,15 @@
   }
 
   function render(root, state) {
+    // Clean up body-level modal nodes that are not inside the root (Knack is SPA).
+    // Without this, the Add-to-month modal can get "stuck" across re-renders.
+    try {
+      const oldOverlay = document.getElementById('vah-add-overlay');
+      if (oldOverlay) oldOverlay.remove();
+      const oldModal = document.getElementById('vah-add-modal');
+      if (oldModal) oldModal.remove();
+    } catch (_) {}
+
     root.innerHTML = '';
     ensureStyles();
 
@@ -1373,9 +1382,52 @@
 
         if (state.editing && !item.isQ) {
           const controls = el('div', { style: 'display:flex;gap:6px;margin-top:8px;justify-content:flex-end' }, [
-            el('button', { style: 'border:1px solid #E2E8F0;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#64748B', onclick: (e) => { e.stopPropagation(); if (idxGlobal > 0) { const c = (state.curriculum || []).slice(); const ni = idxGlobal - 1; [c[idxGlobal], c[ni]] = [c[ni], c[idxGlobal]]; state.curriculum = resequence(sortCurriculum(c)); render(root, state); } } }, '↑'),
-            el('button', { style: 'border:1px solid #E2E8F0;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#64748B', onclick: (e) => { e.stopPropagation(); const c = (state.curriculum || []).slice(); const ni = idxGlobal + 1; if (ni < c.length) { [c[idxGlobal], c[ni]] = [c[ni], c[idxGlobal]]; state.curriculum = resequence(sortCurriculum(c)); render(root, state); } } }, '↓'),
-            el('button', { style: 'border:1px solid #FCA5A5;background:#FEF2F2;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#DC2626', onclick: (e) => { e.stopPropagation(); const c = (state.curriculum || []).slice(); c.splice(idxGlobal, 1); state.curriculum = resequence(sortCurriculum(c)); render(root, state); } }, '✕'),
+            el('button', {
+              style: 'border:1px solid #E2E8F0;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#64748B',
+              onclick: (e) => {
+                e.stopPropagation();
+                const c = (state.curriculum || []).slice();
+                const idx = c.findIndex((x) => (x.uid || x.id) === uid);
+                if (idx < 0) return;
+                // move within the same month only
+                let ni = idx - 1;
+                while (ni >= 0 && c[ni] && c[ni].month !== item.month) ni -= 1;
+                if (ni < 0) return;
+                [c[idx], c[ni]] = [c[ni], c[idx]];
+                const c2 = resequence(c);
+                state.curriculum = resequence(sortCurriculum(c2));
+                render(root, state);
+              },
+            }, '↑'),
+            el('button', {
+              style: 'border:1px solid #E2E8F0;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#64748B',
+              onclick: (e) => {
+                e.stopPropagation();
+                const c = (state.curriculum || []).slice();
+                const idx = c.findIndex((x) => (x.uid || x.id) === uid);
+                if (idx < 0) return;
+                // move within the same month only
+                let ni = idx + 1;
+                while (ni < c.length && c[ni] && c[ni].month !== item.month) ni += 1;
+                if (ni >= c.length) return;
+                [c[idx], c[ni]] = [c[ni], c[idx]];
+                const c2 = resequence(c);
+                state.curriculum = resequence(sortCurriculum(c2));
+                render(root, state);
+              },
+            }, '↓'),
+            el('button', {
+              style: 'border:1px solid #FCA5A5;background:#FEF2F2;border-radius:8px;padding:2px 8px;cursor:pointer;font-weight:900;color:#DC2626',
+              onclick: (e) => {
+                e.stopPropagation();
+                const c = (state.curriculum || []).slice();
+                const idx = c.findIndex((x) => (x.uid || x.id) === uid);
+                if (idx < 0) return;
+                c.splice(idx, 1);
+                state.curriculum = resequence(sortCurriculum(c));
+                render(root, state);
+              },
+            }, '✕'),
           ]);
           row.appendChild(controls);
         }
@@ -1614,8 +1666,8 @@
       const s = state.settings;
       const usedIds = new Set((state.curriculum || []).map((c) => c.id));
       const lv = (Number(s.yearGroup) <= 11) ? '2' : '3';
-      const overlay = el('div', { style: 'position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:11000', onclick: () => { state.addMonth = null; render(root, state); } });
-      const modal = el('div', { style: 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(540px,92vw);max-height:78vh;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.2);z-index:11001;display:flex;flex-direction:column' });
+      const overlay = el('div', { id: 'vah-add-overlay', style: 'position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:11000', onclick: () => { state.addMonth = null; render(root, state); } });
+      const modal = el('div', { id: 'vah-add-modal', style: 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(540px,92vw);max-height:78vh;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.2);z-index:11001;display:flex;flex-direction:column' });
       modal.appendChild(el('div', { style: 'padding:16px 20px 12px;border-bottom:1px solid #E2E8F0' }, [
         el('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:12px' }, [
           el('div', { style: 'font-size:16px;font-weight:900;color:#0F172A' }, `Add to ${month}`),
