@@ -731,8 +731,7 @@
                     { label: 'Home', icon: 'fa-home', href: '#staff-landing-page/', scene: 'scene_1215' },
                     { label: 'Coaching', icon: 'fa-comments', href: '#staffoverview', scene: 'scene_1286' },
                     { label: 'Results', icon: 'fa-bar-chart', href: '#vesparesults', scene: 'scene_1270' },
-                    { label: 'Activities', icon: 'fa-book', href: '#activity-dashboard', scene: 'scene_1290' },
-                    { label: 'Study Plans', icon: 'fa-graduation-cap', href: '#student-revision', scene: 'scene_855' }
+                    { label: 'Activities', icon: 'fa-book', href: '#activity-dashboard', scene: 'scene_1290' }
                 ],
                 secondaryRow: [
                     { label: 'Resources', icon: 'fa-folder-open', href: '#curriculum-resources/', scene: 'scene_481' },
