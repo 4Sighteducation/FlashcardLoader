@@ -678,7 +678,7 @@
             
             return [
                 { label: 'Study Planner', icon: 'fa-calendar', href: '#studyplanner', scene: 'scene_1208' },
-                { label: 'Flashcards', icon: 'fa-clone', href: '#flashcards', scene: 'scene_1206' },
+                { label: 'Flashcards', icon: 'fa-clone', href: '#fl4sh-lite', scene: 'scene_1300' },
                 { label: 'Taskboard', icon: 'fa-clipboard-list', href: '#task-board', scene: 'scene_1188' }
             ];
         }
