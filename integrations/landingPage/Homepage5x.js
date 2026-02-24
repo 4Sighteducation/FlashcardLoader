@@ -1,5 +1,11 @@
 // Homepage Integration Script for Knack - v1.0
 // This script enables an enhanced homepage with user profile and app hubs
+//
+// IMPORTANT (sync note):
+// This homepage mounts the shared Academic Profile (which includes UCAS + UniGuide + University Choices UI).
+// When you change `VESPAReportV2/academic-profile` (Vue) you MUST ensure this file continues to load the
+// SAME pinned `academic-profile1i.js` version as `Apps/Homepage/vespa-main/public/loader.js` (academicProfileV2).
+// Otherwise homepage and profile screens will drift (labels like "University Offers" vs "University Choices", UniGuide modal, etc.).
 (function() {
   // --- Constants and Configuration ---
   const KNACK_API_URL = 'https://api.knack.com/v1';
@@ -2546,7 +2552,12 @@
     // Initialize profile info tooltip
     setupProfileInfoTooltip();
 
-    // Mount Academic Profile V2 (Supabase) on homepage when enabled
+    // Mount Academic Profile V2 (Supabase) on homepage when enabled.
+    //
+    // KEEP IN SYNC:
+    // - `Apps/Homepage/vespa-main/public/loader.js` -> academicProfileV2 scriptUrl (pin)
+    // - This file -> `ensureScriptLoaded()` URL below (use the same pin)
+    // - Config object key: `window.ACADEMIC_PROFILE_V2_CONFIG` (consumed by academic-profile1i.js)
     if (displayPreferences.showAcademicProfile) {
       try {
         const ensureScriptLoaded = (src) => new Promise((resolve, reject) => {
@@ -2564,11 +2575,13 @@
           apiUrl: 'https://vespa-dashboard-9a1f84ee5341.herokuapp.com',
           elementSelector: '#academic-profile-v2-home',
           editable: false,
-          defaultVisible: true,
+          // Default collapsed on launch (homepage mirrors the student profile behavior).
+          defaultVisible: false,
           mode: 'inline'
         };
 
-        ensureScriptLoaded('https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-report-v2@main/academic-profile/dist/academic-profile1i.js')
+        // Pinned to match `Apps/Homepage/vespa-main/public/loader.js` (academicProfileV2).
+        ensureScriptLoaded('https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-report-v2@643a04e/academic-profile/dist/academic-profile1i.js')
           .then(() => {
             if (typeof window.initializeAcademicProfileV2 === 'function') {
               window.initializeAcademicProfileV2();
