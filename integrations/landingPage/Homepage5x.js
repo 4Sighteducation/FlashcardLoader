@@ -2580,8 +2580,8 @@
           mode: 'inline'
         };
 
-        // Pinned to match `Apps/Homepage/vespa-main/public/loader.js` (academicProfileV2).
-        ensureScriptLoaded('https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-report-v2@5f44ac0/academic-profile/dist/academic-profile1i.js')
+        // Pinned to match `Apps/Homepage/vespa-main-loader-host/public/loader.js` (academicProfileV2 + myAcademicProfile).
+        ensureScriptLoaded('https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-report-v2@cb19fa1/academic-profile/dist/academic-profile1i.js')
           .then(() => {
             if (typeof window.initializeAcademicProfileV2 === 'function') {
               window.initializeAcademicProfileV2();
