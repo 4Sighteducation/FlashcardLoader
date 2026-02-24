@@ -2581,7 +2581,7 @@
         };
 
         // Pinned to match `Apps/Homepage/vespa-main/public/loader.js` (academicProfileV2).
-        ensureScriptLoaded('https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-report-v2@643a04e/academic-profile/dist/academic-profile1i.js')
+        ensureScriptLoaded('https://cdn.jsdelivr.net/gh/4Sighteducation/VESPA-report-v2@5f44ac0/academic-profile/dist/academic-profile1i.js')
           .then(() => {
             if (typeof window.initializeAcademicProfileV2 === 'function') {
               window.initializeAcademicProfileV2();
