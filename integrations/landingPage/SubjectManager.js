@@ -51,7 +51,7 @@ async function addOrUpdateSubject(userId, recordId, subjectData, subjectIndex) {
       type: 'PUT',
       headers: {
         'X-Knack-Application-Id': Knack.application_id,
-        'X-Knack-REST-API-Key': '***REDACTED-KNACK-OLD***',
+        'X-Knack-REST-API-Key': '***REDACTED-KNACK***',
         'Authorization': Knack.getUserToken(),
         'Content-Type': 'application/json'
       },
@@ -108,7 +108,7 @@ async function clearSubject(recordId, subjectIndex) {
       type: 'PUT',
       headers: {
         'X-Knack-Application-Id': Knack.application_id,
-        'X-Knack-REST-API-Key': '***REDACTED-KNACK-OLD***',
+        'X-Knack-REST-API-Key': '***REDACTED-KNACK***',
         'Authorization': Knack.getUserToken(),
         'Content-Type': 'application/json'
       },
@@ -161,7 +161,7 @@ async function addMultipleSubjects(recordId, subjects) {
       type: 'GET',
       headers: {
         'X-Knack-Application-Id': Knack.application_id,
-        'X-Knack-REST-API-Key': '***REDACTED-KNACK-OLD***',
+        'X-Knack-REST-API-Key': '***REDACTED-KNACK***',
         'Authorization': Knack.getUserToken()
       }
     });

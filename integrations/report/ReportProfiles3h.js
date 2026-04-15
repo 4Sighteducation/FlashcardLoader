@@ -1030,7 +1030,7 @@ if (window.reportProfilesInitialized) {
     // Fallback to using Knack's global application ID
     const knackAppId = Knack.application_id;
     // Use our known API key
-    const knackApiKey = '***REDACTED-KNACK-OLD***';
+    const knackApiKey = '***REDACTED-KNACK***';
     
     if (typeof Knack === 'undefined' || typeof Knack.getUserToken !== 'function') {
       console.error("[ReportProfiles] Knack object or getUserToken function not available.");

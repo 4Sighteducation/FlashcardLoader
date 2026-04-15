@@ -4,7 +4,7 @@
     // --- Configuration ---
     const KNACK_API_CONFIG = {
         appId: '5ee90912c38ae7001510c1a9',
-        apiKey: '***REDACTED-KNACK-OLD***',
+        apiKey: '***REDACTED-KNACK***',
     };
 
     const SCRIPT_URLS = {

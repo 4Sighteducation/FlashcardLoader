@@ -483,7 +483,7 @@
     // Fallback to using Knack's global application ID if not in config
     const knackAppId = (config && config.knackAppId) ? config.knackAppId : Knack.application_id;
     // Use our known API key if not in config
-    const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '***REDACTED-KNACK-OLD***';
+    const knackApiKey = (config && config.knackApiKey) ? config.knackApiKey : '***REDACTED-KNACK***';
     
     debugLog(`Using AppID ${knackAppId}`);
     

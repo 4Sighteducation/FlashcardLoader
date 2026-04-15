@@ -285,7 +285,7 @@
                 // Explicitly include the credentials
                 const config = {
                     knackAppId: baseConfig.knackAppId || '5ee90912c38ae7001510c1a9',
-                    knackApiKey: baseConfig.knackApiKey || '***REDACTED-KNACK-OLD***',
+                    knackApiKey: baseConfig.knackApiKey || '***REDACTED-KNACK***',
                     appType: 'bulkPrint',
                     debugMode: false, // production
                     sceneKey: sceneKey,
@@ -373,7 +373,7 @@
     // --- Shared Configuration --- (Optional: Can be merged by configBuilder if needed)
     const sharedConfig = {
         knackAppId: '5ee90912c38ae7001510c1a9',
-        knackApiKey: '***REDACTED-KNACK-OLD***',
+        knackApiKey: '***REDACTED-KNACK***',
         // Add SendGrid configuration
         sendGrid: {
             apiKey: "***REDACTED-SENDGRID***", // ......jLY0RwyOh0 add before deploy

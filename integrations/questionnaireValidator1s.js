@@ -14,7 +14,7 @@
     const CONFIG = {
         apiUrl: 'https://api.knack.com/v1',
         appId: '5ee90912c38ae7001510c1a9',
-        apiKey: '***REDACTED-KNACK-OLD***',
+        apiKey: '***REDACTED-KNACK***',
         
         // Object and Field mappings
         objects: {

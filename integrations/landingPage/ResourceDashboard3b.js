@@ -95,7 +95,7 @@
         const loaderConfig = window.STAFFHOMEPAGE_CONFIG || {};
         SCRIPT_CONFIG = {
             knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
-            knackApiKey: loaderConfig.knackApiKey || '***REDACTED-KNACK-OLD***',
+            knackApiKey: loaderConfig.knackApiKey || '***REDACTED-KNACK***',
             elementSelector: loaderConfig.elementSelector || '#view_3024',
             debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : false,
             sendGrid: loaderConfig.sendGrid || {
