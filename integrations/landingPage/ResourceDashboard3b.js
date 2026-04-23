@@ -95,7 +95,7 @@
         const loaderConfig = window.STAFFHOMEPAGE_CONFIG || {};
         SCRIPT_CONFIG = {
             knackAppId: loaderConfig.knackAppId || '5ee90912c38ae7001510c1a9',
-            knackApiKey: loaderConfig.knackApiKey || '***REDACTED-KNACK***',
+            knackApiKey: loaderConfig.knackApiKey || (window.VESPA_CONFIG && window.VESPA_CONFIG.knackApiKey) || '',
             elementSelector: loaderConfig.elementSelector || '#view_3024',
             debugMode: loaderConfig.debugMode !== undefined ? loaderConfig.debugMode : false,
             sendGrid: loaderConfig.sendGrid || {

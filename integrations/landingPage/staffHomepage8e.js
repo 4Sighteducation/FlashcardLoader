@@ -6573,7 +6573,7 @@ if (emulatorBtn && emulatorModal) {
           type: 'GET',
           headers: {
             'X-Knack-Application-Id': '5ee90912c38ae7001510c1a9',
-            'X-Knack-REST-API-Key': '***REDACTED-KNACK***'
+            'X-Knack-REST-API-Key': (window.VESPA_CONFIG && window.VESPA_CONFIG.knackApiKey) || ''
           }
         });
         
@@ -6586,7 +6586,7 @@ if (emulatorBtn && emulatorModal) {
             type: 'PUT',
             headers: {
               'X-Knack-Application-Id': '5ee90912c38ae7001510c1a9',
-              'X-Knack-REST-API-Key': '***REDACTED-KNACK***',
+              'X-Knack-REST-API-Key': (window.VESPA_CONFIG && window.VESPA_CONFIG.knackApiKey) || '',
               'Content-Type': 'application/json'
             },
             data: JSON.stringify({
@@ -7707,7 +7707,7 @@ if (feedbackRequest.screenshot) {
       return null;
     },
     get API_KEY() {
-      return '***REDACTED-KNACK***';
+      return (window.VESPA_CONFIG && window.VESPA_CONFIG.knackApiKey) || '';
     },
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000
@@ -8324,7 +8324,7 @@ function getCycleHeaders() {
   
   // Fallback to manual header construction
   const appId = window.Knack?.application_id || '5ee90912c38ae7001510c1a9';
-  const apiKey = '***REDACTED-KNACK***';
+  const apiKey = (window.VESPA_CONFIG && window.VESPA_CONFIG.knackApiKey) || '';
   const userToken = typeof Knack !== 'undefined' ? Knack.getUserToken() : null;
   
   const headers = {
